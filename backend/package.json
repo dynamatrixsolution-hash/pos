@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001 --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3001"
+  },
+  "dependencies": {
+    "@dynapos/db": "*",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "next": "16.2.9",
+    "next-auth": "^5.0.0-beta.25",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "prisma": "^6.19.3",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  }
+}
