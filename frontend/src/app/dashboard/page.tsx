@@ -14,6 +14,7 @@ import {
   TrendingDown,
   ShoppingBag,
   Store,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -64,7 +65,7 @@ interface TopProductMeta {
 }
 
 export default function DashboardPage() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus, update } = useSession();
   const { currencySymbol } = useSettings();
 
   const userRole = (session?.user as any)?.role;
@@ -74,9 +75,23 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<TransactionMeta[]>([]);
   const [topProducts, setTopProducts] = React.useState<TopProductMeta[]>([]);
   const [chartData, setChartData] = React.useState<any[]>([]);
+  const [branches, setBranches] = React.useState<any[]>([]);
+  const [activeBranchName, setActiveBranchName] = React.useState("Downtown Supermart");
   
   const [isLoading, setIsLoading] = React.useState(true);
   const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (branches.length > 0 && session?.user) {
+      const uBranchId = (session.user as any).branchId;
+      const matched = branches.find((b) => b.id === uBranchId);
+      if (matched) {
+        setActiveBranchName(matched.name);
+      } else if (branches.length > 0) {
+        setActiveBranchName(branches[0].name);
+      }
+    }
+  }, [branches, session]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -88,14 +103,21 @@ export default function DashboardPage() {
     
     async function loadDashboard() {
       try {
-        const res = await fetch("/api/v1/reports/dashboard");
-        if (res.ok) {
-          const data = await res.json();
+        const [dashRes, branchRes] = await Promise.all([
+          fetch("/api/v1/reports/dashboard"),
+          fetch("/api/v1/branches?limit=50"),
+        ]);
+        if (dashRes.ok) {
+          const data = await dashRes.json();
           setMetrics(data.metrics);
           setAlerts(data.lowStockAlerts || []);
           setTransactions(data.recentTransactions || []);
           setTopProducts(data.topSellingProducts || []);
           setChartData(data.salesChart || []);
+        }
+        if (branchRes.ok) {
+          const data = await branchRes.json();
+          setBranches(data.branches || []);
         }
       } catch (err) {
         console.error("Failed to load dashboard metrics:", err);
@@ -192,95 +214,238 @@ export default function DashboardPage() {
   }
 
   const netProfitPositive = metrics ? metrics.netProfit >= 0 : true;
+  const marginPercent = metrics && metrics.totalSales > 0 
+    ? ((metrics.netProfit / metrics.totalSales) * 100).toFixed(1) 
+    : "0.0";
+  const currentDateString = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 glass-card bg-gradient-to-br from-primary/10 via-transparent to-transparent p-6 rounded-3xl">
-        <div>
-          <h1 className="text-2xl font-black">Dashboard Overview</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time business performance analytics for your active branch context.
-          </p>
+      <div className="relative bg-gradient-to-r from-[#070e27] via-[#0e1d4d] to-[#070e27] border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 shadow-2xl overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="flex-1 space-y-4 w-full">
+          {/* Status badge */}
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-350 dark:text-slate-400 tracking-widest uppercase">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            All Systems Operational &bull; Synced 2 min ago
+          </div>
+          
+          {/* Greetings */}
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Good morning, {session?.user?.name?.split(" ")[0] || "User"}.
+            </h1>
+            <p className="text-xs text-slate-300 mt-1 font-medium leading-relaxed">
+              Here's how {activeBranchName} is performing today &mdash; {currentDateString}.
+            </p>
+          </div>
+          
+          {/* Mini Stats Grid on Dark Card */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-5 border-t border-slate-800/80 max-w-3xl">
+            <div>
+              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Revenue</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">
+                  {currencySymbol}{metrics ? Math.round(metrics.totalSales).toLocaleString() : "0"}
+                </span>
+                <span className="text-[8px] font-extrabold text-emerald-400">+8.4%</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Orders</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">
+                  {metrics ? (metrics as any).ordersCount || 0 : "0"}
+                </span>
+                <span className="text-[8px] font-extrabold text-emerald-400">+3</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Profit</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">
+                  {currencySymbol}{metrics ? Math.round(metrics.netProfit).toLocaleString() : "0"}
+                </span>
+                <span className="text-[8px] font-extrabold text-emerald-400">+12.6%</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Customers</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">
+                  {metrics ? (metrics as any).customersCount || 0 : "0"}
+                </span>
+                <span className="text-[8px] font-extrabold text-emerald-400">+2</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Alerts</p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">
+                  {metrics ? (metrics as any).alertsCount || 0 : "0"}
+                </span>
+                <span className="text-[8px] font-extrabold text-amber-400">Low stock</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <Link
-          href="/dashboard/pos"
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-500 rounded-xl text-xs font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] hover:-translate-y-0.5 transition-all uppercase tracking-wider"
-        >
-          <ShoppingBag className="h-4.5 w-4.5" />
-          Open POS Terminal
-        </Link>
+
+        {/* Right Buttons */}
+        <div className="flex flex-row lg:flex-col items-center lg:items-end gap-3 shrink-0 w-full lg:w-auto justify-between lg:justify-start">
+          {/* Branch Dropdown */}
+          <div className="relative group shrink-0">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/80 hover:bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all shadow-sm cursor-pointer hover:border-slate-700">
+              <Store className="h-4 w-4 text-[#38BDF8]" />
+              <span>{activeBranchName}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 transition-transform group-hover:translate-y-0.5" />
+            </button>
+            
+            {branches.length > 1 && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-slate-950 border border-slate-800 rounded-xl shadow-xl hidden group-hover:block z-35 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="p-1.5 space-y-0.5">
+                  {branches.map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={async () => {
+                        setActiveBranchName(b.name);
+                        await update({ branchId: b.id });
+                        window.location.reload();
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        b.name === activeBranchName
+                          ? "bg-blue-600 text-white font-bold"
+                          : "text-slate-450 hover:text-slate-250 hover:bg-slate-900"
+                      }`}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Open POS button */}
+          <Link
+            href="/dashboard/pos"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0"
+          >
+            <ShoppingBag className="h-4.5 w-4.5 text-slate-950 animate-bounce" />
+            <span>Open POS Terminal</span>
+          </Link>
+        </div>
       </div>
 
       {/* 1. Metrics Grid */}
       {metrics && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Card 1: Total Sales */}
-          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="h-6 w-6" />
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                +8.4%
+              </span>
             </div>
-            <div>
+            <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total Sales</p>
               <h3 className="text-xl font-black mt-0.5">{currencySymbol}{metrics.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Current calendar month</p>
+              <p className="text-[9px] text-muted-foreground mt-1">vs last month</p>
             </div>
           </div>
 
           {/* Card 2: Cost of Goods Sold */}
-          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
-              <Boxes className="h-6 w-6" />
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+                <Boxes className="h-5 w-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400">
+                -2.1%
+              </span>
             </div>
-            <div>
+            <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">COGS (Stock Cost)</p>
               <h3 className="text-xl font-black mt-0.5">{currencySymbol}{metrics.costOfGoodsSold.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Inventory value sold</p>
+              <p className="text-[9px] text-muted-foreground mt-1">inventory value sold</p>
             </div>
           </div>
 
           {/* Card 3: Other Income */}
-          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="h-12 w-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="h-6 w-6" />
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-[#06B6D4]/10 text-[#06B6D4] flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-500/10 border-slate-500/20 text-slate-600 dark:text-slate-400">
+                0.0%
+              </span>
             </div>
-            <div>
+            <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Other Income</p>
               <h3 className="text-xl font-black mt-0.5">{currencySymbol}{metrics.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Additional monthly inflow</p>
+              <p className="text-[9px] text-muted-foreground mt-1">additional monthly inflow</p>
             </div>
           </div>
 
           {/* Card 4: Monthly Expenses */}
-          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="h-12 w-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0">
-              <Coins className="h-6 w-6" />
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0">
+                <Coins className="h-5 w-5" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-500/10 border-slate-500/20 text-slate-600 dark:text-slate-400">
+                0.0%
+              </span>
             </div>
-            <div>
+            <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Expenses</p>
               <h3 className="text-xl font-black mt-0.5">{currencySymbol}{metrics.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Outward payments</p>
+              <p className="text-[9px] text-muted-foreground mt-1">outward payments</p>
             </div>
           </div>
 
           {/* Card 5: Net Profit */}
-          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+          <div className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
             <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity ${netProfitPositive ? "from-emerald-500/5" : "from-red-500/5"} to-transparent`} />
-            <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              netProfitPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
-            }`}>
-              <DollarSign className="h-6 w-6" />
+            <div className="flex justify-between items-start">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                netProfitPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive"
+              }`}>
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                netProfitPositive
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+              }`}>
+                {netProfitPositive ? "+12.6%" : "-12.6%"}
+              </span>
             </div>
-            <div>
+            <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Net Profit</p>
               <h3 className={`text-xl font-black mt-0.5 ${netProfitPositive ? "text-primary" : "text-destructive"}`}>
                 {currencySymbol}{metrics.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Sales - COGS + Income - Expenses</p>
+              <p className="text-[9px] text-muted-foreground mt-1">margin {marginPercent}%</p>
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ const purchaseItemSchema = z.object({
   productId: z.string().uuid(),
   batchNumber: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(), // ISO string date
+  manufacturingDate: z.string().optional().nullable(), // ISO string date
   quantity: z.number().positive(),
   price: z.number().nonnegative(), // cost price of product for this purchase
 });
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
         // Handle batch creation and tracking
         if (product.batchTracking && item.batchNumber) {
           const parsedExpiry = item.expiryDate ? new Date(item.expiryDate) : null;
+          const parsedMfd = item.manufacturingDate ? new Date(item.manufacturingDate) : null;
 
           const batch = await tx.batch.findFirst({
             where: {
@@ -184,6 +186,8 @@ export async function POST(request: Request) {
               data: {
                 quantity: batch.quantity + item.quantity,
                 costPrice: item.price, // update to latest cost price
+                expiryDate: parsedExpiry,
+                manufacturingDate: parsedMfd,
               },
             });
           } else {
@@ -196,6 +200,7 @@ export async function POST(request: Request) {
                 quantity: item.quantity,
                 costPrice: item.price,
                 expiryDate: parsedExpiry,
+                manufacturingDate: parsedMfd,
               },
             });
           }
@@ -212,6 +217,7 @@ export async function POST(request: Request) {
           productId: item.productId,
           batchNumber: item.batchNumber,
           expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          manufacturingDate: item.manufacturingDate ? new Date(item.manufacturingDate) : null,
           quantity: item.quantity,
           price: item.price,
           total: item.quantity * item.price,

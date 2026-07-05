@@ -35,6 +35,8 @@ interface ProductItem {
 const purchaseItemFormSchema = z.object({
   productId: z.string().uuid("Invalid product selected"),
   batchNumber: z.string().optional(),
+  expiryDate: z.string().optional().nullable().or(z.literal("")),
+  manufacturingDate: z.string().optional().nullable().or(z.literal("")),
   quantity: z.number().positive("Quantity must be positive"),
   price: z.number().nonnegative("Price cannot be negative"),
 });
@@ -78,7 +80,7 @@ export default function PurchasesPage() {
       discount: 0,
       tax: 0,
       paidAmount: 0,
-      items: [{ productId: "", quantity: 1, price: 0, batchNumber: "" }],
+      items: [{ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: "", expiryDate: "" }],
     },
   });
 
@@ -420,7 +422,7 @@ export default function PurchasesPage() {
                   <span className="text-xs font-bold text-foreground">Purchase Items Basket</span>
                   <button
                     type="button"
-                    onClick={() => append({ productId: "", quantity: 1, price: 0, batchNumber: "" })}
+                    onClick={() => append({ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: "", expiryDate: "" })}
                     className="flex items-center gap-1 text-[11px] text-primary hover:underline font-bold cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Row
@@ -429,63 +431,86 @@ export default function PurchasesPage() {
 
                 <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end bg-secondary/30 p-3.5 rounded-lg border border-border/50">
-                      <div className="col-span-1 sm:col-span-4 space-y-1">
-                        <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Product</label>
-                        <select
-                          {...register(`items.${index}.productId` as const)}
-                          onChange={(e) => onProductChange(index, e.target.value)}
-                          className="w-full px-2 py-1.5 border border-border rounded bg-background text-[11px] focus:outline-none"
-                        >
-                          <option value="">Select Product</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.sku})
-                            </option>
-                          ))}
-                        </select>
+                    <div key={field.id} className="bg-secondary/30 p-3.5 rounded-lg border border-border/50 space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                        <div className="col-span-1 sm:col-span-4 space-y-1">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Product</label>
+                          <select
+                            {...register(`items.${index}.productId` as const)}
+                            onChange={(e) => onProductChange(index, e.target.value)}
+                            className="w-full px-2 py-1.5 border border-border rounded bg-background text-[11px] focus:outline-none text-foreground"
+                          >
+                            <option value="">Select Product</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.sku})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-2 space-y-1">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Qty</label>
+                          <input
+                            type="number"
+                            placeholder="Qty"
+                            {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
+                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none text-foreground"
+                          />
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-2 space-y-1">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Cost ({currencySymbol})</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Cost"
+                            {...register(`items.${index}.price` as const, { valueAsNumber: true })}
+                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-right focus:outline-none text-foreground"
+                          />
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-3 space-y-1">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Batch</label>
+                          <input
+                            type="text"
+                            placeholder="Batch (optional)"
+                            {...register(`items.${index}.batchNumber` as const)}
+                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none text-foreground"
+                          />
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-1 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            className="text-muted-foreground hover:text-destructive p-1.5 hover:bg-secondary rounded transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="text-[10px] font-bold ml-1.5 sm:hidden">Delete Row</span>
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="col-span-1 sm:col-span-2 space-y-1">
-                        <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Qty</label>
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
-                          className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none"
-                        />
-                      </div>
+                      {/* Sub-row: Mfg. Date and Expiry Date */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider block">Mfg. Date (MFD)</label>
+                          <input
+                            type="date"
+                            {...register(`items.${index}.manufacturingDate` as const)}
+                            className="w-full px-2 py-1 border border-border rounded text-[11px] bg-background focus:outline-none text-foreground"
+                          />
+                        </div>
 
-                      <div className="col-span-1 sm:col-span-2 space-y-1">
-                        <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Cost ({currencySymbol})</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="Cost"
-                          {...register(`items.${index}.price` as const, { valueAsNumber: true })}
-                          className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-right focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="col-span-1 sm:col-span-3 space-y-1">
-                        <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Batch</label>
-                        <input
-                          type="text"
-                          placeholder="Batch (optional)"
-                          {...register(`items.${index}.batchNumber` as const)}
-                          className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="col-span-1 sm:col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => remove(index)}
-                          className="text-muted-foreground hover:text-destructive p-1.5 hover:bg-secondary rounded transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="text-[10px] font-bold ml-1.5 sm:hidden">Delete Row</span>
-                        </button>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider block">Expiry Date</label>
+                          <input
+                            type="date"
+                            {...register(`items.${index}.expiryDate` as const)}
+                            className="w-full px-2 py-1 border border-border rounded text-[11px] bg-background focus:outline-none text-foreground"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}

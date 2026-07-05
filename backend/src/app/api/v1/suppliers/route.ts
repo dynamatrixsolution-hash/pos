@@ -10,6 +10,8 @@ const supplierSchema = z.object({
   email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
+  isImported: z.boolean().optional().default(false),
+  notes: z.string().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -89,6 +91,8 @@ export async function POST(request: Request) {
         email: data.email || null,
         phone: data.phone || null,
         address: data.address || null,
+        isImported: data.isImported,
+        notes: data.notes || null,
         balance: 0,
         businessId: context.businessId,
       },

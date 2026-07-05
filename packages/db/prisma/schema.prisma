@@ -287,6 +287,8 @@ model Supplier {
   phone       String?
   address     String?
   balance     Float            @default(0) // Debt we owe to supplier
+  isImported  Boolean          @default(false)
+  notes       String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   deletedAt   DateTime?
@@ -390,6 +392,7 @@ model PurchaseItem {
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   batchNumber String?
   expiryDate  DateTime?
+  manufacturingDate DateTime?
   quantity    Float     @default(1)
   price       Float     @default(0) // Buying price per unit
   total       Float     @default(0)

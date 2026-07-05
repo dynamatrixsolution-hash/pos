@@ -220,6 +220,32 @@ export async function GET(request: Request) {
       });
     }
 
+    // Count orders (completed sales this month)
+    const ordersCount = await db.sale.count({
+      where: {
+        businessId: context.businessId,
+        branchId,
+        status: "COMPLETED",
+        createdAt: { gte: startOfMonth, lte: endOfDay },
+      },
+    });
+
+    // Count active customers
+    const customersCount = await db.customer.count({
+      where: {
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+    });
+
+    // Count all low stock alert items (total alert count)
+    const alertsCount = products
+      .map((prod) => {
+        const branchStock = prod.productStocks.reduce((sum: number, s: any) => sum + s.quantity, 0);
+        return branchStock <= prod.alertQuantity;
+      })
+      .filter(Boolean).length;
+
     return NextResponse.json({
       metrics: {
         totalSales,
@@ -229,6 +255,9 @@ export async function GET(request: Request) {
         grossProfit,
         netProfit,
         costOfGoodsSold,
+        ordersCount,
+        customersCount,
+        alertsCount,
       },
       lowStockAlerts,
       topSellingProducts,

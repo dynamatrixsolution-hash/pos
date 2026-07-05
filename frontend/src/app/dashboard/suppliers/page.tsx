@@ -34,6 +34,8 @@ const supplierSchema = z.object({
   email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
+  isImported: z.boolean().optional(),
+  notes: z.string().optional().nullable(),
 });
 
 type SupplierInputs = z.infer<typeof supplierSchema>;
@@ -58,6 +60,15 @@ export default function SuppliersPage() {
     formState: { errors },
   } = useForm<SupplierInputs>({
     resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: "",
+      contactName: "",
+      email: "",
+      phone: "",
+      address: "",
+      isImported: false,
+      notes: "",
+    },
   });
 
   const loadSuppliers = React.useCallback(async () => {
@@ -331,6 +342,30 @@ export default function SuppliersPage() {
                   type="text"
                   placeholder="100 Logistics Rd, Newark, NJ"
                   {...register("address")}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  type="checkbox"
+                  id="isImported"
+                  {...register("isImported")}
+                  className="rounded border-border bg-background text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                />
+                <label htmlFor="isImported" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider cursor-pointer">
+                  Direct Imported Supplier
+                </label>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Internal Remarks / Notes
+                </label>
+                <textarea
+                  placeholder="Payment cycles, lead times, key remarks..."
+                  {...register("notes")}
+                  rows={2}
                   className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
                 />
               </div>
