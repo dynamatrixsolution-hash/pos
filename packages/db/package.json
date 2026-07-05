@@ -5,9 +5,9 @@
   "types": "./index.ts",
   "private": true,
   "scripts": {
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "seed": "prisma db seed"
+    "generate": "npx prisma generate",
+    "migrate": "npx prisma migrate dev",
+    "seed": "npx prisma db seed"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
