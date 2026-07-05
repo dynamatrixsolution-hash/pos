@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const srcDir = path.resolve(__dirname, "../packages/db/client");
-const destDir = path.resolve(__dirname, ".next/standalone/packages/db/client");
+const destDir = path.resolve(__dirname, "client");
 
 if (fs.existsSync(srcDir)) {
   if (!fs.existsSync(destDir)) {
@@ -13,7 +13,7 @@ if (fs.existsSync(srcDir)) {
   files.forEach((file) => {
     if (file.endsWith(".node")) {
       fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
-      console.log(`Copied ${file} to standalone build directory.`);
+      console.log(`Copied ${file} to frontend/client directory.`);
       copiedCount++;
     }
   });

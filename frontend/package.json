@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 --hostname 0.0.0.0",
-    "build": "npm run generate --prefix ../packages/db && next build && node copy-engines.js",
+    "build": "npm run generate --prefix ../packages/db && node copy-engines.js && next build",
     "start": "next start",
     "lint": "eslint"
   },
