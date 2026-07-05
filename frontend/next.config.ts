@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(process.cwd(), ".."),
   },
+  outputFileTracingIncludes: {
+    "**/*": ["../packages/db/client/libquery_engine-*.node"],
+  },
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
     return [
