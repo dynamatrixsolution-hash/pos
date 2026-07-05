@@ -721,6 +721,17 @@ export default function POSPage() {
     setPayModalOpen(true);
   };
 
+  const incrementInvoiceNumber = (invNum: string) => {
+    const match = invNum.match(/^(.*?)(\d+)$/);
+    if (match) {
+      const prefix = match[1];
+      const numStr = match[2];
+      const nextNum = parseInt(numStr, 10) + 1;
+      return `${prefix}${nextNum}`;
+    }
+    return invNum + "-1";
+  };
+
   const handleCheckoutSubmit = async () => {
     if (!branchId) {
       setSubmitError("No branch context available.");
@@ -818,6 +829,7 @@ export default function POSPage() {
       // Reset Active Tab
       updateCurrentOrder((o) => ({
         ...o,
+        invoiceNumber: incrementInvoiceNumber(o.invoiceNumber),
         cart: [],
         selectedCustomerId: "",
         customerType: "WALK_IN",
@@ -865,9 +877,10 @@ export default function POSPage() {
     setHoldName("");
     setHoldModalOpen(false);
 
-    // Clear active tab
+    // Clear active tab and increment invoice number
     updateCurrentOrder((o) => ({
       ...o,
+      invoiceNumber: incrementInvoiceNumber(o.invoiceNumber),
       cart: [],
       selectedCustomerId: "",
       overallDiscount: 0,

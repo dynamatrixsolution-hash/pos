@@ -115,6 +115,22 @@ export async function POST(request: Request) {
       await db.subcategory.createMany({ data: subcategoriesToCreate });
     }
 
+    // Fetch existing products to avoid duplicates (by SKU or Name)
+    const existingProducts = await db.product.findMany({
+      where: { businessId, deletedAt: null },
+      select: { name: true, sku: true },
+    });
+
+    const existingSkus = new Set(
+      existingProducts.map((p) => p.sku?.trim().toLowerCase()).filter(Boolean) as string[]
+    );
+    const existingNames = new Set(
+      existingProducts.map((p) => p.name.trim().toLowerCase())
+    );
+
+    const processedSkus = new Set<string>();
+    const processedNames = new Set<string>();
+
     // Batch prepare Products, Stock Entries, and Batches
     const productsToInsert: any[] = [];
     const stocksToInsert: any[] = [];
@@ -122,6 +138,28 @@ export async function POST(request: Request) {
     const now = new Date();
 
     for (const item of products) {
+      const itemSku = item.sku?.trim();
+      const itemName = item.name.trim();
+
+      // Skip duplicate products
+      if (itemSku) {
+        const skuLower = itemSku.toLowerCase();
+        if (existingSkus.has(skuLower) || processedSkus.has(skuLower)) {
+          continue;
+        }
+      } else {
+        const nameLower = itemName.toLowerCase();
+        if (existingNames.has(nameLower) || processedNames.has(nameLower)) {
+          continue;
+        }
+      }
+
+      // Record as processed
+      if (itemSku) {
+        processedSkus.add(itemSku.toLowerCase());
+      }
+      processedNames.add(itemName.toLowerCase());
+
       const productId = crypto.randomUUID();
       const unitId = item.unitName ? unitMap.get(item.unitName.trim().toLowerCase()) || null : null;
       const categoryId = item.categoryName ? categoryMap.get(item.categoryName.trim().toLowerCase()) || null : null;
@@ -131,7 +169,7 @@ export async function POST(request: Request) {
         id: productId,
         businessId,
         name: item.name,
-        sku: item.sku || null,
+        sku: itemSku || null,
         costPrice: item.costPrice,
         sellingPrice: item.sellingPrice,
         wholesalePrice: item.wholesalePrice,
