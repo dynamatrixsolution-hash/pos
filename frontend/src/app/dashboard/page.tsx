@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Store,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -80,6 +81,52 @@ export default function DashboardPage() {
   
   const [isLoading, setIsLoading] = React.useState(true);
   const [mounted, setMounted] = React.useState(false);
+
+  const [syncSeconds, setSyncSeconds] = React.useState(0);
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  // Sync Timer to count up seconds since last sync
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setSyncSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getSyncedTimeText = () => {
+    if (syncSeconds < 10) return "Synced just now";
+    if (syncSeconds < 60) return `Synced ${syncSeconds}s ago`;
+    const mins = Math.floor(syncSeconds / 60);
+    return `Synced ${mins}m ago`;
+  };
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const [dashRes, branchRes] = await Promise.all([
+        fetch("/api/v1/reports/dashboard"),
+        fetch("/api/v1/branches?limit=50"),
+      ]);
+      if (dashRes.ok) {
+        const data = await dashRes.json();
+        setMetrics(data.metrics);
+        setAlerts(data.lowStockAlerts || []);
+        setTransactions(data.recentTransactions || []);
+        setTopProducts(data.topSellingProducts || []);
+        setChartData(data.salesChart || []);
+      }
+      if (branchRes.ok) {
+        const data = await branchRes.json();
+        setBranches(data.branches || []);
+      }
+      setSyncSeconds(0);
+    } catch (err) {
+      console.error("Sync failed:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   React.useEffect(() => {
     if (branches.length > 0 && session?.user) {
@@ -227,7 +274,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="relative bg-gradient-to-r from-[#070e27] via-[#0e1d4d] to-[#070e27] border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 shadow-2xl overflow-hidden">
+      <div className="relative bg-gradient-to-r from-[#070e27] via-[#0e1d4d] to-[#070e27] border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl overflow-hidden">
         {/* Glow effect */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
@@ -235,7 +282,7 @@ export default function DashboardPage() {
           {/* Status badge */}
           <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-350 dark:text-slate-400 tracking-widest uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            All Systems Operational &bull; Synced 2 min ago
+            All Systems Operational &bull; {getSyncedTimeText()}
           </div>
           
           {/* Greetings */}
@@ -247,105 +294,17 @@ export default function DashboardPage() {
               Here's how {activeBranchName} is performing today &mdash; {currentDateString}.
             </p>
           </div>
-          
-          {/* Mini Stats Grid on Dark Card */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-5 border-t border-slate-800/80 max-w-3xl">
-            <div>
-              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Revenue</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">
-                  {currencySymbol}{metrics ? Math.round(metrics.totalSales).toLocaleString() : "0"}
-                </span>
-                <span className="text-[8px] font-extrabold text-emerald-400">+8.4%</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Orders</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">
-                  {metrics ? (metrics as any).ordersCount || 0 : "0"}
-                </span>
-                <span className="text-[8px] font-extrabold text-emerald-400">+3</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Profit</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">
-                  {currencySymbol}{metrics ? Math.round(metrics.netProfit).toLocaleString() : "0"}
-                </span>
-                <span className="text-[8px] font-extrabold text-emerald-400">+12.6%</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Customers</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">
-                  {metrics ? (metrics as any).customersCount || 0 : "0"}
-                </span>
-                <span className="text-[8px] font-extrabold text-emerald-400">+2</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider">Alerts</p>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">
-                  {metrics ? (metrics as any).alertsCount || 0 : "0"}
-                </span>
-                <span className="text-[8px] font-extrabold text-amber-400">Low stock</span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Right Buttons */}
-        <div className="flex flex-row lg:flex-col items-center lg:items-end gap-3 shrink-0 w-full lg:w-auto justify-between lg:justify-start">
-          {/* Branch Dropdown */}
-          <div className="relative group shrink-0">
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900/80 hover:bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-200 transition-all shadow-sm cursor-pointer hover:border-slate-700">
-              <Store className="h-4 w-4 text-[#38BDF8]" />
-              <span>{activeBranchName}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400 transition-transform group-hover:translate-y-0.5" />
-            </button>
-            
-            {branches.length > 1 && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-slate-950 border border-slate-800 rounded-xl shadow-xl hidden group-hover:block z-35 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="p-1.5 space-y-0.5">
-                  {branches.map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={async () => {
-                        setActiveBranchName(b.name);
-                        await update({ branchId: b.id });
-                        window.location.reload();
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        b.name === activeBranchName
-                          ? "bg-blue-600 text-white font-bold"
-                          : "text-slate-450 hover:text-slate-250 hover:bg-slate-900"
-                      }`}
-                    >
-                      {b.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Open POS button */}
-          <Link
-            href="/dashboard/pos"
-            className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0"
-          >
-            <ShoppingBag className="h-4.5 w-4.5 text-slate-950 animate-bounce" />
-            <span>Open POS Terminal</span>
-          </Link>
-        </div>
+        {/* Right side: Real-time sync button */}
+        <button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          <RefreshCw className={`h-4.5 w-4.5 text-slate-950 ${isSyncing ? "animate-spin" : ""}`} />
+          <span>{isSyncing ? "Syncing..." : "Sync Real-Time Data"}</span>
+        </button>
       </div>
 
       {/* 1. Metrics Grid */}
