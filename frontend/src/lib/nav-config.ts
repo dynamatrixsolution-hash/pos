@@ -129,14 +129,12 @@ export const navigationConfig: NavItem[] = [
         href: "/dashboard/inventory/batch-stock",
         icon: Layers,
         roles: ["OWNER", "MANAGER", "CASHIER"],
-        feature: "Batch Tracking",
       },
       {
         title: "Damage & Expiry",
         href: "/dashboard/inventory/damage-expiry",
         icon: AlertTriangle,
         roles: ["OWNER", "MANAGER", "CASHIER"],
-        feature: "Expiry Tracking",
       },
       {
         title: "Stock Value Report",
@@ -161,7 +159,6 @@ export const navigationConfig: NavItem[] = [
         href: "/dashboard/inventory/transfers",
         icon: Truck,
         roles: ["OWNER", "MANAGER", "CASHIER"],
-        feature: "Multi Branch",
       },
     ],
   },
