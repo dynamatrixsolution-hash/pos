@@ -124,25 +124,7 @@ export default function InventoryClient() {
 
   return (
     <div className="space-y-6">
-      {/* Navigation Tabs */}
-      <div className="bg-card border border-border rounded-2xl p-0 overflow-x-auto">
-        <div className="flex gap-0 min-w-full">
-          {INVENTORY_SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => navigateToSection(section.id)}
-              className={`flex items-center gap-2 px-4 py-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 ${
-                activeSection === section.id
-                  ? "border-b-primary text-primary bg-primary/5"
-                  : "border-b-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
-            >
-              <span>{section.icon}</span>
-              {section.label}
-            </button>
-          ))}
-        </div>
-      </div>
+
 
       {/* Overview Section */}
       {activeSection === "overview" && (

@@ -992,6 +992,16 @@ export default function POSPage() {
     e.preventDefault();
     if (!newName.trim()) return;
 
+    if (newPhone.trim()) {
+      const phoneExists = customers.some(
+        (c) => c.phone && c.phone.trim() === newPhone.trim()
+      );
+      if (phoneExists) {
+        alert("Customer with this phone number is already registered!");
+        return;
+      }
+    }
+
     try {
       const res = await fetch("/api/v1/customers", {
         method: "POST",
@@ -1007,7 +1017,8 @@ export default function POSPage() {
       });
 
       if (!res.ok) {
-        alert("Failed to register customer.");
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to register customer.");
         return;
       }
 
@@ -1757,48 +1768,7 @@ export default function POSPage() {
 
           {/* Pricing calculations details */}
           {currentOrder.cart.length > 0 && (
-            <div className="border-t border-slate-200 dark:border-slate-850 pt-3 mt-auto space-y-3 shrink-0">
-              
-              {/* Labeled breakdowns layout exactly matching mockup design */}
-              <div className="space-y-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold bg-transparent px-1 py-2 border-t border-b border-slate-100 dark:border-slate-800/80 my-3">
-                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 font-medium">
-                  <span>Sub Total :</span>
-                  <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{grossSubtotal.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 font-medium">
-                  <div className="flex items-center gap-1">
-                    <span>Discount :</span>
-                    <button
-                      onClick={() => {
-                        setDiscountModalAmount(currentOrder.overallDiscount.toString());
-                        setDiscountModalType(currentOrder.discountType || "FLAT");
-                        setDiscountModalOpen(true);
-                      }}
-                      className="hover:text-[#2563EB] transition-all cursor-pointer p-0.5"
-                      title="Edit Extra Discount"
-                    >
-                      <Edit2 className="h-3.5 w-3.5 text-slate-400" />
-                    </button>
-                  </div>
-                  <span className="text-slate-800 dark:text-slate-100 font-bold">
-                    {currencySymbol}{(rawOverallDiscount + discountSales + couponDiscount).toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 font-medium">
-                  <span>Tax ({vatPercentage}%) :</span>
-                  <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{tax.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center pt-2.5 border-t border-slate-150 dark:border-slate-800/80 my-1">
-                  <span className="text-slate-800 dark:text-slate-100 font-extrabold text-sm">Total :</span>
-                  <span className="text-[#10b981] dark:text-[#10b981] font-black text-xl tracking-tight">
-                    {currencySymbol}{grandTotal.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
+            <div className="border-t border-slate-200 dark:border-slate-855 pt-3 mt-auto space-y-3 shrink-0 animate-in fade-in duration-200">
               {/* Submit Error alert box (if any) */}
               {submitError && (
                 <div className="bg-red-50 dark:bg-red-950/40 text-red-655 dark:text-red-400 text-[11px] font-bold p-3 rounded-2xl border border-red-200 dark:border-red-900/50 my-1 animate-in fade-in duration-200 flex justify-between items-start gap-2 text-left">
@@ -1818,10 +1788,10 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={openCheckout}
-                  className="w-full py-4 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/20 dark:hover:shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] text-center font-black text-sm tracking-wide uppercase"
+                  className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-xl shadow-md hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] text-center font-extrabold text-xs"
                   title="Proceed to Payment Checkout (F8)"
                 >
-                  <CreditCard className="h-5 w-5" />
+                  <CreditCard className="h-4 w-4" />
                   <span>Proceed to Checkout</span>
                 </button>
               </div>
@@ -2292,12 +2262,24 @@ export default function POSPage() {
             </div>
 
             <fieldset disabled={isCheckingOut} className="space-y-4 flex flex-col h-full border-0 p-0 m-0">
-            {/* Total Payable Banner */}
-            <div className="bg-[#F3F4F6] dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4 flex justify-between items-center select-none">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Payable</span>
-              <span className="text-[#2563EB] dark:text-[#7f74f7] font-black text-2xl">
-                {currencySymbol}{grandTotal.toFixed(2)}
-              </span>
+            {/* Detailed Calculations Breakdown */}
+            <div className="bg-[#F3F4F6] dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4 space-y-2 select-none text-xs font-semibold">
+              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                <span>Sub Total:</span>
+                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{grossSubtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                <span>Discount:</span>
+                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{(rawOverallDiscount + discountSales + couponDiscount).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                <span>Tax ({vatPercentage}%):</span>
+                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800 pt-2 font-black text-sm">
+                <span className="text-slate-800 dark:text-slate-100">Total Payable:</span>
+                <span className="text-[#10b981] dark:text-[#10b981] text-base">{currencySymbol}{grandTotal.toFixed(2)}</span>
+              </div>
             </div>
 
             {/* Split Type Selector */}

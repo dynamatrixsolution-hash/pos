@@ -102,6 +102,23 @@ export async function POST(request: Request) {
     }
 
     const data = result.data;
+
+    if (data.phone && data.phone.trim()) {
+      const existingCustomer = await db.customer.findFirst({
+        where: {
+          phone: data.phone.trim(),
+          businessId: context.businessId,
+          deletedAt: null,
+        },
+      });
+
+      if (existingCustomer) {
+        return NextResponse.json(
+          { error: "Customer with this phone number is already registered" },
+          { status: 400 }
+        );
+      }
+    }
     const customer = await db.customer.create({
       data: {
         name: data.name,
