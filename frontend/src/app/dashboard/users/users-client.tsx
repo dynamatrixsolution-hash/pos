@@ -6,6 +6,7 @@ import { Search, Plus, UserPlus, Shield, MapPin, Mail, Phone } from "lucide-reac
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { toast } from "@/components/toast";
 
 interface UserItem {
   id: string;
@@ -26,7 +27,7 @@ interface BranchItem {
 const userSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Minimum 6 characters"),
+  password: z.string().min(6, "Minimum 6 characters").optional().or(z.literal("")),
   phone: z.string().optional().nullable(),
   role: z.enum(["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER", "ACCOUNTANT", "STOREKEEPER", "SALESPERSON", "DELIVERY"]),
   branchId: z.string().optional().nullable(),
@@ -45,9 +46,10 @@ export default function UsersClient() {
   const [search, setSearch] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [submitError, setSubmitError] = useState("");
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<UserInputs>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<UserInputs>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       role: "CASHIER",
@@ -83,30 +85,75 @@ export default function UsersClient() {
 
   const onSubmit = async (data: UserInputs) => {
     setSubmitError("");
+
+    if (!editingUser && !data.password) {
+      setSubmitError("Password is required for new employee account");
+      return;
+    }
     
     // For roles that don't need a specific branch, nullify it if left empty
     const payload = {
       ...data,
       branchId: data.branchId ? data.branchId : null,
+      password: data.password || undefined,
     };
 
     try {
-      const res = await fetch("/api/v1/users", {
-        method: "POST",
+      const url = editingUser ? `/api/v1/users/${editingUser.id}` : "/api/v1/users";
+      const method = editingUser ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const resData = await res.json();
-        throw new Error(resData.error || "Failed to create user");
+        throw new Error(resData.error || `Failed to ${editingUser ? "update" : "create"} user`);
       }
 
       setIsModalOpen(false);
+      setEditingUser(null);
       reset();
       fetchData();
+      toast.success(`User ${editingUser ? "updated" : "created"} successfully!`);
     } catch (err: any) {
       setSubmitError(err.message);
+    }
+  };
+
+  const handleEditClick = (user: UserItem) => {
+    setEditingUser(user);
+    setSubmitError("");
+    setValue("name", user.name);
+    setValue("email", user.email);
+    setValue("role", user.role as any);
+    setValue("phone", user.phone || "");
+    setValue("branchId", user.branch?.id || "");
+    setValue("password", "");
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteUser = async (user: UserItem) => {
+    if (!window.confirm(`Are you sure you want to delete employee ${user.name}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete user");
+      }
+
+      fetchData();
+      toast.success(`Employee ${user.name} has been deleted.`);
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -142,6 +189,7 @@ export default function UsersClient() {
         {isOwnerOrAdmin && (
           <button
             onClick={() => {
+              setEditingUser(null);
               reset();
               setSubmitError("");
               setIsModalOpen(true);
@@ -170,6 +218,7 @@ export default function UsersClient() {
                   <th className="py-3 px-2">Assigned Branch</th>
                   <th className="py-3 px-2 text-center">Status</th>
                   <th className="py-3 px-2 text-right">Joined</th>
+                  {isOwnerOrAdmin && <th className="py-3 px-2 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -209,6 +258,26 @@ export default function UsersClient() {
                     <td className="py-3 px-2 text-right text-muted-foreground text-[10px] font-semibold">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
+                    {isOwnerOrAdmin && (
+                      <td className="py-3 px-2 text-right">
+                        {user.id !== session?.user?.id && (
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              onClick={() => handleEditClick(user)}
+                              className="px-2.5 py-1 text-[10px] font-extrabold border border-border rounded bg-background hover:bg-secondary/40 text-foreground cursor-pointer transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user)}
+                              className="px-2.5 py-1 text-[10px] font-extrabold border border-destructive/20 rounded bg-background hover:bg-destructive/10 text-destructive cursor-pointer transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -219,11 +288,16 @@ export default function UsersClient() {
 
       {/* Invite Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-card rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-border my-8">
-            <h3 className="text-xl font-bold mb-1 flex items-center gap-2"><UserPlus className="h-5 w-5 text-primary"/> Add New Employee</h3>
+            <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary"/> 
+              {editingUser ? "Edit Employee Profile" : "Add New Employee"}
+            </h3>
             <p className="text-xs text-muted-foreground mb-6">
-              Create a new user account. They will use their email and password to log in.
+              {editingUser 
+                ? "Modify account info or reset the password for this employee." 
+                : "Create a new user account. They will use their email and password to log in."}
             </p>
 
             {submitError && <div className="p-3 mb-4 text-xs bg-destructive/10 text-destructive rounded-lg font-bold border border-destructive/20">{submitError}</div>}
@@ -251,10 +325,13 @@ export default function UsersClient() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Password</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Password {editingUser && "(Leave blank to keep current)"}
+                  </label>
                   <input
                     type="password"
                     {...register("password")}
+                    placeholder={editingUser ? "••••••••" : ""}
                     className={`w-full px-3 py-2 bg-background border rounded-lg text-xs focus:outline-none focus:ring-1 ${errors.password ? 'border-destructive focus:ring-destructive' : 'border-border focus:ring-primary'}`}
                   />
                   {errors.password && <span className="text-[9px] text-destructive">{errors.password.message}</span>}
@@ -302,7 +379,10 @@ export default function UsersClient() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingUser(null);
+                  }}
                   className="px-4 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-secondary transition-colors"
                 >
                   Cancel
@@ -312,7 +392,7 @@ export default function UsersClient() {
                   disabled={isSubmitting}
                   className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {isSubmitting ? "Creating..." : "Create User Account"}
+                  {isSubmitting ? (editingUser ? "Saving..." : "Creating...") : editingUser ? "Save Changes" : "Create User Account"}
                 </button>
               </div>
             </form>

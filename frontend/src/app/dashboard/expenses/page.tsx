@@ -15,8 +15,10 @@ interface ExpenseItem {
   reference: string | null;
   description: string | null;
   createdAt: string;
-  category: { name: string };
-  branch: { name: string };
+  categoryId: string;
+  branchId: string;
+  category: { id: string; name: string };
+  branch: { id: string; name: string };
   user: { name: string };
 }
 
@@ -56,6 +58,7 @@ export default function ExpensesPage() {
   const [incomeSummary, setIncomeSummary] = React.useState({ total: 0, today: 0, thisMonth: 0 });
 
   const [isLoading, setIsLoading] = React.useState(true);
+  const [editingItem, setEditingItem] = React.useState<ExpenseItem | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [catModalOpen, setCatModalOpen] = React.useState(false);
   const [newCatName, setNewCatName] = React.useState("");
@@ -125,24 +128,69 @@ export default function ExpensesPage() {
   const onSubmit = async (data: ExpenseInputs) => {
     setSubmitError(null);
     try {
-      const endpoint = activeTab === "expenses" ? "/api/v1/expenses" : "/api/v1/income";
+      const endpoint = editingItem 
+        ? (activeTab === "expenses" ? `/api/v1/expenses/${editingItem.id}` : `/api/v1/income/${editingItem.id}`)
+        : (activeTab === "expenses" ? "/api/v1/expenses" : "/api/v1/income");
+      const method = editingItem ? "PUT" : "POST";
+
       const res = await fetch(endpoint, {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (!res.ok) {
         const json = await res.json();
-        setSubmitError(json.error || `Failed to record ${activeTab === "expenses" ? "expense" : "income"}`);
+        setSubmitError(json.error || `Failed to save ${activeTab === "expenses" ? "expense" : "income"}`);
         return;
       }
 
       setModalOpen(false);
+      setEditingItem(null);
       reset();
       loadData();
+      toast.success(
+        activeTab === "expenses"
+          ? `Expense ${editingItem ? "updated" : "recorded"} successfully!`
+          : `Income ${editingItem ? "updated" : "recorded"} successfully!`
+      );
     } catch (err) {
       setSubmitError("Connection failure.");
+    }
+  };
+
+  const handleEditClick = (item: ExpenseItem) => {
+    setEditingItem(item);
+    setSubmitError(null);
+    setValue("amount", item.amount);
+    setValue("categoryId", item.categoryId);
+    setValue("branchId", item.branchId);
+    setValue("reference", item.reference || "");
+    setValue("description", item.description || "");
+    setModalOpen(true);
+  };
+
+  const handleDeleteClick = async (item: ExpenseItem) => {
+    const typeLabel = activeTab === "expenses" ? "expense" : "income";
+    if (!window.confirm(`Are you sure you want to delete this ${typeLabel}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const endpoint = activeTab === "expenses" ? `/api/v1/expenses/${item.id}` : `/api/v1/income/${item.id}`;
+      const res = await fetch(endpoint, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || `Failed to delete ${typeLabel}`);
+      }
+
+      loadData();
+      toast.success(`${activeTab === "expenses" ? "Expense" : "Income"} deleted successfully!`);
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -222,8 +270,10 @@ export default function ExpensesPage() {
           </button>
           <button
             onClick={() => {
-              setModalOpen(true);
+              setEditingItem(null);
+              reset();
               setSubmitError(null);
+              setModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
           >
@@ -309,6 +359,7 @@ export default function ExpensesPage() {
                     {activeTab === "expenses" ? "Amount Paid" : "Amount Received"}
                   </th>
                   <th className="py-3 px-2">Recorded By</th>
+                  <th className="py-3 px-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -333,6 +384,22 @@ export default function ExpensesPage() {
                       {activeTab === "expenses" ? "-" : "+"}{currencySymbol}{e.amount.toFixed(2)}
                     </td>
                     <td className="py-3 px-2 text-muted-foreground">{e.user.name}</td>
+                    <td className="py-3 px-2 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          onClick={() => handleEditClick(e)}
+                          className="px-2.5 py-1 text-[10px] font-extrabold border border-border rounded bg-background hover:bg-secondary/40 text-foreground cursor-pointer transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(e)}
+                          className="px-2.5 py-1 text-[10px] font-extrabold border border-destructive/20 rounded bg-background hover:bg-destructive/10 text-destructive cursor-pointer transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -347,12 +414,16 @@ export default function ExpensesPage() {
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md space-y-4">
             <div>
               <h3 className="text-sm font-bold">
-                {activeTab === "expenses" ? "Record Cash Outflow Voucher" : "Record Cash Inflow Voucher"}
+                {editingItem
+                  ? (activeTab === "expenses" ? "Edit Cash Outflow Voucher" : "Edit Cash Inflow Voucher")
+                  : (activeTab === "expenses" ? "Record Cash Outflow Voucher" : "Record Cash Inflow Voucher")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {activeTab === "expenses"
-                  ? "Register a cash expenditure voucher against branch funds."
-                  : "Register a cash income voucher against branch funds."}
+                {editingItem
+                  ? `Modify voucher details for logged ${activeTab === "expenses" ? "expense" : "income"}.`
+                  : (activeTab === "expenses"
+                      ? "Register a cash expenditure voucher against branch funds."
+                      : "Register a cash income voucher against branch funds.")}
               </p>
             </div>
 
@@ -459,7 +530,10 @@ export default function ExpensesPage() {
               <div className="flex justify-end gap-2 border-t border-border pt-4">
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => {
+                    setModalOpen(false);
+                    setEditingItem(null);
+                  }}
                   className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold"
                 >
                   Cancel
@@ -468,7 +542,7 @@ export default function ExpensesPage() {
                   type="submit"
                   className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20"
                 >
-                  Record Voucher
+                  {editingItem ? "Save Changes" : "Record Voucher"}
                 </button>
               </div>
             </form>

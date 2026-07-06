@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,6 +23,7 @@ function LoginForm() {
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const {
     register,
@@ -154,14 +155,23 @@ function LoginForm() {
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Password
             </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              {...register("password")}
-              className={`w-full px-3.5 py-2 border rounded-lg text-xs bg-background focus:outline-none focus:ring-1 ${
-                errors.password ? "border-destructive focus:ring-destructive" : "border-border focus:ring-primary"
-              }`}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                {...register("password")}
+                className={`w-full pl-3.5 pr-10 py-2 border rounded-lg text-xs bg-background focus:outline-none focus:ring-1 ${
+                  errors.password ? "border-destructive focus:ring-destructive" : "border-border focus:ring-primary"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 cursor-pointer select-none"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {errors.password && (
               <span className="text-[10px] text-destructive font-semibold">{errors.password.message}</span>
             )}

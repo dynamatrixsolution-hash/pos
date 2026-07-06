@@ -21,7 +21,7 @@ const purchaseCreateSchema = z.object({
   tax: z.number().nonnegative().default(0),
   total: z.number().nonnegative(),
   paidAmount: z.number().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "CARD", "QR", "BANK_TRANSFER", "CREDIT"]).default("CASH"),
+  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   notes: z.string().optional().nullable(),
 });

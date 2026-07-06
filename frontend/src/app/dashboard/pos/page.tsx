@@ -115,8 +115,7 @@ interface ActiveOrder {
   splitPayments: {
     cash: number;
     card: number;
-    qr: number;
-    bank: number;
+    fonepay: number;
     credit: number;
   };
 }
@@ -262,7 +261,7 @@ export default function POSPage() {
       diningType: "TAKE_AWAY",
       waiterId: "Waiter 01",
       posMode: "RETAIL",
-      splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+      splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     },
   ]);
   const [currentOrderId, setCurrentOrderId] = React.useState<string>("1");
@@ -566,7 +565,7 @@ export default function POSPage() {
       diningType: "TAKE_AWAY",
       waiterId: "Waiter 01",
       posMode: currentOrder.posMode,
-      splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+      splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     };
     setActiveOrders([...activeOrders, newTab]);
     setCurrentOrderId(nextId);
@@ -750,8 +749,7 @@ export default function POSPage() {
     splitType === "METHOD"
       ? currentOrder.splitPayments.cash +
         currentOrder.splitPayments.card +
-        currentOrder.splitPayments.qr +
-        currentOrder.splitPayments.bank +
+        currentOrder.splitPayments.fonepay +
         currentOrder.splitPayments.credit
       : splitType === "PERSONS"
       ? personsPayments.reduce((sum, v) => sum + v, 0)
@@ -797,14 +795,29 @@ export default function POSPage() {
       return;
     }
 
-    // Wholesale balance verification
-    if (currentOrder.posMode === "WHOLESALE" && activeCustomer) {
-      const outstandingSum = activeCustomer.balance + grandTotal;
-      if (outstandingSum > activeCustomer.creditLimit) {
-        setSubmitError(
-          `Wholesale check failed: credit limit (${currencySymbol}${activeCustomer.creditLimit}) exceeded.`
-        );
+    // Customer credit verification (for CREDIT single pay or CREDIT split pay)
+    const isPayingCredit =
+      singlePaymentMethod === "CREDIT" ||
+      (splitType === "METHOD" && currentOrder.splitPayments.credit > 0);
+
+    if (isPayingCredit) {
+      if (!currentOrder.selectedCustomerId) {
+        setSubmitError("A registered customer must be selected to complete a credit transaction.");
         return;
+      }
+
+      if (activeCustomer) {
+        const creditCharge =
+          singlePaymentMethod === "CREDIT"
+            ? grandTotal
+            : currentOrder.splitPayments.credit;
+
+        if (activeCustomer.balance + creditCharge > activeCustomer.creditLimit) {
+          setSubmitError(
+            `Credit check failed: Transaction exceeds customer's credit limit of ${currencySymbol}${activeCustomer.creditLimit}. Current Debt: ${currencySymbol}${activeCustomer.balance.toFixed(2)}`
+          );
+          return;
+        }
       }
     }
 
@@ -816,15 +829,29 @@ export default function POSPage() {
       if (currentOrder.splitPayments.card > 0) {
         splitPaymentsList.push({ method: "CARD", amount: currentOrder.splitPayments.card });
       }
-      if (currentOrder.splitPayments.qr > 0) {
-        splitPaymentsList.push({ method: "QR", amount: currentOrder.splitPayments.qr });
-      }
-      if (currentOrder.splitPayments.bank > 0) {
-        splitPaymentsList.push({ method: "BANK_TRANSFER", amount: currentOrder.splitPayments.bank });
+      if (currentOrder.splitPayments.fonepay > 0) {
+        splitPaymentsList.push({ method: "FONE_PAY", amount: currentOrder.splitPayments.fonepay });
       }
       if (currentOrder.splitPayments.credit > 0) {
         splitPaymentsList.push({ method: "CREDIT", amount: currentOrder.splitPayments.credit });
       }
+    }
+
+    const paidAmtPayload =
+      singlePaymentMethod === "CREDIT"
+        ? 0
+        : splitType === "METHOD"
+        ? currentOrder.splitPayments.cash +
+          currentOrder.splitPayments.card +
+          currentOrder.splitPayments.fonepay
+        : totalPaidInSplits;
+
+    let paymentStatus = "PAID";
+    if (isPayingCredit) {
+      const unpaid = grandTotal - paidAmtPayload;
+      paymentStatus = unpaid === grandTotal ? "UNPAID" : "PARTIAL";
+    } else {
+      paymentStatus = paidAmtPayload >= grandTotal ? "PAID" : "PARTIAL";
     }
 
     const payload = {
@@ -842,14 +869,16 @@ export default function POSPage() {
       discount: rawOverallDiscount + discountSales + couponDiscount,
       tax,
       total: grandTotal,
-      paidAmount: totalPaidInSplits,
+      paidAmount: paidAmtPayload,
       paymentMethod:
         splitType === "METHOD"
           ? "CASH"
-          : singlePaymentMethod === "BANK"
-          ? "BANK_TRANSFER"
+          : singlePaymentMethod === "CREDIT"
+          ? "CREDIT"
+          : singlePaymentMethod === "FONE_PAY"
+          ? "FONE_PAY"
           : (singlePaymentMethod as any),
-      paymentStatus: totalPaidInSplits >= grandTotal ? "PAID" : "PARTIAL",
+      paymentStatus: paymentStatus as any,
       status: "COMPLETED",
       notes: currentOrder.invoiceNotes,
       splitPayments: splitPaymentsList.length > 0 ? splitPaymentsList : undefined,
@@ -889,7 +918,7 @@ export default function POSPage() {
                 customerType: "WALK_IN",
                 overallDiscount: 0,
                 invoiceNotes: "",
-                splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+                splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
               }
             : o
         );
@@ -947,7 +976,7 @@ export default function POSPage() {
               customerType: "WALK_IN",
               overallDiscount: 0,
               invoiceNotes: "",
-              splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+              splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
             }
           : o
       );
@@ -1048,7 +1077,7 @@ export default function POSPage() {
         selectedCustomerId: "",
         overallDiscount: 0,
         invoiceNotes: "",
-        splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+        splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
       }));
     };
 
@@ -2329,7 +2358,7 @@ export default function POSPage() {
                     Payment Method
                   </label>
                   <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/80">
-                    {["CASH", "CARD", "QR", "BANK"].map((method) => (
+                    {["CASH", "CARD", "FONE_PAY", "CREDIT"].map((method) => (
                       <button
                         key={method}
                         type="button"
@@ -2340,7 +2369,7 @@ export default function POSPage() {
                             : "text-slate-500 hover:text-slate-800 dark:text-slate-405"
                         }`}
                       >
-                        {method}
+                        {method === "FONE_PAY" ? "FONE PAY" : method}
                       </button>
                     ))}
                   </div>
@@ -2373,11 +2402,11 @@ export default function POSPage() {
                   </div>
                 )}
 
-                {/* Dynamic QR Code Generator */}
-                {singlePaymentMethod === "QR" && (
+                {/* Dynamic QR Code Generator for Fone Pay */}
+                {singlePaymentMethod === "FONE_PAY" && (
                   <div className="flex flex-col items-center justify-center p-5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl animate-in fade-in duration-250 text-center gap-4">
                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                      Dynamic QR Scanner
+                      Dynamic Fonepay QR
                     </span>
                     
                     {/* QR Code Container with Premium Focus Corners and Scanning Line */}
@@ -2411,9 +2440,49 @@ export default function POSPage() {
                         Scan to Pay: <span className="text-[#2563EB] dark:text-[#7f74f7] text-sm font-black">{currencySymbol}{grandTotal.toFixed(2)}</span>
                       </p>
                       <p className="text-[10px] text-slate-450 dark:text-slate-400 leading-relaxed max-w-[240px]">
-                        Scan the dynamic QR code using any digital wallet, Fonepay, or UPI mobile banking app to complete transaction.
+                        Scan the dynamic Fonepay QR code using any digital wallet or mobile banking app to complete the transaction.
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {/* Credit Account Details */}
+                {singlePaymentMethod === "CREDIT" && (
+                  <div className="space-y-3 p-4 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in slide-in-from-top-1 duration-150 text-xs font-semibold">
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
+                      Customer Credit Status
+                    </span>
+                    {activeCustomer ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Selected Customer:</span>
+                          <span className="text-slate-850 dark:text-slate-200 font-extrabold">{activeCustomer.name}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Credit Limit:</span>
+                          <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{activeCustomer.creditLimit.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Current Debt Balance:</span>
+                          <span className="text-destructive font-bold">{currencySymbol}{activeCustomer.balance.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800 pt-2 font-bold animate-in fade-in duration-100">
+                          <span className="text-slate-500">Available Credit:</span>
+                          <span className={`${activeCustomer.creditLimit - activeCustomer.balance >= grandTotal ? "text-emerald-600" : "text-destructive"} font-black`}>
+                            {currencySymbol}{(activeCustomer.creditLimit - activeCustomer.balance).toFixed(2)}
+                          </span>
+                        </div>
+                        {activeCustomer.creditLimit - activeCustomer.balance < grandTotal && (
+                          <div className="text-[10px] text-destructive bg-destructive/10 border border-destructive/20 p-2.5 rounded-lg font-bold leading-snug mt-1">
+                            ⚠️ This transaction of {currencySymbol}{grandTotal.toFixed(2)} exceeds the remaining available credit limit.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center text-slate-400 font-bold text-[11px]">
+                        ⚠️ Please select a customer from the top dropdown to check and charge their credit account.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2421,15 +2490,14 @@ export default function POSPage() {
 
             {splitType === "METHOD" && (
               <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
-                <div className="grid grid-cols-5 gap-2 items-center text-[9px] font-black text-slate-400 uppercase text-center border-b pb-1.5 border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-4 gap-2 items-center text-[9px] font-black text-slate-400 uppercase text-center border-b pb-1.5 border-slate-200 dark:border-slate-800">
                   <span>Cash</span>
                   <span>Card</span>
-                  <span>QR</span>
-                  <span>Bank</span>
+                  <span>Fone Pay</span>
                   <span>Credit</span>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {["cash", "card", "qr", "bank", "credit"].map((method) => (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {["cash", "card", "fonepay", "credit"].map((method) => (
                     <input
                       key={method}
                       type="number"

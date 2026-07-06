@@ -13,7 +13,7 @@ const saleItemSchema = z.object({
 });
 
 const splitPaymentSchema = z.object({
-  method: z.enum(["CASH", "CARD", "QR", "BANK_TRANSFER", "CREDIT"]),
+  method: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]),
   amount: z.number().positive(),
 });
 
@@ -26,7 +26,7 @@ const saleCreateSchema = z.object({
   tax: z.number().nonnegative().default(0), // overall invoice tax
   total: z.number().nonnegative(),
   paidAmount: z.number().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "CARD", "QR", "BANK_TRANSFER", "CREDIT"]).default("CASH"),
+  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   status: z.enum(["COMPLETED", "DRAFT", "ON_HOLD"]).default("COMPLETED"),
   notes: z.string().optional().nullable(),
@@ -116,6 +116,16 @@ export async function POST(request: Request) {
     }
 
     const payload = result.data;
+
+    const hasCreditPayment = payload.paymentMethod === "CREDIT" || 
+      (payload.splitPayments && payload.splitPayments.some(sp => sp.method === "CREDIT"));
+
+    if (hasCreditPayment && !payload.customerId) {
+      return NextResponse.json(
+        { error: "A registered customer must be selected to complete a credit transaction." },
+        { status: 400 }
+      );
+    }
 
     // Execute the complete sale pipeline in a single database transaction
     const saleResult = await db.$transaction(async (tx) => {
@@ -269,8 +279,8 @@ export async function POST(request: Request) {
         const unpaidAmt = payload.total - payload.paidAmount;
 
         if (unpaidAmt > 0) {
-          // Verify credit limits
-          if (customer.customerType === "WHOLESALE" && customer.balance + unpaidAmt > customer.creditLimit) {
+          // Verify credit limits for any customer type when paying on credit
+          if (customer.balance + unpaidAmt > customer.creditLimit) {
             throw new Error(`Transaction violates customer credit limit. Limit: $${customer.creditLimit}, Current balance: $${customer.balance}, Added charge: $${unpaidAmt}`);
           }
 
