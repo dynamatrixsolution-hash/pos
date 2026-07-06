@@ -134,10 +134,25 @@ interface HeldBill {
   posMode?: string;
 }
 
+const getNextAvailableInvoiceNumber = (orders: ActiveOrder[]) => {
+  let maxNum = 1000;
+  orders.forEach((o) => {
+    const match = o.invoiceNumber.match(/\d+$/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num > maxNum) {
+        maxNum = num;
+      }
+    }
+  });
+  return `INV-${maxNum + 1}`;
+};
+
 export default function POSPage() {
   const { data: session } = useSession();
   const branchId = session?.user ? (session.user as any).branchId : null;
   const role = session?.user ? (session.user as any).role : null;
+  const [initialized, setInitialized] = React.useState(false);
   const { currencySymbol, vatPercentage, pricingType, enableVat, taxName } = useSettings();
 
   const [posScannerOpen, setPosScannerOpen] = React.useState(false);
@@ -352,6 +367,41 @@ export default function POSPage() {
   const [heldBills, setHeldBills] = React.useState<HeldBill[]>([]);
   const [activeMobileTab, setActiveMobileTab] = React.useState<"catalog" | "cart">("catalog");
 
+  // Load from localStorage on mount safely
+  React.useEffect(() => {
+    try {
+      const savedOrders = localStorage.getItem("pos_active_orders");
+      const savedOrderId = localStorage.getItem("pos_current_order_id");
+      const savedHeld = localStorage.getItem("pos_held_bills");
+
+      if (savedOrders) {
+        setActiveOrders(JSON.parse(savedOrders));
+      }
+      if (savedOrderId) {
+        setCurrentOrderId(JSON.parse(savedOrderId));
+      }
+      if (savedHeld) {
+        setHeldBills(JSON.parse(savedHeld));
+      }
+    } catch (e) {
+      console.error("Error reading from localStorage:", e);
+    } finally {
+      setInitialized(true);
+    }
+  }, []);
+
+  // Save to localStorage when state changes after initial sync
+  React.useEffect(() => {
+    if (!initialized) return;
+    try {
+      localStorage.setItem("pos_active_orders", JSON.stringify(activeOrders));
+      localStorage.setItem("pos_current_order_id", JSON.stringify(currentOrderId));
+      localStorage.setItem("pos_held_bills", JSON.stringify(heldBills));
+    } catch (e) {
+      console.error("Error writing to localStorage:", e);
+    }
+  }, [activeOrders, currentOrderId, heldBills, initialized]);
+
   // Localized configuration state from SettingsProvider context is now defined at the top of the component
 
   // Split payment modal details
@@ -502,7 +552,7 @@ export default function POSPage() {
     const nextId = (
       Math.max(...activeOrders.map((o) => parseInt(o.id) || 0), 0) + 1
     ).toString();
-    const invoiceNum = `INV-${1000 + parseInt(nextId)}`;
+    const invoiceNum = getNextAvailableInvoiceNumber(activeOrders);
     const newTab: ActiveOrder = {
       id: nextId,
       invoiceNumber: invoiceNum,
@@ -827,16 +877,23 @@ export default function POSPage() {
       });
 
       // Reset Active Tab
-      updateCurrentOrder((o) => ({
-        ...o,
-        invoiceNumber: incrementInvoiceNumber(o.invoiceNumber),
-        cart: [],
-        selectedCustomerId: "",
-        customerType: "WALK_IN",
-        overallDiscount: 0,
-        invoiceNotes: "",
-        splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
-      }));
+      setActiveOrders((prev) => {
+        const nextInvoice = getNextAvailableInvoiceNumber(prev);
+        return prev.map((o) =>
+          o.id === currentOrderId
+            ? {
+                ...o,
+                invoiceNumber: nextInvoice,
+                cart: [],
+                selectedCustomerId: "",
+                customerType: "WALK_IN",
+                overallDiscount: 0,
+                invoiceNotes: "",
+                splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+              }
+            : o
+        );
+      });
       setCouponDiscounts((prev) => {
         const next = { ...prev };
         delete next[currentOrderId];
@@ -878,14 +935,23 @@ export default function POSPage() {
     setHoldModalOpen(false);
 
     // Clear active tab and increment invoice number
-    updateCurrentOrder((o) => ({
-      ...o,
-      invoiceNumber: incrementInvoiceNumber(o.invoiceNumber),
-      cart: [],
-      selectedCustomerId: "",
-      overallDiscount: 0,
-      invoiceNotes: "",
-    }));
+    setActiveOrders((prev) => {
+      const nextInvoice = getNextAvailableInvoiceNumber(prev);
+      return prev.map((o) =>
+        o.id === currentOrderId
+          ? {
+              ...o,
+              invoiceNumber: nextInvoice,
+              cart: [],
+              selectedCustomerId: "",
+              customerType: "WALK_IN",
+              overallDiscount: 0,
+              invoiceNotes: "",
+              splitPayments: { cash: 0, card: 0, qr: 0, bank: 0, credit: 0 },
+            }
+          : o
+      );
+    });
     setCouponDiscounts((prev) => {
       const next = { ...prev };
       delete next[currentOrderId];
@@ -1118,6 +1184,14 @@ export default function POSPage() {
               title="Add New Billing Tab"
             >
               <Plus className="h-4 w-4" /> Add Tab
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecallModalOpen(true)}
+              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs"
+              title="Recall Suspended Bills (F4)"
+            >
+              <FileText className="h-4 w-4 text-emerald-500" /> Drafts ({heldBills.length})
             </button>
           </div>
 
@@ -1741,44 +1815,15 @@ export default function POSPage() {
 
               {/* Bottom checkout action buttons matching mockup */}
               <div className="space-y-2 shrink-0 font-bold text-xs select-none">
-                {/* Row 1: Save & Print (F10) + Draft */}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCheckoutSubmit}
-                    className="flex-1 py-3 bg-[#0f172a] dark:bg-slate-900 hover:bg-slate-800 dark:hover:bg-slate-800 text-white rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 text-center font-extrabold"
-                  >
-                    Save & Print (F10)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setHoldModalOpen(true)}
-                    className="w-1/4 py-3 border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 hover:bg-slate-55 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95"
-                    title="Suspend Current Cart (F3)"
-                  >
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    <span>Draft</span>
-                  </button>
-                </div>
-
-                {/* Row 2: Pay & Print (F9) + Pay (F8) */}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCheckoutSubmit}
-                    className="flex-1 py-3 bg-[#10b981] hover:bg-[#059669] text-white rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 text-center font-extrabold"
-                  >
-                    Pay & Print (F9)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openCheckout}
-                    className="flex-1 py-3 bg-[#f59e0b] hover:bg-[#d97706] text-white rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 text-center font-extrabold"
-                    title="Open checkout payment details (F8 / Enter)"
-                  >
-                    Pay (F8)
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={openCheckout}
+                  className="w-full py-4 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/20 dark:hover:shadow-blue-500/10 cursor-pointer flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] text-center font-black text-sm tracking-wide uppercase"
+                  title="Proceed to Payment Checkout (F8)"
+                >
+                  <CreditCard className="h-5 w-5" />
+                  <span>Proceed to Checkout</span>
+                </button>
               </div>
             </div>
           )}
@@ -1853,7 +1898,7 @@ export default function POSPage() {
                       </span>
                     </div>
                     <span className="text-xs font-black text-[#2563EB]">
-                      ${b.items.reduce((sum, i) => sum + i.price * i.quantity, 0).toFixed(2)}
+                      {currencySymbol}{b.items.reduce((sum, i) => sum + i.price * i.quantity, 0).toFixed(2)}
                     </span>
                   </div>
                 ))
@@ -2556,9 +2601,21 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setPayModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPayModalOpen(false);
+                  setHoldModalOpen(true);
+                }}
+                className="px-4 py-2 border border-amber-250 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs rounded-lg font-bold cursor-pointer flex items-center gap-1"
+                title="Save this sale as a draft to recall later"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Save as Draft</span>
               </button>
               <button
                 type="button"
