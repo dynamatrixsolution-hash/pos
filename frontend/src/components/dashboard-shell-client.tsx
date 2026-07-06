@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import ToastContainer from "@/components/toast";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -302,7 +303,7 @@ export default function DashboardShellClient({
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar desktop (Fixed dark theme) */}
-      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#111827] border-r border-slate-800 ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
+      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#111827] border-r border-slate-800 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-[#111827]">
           <Link href="/dashboard" className="flex items-center gap-3">
             <img src="/logo.jpg" alt="DynaOne Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
@@ -328,7 +329,7 @@ export default function DashboardShellClient({
       {/* 2. Main content container */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className={`flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30 transition-all duration-300 bg-white border-b border-[#E5E7EB] ${isPosRoute && !posNavbarOpen ? "h-0 opacity-0 overflow-hidden py-0 border-b-0" : "h-16"}`}>
+        <header className={`flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30 transition-all duration-300 bg-white border-b border-[#E5E7EB] no-print ${isPosRoute && !posNavbarOpen ? "h-0 opacity-0 overflow-hidden py-0 border-b-0" : "h-16"}`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -595,6 +596,7 @@ export default function DashboardShellClient({
           </div>
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }

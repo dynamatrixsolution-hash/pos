@@ -630,7 +630,7 @@ export default function POSPage() {
     const stockQty = product.productStocks.reduce((sum, s) => sum + s.quantity, 0);
 
     if (stockQty <= 0) {
-      alert(`Product "${product.name}" is completely out of stock.`);
+      showAlert("Out of Stock", `Product "${product.name}" is completely out of stock.`, "error");
       return;
     }
 
@@ -638,7 +638,7 @@ export default function POSPage() {
 
     if (existing) {
       if (existing.quantity + qty > stockQty) {
-        alert(`Stock limit of ${stockQty} reached.`);
+        showAlert("Stock Limit Reached", `Stock limit of ${stockQty} reached.`, "error");
         return;
       }
       updateCurrentOrder((o) => ({
@@ -680,7 +680,7 @@ export default function POSPage() {
     }
     const item = currentOrder.cart.find((i) => i.id === productId);
     if (item && qty > item.availableStock) {
-      alert(`Stock limit is ${item.availableStock}`);
+      showAlert("Stock Limit Reached", `Stock limit is ${item.availableStock}.`, "error");
       return;
     }
     updateCurrentOrder((o) => ({
@@ -739,9 +739,9 @@ export default function POSPage() {
         discountType: pendingDiscountType,
       }));
       setAdminPasscodeModal(false);
-      alert("Large discount override authorized by Admin.");
+      showAlert("Authorization Success", "Large discount override authorized by Admin.", "info");
     } else {
-      alert("Invalid passcode. Authorized override failed.");
+      showAlert("Authorization Failure", "Invalid passcode. Authorized override failed.", "error");
     }
   };
 
@@ -997,7 +997,7 @@ export default function POSPage() {
         (c) => c.phone && c.phone.trim() === newPhone.trim()
       );
       if (phoneExists) {
-        alert("Customer with this phone number is already registered!");
+        showAlert("Registration Error", "Customer with this phone number is already registered!", "error");
         return;
       }
     }
@@ -1018,7 +1018,7 @@ export default function POSPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        alert(errorData.error || "Failed to register customer.");
+        showAlert("Registration Error", errorData.error || "Failed to register customer.", "error");
         return;
       }
 
@@ -1064,7 +1064,7 @@ export default function POSPage() {
   };
 
   return (
-    <div className="w-full h-full p-4 bg-[#F3F4F6] dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
+    <div className="w-full h-full p-4 print:p-0 bg-[#F3F4F6] print:bg-white dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
       
       {/* Dynamic workspace wrapper grid */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 overflow-hidden no-print">
@@ -2629,7 +2629,7 @@ export default function POSPage() {
       />
 
       {/* Mobile Tab Switcher */}
-      <div className="lg:hidden shrink-0 bg-white dark:bg-[#0a0f24] border-t border-slate-200 dark:border-slate-800 p-2 flex gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-20">
+      <div className="lg:hidden shrink-0 bg-white dark:bg-[#0a0f24] border-t border-slate-200 dark:border-slate-800 p-2 flex gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-20 no-print">
         <button
           type="button"
           onClick={() => setActiveMobileTab("catalog")}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   TrendingUp,
@@ -124,7 +125,7 @@ export default function DailyReportsPage() {
   };
 
   const exportExcel = () => {
-    if (!reportData) return alert("No data available");
+    if (!reportData) return toast.warning("No data available");
     const sheetData = [
       { Metric: "Date", Value: dateStr },
       { Metric: "Gross Sales", Value: reportData.sales.total },
@@ -142,7 +143,7 @@ export default function DailyReportsPage() {
   };
 
   const exportPDF = () => {
-    if (!reportData) return alert("No data available");
+    if (!reportData) return toast.warning("No data available");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);

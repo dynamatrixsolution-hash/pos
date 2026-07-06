@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Download,
@@ -120,7 +121,7 @@ export default function OtherReportsPage() {
   }, [startDate, endDate, selectedBranch]);
 
   const exportExcel = () => {
-    if (!reportData) return alert("No report data available");
+    if (!reportData) return toast.warning("No report data available");
     const ws = XLSX.utils.json_to_sheet(auditLogs);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Audit Logs");

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Download,
@@ -68,7 +69,7 @@ export default function OutstandingReportsPage() {
 
   const exportExcel = () => {
     const data = activeTab === "customer" ? filteredCustomers : filteredSuppliers;
-    if (data.length === 0) return alert("No data available");
+    if (data.length === 0) return toast.warning("No data available");
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Outstanding");
@@ -77,7 +78,7 @@ export default function OutstandingReportsPage() {
 
   const exportPDF = () => {
     const data = activeTab === "customer" ? filteredCustomers : filteredSuppliers;
-    if (data.length === 0) return alert("No data available");
+    if (data.length === 0) return toast.warning("No data available");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);

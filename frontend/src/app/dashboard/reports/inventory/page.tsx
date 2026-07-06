@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Download,
@@ -97,7 +98,7 @@ export default function InventoryReportsPage() {
   const filteredProducts = getFilteredProducts();
 
   const exportExcel = () => {
-    if (filteredProducts.length === 0) return alert("No inventory data to export");
+    if (filteredProducts.length === 0) return toast.warning("No inventory data to export");
     const exportData = filteredProducts.map((p) => {
       const stock = p.productStocks.reduce((sum, s) => sum + s.quantity, 0);
       return {
@@ -118,7 +119,7 @@ export default function InventoryReportsPage() {
   };
 
   const exportPDF = () => {
-    if (filteredProducts.length === 0) return alert("No inventory data to export");
+    if (filteredProducts.length === 0) return toast.warning("No inventory data to export");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Settings as SettingsIcon,
@@ -326,7 +327,7 @@ export default function SettingsPage() {
     try {
       window.open("/api/v1/settings/backup", "_blank");
     } catch (err) {
-      alert("Failed to download backup");
+      toast.error("Failed to download backup");
     }
   };
 

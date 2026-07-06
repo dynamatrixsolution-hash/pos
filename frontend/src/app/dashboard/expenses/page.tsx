@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Tag, Coins, FileText, Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 
 interface ExpenseItem {
   id: string;
@@ -162,10 +163,10 @@ export default function ExpensesPage() {
         setCatModalOpen(false);
         loadData();
       } else {
-        alert("Failed to create category");
+        toast.error("Failed to create category");
       }
     } catch (err) {
-      alert("Error connecting to server");
+      toast.error("Error connecting to server");
     }
   };
 

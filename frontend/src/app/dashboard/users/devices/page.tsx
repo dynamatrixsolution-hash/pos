@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import { 
   Laptop, 
@@ -68,15 +69,15 @@ export default function DeviceControlPage() {
       });
 
       if (res.ok) {
-        alert(`Successfully released device lock for ${userName}.`);
+        toast.success(`Successfully released device lock for ${userName}.`);
         loadUsers();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to release device lock.");
+        toast.error(data.error || "Failed to release device lock.");
       }
     } catch (err) {
       console.error("Error releasing device:", err);
-      alert("Failed to connect to the server.");
+      toast.error("Failed to connect to the server.");
     } finally {
       setIsMutating(null);
     }

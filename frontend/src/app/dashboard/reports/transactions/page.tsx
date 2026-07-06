@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Search,
@@ -140,7 +141,7 @@ export default function TransactionReportsPage() {
   ];
 
   const exportExcel = () => {
-    if (items.length === 0) return alert("No transactions to export");
+    if (items.length === 0) return toast.warning("No transactions to export");
     const ws = XLSX.utils.json_to_sheet(items);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Transactions");
@@ -148,7 +149,7 @@ export default function TransactionReportsPage() {
   };
 
   const exportPDF = () => {
-    if (items.length === 0) return alert("No transactions to export");
+    if (items.length === 0) return toast.warning("No transactions to export");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
