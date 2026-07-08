@@ -12,11 +12,11 @@
     --popover-foreground: 0 0% 0%;
     --primary: 164 86% 16%; /* #064E3B Deep Forest */
     --primary-foreground: 40 43% 98%;
-    --secondary: 176 69% 22%; /* #115E59 Teal Dark */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 46 93% 47%; /* #EAB308 Gold */
+    --secondary-foreground: 164 86% 16%; /* #064E3B Deep Forest */
     --muted: 40 10% 92%;
     --muted-foreground: 220 9% 46%; /* #6B7280 Muted */
-    --accent: 176 69% 22%;
+    --accent: 176 69% 22%; /* #115E59 Supporting Teal */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%; /* #22C55E */
     --destructive-foreground: 0 0% 100%;
@@ -35,11 +35,11 @@
     --popover-foreground: 40 43% 98%;
     --primary: 164 86% 16%;
     --primary-foreground: 40 43% 98%;
-    --secondary: 176 69% 22%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 46 93% 47%; /* #EAB308 Gold */
+    --secondary-foreground: 164 86% 16%;
     --muted: 164 40% 15%;
     --muted-foreground: 220 9% 60%;
-    --accent: 176 69% 22%;
+    --accent: 176 69% 22%; /* #115E59 Supporting Teal */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 40 43% 98%;
