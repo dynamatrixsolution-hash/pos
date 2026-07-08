@@ -112,7 +112,7 @@ export default function DeviceControlPage() {
       <div className="flex items-start gap-3 bg-[#38BDF8]/10 border border-[#38BDF8]/20 p-4 rounded-2xl text-xs text-[#0F172A] leading-relaxed">
         <HelpCircle className="h-5 w-5 text-[#2563EB] shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold text-[#2563EB]">DynaOne Hardware Locking:</span> To prevent employees from accessing their cashier registers from unauthorized remote devices, DynaOne automatically locks each cashier account to the browser device of their first login. To transfer an employee to a different physical register, release their lock below.
+          <span className="font-bold text-[#2563EB]">Prayassh Hardware Locking:</span> To prevent employees from accessing their cashier registers from unauthorized remote devices, Prayassh automatically locks each cashier account to the browser device of their first login. To transfer an employee to a different physical register, release their lock below.
         </div>
       </div>
 

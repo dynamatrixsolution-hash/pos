@@ -45,6 +45,7 @@ import {
   Camera,
   AlertTriangle,
   Loader2,
+  HelpCircle,
 } from "lucide-react";
 
 interface ProductItem {
@@ -222,6 +223,13 @@ export default function POSPage() {
   const [customers, setCustomers] = React.useState<CustomerItem[]>([]);
   const [visibleCount, setVisibleCount] = React.useState<number>(36);
   const [activePlan, setActivePlan] = React.useState<string>("STARTER");
+
+  // Support Ticket state
+  const [ticketModalOpen, setTicketModalOpen] = React.useState(false);
+  const [ticketTitle, setTicketTitle] = React.useState("");
+  const [ticketDesc, setTicketDesc] = React.useState("");
+  const [ticketPriority, setTicketPriority] = React.useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
+  const [isSubmittingTicket, setIsSubmittingTicket] = React.useState(false);
 
   // Layout Configuration
   const [viewMode, setViewMode] = React.useState<"grid" | "compact" | "list">("grid");
@@ -1089,6 +1097,39 @@ export default function POSPage() {
     }
   };
 
+  const handleSubmitTicket = async () => {
+    if (!ticketTitle.trim() || !ticketDesc.trim()) {
+      showAlert("Missing Fields", "Please enter both title and description.", "error");
+      return;
+    }
+    setIsSubmittingTicket(true);
+    try {
+      const res = await fetch("/api/v1/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: ticketTitle,
+          description: ticketDesc,
+          priority: ticketPriority,
+        }),
+      });
+      if (res.ok) {
+        showAlert("Success", "Support ticket registered successfully. The platform administrator will review it.", "info");
+        setTicketTitle("");
+        setTicketDesc("");
+        setTicketPriority("MEDIUM");
+        setTicketModalOpen(false);
+      } else {
+        const data = await res.json();
+        showAlert("Error", data.error || "Failed to submit support ticket.", "error");
+      }
+    } catch (_) {
+      showAlert("Network Error", "Could not connect to support service.", "error");
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
+
   const handleNewOrder = () => {
     const proceedNewOrder = () => {
       updateCurrentOrder((o) => ({
@@ -1207,6 +1248,16 @@ export default function POSPage() {
                 title="Toggle Top Navbar View"
               >
                 <Monitor className="h-4.5 w-4.5 text-slate-500 dark:text-slate-400" />
+              </button>
+
+              {/* Help & Support Ticket Registration button */}
+              <button
+                type="button"
+                onClick={() => setTicketModalOpen(true)}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-xl text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                title="Contact Support / Register Ticket"
+              >
+                <HelpCircle className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
               </button>
             </div>
           </div>
@@ -1848,6 +1899,88 @@ export default function POSPage() {
           )}
         </div>
       </div>
+
+      {/* 3.5. Register Support Ticket Modal */}
+      {ticketModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 no-print">
+          <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200/60 dark:border-slate-800/80 shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <HelpCircle className="h-5.5 w-5.5 text-blue-600 animate-pulse" />
+                <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Register Support Ticket</h3>
+              </div>
+              <button
+                onClick={() => setTicketModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-450 uppercase font-bold">Ticket Subject / Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Printer is not responding"
+                  value={ticketTitle}
+                  onChange={(e) => setTicketTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-450 uppercase font-bold">Priority level</label>
+                <select
+                  value={ticketPriority}
+                  onChange={(e) => setTicketPriority(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground outline-none focus:ring-1 focus:ring-[#2563EB]"
+                >
+                  <option value="LOW">Low priority</option>
+                  <option value="MEDIUM">Medium priority</option>
+                  <option value="HIGH">High priority</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-450 uppercase font-bold">Issue Description</label>
+                <textarea
+                  placeholder="Describe your issue or help request in detail..."
+                  value={ticketDesc}
+                  onChange={(e) => setTicketDesc(e.target.value)}
+                  rows={4}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB] resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0">
+              <button
+                type="button"
+                onClick={() => setTicketModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 font-bold cursor-pointer text-slate-700 dark:text-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitTicket}
+                disabled={isSubmittingTicket || !ticketTitle.trim() || !ticketDesc.trim()}
+                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                {isSubmittingTicket ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Ticket"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Hold/Suspend Bill Modal */}
       {holdModalOpen && (

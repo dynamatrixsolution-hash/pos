@@ -494,7 +494,7 @@ export default function RevenuePaymentsPage() {
               </div>
 
               <div className="text-center border-t border-slate-150 pt-4 text-[9px] text-slate-400 font-medium">
-                Thank you for choosing DynaOne POS & ERP Platform!
+                Thank you for choosing Prayassh POS & ERP Platform!
               </div>
             </div>
 

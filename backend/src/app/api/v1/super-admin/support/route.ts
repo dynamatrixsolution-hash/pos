@@ -59,7 +59,7 @@ export async function GET(request: Request) {
       {
         id: "ann-1",
         title: "Database Maintenance Window",
-        message: "DynaOne servers will undergo routine performance audits on Sunday at 02:00 UTC. Uptime should remain unaffected.",
+        message: "Prayassh servers will undergo routine performance audits on Sunday at 02:00 UTC. Uptime should remain unaffected.",
         target: "ALL_MERCHANTS",
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
         active: true,
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       {
         id: "ann-1",
         title: "Database Maintenance Window",
-        message: "DynaOne servers will undergo routine performance audits on Sunday at 02:00 UTC. Uptime should remain unaffected.",
+        message: "Prayassh servers will undergo routine performance audits on Sunday at 02:00 UTC. Uptime should remain unaffected.",
         target: "ALL_MERCHANTS",
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
         active: true,

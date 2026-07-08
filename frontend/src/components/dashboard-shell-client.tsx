@@ -306,9 +306,9 @@ export default function DashboardShellClient({
       <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#111827] border-r border-slate-800 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-[#111827]">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="DynaOne Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-            <span className="text-xl font-extrabold text-white tracking-tight">
-              DynaOne
+            <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
+            <span className="font-black text-slate-800 dark:text-slate-100 tracking-tight text-sm">
+              Prayassh
             </span>
           </Link>
         </div>
@@ -337,7 +337,7 @@ export default function DashboardShellClient({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="md:hidden font-bold text-base sm:text-xl text-[#2563EB] shrink-0">DynaOne</div>
+            <div className="md:hidden font-bold text-base sm:text-xl text-[#2563EB] shrink-0">Prayassh</div>
             
             {activeBranch && user.role !== "SUPER_ADMIN" && (
               <div className="relative">
@@ -521,9 +521,9 @@ export default function DashboardShellClient({
             >
               <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                  <img src="/logo.jpg" alt="DynaOne Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-                  <span className="text-xl font-extrabold text-white tracking-tight">
-                    DynaOne
+                  <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
+                  <span className="font-black text-slate-850 dark:text-slate-100 tracking-tight text-sm">
+                    Prayassh
                   </span>
                 </Link>
                 <button
