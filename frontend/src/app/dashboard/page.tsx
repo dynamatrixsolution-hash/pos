@@ -274,9 +274,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="relative bg-gradient-to-r from-[#070e27] via-[#0e1d4d] to-[#070e27] border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl overflow-hidden">
+      <div className="relative bg-gradient-to-r from-[#064E3B] via-[#115E59] to-[#064E3B] border border-emerald-800/30 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl overflow-hidden">
         {/* Glow effect */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="flex-1 space-y-4 w-full">
           {/* Status badge */}
@@ -287,7 +287,7 @@ export default function DashboardPage() {
           
           {/* Greetings */}
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
+            <h1 className="text-3xl font-bold text-white tracking-tight">
               Good morning, {session?.user?.name?.split(" ")[0] || "User"}.
             </h1>
             <p className="text-xs text-slate-300 mt-1 font-medium leading-relaxed">
@@ -300,7 +300,7 @@ export default function DashboardPage() {
         <button
           onClick={handleSync}
           disabled={isSyncing}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           <RefreshCw className={`h-4.5 w-4.5 text-slate-950 ${isSyncing ? "animate-spin" : ""}`} />
           <span>{isSyncing ? "Syncing..." : "Sync Real-Time Data"}</span>

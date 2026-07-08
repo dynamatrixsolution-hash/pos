@@ -318,4 +318,31 @@
   color: #064E3B !important;
 }
 
+/* Remove wrapper box for page header cards */
+.glass-card.bg-gradient-to-br {
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Make header text less bold (not font-black/extrabold) */
+.glass-card.bg-gradient-to-br h1,
+.glass-card.bg-gradient-to-br h2,
+.glass-card.bg-gradient-to-br .text-2xl,
+.glass-card.bg-gradient-to-br .font-black {
+  font-weight: 600 !important;
+  font-family: var(--font-poppins), sans-serif !important;
+}
+
+/* Tone down general font-black and font-extrabold utility elements globally */
+.font-black {
+  font-weight: 700 !important;
+}
+.font-extrabold {
+  font-weight: 600 !important;
+}
+
+
 

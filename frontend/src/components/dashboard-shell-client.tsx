@@ -227,12 +227,12 @@ export default function DashboardShellClient({
             onClick={() => toggleMenu(item.title)}
             className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group cursor-pointer ${
               hasActiveChild
-                ? "bg-[#1E3A5F] text-white" 
-                : "text-slate-300 hover:bg-[#1E3A5F] hover:text-white"
+                ? "bg-[#115E59] text-white" 
+                : "text-slate-350 hover:bg-white/10 hover:text-white"
             }`}
           >
             <div className="flex items-center gap-3">
-              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#38BDF8]" : "text-slate-400 group-hover:text-white"}`} />
+              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#EAB308]" : "text-slate-400 group-hover:text-white"}`} />
               {item.title}
             </div>
             <motion.div
@@ -263,7 +263,7 @@ export default function DashboardShellClient({
                         onClick={() => isMobile && setMobileMenuOpen(false)}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 ${
                           isChildActive
-                            ? "bg-[#115E59] text-white"
+                            ? "bg-[#EAB308] text-[#064E3B]"
                             : "text-slate-400 hover:text-white hover:bg-white/10"
                         }`}
                       >
@@ -288,12 +288,12 @@ export default function DashboardShellClient({
         onClick={() => isMobile && setMobileMenuOpen(false)}
         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group mb-1.5 ${
           isActive
-            ? "bg-[#115E59] hover:bg-[#0f4d49] text-white shadow-md shadow-[#115E59]/15"
+            ? "bg-[#EAB308] text-[#064E3B] shadow-md shadow-[#EAB308]/15"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}
       >
         <div className="flex items-center gap-3">
-          <Icon className={`h-4.5 w-4.5 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+          <Icon className={`h-4.5 w-4.5 ${isActive ? "text-[#064E3B]" : "text-slate-400 group-hover:text-white"}`} />
           {item.title}
         </div>
       </Link>
