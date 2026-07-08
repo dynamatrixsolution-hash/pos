@@ -83,6 +83,19 @@
   --color-brand-cream: #FDFBF7;
   --color-brand-muted: #6B7280;
   --color-brand-border: #E7E5E4;
+
+  /* Force standard blue utilities to resolve to brand colors */
+  --color-blue-50: #FDFBF7;
+  --color-blue-100: #E7E5E4;
+  --color-blue-200: #E7E5E4;
+  --color-blue-300: #E7E5E4;
+  --color-blue-400: #115E59;
+  --color-blue-450: #115E59;
+  --color-blue-500: #064E3B;
+  --color-blue-600: #064E3B;
+  --color-blue-700: #115E59;
+  --color-blue-800: #064E3B;
+  --color-blue-900: #064E3B;
 }
 
 @layer base {
@@ -224,4 +237,85 @@
   border-top-width: 0;
   border-left-width: 0;
 }
+
+/* Custom Global Color Theme Overrides to Force Brand Colors Site-Wide */
+.bg-\[\#F3F4F6\] {
+  background-color: #FDFBF7 !important;
+}
+.bg-\[\#F9FAFB\] {
+  background-color: #FFFFFF !important;
+}
+.bg-\[\#2563EB\] {
+  background-color: #064E3B !important;
+}
+.hover\:bg-\[\#1D4ED8\]:hover {
+  background-color: #115E59 !important;
+}
+.text-\[\#2563EB\] {
+  color: #064E3B !important;
+}
+.border-\[\#2563EB\] {
+  border-color: #064E3B !important;
+}
+.shadow-\[\#2563EB\]\/15 {
+  --tw-shadow-color: rgb(6 78 59 / 0.15) !important;
+}
+.shadow-\[\#2563EB\]\/25 {
+  --tw-shadow-color: rgb(6 78 59 / 0.25) !important;
+}
+.bg-\[\#2563EB\]\/10 {
+  background-color: rgba(6, 78, 59, 0.1) !important;
+}
+.bg-\[\#2563EB\]\/20 {
+  background-color: rgba(6, 78, 59, 0.2) !important;
+}
+.bg-\[\#2563EB\]\/5 {
+  background-color: rgba(6, 78, 59, 0.05) !important;
+}
+.hover\:text-\[\#2563EB\]:hover {
+  color: #115E59 !important;
+}
+.focus\:ring-\[\#2563EB\]:focus {
+  --tw-ring-color: #064E3B !important;
+}
+.text-blue-600 {
+  color: #064E3B !important;
+}
+.bg-blue-600 {
+  background-color: #064E3B !important;
+}
+.bg-blue-500 {
+  background-color: #064E3B !important;
+}
+.bg-blue-50 {
+  background-color: #FDFBF7 !important;
+}
+.text-blue-500 {
+  color: #064E3B !important;
+}
+.hover\:bg-blue-50:hover {
+  background-color: #115E59 !important;
+}
+.hover\:bg-blue-600:hover {
+  background-color: #115E59 !important;
+}
+.hover\:bg-blue-700:hover {
+  background-color: #115E59 !important;
+}
+.border-blue-200 {
+  border-color: #E7E5E4 !important;
+}
+.border-blue-300 {
+  border-color: #E7E5E4 !important;
+}
+.border-blue-500 {
+  border-color: #064E3B !important;
+}
+.text-blue-700 {
+  color: #064E3B !important;
+}
+.text-blue-800 {
+  color: #064E3B !important;
+}
+
 
