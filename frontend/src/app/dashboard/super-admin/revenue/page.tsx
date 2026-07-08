@@ -449,9 +449,9 @@ export default function RevenuePaymentsPage() {
             <div className="border border-slate-150 p-6 rounded-2xl space-y-6 text-xs text-slate-650 bg-slate-50">
               <div className="flex justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800">DynaOne Systems Inc.</h3>
+                  <h3 className="text-sm font-black text-slate-800">Prayassh Systems Inc.</h3>
                   <p className="mt-1 text-slate-400">100 SaaS HQ Road</p>
-                  <p className="text-slate-400">billing@dynaone.io</p>
+                  <p className="text-slate-400">billing@prayassh.com</p>
                 </div>
                 <div className="text-right">
                   <h2 className="text-sm font-black text-blue-600">INVOICE</h2>

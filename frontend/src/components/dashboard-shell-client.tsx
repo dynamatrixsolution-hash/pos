@@ -307,7 +307,7 @@ export default function DashboardShellClient({
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-[#111827]">
           <Link href="/dashboard" className="flex items-center gap-3">
             <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-            <span className="font-black text-slate-800 dark:text-slate-100 tracking-tight text-sm">
+            <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
               Prayassh
             </span>
           </Link>
@@ -522,7 +522,7 @@ export default function DashboardShellClient({
               <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
                 <Link href="/dashboard" className="flex items-center gap-3">
                   <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-                  <span className="font-black text-slate-850 dark:text-slate-100 tracking-tight text-sm">
+                  <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
                     Prayassh
                   </span>
                 </Link>

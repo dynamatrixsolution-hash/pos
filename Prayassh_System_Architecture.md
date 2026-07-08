@@ -1,6 +1,6 @@
-# DynaOne POS & ERP — Production-Ready System Architecture
+# Prayassh POS & ERP — Production-Ready System Architecture
 
-This document provides complete system architecture documentation, PostgreSQL database schemas, entity relationship diagrams, Swagger route specifications, and detailed deployment guides for the production-ready **DynaOne** POS and ERP SaaS platform.
+This document provides complete system architecture documentation, PostgreSQL database schemas, entity relationship diagrams, Swagger route specifications, and detailed deployment guides for the production-ready **Prayassh** POS and ERP SaaS platform.
 
 ---
 
@@ -525,7 +525,7 @@ model Notification {
 
 ## 2. Entity Relationship Diagram (ERD)
 
-The following Mermaid diagram outlines the relational mapping of the DynaOne POS & ERP database tables:
+The following Mermaid diagram outlines the relational mapping of the Prayassh POS & ERP database tables:
 
 ```mermaid
 erDiagram
@@ -619,18 +619,18 @@ import * as bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Starting DynaOne system database seeding...");
+  console.log("Starting Prayassh system database seeding...");
 
   // 1. Setup Business Tenant
   const business = await prisma.business.upsert({
-    where: { slug: "dynaone-enterprise" },
+    where: { slug: "Prayassh-enterprise" },
     update: {},
     create: {
-      name: "DynaOne HQ Enterprise",
-      slug: "dynaone-enterprise",
+      name: "Prayassh HQ Enterprise",
+      slug: "Prayassh-enterprise",
       phone: "+1-800-555-0100",
-      email: "hq@dynaone.com",
-      address: "DynaOne Headquarters, Suite 100",
+      email: "hq@Prayassh.com",
+      address: "Prayassh Headquarters, Suite 100",
       currency: "USD",
       taxConfig: { taxName: "VAT", rate: 13.0 },
     },
@@ -679,39 +679,39 @@ async function main() {
   const passCashier = bcrypt.hashSync("cashier123", salt);
 
   const owner = await prisma.user.upsert({
-    where: { email: "owner@dynaone.com" },
+    where: { email: "owner@Prayassh.com" },
     update: {},
     create: {
       businessId: business.id,
       branchId: mainBranch.id,
       name: "John Owner",
-      email: "owner@dynaone.com",
+      email: "owner@Prayassh.com",
       passwordHash: passOwner,
       role: "OWNER",
     },
   });
 
   const manager = await prisma.user.upsert({
-    where: { email: "manager@dynaone.com" },
+    where: { email: "manager@Prayassh.com" },
     update: {},
     create: {
       businessId: business.id,
       branchId: warehouseBranch.id,
       name: "Sarah Manager",
-      email: "manager@dynaone.com",
+      email: "manager@Prayassh.com",
       passwordHash: passManager,
       role: "MANAGER",
     },
   });
 
   const cashier = await prisma.user.upsert({
-    where: { email: "cashier@dynaone.com" },
+    where: { email: "cashier@Prayassh.com" },
     update: {},
     create: {
       businessId: business.id,
       branchId: mainBranch.id,
       name: "Alex Cashier",
-      email: "cashier@dynaone.com",
+      email: "cashier@Prayassh.com",
       passwordHash: passCashier,
       role: "CASHIER",
     },
@@ -830,13 +830,13 @@ Follow these steps to set up and run the system locally:
 
 ## 6. Production Deployment Guide
 
-Follow these steps to deploy DynaOne to production:
+Follow these steps to deploy Prayassh to production:
 
 ### 6.1 Database Deployment
 Deploy your PostgreSQL database using a managed database provider (e.g. AWS RDS, Neon Postgres, Supabase, or a hosted Docker engine). Ensure that backup systems, replication nodes, and connection pooling tools (like PgBouncer) are configured to scale with high concurrent POS requests.
 
 ### 6.2 Application Deployment (Docker Build)
-DynaOne can be compiled and deployed anywhere using Docker. Create the following standard deployment `Dockerfile` in your root folder:
+Prayassh can be compiled and deployed anywhere using Docker. Create the following standard deployment `Dockerfile` in your root folder:
 
 ```dockerfile
 # Dockerfile
@@ -864,13 +864,13 @@ CMD ["npm", "start"]
 
 Build and run your docker container with the production environment variables:
 ```bash
-docker build -t dynaone-app .
-docker run -d -p 3000:3000 --env-file .env.production dynaone-app
+docker build -t Prayassh-app .
+docker run -d -p 3000:3000 --env-file .env.production Prayassh-app
 ```
 
 ### 6.3 Secure Production Variables
 In production, make sure the following environment parameters are set:
 * `DATABASE_URL`: Production PostgreSQL connection string (including connection pooling settings).
 * `NEXTAUTH_SECRET`: Random 32-byte cryptographic key.
-* `AUTH_URL` / `NEXTAUTH_URL`: Absolute secure domain URL of your platform (e.g., `https://dynaone.com`).
+* `AUTH_URL` / `NEXTAUTH_URL`: Absolute secure domain URL of your platform (e.g., `https://Prayassh.com`).
 * Configure your reverse proxy (e.g., NGINX, Cloudflare, or Traefik) to manage incoming requests, enforce strict SSL certificates, filter malicious queries, and route client traffic securely.

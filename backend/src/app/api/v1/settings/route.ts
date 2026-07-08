@@ -49,6 +49,8 @@ const settingsSchema = z.object({
   barcodeLength: z.number().int().positive().optional().default(12),
   barcodePrefix: z.string().optional().nullable(),
   autoBarcodeGen: z.boolean().optional().default(true),
+  receiptHeader: z.string().optional().nullable(),
+  receiptFooter: z.string().optional().nullable(),
 });
 
 export async function GET() {

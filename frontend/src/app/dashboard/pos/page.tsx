@@ -153,7 +153,7 @@ export default function POSPage() {
   const branchId = session?.user ? (session.user as any).branchId : null;
   const role = session?.user ? (session.user as any).role : null;
   const [initialized, setInitialized] = React.useState(false);
-  const { currencySymbol, vatPercentage, pricingType, enableVat, taxName } = useSettings();
+  const { currencySymbol, vatPercentage, pricingType, enableVat, taxName, businessName, receiptHeader, receiptFooter } = useSettings();
 
   const [posScannerOpen, setPosScannerOpen] = React.useState(false);
   const [scanToast, setScanToast] = React.useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -2366,7 +2366,8 @@ export default function POSPage() {
       {lastInvoice && (
         <div className="hidden print-only max-w-[80mm] mx-auto text-black p-4 text-xs font-mono">
           <div className="text-center space-y-1 border-b border-dashed border-black pb-4 mb-4">
-            <h2 className="text-base font-black">DynaPOS Store Billing</h2>
+            <h2 className="text-base font-black">{businessName || "Store Billing"}</h2>
+            {receiptHeader && <p className="text-[10px] whitespace-pre-wrap">{receiptHeader}</p>}
             <p className="text-[10px]">Receipt #: {lastInvoice.invoiceNumber || "INV-9022"}</p>
             <p className="text-[10px]">Date: {new Date().toLocaleString()}</p>
             {lastInvoice.tableNumber && <p className="text-[10px]">Restaurant Table: {lastInvoice.tableNumber}</p>}
@@ -2404,7 +2405,7 @@ export default function POSPage() {
           </div>
 
           <div className="text-center space-y-1 mt-6 border-t pt-4">
-            <p className="text-[9px] font-bold">Thank you for choosing DynaPOS!</p>
+            <p className="text-[9px] font-bold whitespace-pre-wrap">{receiptFooter || `Thank you for choosing ${businessName || "us"}!`}</p>
             <button
               onClick={() => setLastInvoice(null)}
               className="no-print border border-black px-3 py-1 rounded text-[10px] mt-4 hover:bg-gray-100"

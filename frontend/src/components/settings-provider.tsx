@@ -9,6 +9,8 @@ interface SettingsContextType {
   pricingType: "INCLUSIVE" | "EXCLUSIVE";
   enableVat: boolean;
   businessName: string;
+  receiptHeader: string;
+  receiptFooter: string;
   loading: boolean;
   refreshSettings: () => Promise<void>;
 }
@@ -20,6 +22,8 @@ const SettingsContext = React.createContext<SettingsContextType>({
   pricingType: "EXCLUSIVE",
   enableVat: true,
   businessName: "",
+  receiptHeader: "",
+  receiptFooter: "",
   loading: true,
   refreshSettings: async () => {},
 });
@@ -31,6 +35,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [pricingType, setPricingType] = React.useState<"INCLUSIVE" | "EXCLUSIVE">("EXCLUSIVE");
   const [enableVat, setEnableVat] = React.useState(true);
   const [businessName, setBusinessName] = React.useState("");
+  const [receiptHeader, setReceiptHeader] = React.useState("");
+  const [receiptFooter, setReceiptFooter] = React.useState("");
   const [loading, setLoading] = React.useState(true);
 
   const fetchSettings = React.useCallback(async () => {
@@ -47,6 +53,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setEnableVat(meta.enableVat ?? true);
         setVatPercentage(meta.vatPercentage ?? (data.taxConfig?.rate || 13));
         setPricingType(meta.pricingType || "EXCLUSIVE");
+        setReceiptHeader(meta.receiptHeader || "");
+        setReceiptFooter(meta.receiptFooter || "");
       }
     } catch (error) {
       console.error("Error fetching settings in provider:", error);
@@ -68,6 +76,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         pricingType,
         enableVat,
         businessName,
+        receiptHeader,
+        receiptFooter,
         loading,
         refreshSettings: fetchSettings,
       }}

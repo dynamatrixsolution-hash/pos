@@ -96,6 +96,8 @@ export default function SettingsPage() {
   const [receiptWidth, setReceiptWidth] = React.useState("80mm");
   const [autoPrint, setAutoPrint] = React.useState(false);
   const [barcodeFormat, setBarcodeFormat] = React.useState("CODE128");
+  const [receiptHeader, setReceiptHeader] = React.useState("");
+  const [receiptFooter, setReceiptFooter] = React.useState("");
   const [barcodeLength, setBarcodeLength] = React.useState<number>(12);
   const [barcodePrefix, setBarcodePrefix] = React.useState("");
   const [autoBarcodeGen, setAutoBarcodeGen] = React.useState(true);
@@ -177,6 +179,8 @@ export default function SettingsPage() {
         setReceiptWidth(meta.receiptWidth || "80mm");
         setAutoPrint(meta.autoPrint ?? false);
         setBarcodeFormat(meta.barcodeFormat || "CODE128");
+        setReceiptHeader(meta.receiptHeader || "");
+        setReceiptFooter(meta.receiptFooter || "");
         setBarcodeLength(meta.barcodeLength ?? 12);
         setBarcodePrefix(meta.barcodePrefix || "");
         setAutoBarcodeGen(meta.autoBarcodeGen ?? true);
@@ -285,6 +289,8 @@ export default function SettingsPage() {
           receiptWidth,
           autoPrint,
           barcodeFormat,
+          receiptHeader: receiptHeader || null,
+          receiptFooter: receiptFooter || null,
           barcodeLength: Number(barcodeLength),
           barcodePrefix,
           autoBarcodeGen,
@@ -1144,6 +1150,31 @@ export default function SettingsPage() {
                       disabled={!isAuthorized || isSubmitting}
                       className="h-4 w-4 text-primary focus:ring-primary rounded"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/60 pt-4">
+                    <div className="space-y-1 col-span-1">
+                      <label className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Receipt Custom Header Text</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. TAX INVOICE - Welcome!"
+                        value={receiptHeader}
+                        onChange={(e) => setReceiptHeader(e.target.value)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-1">
+                      <label className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Receipt Custom Footer Text</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Thank you for choosing us!"
+                        value={receiptFooter}
+                        onChange={(e) => setReceiptFooter(e.target.value)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
 

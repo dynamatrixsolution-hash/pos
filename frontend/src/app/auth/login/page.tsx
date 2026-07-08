@@ -123,10 +123,10 @@ function LoginForm() {
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl p-8 space-y-6">
         {/* Branding header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <ShoppingBag className="h-6 w-6" />
+          <div className="h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden">
+            <img src="/logo.jpg" alt="Prayassh Logo" className="h-12 w-12 rounded-xl object-contain shrink-0" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Welcome to DynaPOS</h1>
+          <h1 className="text-2xl font-black tracking-tight">Welcome to Prayassh</h1>
           <p className="text-xs text-muted-foreground">
             Enter your credentials below to log into your sales terminal.
           </p>
