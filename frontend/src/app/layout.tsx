@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DynaPOS – Enterprise POS & Business Management System",
-  description: "DynaPOS is a modern, scalable, multi-branch POS and business management platform optimized for speed, accuracy, and double-entry financial reporting.",
+  title: "Prayassh – Enterprise POS & Business Management System",
+  description: "Prayassh is a modern, scalable, multi-branch POS and business management platform optimized for speed, accuracy, and double-entry financial reporting.",
 };
 
 export default function RootLayout({
