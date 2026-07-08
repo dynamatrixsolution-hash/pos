@@ -252,7 +252,7 @@ export default function DashboardShellClient({
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="pl-6 pr-2 py-1.5 space-y-1 border-l border-slate-800 ml-5 mt-1">
+                <div className="pl-6 pr-2 py-1.5 space-y-1 border-l border-emerald-800/30 ml-5 mt-1">
                   {allowedChildren.map((child) => {
                     const isChildActive = pathname === child.href;
                     const ChildIcon = child.icon;
@@ -263,8 +263,8 @@ export default function DashboardShellClient({
                         onClick={() => isMobile && setMobileMenuOpen(false)}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 ${
                           isChildActive
-                            ? "bg-[#2563EB] text-white"
-                            : "text-slate-400 hover:text-white hover:bg-[#1E3A5F]"
+                            ? "bg-[#115E59] text-white"
+                            : "text-slate-400 hover:text-white hover:bg-white/10"
                         }`}
                       >
                         <ChildIcon className="h-3.5 w-3.5" />
@@ -288,8 +288,8 @@ export default function DashboardShellClient({
         onClick={() => isMobile && setMobileMenuOpen(false)}
         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group mb-1.5 ${
           isActive
-            ? "bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-md shadow-[#2563EB]/15"
-            : "text-slate-300 hover:bg-[#1E3A5F] hover:text-white"
+            ? "bg-[#115E59] hover:bg-[#0f4d49] text-white shadow-md shadow-[#115E59]/15"
+            : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}
       >
         <div className="flex items-center gap-3">
@@ -303,8 +303,8 @@ export default function DashboardShellClient({
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar desktop (Fixed dark theme) */}
-      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#111827] border-r border-slate-800 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-[#111827]">
+      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#064E3B] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30 bg-[#064E3B]">
           <Link href="/dashboard" className="flex items-center gap-3">
             <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
             <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
@@ -315,7 +315,7 @@ export default function DashboardShellClient({
         <nav className="flex-1 overflow-y-auto px-4 py-6">
           {allowedNavigation.map((item) => renderNavItem(item))}
         </nav>
-        <div className="p-4 border-t border-slate-800 bg-[#111827]">
+        <div className="p-4 border-t border-emerald-800/30 bg-[#064E3B]">
           <button
             onClick={() => setLogoutConfirmOpen(true)}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
@@ -337,7 +337,7 @@ export default function DashboardShellClient({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="md:hidden font-bold text-base sm:text-xl text-[#2563EB] shrink-0">Prayassh</div>
+            <div className="md:hidden font-bold text-base sm:text-xl text-[#064E3B] shrink-0">Prayassh</div>
             
             {activeBranch && user.role !== "SUPER_ADMIN" && (
               <div className="relative">
@@ -517,9 +517,9 @@ export default function DashboardShellClient({
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
               className="fixed inset-y-0 left-0 w-72 z-50 flex flex-col md:hidden"
-              style={{ backgroundColor: "#111827" }}
+              style={{ backgroundColor: "#064E3B" }}
             >
-              <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
+              <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30">
                 <Link href="/dashboard" className="flex items-center gap-3">
                   <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
                   <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
@@ -536,7 +536,7 @@ export default function DashboardShellClient({
               <nav className="flex-1 overflow-y-auto px-4 py-6">
                 {allowedNavigation.map((item) => renderNavItem(item, true))}
               </nav>
-              <div className="p-4 border-t border-slate-800">
+              <div className="p-4 border-t border-emerald-800/30">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
