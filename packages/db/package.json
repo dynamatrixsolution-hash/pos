@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "generate": "npx prisma@6.19.3 generate",
+    "build": "npm run generate",
     "migrate": "npx prisma@6.19.3 migrate dev",
     "seed": "npx prisma@6.19.3 db seed"
   },

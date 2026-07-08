@@ -81,6 +81,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email already in use" }, { status: 400 });
     }
 
+    // Check user limit from subscription
+    const subscription = await db.subscription.findUnique({
+      where: { businessId: context.businessId },
+    });
+    if (subscription) {
+      const activeUserCount = await db.user.count({
+        where: { businessId: context.businessId, deletedAt: null },
+      });
+      if (activeUserCount >= subscription.userLimit) {
+        return NextResponse.json(
+          { error: `User limit reached. Your subscription plan "${subscription.plan}" allows a maximum of ${subscription.userLimit} users. Please upgrade your plan.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 

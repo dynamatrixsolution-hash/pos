@@ -31,10 +31,9 @@ export async function GET() {
 
     const platformSettings = (platform?.settings as any) || {};
     const platformPlans = platformSettings.plans || [
-      { id: "Starter", name: "Starter", price: 0, currency: "USD", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
-      { id: "Business", name: "Business", price: 29, currency: "USD", duration: "1 Month", desc: "For growing local retail shops" },
-      { id: "Professional", name: "Professional", price: 49, currency: "USD", duration: "1 Month", desc: "For multi-branch retail stores" },
-      { id: "Enterprise", name: "Enterprise", price: 99, currency: "USD", duration: "1 Month", desc: "Custom controls for large franchises" },
+      { id: "Starter", name: "Starter", price: 499, setupPrice: 4999, currency: "NPR", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
+      { id: "Professional", name: "Professional", price: 999, setupPrice: 11999, currency: "NPR", duration: "1 Month", desc: "For growing local retail shops" },
+      { id: "Enterprise", name: "Enterprise", price: 1499, setupPrice: 24999, currency: "NPR", duration: "1 Month", desc: "For multi-branch retail stores" },
     ];
 
     return NextResponse.json({
@@ -71,7 +70,7 @@ export async function PUT(request: Request) {
     const limits = platformSettings.limits || {};
     
     // Fetch limits for the selected plan or assign reasonable defaults
-    const planLimits = limits[plan] || { users: 10, branches: 3 };
+    const planLimits = limits[plan] || (plan.toUpperCase() === "STARTER" ? { users: 1, branches: 1 } : plan.toUpperCase() === "PROFESSIONAL" ? { users: 5, branches: 2 } : { users: 20, branches: 5 });
 
     // Update the tenant's subscription plan & bounds in database
     const subscription = await db.subscription.update({
@@ -79,8 +78,8 @@ export async function PUT(request: Request) {
       data: {
         plan: plan.toUpperCase(),
         status: "ACTIVE",
-        userLimit: planLimits.users || 10,
-        branchLimit: planLimits.branches || 3,
+        userLimit: planLimits.users || 1,
+        branchLimit: planLimits.branches || 1,
       },
     });
 

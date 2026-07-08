@@ -144,14 +144,12 @@ export default function SubscriptionsPage() {
     
     let featuresList = planFeatures;
     if (planFeatures.length === 0) {
-      if (plan.id === "Starter") {
-        featuresList = ["1 Operating Branch", "Up to 5 Users", "Basic POS checkout", "Daily Reporting"];
-      } else if (plan.id === "Business") {
-        featuresList = ["Up to 5 Operating Branches", "Up to 15 Registered Users", "Inventory Expiry Alerts", "Supplier & Customer Ledger", "Advanced Profit/Loss Analytics"];
-      } else if (plan.id === "Professional") {
-        featuresList = ["Up to 20 Operating Branches", "Up to 100 Registered Users", "Stock Transfer Approval Queues", "Custom OpenAPI endpoint keys", "24/7 Dedicated Priority Phone Support"];
+      if (plan.id.toUpperCase() === "STARTER") {
+        featuresList = ["1 Branch Limit", "1 User Limit", "Up to 100 Products", "Max Category 10", "Daily Reports Only", "No Receipt Printing"];
+      } else if (plan.id.toUpperCase() === "PROFESSIONAL") {
+        featuresList = ["2 Branches Limit", "5 Users (1 Owner, 4 Staff)", "Up to 1000 Products", "Unlimited Categories", "Full Reporting Enabled", "Receipt Printing Enabled"];
       } else {
-        featuresList = ["Unlimited Operating Branches", "Unlimited Registered Users", "All SaaS Modules Enabled", "Dedicated Backup Storage", "Priority Dedicated Support line"];
+        featuresList = ["5 Branches Limit", "20 Users (1 Owner, 19 Staff)", "Unlimited Products", "Unlimited Categories", "Full Reporting Enabled", "Receipt Printing Enabled"];
       }
     }
 

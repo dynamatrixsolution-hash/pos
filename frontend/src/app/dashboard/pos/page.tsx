@@ -221,6 +221,7 @@ export default function POSPage() {
   const [categories, setCategories] = React.useState<any[]>([]);
   const [customers, setCustomers] = React.useState<CustomerItem[]>([]);
   const [visibleCount, setVisibleCount] = React.useState<number>(36);
+  const [activePlan, setActivePlan] = React.useState<string>("STARTER");
 
   // Layout Configuration
   const [viewMode, setViewMode] = React.useState<"grid" | "compact" | "list">("grid");
@@ -464,6 +465,17 @@ export default function POSPage() {
           const data = await custRes.json();
           setCustomers(data.customers || []);
         }
+
+        // Fetch active plan safely
+        try {
+          const subRes = await fetch("/api/v1/subscriptions");
+          if (subRes.ok) {
+            const subData = await subRes.json();
+            setActivePlan(subData.subscription?.plan || "STARTER");
+          }
+        } catch (e) {
+          console.error("Failed to load subscription details:", e);
+        }
       } catch (err) {
         console.error("Failed to load initial POS data:", err);
       }
@@ -527,7 +539,11 @@ export default function POSPage() {
         if (currentOrder.cart.length > 0) handleCheckoutSubmit();
       } else if (e.key === "F7") {
         e.preventDefault();
-        if (currentOrder.cart.length > 0) window.print();
+        if (activePlan.toUpperCase() === "STARTER") {
+          showAlert("Printing Restricted", "Receipt printing is not available on the Starter plan. Please upgrade your subscription to enable this feature.", "error");
+        } else if (currentOrder.cart.length > 0) {
+          window.print();
+        }
       } else if (e.key === "F8") {
         e.preventDefault();
         if (currentOrder.cart.length > 0) openCheckout();
@@ -934,7 +950,11 @@ export default function POSPage() {
       setAmountTendered(0);
 
       setTimeout(() => {
-        window.print();
+        if (activePlan.toUpperCase() !== "STARTER") {
+          window.print();
+        } else {
+          showAlert("Checkout Complete", "Billing checkout completed successfully. Note: Receipt printing is disabled on the Starter plan.", "info");
+        }
       }, 300);
     } catch (_) {
       setSubmitError("API Connection failure.");

@@ -58,6 +58,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check category limit from subscription settings
+    const subscription = await db.subscription.findUnique({
+      where: { businessId: context.businessId },
+    });
+    if (subscription) {
+      const planName = subscription.plan || "STARTER";
+      const platform = await db.business.findUnique({
+        where: { slug: "platform-admin" },
+        select: { settings: true },
+      });
+      const settings = (platform?.settings as any) || {};
+      const limits = settings.limits || {
+        Starter: { categories: 10 },
+        Professional: { categories: 999999 },
+        Enterprise: { categories: 999999 },
+      };
+
+      const limitKey = Object.keys(limits).find(k => k.toUpperCase() === planName.toUpperCase()) || "Starter";
+      const maxCategories = limits[limitKey]?.categories || 10;
+
+      const categoryCount = await db.category.count({
+        where: { businessId: context.businessId, deletedAt: null },
+      });
+
+      if (categoryCount >= maxCategories) {
+        return NextResponse.json(
+          { error: `Category limit reached. Your subscription plan "${planName}" allows a maximum of ${maxCategories} categories. Please upgrade your plan.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const category = await db.category.create({
       data: {
         name: result.data.name,

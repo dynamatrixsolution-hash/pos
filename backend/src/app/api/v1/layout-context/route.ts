@@ -124,6 +124,8 @@ export async function GET() {
           "Products": true,
           "Customers": true,
           "Reports": true,
+          "Full Reports": false,
+          "Printing": false,
           "Inventory": false,
           "Purchases": false,
           "Suppliers": false,
@@ -140,28 +142,6 @@ export async function GET() {
           "Backup System": false,
         };
       }
-      if (p === "business") {
-        return {
-          "POS Billing": true,
-          "Products": true,
-          "Inventory": true,
-          "Purchases": true,
-          "Customers": true,
-          "Suppliers": true,
-          "Reports": true,
-          "Expenses": true,
-          "Payments": true,
-          "Multi Branch": false,
-          "Warehouses": false,
-          "Device Control": false,
-          "Activity Logs": true,
-          "Barcode": true,
-          "Batch Tracking": false,
-          "Expiry Tracking": false,
-          "API Access": false,
-          "Backup System": false,
-        };
-      }
       if (p === "professional") {
         return {
           "POS Billing": true,
@@ -171,6 +151,8 @@ export async function GET() {
           "Customers": true,
           "Suppliers": true,
           "Reports": true,
+          "Full Reports": true,
+          "Printing": true,
           "Expenses": true,
           "Payments": true,
           "Multi Branch": true,
@@ -192,6 +174,8 @@ export async function GET() {
         "Customers": true,
         "Suppliers": true,
         "Reports": true,
+        "Full Reports": true,
+        "Printing": true,
         "Expenses": true,
         "Payments": true,
         "Multi Branch": true,

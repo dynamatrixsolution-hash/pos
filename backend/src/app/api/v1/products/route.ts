@@ -144,6 +144,38 @@ export async function POST(request: Request) {
     const data = result.data;
     const { initialStock, manufacturingDate, expiryDate, ...productData } = data;
 
+    // Check product limit from subscription settings
+    const subscription = await db.subscription.findUnique({
+      where: { businessId: context.businessId },
+    });
+    if (subscription) {
+      const planName = subscription.plan || "STARTER";
+      const platform = await db.business.findUnique({
+        where: { slug: "platform-admin" },
+        select: { settings: true },
+      });
+      const settings = (platform?.settings as any) || {};
+      const limits = settings.limits || {
+        Starter: { products: 100 },
+        Professional: { products: 1000 },
+        Enterprise: { products: 999999 },
+      };
+
+      const limitKey = Object.keys(limits).find(k => k.toUpperCase() === planName.toUpperCase()) || "Starter";
+      const maxProducts = limits[limitKey]?.products || 100;
+
+      const productCount = await db.product.count({
+        where: { businessId: context.businessId, deletedAt: null },
+      });
+
+      if (productCount >= maxProducts) {
+        return NextResponse.json(
+          { error: `Product limit reached. Your subscription plan "${planName}" allows a maximum of ${maxProducts} products. Please upgrade your plan.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create the product scoping to business
     const product = await db.$transaction(async (tx) => {
       const newProduct = await tx.product.create({

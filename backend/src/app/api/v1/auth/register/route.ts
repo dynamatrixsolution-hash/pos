@@ -65,18 +65,18 @@ export async function POST(request: Request) {
         },
       });
 
-      // 2. Create Subscription (30 day trial)
+      // 2. Create Subscription (30 day trial on Starter)
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 30);
 
       await tx.subscription.create({
         data: {
           businessId: newBusiness.id,
-          plan: "FREE_TRIAL",
+          plan: "STARTER",
           status: "ACTIVE",
           startDate: new Date(),
           endDate: trialEndDate,
-          userLimit: 5,
+          userLimit: 1,
           branchLimit: 1,
         },
       });

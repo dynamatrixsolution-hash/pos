@@ -113,9 +113,42 @@ async function main() {
       phone: "+1-800-555-0100",
       email: "admin@dynapos.com",
       address: "DynaPOS Headquarters",
-      currency: "USD",
+      currency: "NPR",
       taxConfig: { taxName: "VAT", rate: 0 },
-      settings: {},
+      settings: {
+        plans: [
+          { id: "Starter", name: "Starter", price: 499, setupPrice: 4999, currency: "NPR", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
+          { id: "Professional", name: "Professional", price: 999, setupPrice: 11999, currency: "NPR", duration: "1 Month", desc: "For growing local retail shops" },
+          { id: "Enterprise", name: "Enterprise", price: 1499, setupPrice: 24999, currency: "NPR", duration: "1 Month", desc: "Custom controls for large franchises" }
+        ],
+        limits: {
+          Starter: { users: 1, branches: 1, products: 100, categories: 10 },
+          Professional: { users: 5, branches: 2, products: 1000, categories: 999999 },
+          Enterprise: { users: 20, branches: 5, products: 999999, categories: 999999 }
+        },
+        features: {
+          "POS Billing": true,
+          "Products": true,
+          "Inventory": true,
+          "Purchases": true,
+          "Customers": true,
+          "Suppliers": true,
+          "Reports": true,
+          "Full Reports": true,
+          "Printing": true,
+          "Expenses": true,
+          "Payments": true,
+          "Multi Branch": true,
+          "Warehouses": true,
+          "Device Control": true,
+          "Activity Logs": true,
+          "Barcode": true,
+          "Batch Tracking": true,
+          "Expiry Tracking": true,
+          "API Access": true,
+          "Backup System": true
+        }
+      },
     },
   });
 

@@ -25,6 +25,8 @@ export async function GET(request: Request) {
       "Customers": true,
       "Suppliers": true,
       "Reports": true,
+      "Full Reports": true,
+      "Printing": true,
       "Expenses": true,
       "Payments": true,
       "Multi Branch": true,
@@ -40,18 +42,16 @@ export async function GET(request: Request) {
 
     // Baseline limits if not configured in DB settings
     const defaultLimits = settings.limits || {
-      Starter: { users: 2, branches: 1, warehouses: 1, products: 1000, transactions: 500, storage: 500, devices: 1, cashiers: 1, managers: 0 },
-      Business: { users: 10, branches: 3, warehouses: 2, products: 15000, transactions: 5000, storage: 2000, devices: 3, cashiers: 5, managers: 2 },
-      Professional: { users: 25, branches: 10, warehouses: 5, products: 50000, transactions: 20000, storage: 10000, devices: 10, cashiers: 15, managers: 5 },
-      Enterprise: { users: 100, branches: 50, warehouses: 20, products: 200000, transactions: 100000, storage: 50000, devices: 50, cashiers: 50, managers: 20 },
+      Starter: { users: 1, branches: 1, products: 100, categories: 10, printing: false, dailyReportsOnly: true },
+      Professional: { users: 5, branches: 2, products: 1000, categories: 999999, printing: true, dailyReportsOnly: false },
+      Enterprise: { users: 20, branches: 5, products: 999999, categories: 999999, printing: true, dailyReportsOnly: false },
     };
 
     // Baseline plans if not configured in DB settings
     const defaultPlans = settings.plans || [
-      { id: "Starter", name: "Starter", price: 0, currency: "USD", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
-      { id: "Business", name: "Business", price: 29, currency: "USD", duration: "1 Month", desc: "For growing local retail shops" },
-      { id: "Professional", name: "Professional", price: 49, currency: "USD", duration: "1 Month", desc: "For multi-branch retail stores" },
-      { id: "Enterprise", name: "Enterprise", price: 99, currency: "USD", duration: "1 Month", desc: "Custom controls for large franchises" },
+      { id: "Starter", name: "Starter", price: 499, setupPrice: 4999, currency: "NPR", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
+      { id: "Professional", name: "Professional", price: 999, setupPrice: 11999, currency: "NPR", duration: "1 Month", desc: "For growing local retail shops" },
+      { id: "Enterprise", name: "Enterprise", price: 1499, setupPrice: 24999, currency: "NPR", duration: "1 Month", desc: "For multi-branch retail stores" },
     ];
 
     // Baseline currencies
