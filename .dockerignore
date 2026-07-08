@@ -1,0 +1,34 @@
+# Dependencies and Build Cache
+node_modules
+.next
+out
+build
+dist
+tsconfig.tsbuildinfo
+
+# Local Environment Variables and Logs
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+*.log
+
+# Databases & Prisma local sqlite files
+*.db
+*.db-journal
+
+# OS Metadata and IDE Settings
+.vscode
+.idea
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Documentation and Rules (Not needed for Docker runtime)
+README.md
+DynaOne_System_Architecture.md
+AGENTS.md
+docker-compose.yml
+Dockerfile

@@ -14,5 +14,35 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=backend
+    container_name: dynapos-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=frontend
+    container_name: dynapos-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
