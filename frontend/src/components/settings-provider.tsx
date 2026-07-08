@@ -16,7 +16,7 @@ interface SettingsContextType {
 }
 
 const SettingsContext = React.createContext<SettingsContextType>({
-  currencySymbol: "$",
+  currencySymbol: "रू",
   taxName: "VAT",
   vatPercentage: 13,
   pricingType: "EXCLUSIVE",
@@ -29,7 +29,7 @@ const SettingsContext = React.createContext<SettingsContextType>({
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [currencySymbol, setCurrencySymbol] = React.useState("$");
+  const [currencySymbol, setCurrencySymbol] = React.useState("रू");
   const [taxName, setTaxName] = React.useState("VAT");
   const [vatPercentage, setVatPercentage] = React.useState(13);
   const [pricingType, setPricingType] = React.useState<"INCLUSIVE" | "EXCLUSIVE">("EXCLUSIVE");
@@ -49,7 +49,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           setTaxName(data.taxConfig.taxName || "VAT");
         }
         const meta = data.settings || {};
-        setCurrencySymbol(meta.currencySymbol || "$");
+        setCurrencySymbol(meta.currencySymbol || "रू");
         setEnableVat(meta.enableVat ?? true);
         setVatPercentage(meta.vatPercentage ?? (data.taxConfig?.rate || 13));
         setPricingType(meta.pricingType || "EXCLUSIVE");

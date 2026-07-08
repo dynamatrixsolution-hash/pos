@@ -47,9 +47,11 @@ async function main() {
       phone: "+1-555-0199",
       email: "info@dynapos.com",
       address: "123 Main St, New York, NY",
-      currency: "USD",
+      currency: "NPR",
       taxConfig: { taxName: "VAT", rate: 10 },
-      settings: {},
+      settings: {
+        currencySymbol: "रू",
+      },
     },
   });
 
