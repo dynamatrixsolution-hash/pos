@@ -108,8 +108,7 @@ function LoginForm() {
       if (!res || res.error) {
         setAuthError(res?.error || "Login failed. Please verify your credentials.");
       } else {
-        router.push("/dashboard");
-        router.refresh();
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setAuthError("A connection error occurred. Please try again.");
