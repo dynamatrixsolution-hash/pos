@@ -25,8 +25,8 @@ jobs:
 
       - name: 📂 Copy files to VPS via Rsync
         run: |
-          rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='packages/db/node_modules' ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_IP }}:/www/wwwroot/dynapos/
+          rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='packages/db/node_modules' ./ root@${{ secrets.VPS_IP }}:/www/wwwroot/dynapos/
 
       - name: 🐳 Rebuild Docker Containers
         run: |
-          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_IP }} "cd /www/wwwroot/dynapos && sudo docker compose up -d --build && sudo docker image prune -f"
+          ssh root@${{ secrets.VPS_IP }} "cd /www/wwwroot/dynapos && sudo docker compose up -d --build && sudo docker image prune -f"
