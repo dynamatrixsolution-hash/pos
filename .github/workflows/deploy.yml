@@ -14,28 +14,20 @@ jobs:
       - name: 🚚 Get latest code
         uses: actions/checkout@v4
 
-      - name: 📂 Copy files to VPS
-        uses: appleboy/scp-action@master
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.VPS_IP }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "."
-          target: "/www/wwwroot/dynapos"
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: 🔒 Add Server to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+
+      - name: 📂 Copy files to VPS via Rsync
+        run: |
+          rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='packages/db/node_modules' ./ ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_IP }}:/www/wwwroot/dynapos/
 
       - name: 🐳 Rebuild Docker Containers
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_IP }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          script: |
-            cd /www/wwwroot/dynapos
-            
-            # Rebuild the containers with the new code
-            sudo docker compose up -d --build
-            
-            # Clean up old unused docker images to save VPS storage
-            sudo docker image prune -f
+        run: |
+          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_IP }} "cd /www/wwwroot/dynapos && sudo docker compose up -d --build && sudo docker image prune -f"
