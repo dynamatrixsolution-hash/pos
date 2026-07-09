@@ -6,9 +6,9 @@ services:
     container_name: dynapos-db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dynapos
+      POSTGRES_USER: abhi
+      POSTGRES_PASSWORD: a11221
+      POSTGRES_DB: prayasshpos
     ports:
       - "5432:5432"
     volumes:
