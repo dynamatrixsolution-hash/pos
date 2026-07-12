@@ -280,7 +280,7 @@ export default function POSPage() {
       invoiceNotes: "",
       tableNumber: "Table 01",
       diningType: "TAKE_AWAY",
-      waiterId: "Waiter 01",
+      waiterId: "Sales Person 01",
       posMode: "RETAIL",
       splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     },
@@ -409,6 +409,19 @@ export default function POSPage() {
       setInitialized(true);
     }
   }, []);
+
+  // Set default salesperson to logged in user once session loads
+  React.useEffect(() => {
+    if (session?.user?.name && initialized) {
+      setActiveOrders((prev) =>
+        prev.map((order) =>
+          order.waiterId === "Waiter 01" || order.waiterId === "Sales Person 01" || order.waiterId === ""
+            ? { ...order, waiterId: session.user?.name || "Sales Person 01" }
+            : order
+        )
+      );
+    }
+  }, [session, initialized]);
 
   // Save to localStorage when state changes after initial sync
   React.useEffect(() => {
@@ -599,7 +612,7 @@ export default function POSPage() {
       invoiceNotes: "",
       tableNumber: "Table 01",
       diningType: "TAKE_AWAY",
-      waiterId: "Waiter 01",
+      waiterId: session?.user?.name || "Sales Person 01",
       posMode: currentOrder.posMode,
       splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     };
@@ -1190,8 +1203,8 @@ export default function POSPage() {
               </button>
 
               {/* Modern High-Fidelity Search Wrapper matching the image */}
-              <div className="flex-1 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs h-11 px-3.5">
-                <Search className="h-4.5 w-4.5 text-slate-400 shrink-0 mr-2.5" />
+              <div className="flex-1 min-w-0 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs h-11 px-2 sm:px-3.5">
+                <Search className="h-4.5 w-4.5 text-slate-400 shrink-0 mr-1.5 sm:mr-2.5" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -1201,12 +1214,12 @@ export default function POSPage() {
                   className="flex-1 bg-transparent text-xs text-foreground placeholder-slate-400 focus:outline-none min-w-0 font-medium"
                   suppressHydrationWarning
                 />
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-1.5 sm:ml-2">
                   {/* Inline Barcode Scanner button */}
                   <button
                     type="button"
                     onClick={() => setPosScannerOpen(true)}
-                    className="text-slate-400 hover:text-[#2563EB] cursor-pointer p-1.5 transition-all"
+                    className="text-slate-400 hover:text-[#2563EB] cursor-pointer p-1 sm:p-1.5 transition-all"
                     title="Scan Barcode with Camera (F9)"
                   >
                     <Barcode className="h-4.5 w-4.5" />
@@ -1215,7 +1228,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setDebouncedQuery(searchQuery)}
-                    className="px-4 h-8 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg font-bold text-xs cursor-pointer transition-all shadow-xs"
+                    className="px-2 sm:px-4 h-8 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg font-bold text-[10px] sm:text-xs cursor-pointer transition-all shadow-xs"
                   >
                     Search
                   </button>
@@ -1280,7 +1293,7 @@ export default function POSPage() {
               <div
                 key={tab.id}
                 onClick={() => setCurrentOrderId(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all select-none border ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all select-none border whitespace-nowrap ${
                   tab.id === currentOrderId
                     ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
                     : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-400 border-slate-200 dark:border-slate-800"
@@ -1303,7 +1316,7 @@ export default function POSPage() {
             ))}
             <button
               onClick={handleAddNewOrderTab}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs"
+              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Add New Billing Tab"
             >
               <Plus className="h-4 w-4" /> Add Tab
@@ -1311,7 +1324,7 @@ export default function POSPage() {
             <button
               type="button"
               onClick={() => setRecallModalOpen(true)}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs"
+              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Recall Suspended Bills (F4)"
             >
               <FileText className="h-4 w-4 text-emerald-500" /> Drafts ({heldBills.length})
@@ -1670,10 +1683,15 @@ export default function POSPage() {
                   className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-slate-500 focus:outline-none appearance-none cursor-pointer"
                 >
                   <option value="">Select Sales Person</option>
+                  {session?.user?.name && (
+                    <option value={session.user.name}>{session.user.name} (You)</option>
+                  )}
                   {Array.from({ length: 8 }, (_, i) => `Sales Person ${String(i + 1).padStart(2, "0")}`).map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
+                    w !== session?.user?.name && (
+                      <option key={w} value={w}>
+                        {w}
+                      </option>
+                    )
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -1839,14 +1857,14 @@ export default function POSPage() {
                               (val) => updateItemNotes(item.id, val)
                             );
                           }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.notes
                               ? "bg-[#2563EB]/10 border-transparent text-[#2563EB] dark:text-purple-400"
                               : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"
                           }`}
                           title="Add Item Comments"
                         >
-                          <FileText className="h-3.5 w-3.5" />
+                          <FileText className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
                           <span>Add Note</span>
                         </button>
 
@@ -1860,7 +1878,7 @@ export default function POSPage() {
                               (val) => updateItemDiscount(item.id, parseFloat(val) || 0)
                             );
                           }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.discount > 0
                               ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-250 dark:border-emerald-500/30 text-emerald-600"
                               : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"
