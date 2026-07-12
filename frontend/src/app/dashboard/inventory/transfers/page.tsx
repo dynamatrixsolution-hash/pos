@@ -547,7 +547,7 @@ export default function StockTransfersPage() {
                   setActionType(null);
                   setActionRemarks("");
                 }}
-                className="px-3.5 py-1.5 bg-secondary border border-border hover:bg-secondary/80 rounded-xl font-bold cursor-pointer"
+                className="px-3.5 py-1.5 border border-border rounded-xl font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
               >
                 Cancel
               </button>
@@ -739,7 +739,7 @@ export default function StockTransfersPage() {
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="px-4 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-lg font-bold text-foreground transition-all cursor-pointer"
+                    className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg font-bold transition-all cursor-pointer shadow-sm text-xs"
                   >
                     Add
                   </button>
@@ -880,7 +880,7 @@ export default function StockTransfersPage() {
                                         key={bs.branchId}
                                         type="button"
                                         onClick={() => setSelectedSource(bs.branchId)}
-                                        className="inline-flex items-center gap-1 bg-secondary px-2 py-0.5 rounded border border-border text-[9px] hover:bg-secondary/80 font-bold transition-all text-foreground cursor-pointer"
+                                        className="inline-flex items-center gap-1 bg-secondary/10 text-secondary border border-secondary/20 px-2 py-0.5 rounded text-[9px] hover:bg-secondary hover:text-secondary-foreground font-bold transition-all cursor-pointer"
                                         title="Click to set this branch as source"
                                       >
                                         {bs.branchName} ({bs.quantity})
@@ -915,7 +915,7 @@ export default function StockTransfersPage() {
               <button
                 type="button"
                 onClick={() => setShowRequestModal(false)}
-                className="px-4 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-xl font-bold cursor-pointer"
+                className="px-4 py-2 border border-border rounded-xl font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
               >
                 Cancel
               </button>

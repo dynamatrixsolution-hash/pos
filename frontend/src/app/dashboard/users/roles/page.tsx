@@ -126,7 +126,7 @@ export default function RolesPage() {
               {accessibleResources[selectedRole]?.map((path) => (
                 <span
                   key={path}
-                  className="px-2.5 py-1 bg-secondary text-foreground text-[10px] font-semibold border border-border rounded-lg"
+                  className="px-2.5 py-1 bg-secondary/10 text-secondary text-[10px] font-semibold border border-secondary/20 rounded-lg"
                 >
                   {path}
                 </span>

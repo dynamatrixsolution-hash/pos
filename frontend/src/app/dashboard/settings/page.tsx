@@ -683,7 +683,7 @@ export default function SettingsPage() {
                       />
                       <label
                         htmlFor="invoice-logo-uploader"
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-border rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-sm"
                       >
                         <Upload className="h-4 w-4" />
                         Choose Invoice Logo file
@@ -728,7 +728,7 @@ export default function SettingsPage() {
                       />
                       <label
                         htmlFor="receipt-logo-uploader"
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-border rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-sm"
                       >
                         <Upload className="h-4 w-4" />
                         Choose Receipt Logo file
@@ -773,7 +773,7 @@ export default function SettingsPage() {
                       />
                       <label
                         htmlFor="fonepay-qr-uploader"
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-border rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-sm"
                       >
                         <Upload className="h-4 w-4" />
                         Choose Fonepay QR file

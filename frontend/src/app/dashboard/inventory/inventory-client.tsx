@@ -200,7 +200,7 @@ export default function InventoryClient() {
                           <div className="text-[11px] font-semibold text-foreground mt-0.5">{item.name}</div>
                         </td>
                         <td className="py-3 px-2 text-center">
-                          <span className="bg-secondary px-2 py-0.5 rounded text-[10px]">
+                          <span className="bg-secondary/10 text-secondary border border-secondary/20 px-2 py-0.5 rounded text-[10px] font-bold">
                             {item.categoryName}
                           </span>
                         </td>
@@ -225,7 +225,7 @@ export default function InventoryClient() {
                         <td className="py-3 px-2 text-right">
                           <button
                             onClick={() => openAdjustModal(item)}
-                            className="px-3 py-1.5 bg-secondary hover:bg-border text-[10px] font-bold rounded-lg transition-colors"
+                            className="px-3 py-1.5 bg-secondary hover:bg-secondary/90 text-secondary-foreground text-[10px] font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
                           >
                             Adjust
                           </button>
@@ -297,7 +297,7 @@ export default function InventoryClient() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-secondary transition-colors"
+                  className="flex-1 px-4 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>

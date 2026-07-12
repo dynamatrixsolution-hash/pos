@@ -434,7 +434,7 @@ export default function ActivityLogPage() {
                         </span>
                       </td>
                       <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold border bg-secondary text-foreground border-border uppercase tracking-wider">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold border bg-secondary/10 text-secondary border-secondary/20 uppercase tracking-wider">
                           {log.module}
                         </span>
                       </td>
