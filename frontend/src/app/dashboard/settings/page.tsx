@@ -154,7 +154,7 @@ export default function SettingsPage() {
         setVatNumber(meta.vatNumber || "");
         setTaxRegDetails(meta.taxRegDetails || "");
         setTaxStatus(meta.taxStatus || "REGISTERED");
-        setCurrencySymbol(meta.currencySymbol || "रू");
+        setCurrencySymbol(meta.currencySymbol || "Npr");
         setDecimalPrecision(meta.decimalPrecision ?? 2);
         setFiscalYearStart(meta.fiscalYearStart || "");
         setFiscalYearEnd(meta.fiscalYearEnd || "");

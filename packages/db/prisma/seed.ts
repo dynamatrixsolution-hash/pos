@@ -50,7 +50,7 @@ async function main() {
       currency: "NPR",
       taxConfig: { taxName: "VAT", rate: 10 },
       settings: {
-        currencySymbol: "रू",
+        currencySymbol: "Npr",
       },
     },
   });
