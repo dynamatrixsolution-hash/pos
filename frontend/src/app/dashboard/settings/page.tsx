@@ -539,11 +539,11 @@ export default function SettingsPage() {
                  <div className="border border-border/60 rounded-xl p-4 space-y-3 mt-4">
                   <h4 className="text-xs font-bold text-foreground">Quick Setup Actions</h4>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setActiveTab("profile")} className="px-3 py-1.5 bg-secondary hover:bg-border text-xs rounded-lg font-bold">Edit Profile</button>
-                    <button type="button" onClick={() => setActiveTab("taxation")} className="px-3 py-1.5 bg-secondary hover:bg-border text-xs rounded-lg font-bold">Manage VAT</button>
-                    <button type="button" onClick={() => setActiveTab("pos")} className="px-3 py-1.5 bg-secondary hover:bg-border text-xs rounded-lg font-bold">Configure Invoices</button>
-                    <button type="button" onClick={() => setActiveTab("subscription")} className="px-3 py-1.5 bg-secondary hover:bg-border text-xs rounded-lg font-bold">Subscription Plan</button>
-                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3 py-1.5 bg-secondary hover:bg-border text-xs rounded-lg font-bold">Download Backup</button>
+                    <button type="button" onClick={() => setActiveTab("profile")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Edit Profile</button>
+                    <button type="button" onClick={() => setActiveTab("taxation")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Manage VAT</button>
+                    <button type="button" onClick={() => setActiveTab("pos")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Configure Invoices</button>
+                    <button type="button" onClick={() => setActiveTab("subscription")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Subscription Plan</button>
+                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Download Backup</button>
                   </div>
                 </div>
               </div>

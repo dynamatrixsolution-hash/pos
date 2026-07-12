@@ -153,7 +153,19 @@ export default function POSPage() {
   const branchId = session?.user ? (session.user as any).branchId : null;
   const role = session?.user ? (session.user as any).role : null;
   const [initialized, setInitialized] = React.useState(false);
-  const { currencySymbol, vatPercentage, pricingType, enableVat, taxName, businessName, receiptHeader, receiptFooter } = useSettings();
+  const {
+    currencySymbol,
+    vatPercentage,
+    pricingType,
+    enableVat,
+    taxName,
+    businessName,
+    receiptHeader,
+    receiptFooter,
+    fonepayQr,
+    invoiceLogo,
+    receiptLogo,
+  } = useSettings();
 
   const [posScannerOpen, setPosScannerOpen] = React.useState(false);
   const [scanToast, setScanToast] = React.useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -2366,6 +2378,13 @@ export default function POSPage() {
       {lastInvoice && (
         <div className="hidden print-only max-w-[80mm] mx-auto text-black p-4 text-xs font-mono">
           <div className="text-center space-y-1 border-b border-dashed border-black pb-4 mb-4">
+            {(receiptLogo || invoiceLogo) && (
+              <img
+                src={receiptLogo || invoiceLogo}
+                alt="Business Logo"
+                className="max-h-12 max-w-full object-contain mx-auto mb-2 select-none"
+              />
+            )}
             <h2 className="text-base font-black">{businessName || "Store Billing"}</h2>
             {receiptHeader && <p className="text-[10px] whitespace-pre-wrap">{receiptHeader}</p>}
             <p className="text-[10px]">Receipt #: {lastInvoice.invoiceNumber || "INV-9022"}</p>
@@ -2575,16 +2594,16 @@ export default function POSPage() {
                       <div className="qr-scanner-line" />
 
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                        src={fonepayQr || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
                           JSON.stringify({
-                            name: "Ramila Gharti",
+                            name: businessName || "Ramila Gharti",
                             eSewa_id: "9845478587",
                             amount: grandTotal,
                             amt: grandTotal,
                             total_amount: grandTotal,
                           })
                         )}`}
-                        alt="Dynamic QR Code"
+                        alt="Fonepay QR Code"
                         className="w-[145px] h-[145px] object-contain select-none transition-transform duration-300 group-hover:scale-102"
                       />
                     </div>

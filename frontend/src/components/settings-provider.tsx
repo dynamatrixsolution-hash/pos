@@ -11,6 +11,9 @@ interface SettingsContextType {
   businessName: string;
   receiptHeader: string;
   receiptFooter: string;
+  invoiceLogo: string;
+  receiptLogo: string;
+  fonepayQr: string;
   loading: boolean;
   refreshSettings: () => Promise<void>;
 }
@@ -24,6 +27,9 @@ const SettingsContext = React.createContext<SettingsContextType>({
   businessName: "",
   receiptHeader: "",
   receiptFooter: "",
+  invoiceLogo: "",
+  receiptLogo: "",
+  fonepayQr: "",
   loading: true,
   refreshSettings: async () => {},
 });
@@ -37,6 +43,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [businessName, setBusinessName] = React.useState("");
   const [receiptHeader, setReceiptHeader] = React.useState("");
   const [receiptFooter, setReceiptFooter] = React.useState("");
+  const [invoiceLogo, setInvoiceLogo] = React.useState("");
+  const [receiptLogo, setReceiptLogo] = React.useState("");
+  const [fonepayQr, setFonepayQr] = React.useState("");
   const [loading, setLoading] = React.useState(true);
 
   const fetchSettings = React.useCallback(async () => {
@@ -55,6 +64,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setPricingType(meta.pricingType || "EXCLUSIVE");
         setReceiptHeader(meta.receiptHeader || "");
         setReceiptFooter(meta.receiptFooter || "");
+        setInvoiceLogo(meta.invoiceLogo || "");
+        setReceiptLogo(meta.receiptLogo || "");
+        setFonepayQr(meta.fonepayQr || "");
       }
     } catch (error) {
       console.error("Error fetching settings in provider:", error);
@@ -78,6 +90,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         businessName,
         receiptHeader,
         receiptFooter,
+        invoiceLogo,
+        receiptLogo,
+        fonepayQr,
         loading,
         refreshSettings: fetchSettings,
       }}
