@@ -280,23 +280,23 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome banner */}
-      <div className="relative bg-gradient-to-r from-[#070e27] via-[#0e1d4d] to-[#070e27] border border-slate-800 text-white rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-2xl overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="relative bg-white dark:bg-card border border-border text-foreground rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm overflow-hidden">
+        {/* Subtle glow for aesthetic depth */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="flex-1 space-y-4 w-full">
           {/* Status badge */}
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-350 dark:text-slate-400 tracking-widest uppercase">
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground tracking-widest uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            All Systems Operational &bull; {getSyncedTimeText()}
+            All Systems Operational &bull; {getSyncedTimeText().toUpperCase()}
           </div>
           
           {/* Greetings */}
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tight">
-              Good morning, {session?.user?.name?.split(" ")[0] || "User"}.
+            <h1 className="text-3xl font-black text-foreground tracking-tight">
+              Welcome back, {session?.user?.name?.split(" ")[0] || "User"}.
             </h1>
-            <p className="text-xs text-slate-300 mt-1 font-medium leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1 font-medium leading-relaxed">
               Here's how {activeBranchName} is performing today &mdash; {currentDateString}.
             </p>
           </div>
@@ -306,89 +306,114 @@ export default function DashboardPage() {
         <button
           onClick={handleSync}
           disabled={isSyncing}
-          className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-950 hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-slate-950 text-white hover:bg-slate-900 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 border border-border rounded-xl text-xs font-black shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all uppercase tracking-wider shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          <RefreshCw className={`h-4.5 w-4.5 text-slate-950 ${isSyncing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4.5 w-4.5 ${isSyncing ? "animate-spin" : ""}`} />
           <span>{isSyncing ? "Syncing..." : "Sync Real-Time Data"}</span>
         </button>
       </div>
 
       {/* 1. Metrics Grid */}
       {metrics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Card 1: Total Sales */}
-          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition-shadow duration-200 group">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Sales</span>
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">
-                  {currencySymbol} {metrics.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </h3>
-                <Calendar className="h-6 w-6 text-[#0A4D3E] dark:text-[#10b981] stroke-[1.5] shrink-0" />
+          <div className="bg-card border border-border p-6 rounded-3xl flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5" />
               </div>
-            </div>
-            <div className="flex items-center gap-1 mt-4 text-xs">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                &uarr;&nbsp;12.3%
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                +8.4%
               </span>
-              <span className="text-muted-foreground">vs last month</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total Sales</p>
+              <h3 className="text-xl font-black mt-0.5">
+                {currencySymbol} {metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-1">vs last month</p>
             </div>
           </div>
 
-          {/* Card 2: Total Orders */}
-          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition-shadow duration-200 group">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Orders</span>
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">
-                  {(metrics.ordersCount ?? 0).toLocaleString('en-IN')}
-                </h3>
-                <ShoppingBag className="h-6 w-6 text-[#0A4D3E] dark:text-[#10b981] stroke-[1.5] shrink-0" />
+          {/* Card 2: Cost of Goods Sold */}
+          <div className="bg-card border border-border p-6 rounded-3xl flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+                <Boxes className="h-5 w-5" />
               </div>
-            </div>
-            <div className="flex items-center gap-1 mt-4 text-xs">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                &uarr;&nbsp;8.2%
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400">
+                -2.1%
               </span>
-              <span className="text-muted-foreground">vs last month</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">COGS (Stock Cost)</p>
+              <h3 className="text-xl font-black mt-0.5">
+                {currencySymbol} {metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-1">inventory value sold</p>
             </div>
           </div>
 
-          {/* Card 3: Total Customers */}
-          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition-shadow duration-200 group">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Customers</span>
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">
-                  {(metrics.customersCount ?? 0).toLocaleString('en-IN')}
-                </h3>
-                <Users className="h-6 w-6 text-[#0A4D3E] dark:text-[#10b981] stroke-[1.5] shrink-0" />
+          {/* Card 3: Other Income */}
+          <div className="bg-card border border-border p-6 rounded-3xl flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5" />
               </div>
-            </div>
-            <div className="flex items-center gap-1 mt-4 text-xs">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                &uarr;&nbsp;10.1%
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-500/10 border-slate-500/20 text-slate-600 dark:text-slate-400">
+                0.0%
               </span>
-              <span className="text-muted-foreground">vs last month</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Other Income</p>
+              <h3 className="text-xl font-black mt-0.5">
+                {currencySymbol} {metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-1">additional monthly inflow</p>
             </div>
           </div>
 
-          {/* Card 4: Net Profit */}
-          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col justify-between hover:shadow-md transition-shadow duration-200 group">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Net Profit</span>
-              <div className="flex justify-between items-center">
-                <h3 className={`text-2xl font-black tracking-tight ${metrics.netProfit >= 0 ? "text-foreground" : "text-destructive"}`}>
-                  {metrics.netProfit < 0 ? "-" : ""}{currencySymbol} {Math.abs(metrics.netProfit).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </h3>
-                <Settings className="h-6 w-6 text-[#0A4D3E] dark:text-[#10b981] stroke-[1.5] shrink-0" />
+          {/* Card 4: Monthly Expenses */}
+          <div className="bg-card border border-border p-6 rounded-3xl flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center flex-shrink-0">
+                <Coins className="h-5 w-5" />
               </div>
-            </div>
-            <div className="flex items-center gap-1 mt-4 text-xs">
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center">
-                &uarr;&nbsp;15.6%
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold border bg-slate-500/10 border-slate-500/20 text-slate-600 dark:text-slate-400">
+                0.0%
               </span>
-              <span className="text-muted-foreground">vs last month</span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Expenses</p>
+              <h3 className="text-xl font-black mt-0.5">
+                {currencySymbol} {metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-1">outward payments</p>
+            </div>
+          </div>
+
+          {/* Card 5: Net Profit */}
+          <div className="bg-card border border-border p-6 rounded-3xl flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="flex justify-between items-start">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                netProfitPositive ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+              }`}>
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                netProfitPositive
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+              }`}>
+                {netProfitPositive ? "+12.6%" : "-12.6%"}
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Net Profit</p>
+              <h3 className={`text-xl font-black mt-0.5 ${netProfitPositive ? "text-foreground" : "text-rose-600 dark:text-rose-400"}`}>
+                {metrics.netProfit < 0 ? `${currencySymbol}-` : `${currencySymbol} `}{Math.abs(metrics.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-1">margin {marginPercent}%</p>
             </div>
           </div>
         </div>
