@@ -329,7 +329,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total Sales</p>
               <h3 className="text-xl font-black mt-0.5">
-                {currencySymbol} {metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol}{metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
               <p className="text-[9px] text-muted-foreground mt-1">vs last month</p>
             </div>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">COGS (Stock Cost)</p>
               <h3 className="text-xl font-black mt-0.5">
-                {currencySymbol} {metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol}{metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
               <p className="text-[9px] text-muted-foreground mt-1">inventory value sold</p>
             </div>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Other Income</p>
               <h3 className="text-xl font-black mt-0.5">
-                {currencySymbol} {metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol}{metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
               <p className="text-[9px] text-muted-foreground mt-1">additional monthly inflow</p>
             </div>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Expenses</p>
               <h3 className="text-xl font-black mt-0.5">
-                {currencySymbol} {metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol}{metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
               <p className="text-[9px] text-muted-foreground mt-1">outward payments</p>
             </div>
@@ -411,7 +411,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Net Profit</p>
               <h3 className={`text-xl font-black mt-0.5 ${netProfitPositive ? "text-foreground" : "text-rose-600 dark:text-rose-400"}`}>
-                {metrics.netProfit < 0 ? `${currencySymbol}-` : `${currencySymbol} `}{Math.abs(metrics.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {metrics.netProfit < 0 ? `${currencySymbol}-` : `${currencySymbol}`}{Math.abs(metrics.netProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
               <p className="text-[9px] text-muted-foreground mt-1">margin {marginPercent}%</p>
             </div>
