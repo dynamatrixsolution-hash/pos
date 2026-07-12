@@ -18,8 +18,15 @@ const TOAST_EVENT = "dynapos-toast-event";
 export const toast = {
   show(message: string, type: ToastType = "info", duration = 4000) {
     if (typeof window !== "undefined") {
+      let sanitizedMessage = message;
+      if (typeof message === "string" && (
+        message.includes("is not valid JSON") || 
+        message.includes("Unexpected token")
+      )) {
+        sanitizedMessage = "Internal Server Error";
+      }
       const event = new CustomEvent(TOAST_EVENT, {
-        detail: { type, message, duration } as ToastMessage,
+        detail: { type, message: sanitizedMessage, duration } as ToastMessage,
       });
       window.dispatchEvent(event);
     }
