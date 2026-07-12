@@ -146,8 +146,15 @@ export default function DashboardShellClient({
   const [logoutLoading, setLogoutLoading] = React.useState(false);
 
   const [quickNavOpen, setQuickNavOpen] = React.useState(false);
-  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [headerSearchQuery, setHeaderSearchQuery] = React.useState("");
+  const [searchResults, setSearchResults] = React.useState<{
+    products: Array<{ id: string; name: string; sku: string; sellingPrice: number }>;
+    customers: Array<{ id: string; name: string; phone: string }>;
+    suppliers: Array<{ id: string; name: string; phone: string }>;
+  }>({ products: [], customers: [], suppliers: [] });
+  const [searchLoading, setSearchLoading] = React.useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = React.useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const frequentServices = React.useMemo(() => [
     {
@@ -191,12 +198,37 @@ export default function DashboardShellClient({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
+        searchInputRef.current?.focus();
+        setShowSearchDropdown(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  React.useEffect(() => {
+    if (headerSearchQuery.trim() === "") {
+      setSearchResults({ products: [], customers: [], suppliers: [] });
+      return;
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/v1/search?q=${encodeURIComponent(headerSearchQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [headerSearchQuery]);
 
   const isPosRoute = pathname === "/dashboard/pos";
   const [posSidebarOpen, setPosSidebarOpen] = React.useState(false);
@@ -474,19 +506,167 @@ export default function DashboardShellClient({
             {/* Search and Quick Navigate Buttons */}
             {user.role !== "SUPER_ADMIN" && (
               <div className="hidden md:flex items-center gap-3">
-                {/* Search Button */}
-                <button
-                  onClick={() => setIsSearchOpen(true)}
-                  className="flex items-center gap-2 px-3 h-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-xs text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-850 dark:hover:text-slate-100 cursor-pointer transition-all w-52 justify-between select-none"
-                >
-                  <div className="flex items-center gap-2">
-                    <Search className="h-3.5 w-3.5 text-slate-400" />
-                    <span className="whitespace-nowrap">Search pages...</span>
+                {/* Global Search Bar (Daraz Style) */}
+                <div className="relative w-80 lg:w-[420px] shrink-0">
+                  <div className="flex h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 focus-within:border-black dark:focus-within:border-white focus-within:ring-1 focus-within:ring-black/10 dark:focus-within:ring-white/10 transition-all bg-slate-50/50 dark:bg-slate-900">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search products, pages, customers, suppliers..."
+                      value={headerSearchQuery}
+                      onChange={(e) => {
+                        setHeaderSearchQuery(e.target.value);
+                        setShowSearchDropdown(true);
+                      }}
+                      onFocus={() => setShowSearchDropdown(true)}
+                      className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
+                    />
+                    <button className="px-3.5 bg-[#064E3B] hover:bg-[#053F30] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
+                      <Search className="h-4 w-4" />
+                    </button>
                   </div>
-                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-slate-200/80 bg-white dark:bg-slate-850 px-1.5 font-mono text-[9px] font-semibold text-slate-400">
-                    ⌘K
-                  </kbd>
-                </button>
+
+                  {/* Search Results Dropdown */}
+                  {showSearchDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowSearchDropdown(false)} />
+                      <div className="absolute left-0 mt-2 w-full rounded-2xl border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl z-50 p-1.5 animate-in fade-in slide-in-from-top-1 duration-150 text-left max-h-90 overflow-y-auto">
+                        {headerSearchQuery.trim() === "" ? (
+                          <>
+                            <div className="px-3 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 mb-1">
+                              Menu Navigation Shortcuts
+                            </div>
+                            {searchItems.slice(0, 8).map((item) => (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setShowSearchDropdown(false)}
+                                className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl font-bold transition-colors cursor-pointer"
+                              >
+                                <span>{item.name}</span>
+                                {item.parent && (
+                                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 px-1.5 py-0.5 rounded-md">
+                                    {item.parent}
+                                  </span>
+                                )}
+                              </Link>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            {searchLoading && (
+                              <div className="flex items-center justify-center py-6 text-xs text-slate-400 gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Searching database...
+                              </div>
+                            )}
+
+                            {!searchLoading &&
+                              searchResults.products.length === 0 &&
+                              searchResults.customers.length === 0 &&
+                              searchResults.suppliers.length === 0 &&
+                              searchItems.filter(item => item.name.toLowerCase().includes(headerSearchQuery.toLowerCase())).length === 0 && (
+                                <div className="p-6 text-center text-xs text-slate-400">
+                                  No records found for "{headerSearchQuery}"
+                                </div>
+                              )}
+
+                            {/* 1. Menu Pages Matches */}
+                            {searchItems.filter(item => item.name.toLowerCase().includes(headerSearchQuery.toLowerCase())).length > 0 && (
+                              <div className="mb-2">
+                                <div className="px-3 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Navigation Pages
+                                </div>
+                                {searchItems
+                                  .filter(item => item.name.toLowerCase().includes(headerSearchQuery.toLowerCase()))
+                                  .map((item) => (
+                                    <Link
+                                      key={item.href}
+                                      href={item.href}
+                                      onClick={() => setShowSearchDropdown(false)}
+                                      className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl font-bold transition-colors cursor-pointer"
+                                    >
+                                      <span>{item.name}</span>
+                                      <ChevronRight className="h-3.5 w-3.5 text-slate-350" />
+                                    </Link>
+                                  ))}
+                              </div>
+                            )}
+
+                            {/* 2. Product Matches */}
+                            {searchResults.products.length > 0 && (
+                              <div className="mb-2 border-t border-slate-100 dark:border-slate-800 pt-1">
+                                <div className="px-3 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Products
+                                </div>
+                                {searchResults.products.map((p) => (
+                                  <Link
+                                    key={p.id}
+                                    href="/dashboard/products"
+                                    onClick={() => setShowSearchDropdown(false)}
+                                    className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl font-bold transition-colors cursor-pointer"
+                                  >
+                                    <div>
+                                      <div className="text-slate-800 dark:text-slate-200 font-extrabold">{p.name}</div>
+                                      <div className="text-[9px] text-slate-400">SKU: {p.sku || "GENERIC"}</div>
+                                    </div>
+                                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">Rs. {p.sellingPrice.toFixed(2)}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* 3. Customer Matches */}
+                            {searchResults.customers.length > 0 && (
+                              <div className="mb-2 border-t border-slate-100 dark:border-slate-800 pt-1">
+                                <div className="px-3 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Customers
+                                </div>
+                                {searchResults.customers.map((c) => (
+                                  <Link
+                                    key={c.id}
+                                    href="/dashboard/customers"
+                                    onClick={() => setShowSearchDropdown(false)}
+                                    className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-700 dark:text-slate-305 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl font-bold transition-colors cursor-pointer"
+                                  >
+                                    <div>
+                                      <div className="text-slate-850 dark:text-slate-200 font-extrabold">{c.name}</div>
+                                      <div className="text-[9px] text-slate-400">{c.phone || "No Phone"}</div>
+                                    </div>
+                                    <ChevronRight className="h-3.5 w-3.5 text-slate-350" />
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* 4. Supplier Matches */}
+                            {searchResults.suppliers.length > 0 && (
+                              <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
+                                <div className="px-3 py-1 text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Suppliers
+                                </div>
+                                {searchResults.suppliers.map((s) => (
+                                  <Link
+                                    key={s.id}
+                                    href="/dashboard/suppliers"
+                                    onClick={() => setShowSearchDropdown(false)}
+                                    className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-750 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl font-bold transition-colors cursor-pointer"
+                                  >
+                                    <div>
+                                      <div className="text-slate-805 dark:text-slate-200 font-extrabold">{s.name}</div>
+                                      <div className="text-[9px] text-slate-405">{s.phone || "No Phone"}</div>
+                                    </div>
+                                    <ChevronRight className="h-3.5 w-3.5 text-slate-350" />
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* Quick Navigate Button */}
                 <div className="relative">
@@ -733,101 +913,6 @@ export default function DashboardShellClient({
           </div>
         </div>
       )}
-      {/* Global Command/Search Palette Modal */}
-      {isSearchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-xs p-4 md:p-20 no-print animate-in fade-in duration-200">
-          <div className="fixed inset-0" onClick={() => setIsSearchOpen(false)} />
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-10 mt-10">
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <Search className="h-4.5 w-4.5 text-slate-400" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search menu pages, features..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0 focus:ring-0"
-              />
-              <button
-                onClick={() => setIsSearchOpen(false)}
-                className="text-[10px] bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-650 px-2 py-1 rounded-md cursor-pointer font-bold"
-              >
-                ESC
-              </button>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto p-2 space-y-1">
-              {searchQuery.trim() === "" ? (
-                <>
-                  <div className="px-3 py-1.5 text-[9px] font-bold text-slate-450 uppercase tracking-wider">
-                    Quick Navigation
-                  </div>
-                  {frequentServices.map((service) => {
-                    const Icon = service.icon;
-                    return (
-                      <button
-                        key={service.name}
-                        onClick={() => {
-                          window.location.href = service.href;
-                          setIsSearchOpen(false);
-                        }}
-                        className="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors group cursor-pointer"
-                      >
-                        <div className={`p-1.5 rounded-lg ${service.color}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">{service.name}</div>
-                          <div className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">{service.desc}</div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400" />
-                      </button>
-                    );
-                  })}
-                </>
-              ) : (
-                <>
-                  {searchItems.filter(item => 
-                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (item.parent && item.parent.toLowerCase().includes(searchQuery.toLowerCase()))
-                  ).length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-400">
-                      No matching pages found for "{searchQuery}"
-                    </div>
-                  ) : (
-                    searchItems
-                      .filter(item => 
-                        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (item.parent && item.parent.toLowerCase().includes(searchQuery.toLowerCase()))
-                      )
-                      .map((item) => (
-                        <button
-                          key={item.href}
-                          onClick={() => {
-                            window.location.href = item.href;
-                            setIsSearchOpen(false);
-                          }}
-                          className="flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors group cursor-pointer"
-                        >
-                          <div>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
-                            {item.parent && (
-                              <span className="text-[9px] text-muted-foreground ml-2 font-bold uppercase tracking-wider">
-                                in {item.parent}
-                              </span>
-                            )}
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400" />
-                        </button>
-                      ))
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <ToastContainer />
     </div>
   );
