@@ -1577,7 +1577,7 @@ export default function POSPage() {
 
         {/* RIGHT SECTION (25% screen width): Billing checkout panel */}
         <div className={`w-full lg:w-[400px] flex flex-col bg-white dark:bg-[#0a0f24] border border-slate-200/60 dark:border-slate-800 rounded-2xl lg:rounded-[32px] p-3 lg:p-5 min-h-0 overflow-hidden shadow-xs shrink-0 no-print ${
-          activeMobileTab === "cart" ? "flex" : "hidden lg:flex"
+          activeMobileTab === "cart" ? "flex-1 flex" : "hidden lg:flex"
         }`}>
           
           {/* Metadata information card */}
@@ -1686,13 +1686,6 @@ export default function POSPage() {
                   {session?.user?.name && (
                     <option value={session.user.name}>{session.user.name} (You)</option>
                   )}
-                  {Array.from({ length: 8 }, (_, i) => `Sales Person ${String(i + 1).padStart(2, "0")}`).map((w) => (
-                    w !== session?.user?.name && (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
-                    )
-                  ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
