@@ -477,13 +477,13 @@ export default function DashboardShellClient({
                 {/* Search Button */}
                 <button
                   onClick={() => setIsSearchOpen(true)}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-muted-foreground hover:bg-slate-105 hover:text-foreground cursor-pointer transition-colors w-44 text-left justify-between"
+                  className="flex items-center gap-2 px-3 h-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 text-xs text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-850 dark:hover:text-slate-100 cursor-pointer transition-all w-52 justify-between select-none"
                 >
                   <div className="flex items-center gap-2">
                     <Search className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Search pages...</span>
+                    <span className="whitespace-nowrap">Search pages...</span>
                   </div>
-                  <kbd className="pointer-events-none inline-flex h-4.5 select-none items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 font-mono text-[9px] font-semibold text-slate-400">
+                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-slate-200/80 bg-white dark:bg-slate-850 px-1.5 font-mono text-[9px] font-semibold text-slate-400">
                     ⌘K
                   </kbd>
                 </button>
@@ -492,7 +492,7 @@ export default function DashboardShellClient({
                 <div className="relative">
                   <button
                     onClick={() => setQuickNavOpen(!quickNavOpen)}
-                    className="flex items-center gap-2 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-black text-black rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs select-none"
+                    className="flex items-center gap-2 px-3.5 h-9 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs select-none whitespace-nowrap"
                   >
                     <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                     <span>Quick Navigate</span>
