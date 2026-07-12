@@ -470,7 +470,7 @@ export default function ProductsPage() {
               setImportModalOpen(true);
             }}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2.5 bg-secondary hover:bg-secondary/80 border border-border text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
             Import Excel
@@ -566,10 +566,10 @@ export default function ProductsPage() {
           <button
             onClick={() => setOnlyLowStock(!onlyLowStock)}
             disabled={isMutating}
-            className={`px-4 py-2 border rounded-lg text-xs font-bold transition-all h-[38px] flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-              onlyLowStock 
-                ? "bg-destructive/10 text-destructive border-destructive/30" 
-                : "border-border hover:bg-secondary text-muted-foreground"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              onlyLowStock
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "border border-border hover:bg-slate-150 dark:hover:bg-slate-800 text-muted-foreground"
             }`}
           >
             <Boxes className="h-4 w-4" />
@@ -634,7 +634,7 @@ export default function ProductsPage() {
                         <td className="py-3 px-2 font-bold text-foreground">{p.name}</td>
                         <td className="py-3 px-2">
                           <div className="flex flex-col gap-1">
-                            <span className="bg-secondary px-2 py-0.5 rounded text-[10px] w-fit font-semibold">
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full w-fit">
                               {p.category?.name || "Uncategorized"}
                             </span>
                             {p.subcategory && (
@@ -720,7 +720,7 @@ export default function ProductsPage() {
                       <div className="min-w-0 flex-1 pr-2">
                         <h4 className="font-bold text-sm text-foreground truncate">{p.name}</h4>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          <span className="bg-secondary px-2 py-0.5 rounded text-[10px] inline-block">
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">
                             {p.category?.name || "Uncategorized"}
                           </span>
                           {p.subcategory && (
@@ -757,7 +757,7 @@ export default function ProductsPage() {
                       <button
                         onClick={() => handleEdit(p)}
                         disabled={isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border border-border hover:bg-secondary rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Edit className="h-3.5 w-3.5" />
                         Edit
@@ -949,7 +949,7 @@ export default function ProductsPage() {
                       type="button"
                       onClick={() => setScannerOpen(true)}
                       disabled={isPending}
-                      className="px-3.5 h-10 border border-border/80 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground flex items-center justify-center cursor-pointer transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3.5 h-10 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl flex items-center justify-center cursor-pointer transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Scan Barcode with Camera"
                     >
                       <Camera className="h-4.5 w-4.5 text-muted-foreground hover:text-foreground" />
@@ -1055,7 +1055,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="h-10 px-5 border border-border text-xs font-semibold rounded-xl hover:bg-secondary transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 px-5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -1106,7 +1106,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={isPending}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 hover:bg-secondary rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="h-5 w-5 rotate-45" />
               </button>
@@ -1134,7 +1134,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={downloadSampleTemplate}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-secondary border border-border rounded-lg text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-slate-100 dark:hover:bg-slate-800 border border-border rounded-lg text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Sample
@@ -1208,7 +1208,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={isPending}
-                className="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-secondary transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1259,7 +1259,7 @@ export default function ProductsPage() {
                     type="button"
                     disabled={alertModalLoading}
                     onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                    className="flex-1 py-2.5 border border-border text-xs rounded-xl hover:bg-secondary font-bold transition-all cursor-pointer text-slate-700 dark:text-slate-350 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs rounded-xl font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
