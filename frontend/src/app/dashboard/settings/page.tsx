@@ -69,6 +69,7 @@ export default function SettingsPage() {
   const [website, setWebsite] = React.useState("");
   const [invoiceLogo, setInvoiceLogo] = React.useState("");
   const [receiptLogo, setReceiptLogo] = React.useState("");
+  const [fonepayQr, setFonepayQr] = React.useState("");
   const [panNumber, setPanNumber] = React.useState("");
   const [vatNumber, setVatNumber] = React.useState("");
   const [taxRegDetails, setTaxRegDetails] = React.useState("");
@@ -150,6 +151,7 @@ export default function SettingsPage() {
         setWebsite(meta.website || "");
         setInvoiceLogo(meta.invoiceLogo || "");
         setReceiptLogo(meta.receiptLogo || "");
+        setFonepayQr(meta.fonepayQr || "");
         setPanNumber(meta.panNumber || "");
         setVatNumber(meta.vatNumber || "");
         setTaxRegDetails(meta.taxRegDetails || "");
@@ -262,6 +264,7 @@ export default function SettingsPage() {
           website,
           invoiceLogo,
           receiptLogo,
+          fonepayQr,
           panNumber,
           vatNumber,
           taxRegDetails,
@@ -315,7 +318,7 @@ export default function SettingsPage() {
   };
 
   // Logo base64 upload helpers
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "invoice" | "receipt") => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "invoice" | "receipt" | "fonepay") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -323,7 +326,8 @@ export default function SettingsPage() {
     reader.onloadend = () => {
       const base64String = reader.result as string;
       if (type === "invoice") setInvoiceLogo(base64String);
-      else setReceiptLogo(base64String);
+      else if (type === "receipt") setReceiptLogo(base64String);
+      else setFonepayQr(base64String);
     };
     reader.readAsDataURL(file);
   };
@@ -398,7 +402,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: "overview", label: "Settings Overview", icon: Info },
     { id: "profile", label: "Business Profile", icon: Store },
-    { id: "logos", label: "Logo & Contact", icon: Globe },
+    { id: "logos", label: "Logos & QR Codes", icon: Globe },
     { id: "taxation", label: "PAN / VAT Details", icon: Percent },
     { id: "currency", label: "Currency & Dates", icon: Calendar },
     { id: "pos", label: "Invoices & Billing", icon: FileText },
@@ -645,10 +649,10 @@ export default function SettingsPage() {
             {activeTab === "logos" && (
               <div className="space-y-4">
                 <h3 className="text-sm font-black border-b border-border/50 pb-2 uppercase tracking-wider text-primary">
-                  Logo & Contact Settings
+                  Logos & Payment QR Settings
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Invoice logo card */}
                   <div className="border border-border rounded-xl p-4 space-y-3">
                     <h4 className="text-xs font-bold">Invoice Header Logo</h4>
@@ -734,6 +738,51 @@ export default function SettingsPage() {
                         placeholder="Or paste receipt logo image URL..."
                         value={receiptLogo}
                         onChange={(e) => setReceiptLogo(e.target.value)}
+                        className="w-full bg-background border border-border px-2.5 py-1.5 rounded-lg text-[10px] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fonepay payment QR card */}
+                  <div className="border border-border rounded-xl p-4 space-y-3">
+                    <h4 className="text-xs font-bold">Fonepay Merchant QR</h4>
+                    {fonepayQr ? (
+                      <div className="relative border border-dashed border-border/80 rounded-lg p-2.5 h-36 flex items-center justify-center bg-secondary/10">
+                        <img src={fonepayQr} alt="Fonepay QR Preview" className="max-h-full max-w-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => setFonepayQr("")}
+                          className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-border/80 rounded-lg p-6 h-36 flex flex-col items-center justify-center text-center text-muted-foreground bg-secondary/5">
+                        <Upload className="h-8 w-8 stroke-1 mb-2" />
+                        <span className="text-[10px] font-bold uppercase">Click below to upload</span>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleLogoUpload(e, "fonepay")}
+                        className="hidden"
+                        id="fonepay-qr-uploader"
+                      />
+                      <label
+                        htmlFor="fonepay-qr-uploader"
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-border rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Choose Fonepay QR file
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Or paste Fonepay QR image URL..."
+                        value={fonepayQr}
+                        onChange={(e) => setFonepayQr(e.target.value)}
                         className="w-full bg-background border border-border px-2.5 py-1.5 rounded-lg text-[10px] outline-none"
                       />
                     </div>

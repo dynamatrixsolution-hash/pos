@@ -51,6 +51,7 @@ const settingsSchema = z.object({
   autoBarcodeGen: z.boolean().optional().default(true),
   receiptHeader: z.string().optional().nullable(),
   receiptFooter: z.string().optional().nullable(),
+  fonepayQr: z.string().optional().nullable(),
 });
 
 export async function GET() {
