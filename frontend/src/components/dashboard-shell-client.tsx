@@ -22,6 +22,12 @@ import {
   Clock,
   User,
   Loader2,
+  Search,
+  Zap,
+  ShoppingCart,
+  Package,
+  Coins,
+  TrendingUp,
 } from "lucide-react";
 
 interface UserMeta {
@@ -139,6 +145,59 @@ export default function DashboardShellClient({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
   const [logoutLoading, setLogoutLoading] = React.useState(false);
 
+  const [quickNavOpen, setQuickNavOpen] = React.useState(false);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const frequentServices = React.useMemo(() => [
+    {
+      name: "POS Invoice Terminal",
+      desc: "Process sales, print receipts, apply discounts",
+      href: "/dashboard/pos",
+      icon: ShoppingCart,
+      color: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+    },
+    {
+      name: "Product Catalog",
+      desc: "Manage item master, prices, subcategories",
+      href: "/dashboard/products",
+      icon: Package,
+      color: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+    },
+    {
+      name: "Daily Sales Report",
+      desc: "Track margins, total VAT collected, cost breakdown",
+      href: "/dashboard/reports/daily",
+      icon: TrendingUp,
+      color: "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400",
+    },
+    {
+      name: "Record Expense",
+      desc: "Log daily outward operations cost",
+      href: "/dashboard/expenses",
+      icon: Coins,
+      color: "bg-rose-500/10 text-rose-500 dark:bg-rose-500/20 dark:text-rose-450",
+    },
+    {
+      name: "Outstanding Balances",
+      desc: "Track payables and client credits limit",
+      href: "/dashboard/reports/outstanding",
+      icon: Clock,
+      color: "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+    },
+  ], []);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const isPosRoute = pathname === "/dashboard/pos";
   const [posSidebarOpen, setPosSidebarOpen] = React.useState(false);
   const [posNavbarOpen, setPosNavbarOpen] = React.useState(true);
@@ -200,6 +259,27 @@ export default function DashboardShellClient({
         return item;
       });
   }, [userRole, features]);
+
+  const searchItems = React.useMemo(() => {
+    const items: Array<{ name: string; href: string; parent?: string }> = [];
+    allowedNavigation.forEach((item) => {
+      if (item.children) {
+        item.children.forEach((child) => {
+          items.push({
+            name: child.title,
+            href: child.href || "",
+            parent: item.title,
+          });
+        });
+      } else if (item.href) {
+        items.push({
+          name: item.title,
+          href: item.href,
+        });
+      }
+    });
+    return items;
+  }, [allowedNavigation]);
 
   const handleBranchSwitch = async (branch: BranchMeta) => {
     setActiveBranch(branch);
@@ -388,6 +468,63 @@ export default function DashboardShellClient({
                     <span className="max-w-[80px] sm:max-w-[120px] truncate text-slate-800 dark:text-slate-200 font-extrabold">{activeBranch.name}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Search and Quick Navigate Buttons */}
+            {user.role !== "SUPER_ADMIN" && (
+              <div className="hidden md:flex items-center gap-3">
+                {/* Search Button */}
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-muted-foreground hover:bg-slate-105 hover:text-foreground cursor-pointer transition-colors w-44 text-left justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Search pages...</span>
+                  </div>
+                  <kbd className="pointer-events-none inline-flex h-4.5 select-none items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 font-mono text-[9px] font-semibold text-slate-400">
+                    ⌘K
+                  </kbd>
+                </button>
+
+                {/* Quick Navigate Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setQuickNavOpen(!quickNavOpen)}
+                    className="flex items-center gap-2 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-black text-black rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs select-none"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                    <span>Quick Navigate</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                  </button>
+                  {quickNavOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setQuickNavOpen(false)} />
+                      <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-slate-150 bg-white shadow-lg z-50 p-1.5 animate-in fade-in slide-in-from-top-1 duration-150 text-left">
+                        <div className="px-3 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1.5">
+                          Quick Navigation
+                        </div>
+                        {frequentServices.map((service) => {
+                          const Icon = service.icon;
+                          return (
+                            <Link
+                              key={service.name}
+                              href={service.href}
+                              onClick={() => setQuickNavOpen(false)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-slate-750 hover:bg-slate-50 rounded-xl font-bold transition-colors cursor-pointer"
+                            >
+                              <div className={`p-1 rounded-lg shrink-0 ${service.color}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="truncate">{service.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -596,6 +733,101 @@ export default function DashboardShellClient({
           </div>
         </div>
       )}
+      {/* Global Command/Search Palette Modal */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-xs p-4 md:p-20 no-print animate-in fade-in duration-200">
+          <div className="fixed inset-0" onClick={() => setIsSearchOpen(false)} />
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-10 mt-10">
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <Search className="h-4.5 w-4.5 text-slate-400" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search menu pages, features..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0 focus:ring-0"
+              />
+              <button
+                onClick={() => setIsSearchOpen(false)}
+                className="text-[10px] bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-650 px-2 py-1 rounded-md cursor-pointer font-bold"
+              >
+                ESC
+              </button>
+            </div>
+            
+            <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+              {searchQuery.trim() === "" ? (
+                <>
+                  <div className="px-3 py-1.5 text-[9px] font-bold text-slate-450 uppercase tracking-wider">
+                    Quick Navigation
+                  </div>
+                  {frequentServices.map((service) => {
+                    const Icon = service.icon;
+                    return (
+                      <button
+                        key={service.name}
+                        onClick={() => {
+                          window.location.href = service.href;
+                          setIsSearchOpen(false);
+                        }}
+                        className="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors group cursor-pointer"
+                      >
+                        <div className={`p-1.5 rounded-lg ${service.color}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">{service.name}</div>
+                          <div className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">{service.desc}</div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400" />
+                      </button>
+                    );
+                  })}
+                </>
+              ) : (
+                <>
+                  {searchItems.filter(item => 
+                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (item.parent && item.parent.toLowerCase().includes(searchQuery.toLowerCase()))
+                  ).length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400">
+                      No matching pages found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    searchItems
+                      .filter(item => 
+                        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (item.parent && item.parent.toLowerCase().includes(searchQuery.toLowerCase()))
+                      )
+                      .map((item) => (
+                        <button
+                          key={item.href}
+                          onClick={() => {
+                            window.location.href = item.href;
+                            setIsSearchOpen(false);
+                          }}
+                          className="flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors group cursor-pointer"
+                        >
+                          <div>
+                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
+                            {item.parent && (
+                              <span className="text-[9px] text-muted-foreground ml-2 font-bold uppercase tracking-wider">
+                                in {item.parent}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400" />
+                        </button>
+                      ))
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastContainer />
     </div>
   );
