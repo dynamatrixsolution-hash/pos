@@ -106,7 +106,10 @@ function LoginForm() {
       });
 
       if (!res || res.error) {
-        setAuthError(res?.error || "Login failed. Please verify your credentials.");
+        const errorMsg = res?.error === "Configuration"
+          ? "Server Configuration Error: The authentication secret (AUTH_SECRET) is missing or invalid on the server."
+          : (res?.error || "Login failed. Please verify your credentials.");
+        setAuthError(errorMsg);
       } else {
         window.location.href = "/dashboard";
       }
@@ -114,6 +117,13 @@ function LoginForm() {
       setAuthError("A connection error occurred. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onInvalid = (formErrors: typeof errors) => {
+    const firstError = Object.values(formErrors)[0]?.message;
+    if (firstError) {
+      setAuthError(firstError);
     }
   };
 
@@ -132,7 +142,7 @@ function LoginForm() {
         </div>
 
         {/* Credentials Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Email Address
@@ -145,9 +155,6 @@ function LoginForm() {
                 errors.email ? "border-destructive focus:ring-destructive" : "border-border focus:ring-primary"
               }`}
             />
-            {errors.email && (
-              <span className="text-[10px] text-destructive font-semibold">{errors.email.message}</span>
-            )}
           </div>
 
           <div className="space-y-1">
@@ -171,16 +178,7 @@ function LoginForm() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && (
-              <span className="text-[10px] text-destructive font-semibold">{errors.password.message}</span>
-            )}
           </div>
-
-          {authError && (
-            <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg font-semibold leading-tight">
-              {authError}
-            </div>
-          )}
 
           <button
             type="submit"
@@ -199,6 +197,61 @@ function LoginForm() {
           </Link>
         </div>
       </div>
+
+      {/* Modal/Popup for Auth Error */}
+      {authError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-fade-in px-4">
+          <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6 text-center space-y-4 animate-scale-up">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                />
+              </svg>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-sm font-black text-foreground uppercase tracking-wider">Authentication Error</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {authError}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setAuthError(null)}
+              className="w-full py-2 bg-destructive hover:bg-destructive/95 text-destructive-foreground rounded-lg text-xs font-black shadow-lg shadow-destructive/25 transition-all uppercase tracking-wider cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+          
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes scaleUp {
+              from { transform: scale(0.95); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+            .animate-fade-in {
+              animation: fadeIn 0.15s ease-out forwards;
+            }
+            .animate-scale-up {
+              animation: scaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
