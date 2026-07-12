@@ -11,8 +11,8 @@ import {
   CheckCircle,
   AlertTriangle,
   Sparkles,
-  Trash2,
   Power,
+  Edit2,
 } from "lucide-react";
 
 interface Branch {
@@ -38,6 +38,7 @@ export default function BranchesPage() {
   const [address, setAddress] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showAddForm, setShowAddForm] = React.useState(false);
+  const [editBranchId, setEditBranchId] = React.useState<string | null>(null);
 
   const userRole = (session?.user as any)?.role || "CASHIER";
   const activeBranchId = (session?.user as any)?.branchId;
@@ -78,26 +79,29 @@ export default function BranchesPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/branches", {
-        method: "POST",
+      const url = editBranchId ? `/api/v1/branches/${editBranchId}` : "/api/v1/branches";
+      const method = editBranchId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, phone, address }),
       });
 
       if (res.ok) {
-        setSuccessMsg(`Branch "${name}" successfully registered!`);
+        setSuccessMsg(editBranchId ? `Branch details updated!` : `Branch "${name}" successfully registered!`);
         setName("");
         setPhone("");
         setAddress("");
+        setEditBranchId(null);
         setShowAddForm(false);
         fetchBranches();
       } else {
         const err = await res.json();
-        setErrorMsg(err.error || "Failed to create branch");
+        setErrorMsg(err.error || "Failed to save branch");
       }
     } catch (err) {
-      console.error("Create branch error:", err);
-      setErrorMsg("Network error creating branch");
+      console.error("Save branch error:", err);
+      setErrorMsg("Network error saving branch");
     } finally {
       setIsSubmitting(false);
     }
@@ -173,8 +177,14 @@ export default function BranchesPage() {
         </div>
         {isOwner && !showAddForm && (
           <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+            onClick={() => {
+              setEditBranchId(null);
+              setName("");
+              setPhone("");
+              setAddress("");
+              setShowAddForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-black shadow-md transition-all uppercase tracking-wider cursor-pointer border-none"
           >
             <Plus className="h-4.5 w-4.5" />
             Add New Branch
@@ -196,12 +206,12 @@ export default function BranchesPage() {
         </div>
       )}
 
-      {/* Add New Branch Dialog Form */}
+      {/* Add/Edit Branch Dialog Form */}
       {showAddForm && (
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
           <h2 className="text-sm font-bold flex items-center gap-2 mb-4">
-            <Store className="h-4.5 w-4.5 text-primary" />
-            Branch Outlet Setup Form
+            <Store className="h-4.5 w-4.5 text-[#064E3B]" />
+            {editBranchId ? "Edit Branch Outlet Details" : "Branch Outlet Setup Form"}
           </h2>
           <form onSubmit={handleCreateBranch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -213,7 +223,7 @@ export default function BranchesPage() {
                 placeholder="e.g. Downtown Express Outlet"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-primary outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
                 required
               />
             </div>
@@ -226,7 +236,7 @@ export default function BranchesPage() {
                 placeholder="e.g. +1 555-0199"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-primary outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
               />
             </div>
             <div>
@@ -238,23 +248,29 @@ export default function BranchesPage() {
                 placeholder="e.g. 52 Main St, New York, NY"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-primary outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
               />
             </div>
             <div className="md:col-span-3 flex justify-end gap-2.5 mt-2">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 border border-border hover:bg-secondary rounded-xl text-xs font-bold transition-all text-muted-foreground"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setName("");
+                  setPhone("");
+                  setAddress("");
+                  setEditBranchId(null);
+                }}
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+                className="px-5 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-black shadow-md transition-all uppercase tracking-wider cursor-pointer border-none"
               >
-                {isSubmitting ? "Saving..." : "Save Location"}
+                {isSubmitting ? "Saving..." : editBranchId ? "Update Location" : "Save Location"}
               </button>
             </div>
           </form>
@@ -336,10 +352,10 @@ export default function BranchesPage() {
                     <button
                       onClick={() => !isDisabled && handleBranchSwitch(branch.id)}
                       disabled={isDisabled}
-                      className={`w-full py-2 border font-bold rounded-xl text-xs transition-colors ${
+                      className={`w-full py-2 font-bold rounded-xl text-xs transition-colors cursor-pointer border-none ${
                         isDisabled
-                          ? "bg-secondary text-muted-foreground border-border cursor-not-allowed opacity-50"
-                          : "bg-secondary hover:bg-secondary/80 border-border text-foreground"
+                          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50"
+                          : "bg-[#064E3B] hover:bg-[#053F30] text-white"
                       }`}
                     >
                       {isDisabled ? "Branch is Disabled" : "Switch context to this branch"}
@@ -350,21 +366,28 @@ export default function BranchesPage() {
                     <div className="flex gap-2 mt-1">
                       <button
                         onClick={() => handleToggleActive(branch.id, branch.isActive)}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border flex items-center justify-center gap-1.5 transition-colors ${
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                           isDisabled
-                            ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20"
+                            ? "bg-emerald-50/50 hover:bg-emerald-100/50 text-emerald-700 border border-emerald-500/30"
+                            : "bg-amber-50/50 hover:bg-amber-100/50 text-amber-700 border border-amber-500/30"
                         }`}
                       >
                         <Power className="h-3 w-3" />
                         {isDisabled ? "Enable Branch" : "Disable Branch"}
                       </button>
                       <button
-                        onClick={() => handleDeleteBranch(branch.id, branch.name)}
-                        className="py-1.5 px-3 bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                        onClick={() => {
+                          setEditBranchId(branch.id);
+                          setName(branch.name);
+                          setPhone(branch.phone || "");
+                          setAddress(branch.address || "");
+                          setShowAddForm(true);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="py-1.5 px-3.5 bg-white hover:bg-slate-50 border border-black text-black rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
                       >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
+                        <Edit2 className="h-3 w-3" />
+                        Edit
                       </button>
                     </div>
                   )}

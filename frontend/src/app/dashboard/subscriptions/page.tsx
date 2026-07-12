@@ -156,7 +156,7 @@ export default function SubscriptionsPage() {
     return {
       id: plan.id,
       name: plan.name,
-      price: `$${plan.price}`,
+      price: `Rs. ${plan.price}`,
       period: plan.duration || "1 Month",
       features: featuresList,
       active: isCurrentActive,
@@ -275,106 +275,127 @@ export default function SubscriptionsPage() {
       )}
 
       {/* 3. Tiers pricing list */}
-      <div>
-        <h2 className="text-base font-bold mb-4">Available Scaling Upgrade Packages</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plansList.map((plan) => (
-            <div
-              key={plan.name}
-              className={`bg-card border rounded-2xl p-6 flex flex-col justify-between shadow-sm relative overflow-hidden transition-all ${
-                plan.active
-                  ? "border-primary ring-1 ring-primary"
-                  : "border-border hover:border-border/80"
-              }`}
-            >
-              {plan.active && (
-                <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded">
-                  Current
-                </div>
-              )}
+      <div className="space-y-6">
+        <div className="text-center max-w-xl mx-auto space-y-2 mt-8">
+          <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+            Available Scaling Upgrade Packages
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Select the billing tier that best aligns with your sales volume, branches capacity, and staffing requirements.
+          </p>
+        </div>
 
-              <div>
-                <h3 className="text-sm font-bold text-foreground">{plan.name}</h3>
-                <div className="flex items-baseline gap-1 mt-4 mb-6">
-                  <span className="text-3xl font-black text-foreground">{plan.price}</span>
-                  <span className="text-xs text-muted-foreground">/ {plan.period}</span>
-                </div>
-
-                <ul className="space-y-3.5 border-t border-border/50 pt-5 text-xs text-muted-foreground">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5">
-                      <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8">
-                {plan.active ? (
-                  <div className="w-full py-2 bg-primary/10 text-primary border border-primary/20 text-center font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>Plan Active</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch pt-4">
+          {plansList.map((plan) => {
+            const isProfessional = plan.id === "Professional";
+            return (
+              <div
+                key={plan.name}
+                className={`bg-gradient-to-b from-white to-slate-50/40 dark:from-slate-900 dark:to-slate-950/40 border rounded-2xl flex flex-col justify-between shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-lg ${
+                  plan.active
+                    ? "border-[#064E3B] ring-2 ring-[#064E3B]/10"
+                    : isProfessional
+                    ? "border-amber-500/40 hover:border-amber-500/70"
+                    : "border-slate-200 dark:border-slate-800 hover:border-slate-350"
+                } ${isProfessional ? "pt-10" : "pt-6"} pb-6 px-6`}
+              >
+                {/* Custom Badges */}
+                {isProfessional && (
+                  <div className="absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[8px] font-black uppercase tracking-widest py-1 text-center font-mono">
+                    ★ Most Popular Option ★
                   </div>
-                ) : (
-                  <button
-                    onClick={() => triggerUpgrade(plan)}
-                    disabled={plan.disabled}
-                    className={`w-full py-2 rounded-xl text-xs font-black transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 ${
-                      plan.disabled
-                        ? "bg-secondary text-muted-foreground cursor-not-allowed border border-border"
-                        : "bg-primary text-primary-foreground hover:bg-primary/95 shadow-md shadow-primary/10"
-                    }`}
-                  >
-                    <span>Upgrade Plan</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
                 )}
+                {plan.active && (
+                  <div className="absolute top-3.5 right-4 bg-[#064E3B] text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-xs">
+                    Active Plan
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                    {plan.name} Plan
+                  </h3>
+                  <div className="flex items-baseline gap-1 mt-4 mb-6">
+                    <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">{plan.price}</span>
+                    <span className="text-xs text-muted-foreground font-semibold">/ {plan.period}</span>
+                  </div>
+
+                  <ul className="space-y-4 border-t border-slate-100 dark:border-slate-800/80 pt-5 text-xs text-slate-600 dark:text-slate-350 font-medium">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5">
+                        <Check className="h-4 w-4 text-[#064E3B] dark:text-[#34D399] flex-shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-8">
+                  {plan.active ? (
+                    <div className="w-full py-2.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-center font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 select-none">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Current License Active</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => triggerUpgrade(plan)}
+                      disabled={plan.disabled}
+                      className={`w-full py-2.5 rounded-xl text-xs font-black transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none ${
+                        plan.disabled
+                          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                          : "bg-[#064E3B] hover:bg-[#053F30] text-white shadow-md shadow-emerald-900/10 hover:shadow-emerald-900/20"
+                      }`}
+                    >
+                      <span>Upgrade Plan</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Upgrade Checkout Dialog Overlay */}
       {showUpgradeModal && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border w-full max-w-md rounded-2xl p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
             <div>
-              <h2 className="text-lg font-black flex items-center gap-2">
+              <h2 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Zap className="h-5 w-5 text-amber-500" />
                 Confirm Plan Upgrade
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Upgrading limits will apply instantly to your active workspace.
               </p>
             </div>
 
-            <div className="bg-secondary/50 border border-border p-4 rounded-xl text-xs space-y-2">
+            <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/80 p-4 rounded-2xl text-xs space-y-2 text-slate-600 dark:text-slate-350">
               <div className="flex justify-between">
                 <span>Selected Plan:</span>
-                <span className="font-bold text-foreground">{selectedPlan.name}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">{selectedPlan.name}</span>
               </div>
               <div className="flex justify-between">
                 <span>Billing Frequency:</span>
-                <span className="font-semibold text-foreground">Monthly Recurring</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">Monthly Recurring</span>
               </div>
-              <div className="border-t border-border/80 pt-2 flex justify-between font-bold text-sm text-foreground">
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-2 flex justify-between font-black text-sm text-slate-800 dark:text-slate-100">
                 <span>Due Immediately:</span>
-                <span className="text-primary">{selectedPlan.price}</span>
+                <span className="text-[#064E3B] dark:text-[#34D399]">{selectedPlan.price}</span>
               </div>
             </div>
 
-            <div className="flex gap-2.5 justify-end">
+            <div className="flex gap-2.5 justify-end pt-2">
               <button
                 onClick={() => setShowUpgradeModal(false)}
-                className="px-4 py-2 border border-border hover:bg-secondary rounded-xl text-xs font-bold text-muted-foreground transition-all"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmUpgrade}
-                className="px-5 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+                className="px-5 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-black shadow-md transition-all uppercase tracking-wider cursor-pointer border-none"
               >
                 Confirm & Pay
               </button>
