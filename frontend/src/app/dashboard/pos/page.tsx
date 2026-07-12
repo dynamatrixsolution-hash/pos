@@ -2463,9 +2463,10 @@ export default function POSPage() {
               </button>
             </div>
 
-            <fieldset disabled={isCheckingOut} className="flex-1 flex flex-col min-h-0 border-0 p-0 m-0">
-              <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 min-h-0 py-1">
-              {/* Detailed Calculations Breakdown */}
+            <fieldset disabled={isCheckingOut} className="border-0 p-0 m-0">
+              <div className="flex flex-col max-h-[72vh]">
+                <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 py-1">
+                {/* Detailed Calculations Breakdown */}
             <div className="bg-[#F3F4F6] dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4 space-y-2 select-none text-xs font-semibold">
               <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                 <span>Sub Total:</span>
@@ -2820,44 +2821,45 @@ export default function POSPage() {
               </div>
             )}
 
-              </div>
+                </div>
 
-              {/* Modal Actions */}
-              <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setPayModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-855 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPayModalOpen(false);
-                    setHoldModalOpen(true);
-                  }}
-                  className="px-4 py-2 border border-amber-250 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs rounded-lg font-bold cursor-pointer flex items-center gap-1"
-                  title="Save this sale as a draft to recall later"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  <span>Save as Draft</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCheckoutSubmit}
-                  disabled={isCheckingOut || (splitType === "METHOD" && remainingOrChange < 0)}
-                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer disabled:cursor-not-allowed animate-in duration-150 flex items-center justify-center gap-1.5 min-w-[140px]"
-                >
-                  {isCheckingOut ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Complete Checkout"
-                  )}
-                </button>
+                {/* Modal Actions */}
+                <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setPayModalOpen(false)}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-855 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayModalOpen(false);
+                      setHoldModalOpen(true);
+                    }}
+                    className="px-4 py-2 border border-amber-250 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs rounded-lg font-bold cursor-pointer flex items-center gap-1"
+                    title="Save this sale as a draft to recall later"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Save as Draft</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCheckoutSubmit}
+                    disabled={isCheckingOut || (splitType === "METHOD" && remainingOrChange < 0)}
+                    className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer disabled:cursor-not-allowed animate-in duration-150 flex items-center justify-center gap-1.5 min-w-[140px]"
+                  >
+                    {isCheckingOut ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Complete Checkout"
+                    )}
+                  </button>
+                </div>
               </div>
             </fieldset>
 
