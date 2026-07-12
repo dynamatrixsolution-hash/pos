@@ -7,7 +7,7 @@ dist
 tsconfig.tsbuildinfo
 
 # Local Environment Variables and Logs
-.env
+# .env
 .env.*
 .env.local
 .env.production
