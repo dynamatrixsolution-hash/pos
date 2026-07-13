@@ -102,7 +102,7 @@ export default function StockMovementsClient() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-bold text-foreground">{movement.reference}</span>
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-secondary">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
                           {movement.type === "STOCK_IN" ? "Purchase" : movement.type === "STOCK_OUT" ? "Sale" : "Transfer"}
                         </span>
                       </div>
@@ -113,7 +113,7 @@ export default function StockMovementsClient() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {movement.items.map((item: any, i: number) => (
-                          <span key={i} className="text-[10px] bg-secondary px-2 py-1 rounded">
+                          <span key={i} className="text-[10px] bg-secondary text-secondary-foreground px-2 py-1 rounded font-medium">
                             {item.name} ({item.qty})
                           </span>
                         ))}

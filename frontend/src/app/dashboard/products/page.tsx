@@ -1054,6 +1054,7 @@ export default function ProductsPage() {
               <div className="flex justify-end gap-2 border-t border-border/60 pt-4 mt-6">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
                   className="h-10 px-5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1061,6 +1062,7 @@ export default function ProductsPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="h-10 px-6 bg-primary text-primary-foreground text-xs font-black rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (

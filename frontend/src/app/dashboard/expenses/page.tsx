@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Tag, Coins, FileText, Calendar, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Tag, Coins, FileText, Calendar, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { toast } from "@/components/toast";
 
@@ -69,7 +69,7 @@ export default function ExpensesPage() {
     handleSubmit,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ExpenseInputs>({
     resolver: zodResolver(expenseFormSchema),
   });
@@ -372,7 +372,7 @@ export default function ExpensesPage() {
                       {e.category.name}
                     </td>
                     <td className="py-3 px-2">
-                      <span className="bg-secondary px-2 py-0.5 rounded text-[10px]">
+                      <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-[10px] font-bold">
                         {e.branch.name}
                       </span>
                     </td>
@@ -530,19 +530,28 @@ export default function ExpensesPage() {
               <div className="flex justify-end gap-2 border-t border-border pt-4">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => {
                     setModalOpen(false);
                     setEditingItem(null);
                   }}
-                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold"
+                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  {editingItem ? "Save Changes" : "Record Voucher"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    editingItem ? "Save Changes" : "Record Voucher"
+                  )}
                 </button>
               </div>
             </form>

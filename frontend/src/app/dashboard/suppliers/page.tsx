@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Store, Receipt, FileText, ArrowUpRight } from "lucide-react";
+import { Search, Plus, Store, Receipt, FileText, ArrowUpRight, Loader2 } from "lucide-react";
 
 interface SupplierItem {
   id: string;
@@ -57,7 +57,7 @@ export default function SuppliersPage() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<SupplierInputs>({
     resolver: zodResolver(supplierSchema),
     defaultValues: {
@@ -379,16 +379,25 @@ export default function SuppliersPage() {
               <div className="flex justify-end gap-2 border-t border-border pt-4">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold"
+                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  Create Profile
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Profile"
+                  )}
                 </button>
               </div>
             </form>

@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Trash2, Calendar, FileText, Truck, ArrowDownCircle } from "lucide-react";
+import { Search, Plus, Trash2, Calendar, FileText, Truck, ArrowDownCircle, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 interface PurchaseItem {
@@ -73,7 +73,7 @@ export default function PurchasesPage() {
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<PurchaseInputs>({
     resolver: zodResolver(purchaseFormSchema),
     defaultValues: {
@@ -567,16 +567,25 @@ export default function PurchasesPage() {
               <div className="flex justify-end gap-2 border-t border-border pt-4">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold cursor-pointer"
+                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  Save Inbound PO
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Saving PO...
+                    </>
+                  ) : (
+                    "Save Inbound PO"
+                  )}
                 </button>
               </div>
             </form>
