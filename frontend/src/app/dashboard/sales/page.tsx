@@ -107,7 +107,7 @@ export default function SalesPage() {
                       {currencySymbol}{sale.paidAmount.toFixed(2)}
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <span className="bg-secondary px-2 py-0.5 rounded font-bold text-[9px]">
+                      <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-bold text-[9px]">
                         {sale.payments && sale.payments.length > 0
                           ? Array.from(new Set(sale.payments.map((p: any) => p.method))).join(", ")
                           : "CREDIT"}

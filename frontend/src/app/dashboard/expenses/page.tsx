@@ -372,7 +372,7 @@ export default function ExpensesPage() {
                       {e.category.name}
                     </td>
                     <td className="py-3 px-2">
-                      <span className="bg-secondary px-2 py-0.5 rounded text-[10px]">
+                      <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-[10px] font-bold">
                         {e.branch.name}
                       </span>
                     </td>
