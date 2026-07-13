@@ -3,7 +3,7 @@ version: "3.8"
 services:
   db:
     image: postgres:15-alpine
-    container_name: dynapos-db
+    container_name: dynaone-db
     restart: always
     environment:
       POSTGRES_USER: abhi
@@ -20,7 +20,7 @@ services:
       dockerfile: Dockerfile
       args:
         - APP_NAME=backend
-    container_name: dynapos-backend
+    container_name: dynaone-backend
     restart: always
     ports:
       - "3001:3000"
@@ -35,7 +35,7 @@ services:
       dockerfile: Dockerfile
       args:
         - APP_NAME=frontend
-    container_name: dynapos-frontend
+    container_name: dynaone-frontend
     restart: always
     ports:
       - "3002:3000"
