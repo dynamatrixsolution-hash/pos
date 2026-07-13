@@ -1490,21 +1490,6 @@ export default function POSPage() {
                         </span>
                       ) : null}
 
-                      {/* Detail overlays for alternate drug suggestion */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDetailsProduct(prod);
-                          setDetailsQuantity(1);
-                          setIsDetailsOpen(true);
-                        }}
-                        className="absolute bottom-16 right-3.5 z-10 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 p-2 rounded-full text-slate-400 hover:text-[#2563EB] opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm cursor-pointer"
-                        title="Alternative Products Suggestions"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                      </button>
-
                       {/* Standard Image Representation exactly like image */}
                       {viewMode !== "compact" ? (
                         <div className="w-full aspect-[4/3] bg-[#f3f4f6] dark:bg-slate-950 rounded-xl flex items-center justify-center overflow-hidden mb-2 select-none shrink-0 border border-slate-200/40 dark:border-slate-800/40 relative">
