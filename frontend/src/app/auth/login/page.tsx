@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { ShoppingBag, Eye, EyeOff, Loader2 } from "lucide-react";
 import { clearCaches } from "@/lib/cache-utils";
 
 const loginSchema = z.object({
@@ -116,12 +116,12 @@ function LoginForm() {
           ? "Server Configuration Error: The authentication secret (AUTH_SECRET) is missing or invalid on the server."
           : (res?.error || "Login failed. Please verify your credentials.");
         setAuthError(errorMsg);
+        setIsLoading(false);
       } else {
         window.location.href = "/dashboard";
       }
     } catch (err) {
       setAuthError("A connection error occurred. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -189,9 +189,16 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg text-xs font-black shadow-lg shadow-primary/25 disabled:opacity-50 transition-all uppercase tracking-wider"
+            className="w-full py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg text-xs font-black shadow-lg shadow-primary/25 disabled:opacity-50 transition-all uppercase tracking-wider flex items-center justify-center gap-1.5"
           >
-            {isLoading ? "Signing in..." : "Access POS"}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Access POS"
+            )}
           </button>
         </form>
 
