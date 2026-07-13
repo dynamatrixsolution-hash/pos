@@ -29,4 +29,4 @@ jobs:
 
       - name: 🐳 Rebuild Docker Containers
         run: |
-          ssh root@${{ secrets.VPS_IP }} "cd /www/wwwroot/dynaone && sudo docker compose up -d --build && sudo docker image prune -f"
+          ssh root@${{ secrets.VPS_IP }} "cd /www/wwwroot/dynapos && sudo docker compose up -d --build && sudo docker image prune -f"
