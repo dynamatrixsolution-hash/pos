@@ -535,7 +535,7 @@ export default function ExpensesPage() {
                     setModalOpen(false);
                     setEditingItem(null);
                   }}
-                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary hover:text-secondary-foreground font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -586,7 +586,7 @@ export default function ExpensesPage() {
                 <button
                   type="button"
                   onClick={() => setCatModalOpen(false)}
-                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary"
+                  className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary hover:text-secondary-foreground"
                 >
                   Cancel
                 </button>

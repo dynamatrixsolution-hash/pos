@@ -297,7 +297,7 @@ export default function ProfilePage() {
                 setSuccessMsg(null);
                 setErrorMsg(null);
               }}
-              className="h-10 px-5 border border-border text-xs font-semibold rounded-xl hover:bg-secondary transition-colors cursor-pointer"
+              className="h-10 px-5 border border-border text-xs font-semibold rounded-xl hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer"
             >
               Reset Fields
             </button>
