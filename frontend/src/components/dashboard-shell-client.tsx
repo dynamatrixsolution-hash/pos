@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { clearCaches } from "@/lib/cache-utils";
 import { navigationConfig, NavItem, Role } from "@/lib/nav-config";
 import {
   LogOut,
@@ -145,6 +146,11 @@ export default function DashboardShellClient({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
   const [logoutLoading, setLogoutLoading] = React.useState(false);
 
+  // Inactivity tracking state
+  const [showInactivityWarning, setShowInactivityWarning] = React.useState(false);
+  const [inactivityCountdown, setInactivityCountdown] = React.useState(30);
+  const lastActivityRef = React.useRef<number>(Date.now());
+
   const [quickNavOpen, setQuickNavOpen] = React.useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<{
@@ -204,6 +210,54 @@ export default function DashboardShellClient({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Inactivity tracking (5 minutes auto-logout with 30 seconds warning modal)
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const resetTimer = () => {
+      lastActivityRef.current = Date.now();
+      setShowInactivityWarning(false);
+    };
+
+    const activityEvents = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, resetTimer, { passive: true });
+    });
+
+    const checkInterval = setInterval(() => {
+      const timeSinceLastActivity = Date.now() - lastActivityRef.current;
+      const inactivityLimit = 5 * 60 * 1000; // 5 minutes (300,000ms)
+      const warningThreshold = inactivityLimit - 30 * 1000; // 4 minutes 30 seconds (270,000ms)
+
+      if (timeSinceLastActivity >= inactivityLimit) {
+        clearInterval(checkInterval);
+        clearCaches();
+        signOut({ callbackUrl: "/auth/login" });
+      } else if (timeSinceLastActivity >= warningThreshold) {
+        setShowInactivityWarning(true);
+        const secondsLeft = Math.ceil((inactivityLimit - timeSinceLastActivity) / 1000);
+        setInactivityCountdown(secondsLeft > 0 ? secondsLeft : 0);
+      } else {
+        setShowInactivityWarning(false);
+      }
+    }, 1000);
+
+    return () => {
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+      clearInterval(checkInterval);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -899,6 +953,7 @@ export default function DashboardShellClient({
                 disabled={logoutLoading}
                 onClick={async () => {
                   setLogoutLoading(true);
+                  clearCaches();
                   await signOut({ callbackUrl: "/auth/login" });
                 }}
                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
@@ -908,6 +963,38 @@ export default function DashboardShellClient({
                 ) : (
                   "Log Out"
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inactivity Warning Modal */}
+      {showInactivityWarning && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0 animate-pulse">
+                <Clock className="h-6 w-6 stroke-[2.5]" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-base font-black text-slate-850 dark:text-slate-100">Inactivity Warning</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                  You have been inactive for a while. You will be logged out automatically in{" "}
+                  <span className="text-red-500 font-extrabold text-sm">{inactivityCountdown}</span> seconds.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2.5 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  lastActivityRef.current = Date.now();
+                  setShowInactivityWarning(false);
+                }}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                Stay Logged In
               </button>
             </div>
           </div>

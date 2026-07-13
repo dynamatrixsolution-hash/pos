@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { clearCaches } from "@/lib/cache-utils";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -32,6 +33,11 @@ function LoginForm() {
   } = useForm<LoginInputs>({
     resolver: zodResolver(loginSchema),
   });
+
+  React.useEffect(() => {
+    // Clear caches on mount when accessing the login page
+    clearCaches();
+  }, []);
 
   React.useEffect(() => {
     if (errorParam === "CredentialsSignin") {
