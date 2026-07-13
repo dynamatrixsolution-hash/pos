@@ -280,7 +280,7 @@ export default function POSPage() {
       invoiceNotes: "",
       tableNumber: "Table 01",
       diningType: "TAKE_AWAY",
-      waiterId: "Waiter 01",
+      waiterId: "Sales Person 01",
       posMode: "RETAIL",
       splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     },
@@ -409,6 +409,19 @@ export default function POSPage() {
       setInitialized(true);
     }
   }, []);
+
+  // Set default salesperson to logged in user once session loads
+  React.useEffect(() => {
+    if (session?.user?.name && initialized) {
+      setActiveOrders((prev) =>
+        prev.map((order) =>
+          order.waiterId === "Waiter 01" || order.waiterId === "Sales Person 01" || order.waiterId === ""
+            ? { ...order, waiterId: session.user?.name || "Sales Person 01" }
+            : order
+        )
+      );
+    }
+  }, [session, initialized]);
 
   // Save to localStorage when state changes after initial sync
   React.useEffect(() => {
@@ -599,7 +612,7 @@ export default function POSPage() {
       invoiceNotes: "",
       tableNumber: "Table 01",
       diningType: "TAKE_AWAY",
-      waiterId: "Waiter 01",
+      waiterId: session?.user?.name || "Sales Person 01",
       posMode: currentOrder.posMode,
       splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
     };
@@ -1166,13 +1179,13 @@ export default function POSPage() {
   };
 
   return (
-    <div className="w-full h-full p-4 print:p-0 bg-[#F3F4F6] print:bg-white dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
+    <div className="w-full h-full p-2 sm:p-4 print:p-0 bg-[#F3F4F6] print:bg-white dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
       
       {/* Dynamic workspace wrapper grid */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 overflow-hidden no-print">
         
         {/* LEFT SECTION (75% screen width): Product grids & Category catalog */}
-        <div className={`flex-1 lg:flex-[3] flex flex-col gap-4 bg-white dark:bg-[#0a0f24] rounded-[32px] p-5 border border-slate-200/50 dark:border-slate-800/80 shadow-sm min-h-0 overflow-hidden ${
+        <div className={`flex-1 lg:flex-[3] flex flex-col gap-4 bg-white dark:bg-[#0a0f24] rounded-2xl lg:rounded-[32px] p-3 lg:p-5 border border-slate-200/50 dark:border-slate-800/80 shadow-sm min-h-0 overflow-hidden ${
           activeMobileTab === "catalog" ? "flex" : "hidden lg:flex"
         }`}>
           
@@ -1183,15 +1196,15 @@ export default function POSPage() {
               {/* Sidebar collapse button */}
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("toggle-pos-sidebar"))}
-                className="bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                className="hidden lg:flex bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 items-center justify-center rounded-xl text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
                 title="Toggle Sidebar"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 dark:text-slate-400"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
               </button>
 
               {/* Modern High-Fidelity Search Wrapper matching the image */}
-              <div className="flex-1 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs h-11 px-3.5">
-                <Search className="h-4.5 w-4.5 text-slate-400 shrink-0 mr-2.5" />
+              <div className="flex-1 min-w-0 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs h-11 px-2 sm:px-3.5">
+                <Search className="h-4.5 w-4.5 text-slate-400 shrink-0 mr-1.5 sm:mr-2.5" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -1201,12 +1214,12 @@ export default function POSPage() {
                   className="flex-1 bg-transparent text-xs text-foreground placeholder-slate-400 focus:outline-none min-w-0 font-medium"
                   suppressHydrationWarning
                 />
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-1.5 sm:ml-2">
                   {/* Inline Barcode Scanner button */}
                   <button
                     type="button"
                     onClick={() => setPosScannerOpen(true)}
-                    className="text-slate-400 hover:text-[#2563EB] cursor-pointer p-1.5 transition-all"
+                    className="text-slate-400 hover:text-[#2563EB] cursor-pointer p-1 sm:p-1.5 transition-all"
                     title="Scan Barcode with Camera (F9)"
                   >
                     <Barcode className="h-4.5 w-4.5" />
@@ -1215,7 +1228,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setDebouncedQuery(searchQuery)}
-                    className="px-4 h-8 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg font-bold text-xs cursor-pointer transition-all shadow-xs"
+                    className="px-2 sm:px-4 h-8 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg font-bold text-[10px] sm:text-xs cursor-pointer transition-all shadow-xs"
                   >
                     Search
                   </button>
@@ -1280,7 +1293,7 @@ export default function POSPage() {
               <div
                 key={tab.id}
                 onClick={() => setCurrentOrderId(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all select-none border ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all select-none border whitespace-nowrap ${
                   tab.id === currentOrderId
                     ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
                     : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-400 border-slate-200 dark:border-slate-800"
@@ -1303,7 +1316,7 @@ export default function POSPage() {
             ))}
             <button
               onClick={handleAddNewOrderTab}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs"
+              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Add New Billing Tab"
             >
               <Plus className="h-4 w-4" /> Add Tab
@@ -1311,7 +1324,7 @@ export default function POSPage() {
             <button
               type="button"
               onClick={() => setRecallModalOpen(true)}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs"
+              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Recall Suspended Bills (F4)"
             >
               <FileText className="h-4 w-4 text-emerald-500" /> Drafts ({heldBills.length})
@@ -1429,10 +1442,10 @@ export default function POSPage() {
             ) : (
               /* Grid Layout Views */
               <div
-                className={`grid gap-4 ${
+                className={`grid gap-2 sm:gap-4 ${
                   viewMode === "compact"
-                    ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
-                    : "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4"
+                    ? "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-9"
+                    : "grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
                 }`}
               >
                 {filteredProducts.slice(0, visibleCount).map((prod) => {
@@ -1467,12 +1480,12 @@ export default function POSPage() {
                       {/* Stock Level Warning indicators */}
                       {stock <= 0 ? (
                         viewMode === "compact" && (
-                          <span className="absolute top-2.5 right-2.5 bg-red-500 text-white font-extrabold text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs z-10">
+                          <span className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 bg-red-500 text-white font-extrabold text-[7px] sm:text-[8px] uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs z-10">
                             OUT
                           </span>
                         )
                       ) : stock <= prod.alertQuantity ? (
-                        <span className="absolute top-2.5 right-2.5 bg-amber-500 text-white font-extrabold text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs z-10">
+                        <span className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 bg-amber-500 text-white font-extrabold text-[7px] sm:text-[8px] uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs z-10">
                           LOW
                         </span>
                       ) : null}
@@ -1496,7 +1509,7 @@ export default function POSPage() {
                       {viewMode !== "compact" ? (
                         <div className="w-full aspect-[4/3] bg-[#f3f4f6] dark:bg-slate-950 rounded-xl flex items-center justify-center overflow-hidden mb-2 select-none shrink-0 border border-slate-200/40 dark:border-slate-800/40 relative">
                           {stock <= 0 && (
-                            <span className="absolute top-2.5 right-2.5 bg-red-500 text-white font-extrabold text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md shadow-xs z-10 select-none">
+                            <span className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 bg-red-500 text-white font-extrabold text-[7px] sm:text-[8px] uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs z-10 select-none">
                               OUT
                             </span>
                           )}
@@ -1507,7 +1520,7 @@ export default function POSPage() {
                               className="max-h-[85%] max-w-[85%] object-contain transition-transform group-hover:scale-105 duration-250"
                             />
                           ) : (
-                            <div className="w-10 h-10 flex items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-purple-400 text-xs font-black uppercase tracking-wider select-none">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-purple-400 text-[10px] sm:text-xs font-black uppercase tracking-wider select-none animate-fade-in">
                               {prod.name.slice(0, 2)}
                             </div>
                           )}
@@ -1519,25 +1532,25 @@ export default function POSPage() {
 
                       {/* Product text details */}
                       <div className="space-y-1 text-left w-full mt-1.5">
-                        <h4 className={`font-extrabold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 tracking-tight ${
-                          viewMode === "compact" ? "text-[10px]" : "text-xs"
+                        <h4 className={`font-extrabold text-slate-800 dark:text-slate-100 leading-tight line-clamp-2 tracking-tight ${
+                          viewMode === "compact" ? "text-[9px] sm:text-[10px]" : "text-[10px] sm:text-xs"
                         }`}>
                           {prod.name}
                         </h4>
-                        <div className="flex justify-between items-center pt-1">
-                          <span className="text-xs font-black text-[#2563EB] dark:text-purple-400">
+                        <div className="flex justify-between items-center gap-1 pt-1">
+                          <span className="text-[10px] sm:text-xs font-black text-[#2563EB] dark:text-purple-400 whitespace-nowrap">
                             {currencySymbol}{prod.sellingPrice.toFixed(2)}
                           </span>
                           
                           {/* Circular plus button */}
                           <div 
-                            className="w-6 h-6 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white flex items-center justify-center transition-all shadow-xs shrink-0 active:scale-90"
+                            className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white flex items-center justify-center transition-all shadow-xs shrink-0 active:scale-90 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               addToCart(prod);
                             }}
                           >
-                            <Plus className="h-3.5 w-3.5 stroke-[3px]" />
+                            <Plus className="h-3 sm:h-3.5 w-3 sm:w-3.5 stroke-[3px]" />
                           </div>
                         </div>
                       </div>
@@ -1563,8 +1576,8 @@ export default function POSPage() {
         </div>
 
         {/* RIGHT SECTION (25% screen width): Billing checkout panel */}
-        <div className={`w-full lg:w-[400px] flex flex-col bg-white dark:bg-[#0a0f24] border border-slate-200/60 dark:border-slate-800 rounded-[32px] p-5 min-h-0 overflow-hidden shadow-xs shrink-0 no-print ${
-          activeMobileTab === "cart" ? "flex" : "hidden lg:flex"
+        <div className={`w-full lg:w-[400px] flex flex-col bg-white dark:bg-[#0a0f24] border border-slate-200/60 dark:border-slate-800 rounded-2xl lg:rounded-[32px] p-3 lg:p-5 min-h-0 overflow-hidden shadow-xs shrink-0 no-print ${
+          activeMobileTab === "cart" ? "flex-1 flex" : "hidden lg:flex"
         }`}>
           
           {/* Metadata information card */}
@@ -1670,11 +1683,9 @@ export default function POSPage() {
                   className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-slate-500 focus:outline-none appearance-none cursor-pointer"
                 >
                   <option value="">Select Sales Person</option>
-                  {Array.from({ length: 8 }, (_, i) => `Sales Person ${String(i + 1).padStart(2, "0")}`).map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
+                  {session?.user?.name && (
+                    <option value={session.user.name}>{session.user.name} (You)</option>
+                  )}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               </div>
@@ -1839,14 +1850,14 @@ export default function POSPage() {
                               (val) => updateItemNotes(item.id, val)
                             );
                           }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.notes
                               ? "bg-[#2563EB]/10 border-transparent text-[#2563EB] dark:text-purple-400"
                               : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"
                           }`}
                           title="Add Item Comments"
                         >
-                          <FileText className="h-3.5 w-3.5" />
+                          <FileText className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
                           <span>Add Note</span>
                         </button>
 
@@ -1860,7 +1871,7 @@ export default function POSPage() {
                               (val) => updateItemDiscount(item.id, parseFloat(val) || 0)
                             );
                           }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.discount > 0
                               ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-250 dark:border-emerald-500/30 text-emerald-600"
                               : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"

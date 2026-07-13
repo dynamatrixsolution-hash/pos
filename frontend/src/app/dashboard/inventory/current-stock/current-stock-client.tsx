@@ -115,7 +115,7 @@ export default function CurrentStockClient() {
           <button
             onClick={exportToCSV}
             disabled={stocks.length === 0}
-            className="px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground disabled:opacity-50 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <Download className="h-4 w-4" />
             Export CSV

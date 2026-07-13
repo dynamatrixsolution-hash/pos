@@ -463,7 +463,7 @@ export default function DashboardShellClient({
                       <div className="flex items-center justify-center p-1 bg-[#2563EB]/10 dark:bg-[#2563EB]/20 rounded-lg text-[#2563EB] dark:text-purple-400 shrink-0">
                         <Store className="h-3.5 w-3.5" />
                       </div>
-                      <span className="max-w-[80px] sm:max-w-[120px] truncate text-slate-800 dark:text-slate-200 font-extrabold">{activeBranch.name}</span>
+                      <span className="max-w-[80px] sm:max-w-[120px] truncate text-slate-800 dark:text-slate-200 font-extrabold whitespace-nowrap inline-block">{activeBranch.name}</span>
                       <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                     </button>
                     {branchDropdownOpen && (
@@ -479,12 +479,12 @@ export default function DashboardShellClient({
                               onClick={() => handleBranchSwitch(branch)}
                               className={`flex items-center justify-between w-full text-left px-3 py-2.5 text-xs rounded-xl transition-colors cursor-pointer ${
                                 activeBranch.id === branch.id
-                                  ? "bg-[#2563EB]/10 text-[#2563EB] font-bold"
+                                  ? "bg-[#2563EB] text-white font-bold"
                                   : "hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-300"
                               }`}
                             >
                               {branch.name}
-                              {branch.isMain && <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md">Main</span>}
+                              {branch.isMain && <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md whitespace-nowrap">Main</span>}
                             </button>
                           ))}
                         </div>
@@ -497,7 +497,7 @@ export default function DashboardShellClient({
                     <div className="flex items-center justify-center p-1 bg-[#2563EB]/10 dark:bg-[#2563EB]/20 rounded-lg text-[#2563EB] dark:text-purple-400 shrink-0">
                       <Store className="h-3.5 w-3.5" />
                     </div>
-                    <span className="max-w-[80px] sm:max-w-[120px] truncate text-slate-800 dark:text-slate-200 font-extrabold">{activeBranch.name}</span>
+                    <span className="max-w-[80px] sm:max-w-[120px] truncate text-slate-800 dark:text-slate-200 font-extrabold whitespace-nowrap inline-block">{activeBranch.name}</span>
                   </div>
                 )}
               </div>
@@ -812,7 +812,7 @@ export default function DashboardShellClient({
           </div>
         </header>
 
-        <main className={`flex-1 overflow-y-auto bg-background relative ${isPosRoute ? "p-0" : "p-4 md:p-6"}`}>
+        <main className={`flex-1 ${isPosRoute ? "overflow-hidden h-full" : "overflow-y-auto"} bg-background relative ${isPosRoute ? "p-0" : "p-4 md:p-6"}`}>
           {children}
         </main>
       </div>
