@@ -354,11 +354,9 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                    <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart width={48} height={24} data={sparklineData}>
+                    <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                  </LineChart>
                 )}
               </div>
             </div>
@@ -386,11 +384,9 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                    <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart width={48} height={24} data={sparklineData}>
+                    <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={false} />
+                  </LineChart>
                 )}
               </div>
             </div>
@@ -418,11 +414,9 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                    <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart width={48} height={24} data={sparklineData}>
+                    <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
+                  </LineChart>
                 )}
               </div>
             </div>
@@ -450,11 +444,9 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                    <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart width={48} height={24} data={sparklineData}>
+                    <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
+                  </LineChart>
                 )}
               </div>
             </div>
@@ -482,11 +474,9 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                    <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart width={48} height={24} data={sparklineData}>
+                    <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
+                  </LineChart>
                 )}
               </div>
             </div>

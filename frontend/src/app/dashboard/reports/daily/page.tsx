@@ -228,7 +228,7 @@ export default function DailyReportsPage() {
               <h3 className="text-xs font-bold mb-3">Daily Sales by Payment Channel</h3>
               <div className="h-48 w-full flex items-center justify-center">
                 {reportData.sales.byPaymentMethod.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <BarChart data={reportData.sales.byPaymentMethod}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="method" fontSize={10} />
