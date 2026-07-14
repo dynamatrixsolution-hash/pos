@@ -8,8 +8,8 @@ export async function GET(request: Request) {
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
-    // 1. Fetch all tenant subscriptions (excluding platform-admin itself)
-    const subscriptions = await db.subscription.findMany({
+    // 1. Fetch all payments across businesses (excluding platform-admin itself)
+    const payments = await db.payment.findMany({
       where: {
         business: { slug: { not: "platform-admin" } },
       },
@@ -19,45 +19,21 @@ export async function GET(request: Request) {
         },
       },
       orderBy: { createdAt: "desc" },
+      take: 100,
     });
 
-    // Format SaaS transaction logs representing SaaS Service fees collected from businesses
-    const transactionLogs = subscriptions.map((sub, idx) => {
-      let setupPrice = 4999;
-      let monthlyPrice = 499;
-      const planUpper = sub.plan.toUpperCase();
-      if (planUpper.includes("FREE") || planUpper.includes("TRIAL")) {
-        setupPrice = 0;
-        monthlyPrice = 0;
-      } else if (planUpper.includes("PROFESSIONAL") || planUpper.includes("PREMIUM")) {
-        setupPrice = 11999;
-        monthlyPrice = 999;
-      } else if (planUpper.includes("ENTERPRISE")) {
-        setupPrice = 24999;
-        monthlyPrice = 1499;
-      } else if (planUpper.includes("BASIC") || planUpper.includes("STARTER")) {
-        setupPrice = 4999;
-        monthlyPrice = 499;
-      }
-
-      const diffTime = Math.abs(sub.endDate.getTime() - sub.startDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const durationMonths = Math.max(1, Math.round(diffDays / 30));
-
-      const amount = setupPrice + (monthlyPrice * durationMonths);
-
-      return {
-        id: `saas-tx-${sub.id.substring(0, 8)}`,
-        businessName: sub.business?.name || "Unknown Merchant",
-        plan: sub.plan,
-        amount: amount,
-        currency: "NPR", // Platform service is billed in NPR (Rs.)
-        method: "BANK_TRANSFER",
-        transactionId: `SUB-${1000 + idx}`,
-        date: sub.startDate.toISOString(),
-        status: sub.status === "ACTIVE" ? "Paid" : "Failed",
-      };
-    });
+    // Format transaction logs
+    const transactionLogs = payments.map((p) => ({
+      id: p.id,
+      businessName: p.business?.name || "Unknown Merchant",
+      plan: p.remarks && p.remarks.toLowerCase().includes("plan") ? p.remarks.split(" ").slice(-1)[0] : "BASIC",
+      amount: p.amount,
+      currency: p.business?.currency || "NPR",
+      method: p.method,
+      transactionId: p.receiptNumber || p.id.split("-")[0].toUpperCase(),
+      date: p.createdAt.toISOString(),
+      status: p.type === "RECEIVED" ? "Paid" : "Refunded", // Map RECEIVED -> Paid
+    }));
 
     // If empty, generate standard mock payments to populate logs realistically
     if (transactionLogs.length === 0) {
@@ -66,10 +42,10 @@ export async function GET(request: Request) {
           id: "tx-1",
           businessName: "DynaPOS Retail Demo",
           plan: "ENTERPRISE",
-          amount: 24999.00 + (1499.00 * 12),
+          amount: 1499.00,
           currency: "NPR",
           method: "CARD",
-          transactionId: "SUB-1000",
+          transactionId: "TXN89124",
           date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
           status: "Paid",
         },
@@ -77,10 +53,10 @@ export async function GET(request: Request) {
           id: "tx-2",
           businessName: "Apex Retailers Ltd.",
           plan: "PROFESSIONAL",
-          amount: 11999.00 + (999.00 * 12),
+          amount: 999.00,
           currency: "NPR",
           method: "BANK_TRANSFER",
-          transactionId: "SUB-1001",
+          transactionId: "TXN77103",
           date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(), // 4 days ago
           status: "Paid",
         },
@@ -88,10 +64,10 @@ export async function GET(request: Request) {
           id: "tx-3",
           businessName: "Metropolitan Supermarket",
           plan: "BASIC",
-          amount: 4999.00 + (499.00 * 12),
+          amount: 499.00,
           currency: "NPR",
           method: "CARD",
-          transactionId: "SUB-1002",
+          transactionId: "TXN55092",
           date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
           status: "Failed",
         },
@@ -99,10 +75,10 @@ export async function GET(request: Request) {
           id: "tx-4",
           businessName: "Unity Pharmacy Network",
           plan: "ENTERPRISE",
-          amount: 24999.00 + (1499.00 * 12),
+          amount: 1499.00,
           currency: "NPR",
           method: "BANK_TRANSFER",
-          transactionId: "SUB-1003",
+          transactionId: "TXN99014",
           date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
           status: "Paid",
         }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Search, TrendingUp, Calendar, ArrowRight, User } from "lucide-react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useSettings } from "@/components/settings-provider";
 
 interface SaleItem {
@@ -24,13 +25,28 @@ export default function SalesPage() {
   const [search, setSearch] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(true);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const loadSales = React.useCallback(async () => {
     try {
+      if (isLoading) {
+        const cached = sessionStorage.getItem("cached_sales");
+        if (cached) {
+          try {
+            setSales(JSON.parse(cached));
+            setIsLoading(false);
+          } catch (_) {}
+        }
+      }
       setIsLoading(true);
       const res = await fetch(`/api/v1/sales?limit=50&search=${search}`);
       if (res.ok) {
         const data = await res.json();
-        setSales(data.sales || []);
+        const salesList = data.sales || [];
+        setSales(salesList);
+        sessionStorage.setItem("cached_sales", JSON.stringify(salesList));
       }
     } catch (err) {
       console.error("Failed to load sales log:", err);
@@ -44,13 +60,9 @@ export default function SalesPage() {
   }, [loadSales]);
 
   React.useEffect(() => {
-    const handleGlobalSearch = (e: Event) => {
-      const q = (e as CustomEvent).detail;
-      setSearch(q);
-    };
-    window.addEventListener("global-search", handleGlobalSearch);
-    return () => window.removeEventListener("global-search", handleGlobalSearch);
-  }, []);
+    const urlSearch = searchParams?.get("search") || "";
+    setSearch(urlSearch);
+  }, [searchParams]);
 
   return (
     <div className="space-y-6">
@@ -73,7 +85,17 @@ export default function SalesPage() {
             type="text"
             placeholder="Search by invoice number or customer name..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearch(val);
+              const params = new URLSearchParams(window.location.search);
+              if (val) {
+                params.set("search", val);
+              } else {
+                params.delete("search");
+              }
+              router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            }}
             className="pl-10 w-full px-4 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>

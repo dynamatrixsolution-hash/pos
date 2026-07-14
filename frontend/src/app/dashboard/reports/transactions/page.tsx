@@ -149,7 +149,69 @@ export default function TransactionReportsPage() {
   };
 
   const exportPDF = () => {
-    window.print();
+    if (items.length === 0) return toast.warning("No transactions to export");
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(6, 78, 59);
+    doc.text(`DynaPOS - ${activeTab.toUpperCase()} Transactions Report`, 14, 20);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
+    
+    let y = 35;
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(240, 240, 240);
+    doc.rect(14, y, 182, 7, "F");
+    doc.setTextColor(50, 50, 50);
+    doc.text("Date/Time", 16, y + 5);
+    doc.text("Invoice No", 55, y + 5);
+    doc.text("Customer", 85, y + 5);
+    doc.text("Payment", 125, y + 5);
+    doc.text("Status", 155, y + 5);
+    doc.text("Amount", 175, y + 5);
+    
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    
+    items.forEach((item) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+        doc.setFillColor(240, 240, 240);
+        doc.rect(14, y, 182, 7, "F");
+        doc.setFont("helvetica", "bold");
+        doc.text("Date/Time", 16, y + 5);
+        doc.text("Invoice No", 55, y + 5);
+        doc.text("Customer", 85, y + 5);
+        doc.text("Payment", 125, y + 5);
+        doc.text("Status", 155, y + 5);
+        doc.text("Amount", 175, y + 5);
+        y += 7;
+        doc.setFont("helvetica", "normal");
+      }
+      
+      const dateVal = new Date(item.createdAt).toLocaleDateString() + " " + new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const invVal = item.invoiceNumber || item.purchaseNumber || "N/A";
+      const custVal = item.customer?.name || item.customerName || item.supplier?.name || "Walk-in Customer";
+      const payVal = formatMethod(item.paymentMethod);
+      const statVal = item.paymentStatus;
+      const amtVal = `${currencySymbol}${item.total.toFixed(2)}`;
+      
+      doc.text(dateVal, 16, y + 5);
+      doc.text(invVal, 55, y + 5);
+      doc.text(custVal.slice(0, 18), 85, y + 5);
+      doc.text(payVal, 125, y + 5);
+      doc.text(statVal, 155, y + 5);
+      doc.text(amtVal, 175, y + 5);
+      doc.line(14, y + 7, 196, y + 7);
+      y += 7;
+    });
+    
+    doc.save(`transactions_${activeTab}.pdf`);
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -335,7 +397,7 @@ export default function TransactionReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+        <div className="flex flex-row items-center gap-3 overflow-x-auto w-full xl:w-auto pb-1 xl:pb-0 scrollbar-none">
           {/* Preset parameters */}
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
             <Calendar className="h-4 w-4 text-[#2563EB]" />

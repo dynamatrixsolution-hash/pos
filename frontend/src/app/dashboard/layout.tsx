@@ -29,6 +29,7 @@ export default async function DashboardLayout({
       headers: {
         Cookie: cookieHeader,
       },
+      next: { revalidate: 0 }, // Ensure it's not cached static
     });
 
     if (res.ok) {
