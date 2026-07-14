@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 
 const saleItemSchema = z.object({
@@ -125,6 +125,30 @@ export async function POST(request: Request) {
         { error: "A registered customer must be selected to complete a credit transaction." },
         { status: 400 }
       );
+    }
+    // Check monthly transaction limit
+    const limits = await getBusinessLimits(context.businessId);
+    if (limits) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      const monthlySalesCount = await db.sale.count({
+        where: {
+          businessId: context.businessId,
+          createdAt: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+      });
+
+      if (monthlySalesCount >= limits.transactions) {
+        return NextResponse.json(
+          { error: `Monthly transaction limit reached. Your subscription allows a maximum of ${limits.transactions} transactions per month. Please upgrade your plan.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Execute the complete sale pipeline in a single database transaction

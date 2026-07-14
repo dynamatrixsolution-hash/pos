@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
 import crypto from "crypto";
@@ -204,6 +204,19 @@ export async function POST(request: Request) {
           createdAt: now,
           updatedAt: now,
         });
+      }
+    }
+    // Check product limits
+    const limits = await getBusinessLimits(businessId);
+    if (limits) {
+      const currentProductsCount = await db.product.count({
+        where: { businessId, deletedAt: null },
+      });
+      if (currentProductsCount + productsToInsert.length > limits.products) {
+        return NextResponse.json(
+          { error: `Product limit exceeded. Your subscription plan allows a maximum of ${limits.products} products. You currently have ${currentProductsCount} products and are attempting to import ${productsToInsert.length} new products.` },
+          { status: 400 }
+        );
       }
     }
 

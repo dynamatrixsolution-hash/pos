@@ -44,6 +44,11 @@ export default function SubscriptionManagementPage() {
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [limits, setLimits] = useState<Record<string, Record<string, number>>>({});
   const [currencies, setCurrencies] = useState<CurrencyItem[]>([]);
+
+  const getCurrencySymbol = (code: string) => {
+    const c = currencies.find(curr => curr.code === code);
+    return c ? c.symbol : "$";
+  };
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -282,7 +287,7 @@ export default function SubscriptionManagementPage() {
                     <h3 className="text-base font-black text-slate-800">{p.name}</h3>
                     <p className="text-xs text-slate-450 mt-1 min-h-[40px]">{p.desc}</p>
                     <div className="mt-4 border-t border-slate-100 pt-4">
-                      <span className="text-3xl font-black text-blue-600">${p.price}</span>
+                      <span className="text-3xl font-black text-blue-600">{getCurrencySymbol(p.currency)}{p.price}</span>
                       <span className="text-xs text-slate-450 ml-1">/ {p.duration}</span>
                     </div>
                   </div>
@@ -339,7 +344,7 @@ export default function SubscriptionManagementPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Base Price ($)</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Base Price ({getCurrencySymbol(planCurrency)})</label>
                     <input
                       type="number"
                       value={planPrice}
@@ -356,6 +361,18 @@ export default function SubscriptionManagementPage() {
                       placeholder="e.g. 1 Month"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
                     />
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Currency</label>
+                    <select
+                      value={planCurrency}
+                      onChange={(e) => setPlanCurrency(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white font-bold"
+                    >
+                      {currencies.filter(c => c.allowed).map(c => (
+                        <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

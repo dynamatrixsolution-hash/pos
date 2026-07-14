@@ -47,3 +47,45 @@ export function roleErrorResponse() {
     { status: 403 }
   );
 }
+
+export async function getBusinessLimits(businessId: string) {
+  const business = await db.business.findUnique({
+    where: { id: businessId },
+    include: { subscription: true },
+  });
+
+  if (!business || !business.subscription) {
+    return null;
+  }
+
+  const planName = business.subscription.plan || "STARTER";
+  
+  // Load platform-admin configurations
+  const platform = await db.business.findUnique({
+    where: { slug: "platform-admin" },
+    select: { settings: true },
+  });
+
+  const platformSettings = (platform?.settings as any) || {};
+  const defaultLimits = platformSettings.limits || {
+    Starter: { users: 1, branches: 1, products: 100, warehouses: 1, devices: 1, transactions: 100 },
+    Professional: { users: 5, branches: 2, products: 1000, warehouses: 2, devices: 2, transactions: 1000 },
+    Enterprise: { users: 20, branches: 5, products: 999999, warehouses: 5, devices: 5, transactions: 999999 },
+  };
+
+  // Find limitKey matching the plan case-insensitively
+  const limitKey = Object.keys(defaultLimits).find(k => k.toUpperCase() === planName.toUpperCase()) || "Starter";
+  const planLimits = defaultLimits[limitKey] || { users: 1, branches: 1, products: 100, warehouses: 1, devices: 1, transactions: 100 };
+
+  const customLimits = (business.settings as any)?.customLimits || {};
+
+  return {
+    users: customLimits.users !== undefined && customLimits.users !== null ? Number(customLimits.users) : Number(planLimits.users || planLimits.userLimit || 1),
+    branches: customLimits.branches !== undefined && customLimits.branches !== null ? Number(customLimits.branches) : Number(planLimits.branches || planLimits.branchLimit || 1),
+    warehouses: customLimits.warehouses !== undefined && customLimits.warehouses !== null ? Number(customLimits.warehouses) : Number(planLimits.warehouses || 1),
+    products: customLimits.products !== undefined && customLimits.products !== null ? Number(customLimits.products) : Number(planLimits.products || 100),
+    transactions: customLimits.transactions !== undefined && customLimits.transactions !== null ? Number(customLimits.transactions) : Number(planLimits.transactions || 100),
+    devices: customLimits.devices !== undefined && customLimits.devices !== null ? Number(customLimits.devices) : Number(planLimits.devices || 1),
+  };
+}
+

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 
 const branchSchema = z.object({
@@ -64,13 +64,9 @@ export async function POST(request: Request) {
 
     const { name, phone, address } = result.data;
 
-    // Check branch limits in subscription
-    const business = await db.business.findUnique({
-      where: { id: context.businessId },
-      include: { subscription: true },
-    });
-
-    if (!business || !business.subscription) {
+    // Check branch and warehouse limits in subscription
+    const limits = await getBusinessLimits(context.businessId);
+    if (!limits) {
       return NextResponse.json({ error: "Active subscription not found" }, { status: 400 });
     }
 
@@ -78,9 +74,20 @@ export async function POST(request: Request) {
       where: { businessId: context.businessId, deletedAt: null },
     });
 
-    if (branchCount >= business.subscription.branchLimit) {
+    if (branchCount >= limits.branches) {
       return NextResponse.json(
-        { error: `Branch limit reached. Your subscription plan "${business.subscription.plan}" allows a maximum of ${business.subscription.branchLimit} branches. Please upgrade your plan.` },
+        { error: `Branch limit reached. Your subscription allows a maximum of ${limits.branches} branches. Please upgrade your plan.` },
+        { status: 403 }
+      );
+    }
+
+    const warehouseCount = await db.branch.count({
+      where: { businessId: context.businessId, isMain: false, deletedAt: null },
+    });
+
+    if (warehouseCount >= limits.warehouses) {
+      return NextResponse.json(
+        { error: `Warehouse limit reached. Your subscription allows a maximum of ${limits.warehouses} warehouses. Please upgrade your plan.` },
         { status: 403 }
       );
     }

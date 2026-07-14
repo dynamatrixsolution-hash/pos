@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getBusinessLimits } from "@/lib/api-helper";
 
 export async function POST(request: Request) {
   try {
@@ -21,8 +22,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // If no device is currently registered, bind this device on first login
+    // If no device is currently registered, bind this device on first login if under limits
     if (!user.allowedDeviceId) {
+      const limits = await getBusinessLimits(user.businessId);
+      if (limits) {
+        const deviceCount = await db.user.count({
+          where: {
+            businessId: user.businessId,
+            allowedDeviceId: { not: null },
+            deletedAt: null,
+          },
+        });
+        if (deviceCount >= limits.devices) {
+          return NextResponse.json({
+            success: false,
+            error: "DEVICE_LIMIT_REACHED",
+            message: `Terminal device registration limit reached for your business. Your plan allows a maximum of ${limits.devices} registered devices. Please upgrade your subscription or contact support.`,
+          });
+        }
+      }
+
       await db.user.update({
         where: { id: user.id },
         data: {
