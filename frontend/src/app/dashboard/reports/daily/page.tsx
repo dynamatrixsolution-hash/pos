@@ -406,7 +406,7 @@ export default function DailyReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-row items-center gap-3 overflow-x-auto w-full xl:w-auto pb-1 xl:pb-0 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           {/* Preset parameters */}
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
             <Calendar className="h-4 w-4 text-[#2563EB]" />

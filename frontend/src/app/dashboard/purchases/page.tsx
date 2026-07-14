@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Trash2, Calendar, FileText, Truck, ArrowDownCircle, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 interface PurchaseItem {
   id: string;
@@ -67,10 +66,6 @@ export default function PurchasesPage() {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
   const {
     register,
     handleSubmit,
@@ -104,15 +99,6 @@ export default function PurchasesPage() {
 
   const loadData = React.useCallback(async () => {
     try {
-      if (isLoading) {
-        const cached = sessionStorage.getItem("cached_purchases");
-        if (cached) {
-          try {
-            setPurchases(JSON.parse(cached));
-            setIsLoading(false);
-          } catch (_) {}
-        }
-      }
       setIsLoading(true);
       const [purRes, supRes, prodRes] = await Promise.all([
         fetch(`/api/v1/purchases?limit=50&search=${search}`),
@@ -122,9 +108,7 @@ export default function PurchasesPage() {
       
       if (purRes.ok) {
         const data = await purRes.json();
-        const purchaseList = data.purchases || [];
-        setPurchases(purchaseList);
-        sessionStorage.setItem("cached_purchases", JSON.stringify(purchaseList));
+        setPurchases(data.purchases || []);
       }
       if (supRes.ok) {
         const data = await supRes.json();
@@ -144,11 +128,6 @@ export default function PurchasesPage() {
   React.useEffect(() => {
     loadData();
   }, [loadData]);
-
-  React.useEffect(() => {
-    const urlSearch = searchParams?.get("search") || "";
-    setSearch(urlSearch);
-  }, [searchParams]);
 
   const onProductChange = (index: number, productId: string) => {
     const prod = products.find((p) => p.id === productId);
@@ -224,17 +203,7 @@ export default function PurchasesPage() {
             type="text"
             placeholder="Search purchases by reference PO number..."
             value={search}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSearch(val);
-              const params = new URLSearchParams(window.location.search);
-              if (val) {
-                params.set("search", val);
-              } else {
-                params.delete("search");
-              }
-              router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10 w-full px-4 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>

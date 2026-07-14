@@ -3,7 +3,7 @@
 import * as React from "react";
 import ToastContainer from "@/components/toast";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearCaches } from "@/lib/cache-utils";
@@ -137,8 +137,6 @@ export default function DashboardShellClient({
   features?: Record<string, boolean>;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { update } = useSession();
   
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -213,11 +211,6 @@ export default function DashboardShellClient({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  React.useEffect(() => {
-    const searchVal = searchParams?.get("search") || "";
-    setHeaderSearchQuery(searchVal);
-  }, [searchParams]);
 
   // Inactivity tracking (5 minutes auto-logout with 30 seconds warning modal)
   React.useEffect(() => {
@@ -576,16 +569,8 @@ export default function DashboardShellClient({
                       placeholder="Search products, pages, customers, suppliers..."
                       value={headerSearchQuery}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setHeaderSearchQuery(val);
+                        setHeaderSearchQuery(e.target.value);
                         setShowSearchDropdown(true);
-                        const params = new URLSearchParams(window.location.search);
-                        if (val) {
-                          params.set("search", val);
-                        } else {
-                          params.delete("search");
-                        }
-                        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
                       className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
@@ -1015,31 +1000,6 @@ export default function DashboardShellClient({
           </div>
         </div>
       )}
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-border flex items-center justify-around px-2 py-2 pb-safe z-40 no-print">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 p-2 text-primary">
-          <Store className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Dashboard</span>
-        </Link>
-        <Link href="/dashboard/pos" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
-          <ShoppingCart className="h-5 w-5" />
-          <span className="text-[9px] font-bold">POS</span>
-        </Link>
-        <div className="relative -top-5">
-          <Link href="/dashboard/products" className="flex flex-col items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg border-4 border-background hover:scale-105 transition-transform" aria-label="Add Product">
-            <Package className="h-5 w-5" />
-          </Link>
-        </div>
-        <Link href="/dashboard/reports" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
-          <Calculator className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Reports</span>
-        </Link>
-        <Link href="/dashboard/profile" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
-          <User className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Profile</span>
-        </Link>
-      </div>
-
       <ToastContainer />
     </div>
   );
