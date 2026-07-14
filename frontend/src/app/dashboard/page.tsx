@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = React.useState<TransactionMeta[]>([]);
   const [topProducts, setTopProducts] = React.useState<TopProductMeta[]>([]);
   const [chartData, setChartData] = React.useState<any[]>([]);
+  const [categoryData, setCategoryData] = React.useState<any[]>([]);
   const [branches, setBranches] = React.useState<any[]>([]);
   const [activeBranchName, setActiveBranchName] = React.useState("Downtown Supermart");
   
@@ -110,6 +111,7 @@ export default function DashboardPage() {
         setTransactions(data.recentTransactions || []);
         setTopProducts(data.topSellingProducts || []);
         setChartData(data.salesChart || []);
+        setCategoryData(data.salesByCategory || []);
       }
       if (branchRes.ok) {
         const data = await branchRes.json();
@@ -154,6 +156,7 @@ export default function DashboardPage() {
           setTransactions(data.recentTransactions || []);
           setTopProducts(data.topSellingProducts || []);
           setChartData(data.salesChart || []);
+          setCategoryData(data.salesByCategory || []);
         }
         if (branchRes.ok) {
           const data = await branchRes.json();
@@ -172,28 +175,63 @@ export default function DashboardPage() {
   }, [sessionStatus, userRole]);
 
   if (sessionStatus === "loading" || isLoading) {
-    return <div className="h-full flex items-center justify-center p-8"><RefreshCw className="w-8 h-8 animate-spin text-primary opacity-50" /></div>;
+    return (
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-24 md:pb-6 animate-pulse px-4 md:px-0 mt-4 md:mt-0">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+          <div>
+            <div className="h-8 w-48 bg-slate-200 rounded-md mb-2"></div>
+            <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-40 bg-slate-200 rounded-xl"></div>
+            <div className="h-10 w-10 bg-slate-200 rounded-xl"></div>
+          </div>
+        </div>
+
+        {/* 5 Metric Cards Skeleton */}
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="bg-slate-200 border border-slate-100 p-5 rounded-2xl h-[130px]"></div>
+          ))}
+        </div>
+
+        {/* Mobile Metric Cards Skeleton */}
+        <div className="md:hidden grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-slate-200 rounded-2xl h-[100px]"></div>
+          ))}
+        </div>
+
+        {/* Charts and Lists Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-slate-200 rounded-3xl h-[400px]"></div>
+          <div className="bg-slate-200 rounded-3xl h-[400px]"></div>
+        </div>
+
+        {/* Bottom Section Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-slate-200 rounded-3xl h-[300px]"></div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (userRole === "SUPER_ADMIN") {
     return <SuperAdminDashboard />;
   }
 
-  // Mock Category Data based on Top Products for visual presentation
-  const categoryData = [
-    { name: "Electronics", value: 45 },
-    { name: "Accessories", value: 25 },
-    { name: "Wearables", value: 15 },
-    { name: "Home Appliances", value: 10 },
-    { name: "Others", value: 5 },
-  ];
-
-  // Mock Business Analytics
+  // Dynamic Business Analytics
+  const aov = (metrics?.totalSales && metrics?.ordersCount) ? (metrics.totalSales / metrics.ordersCount) : 0;
+  const grossMargin = (metrics?.totalSales && metrics?.grossProfit) ? ((metrics.grossProfit / metrics.totalSales) * 100) : 0;
+  
   const businessAnalytics = [
-    { label: "Average Order Value", value: "₹1,980", trend: "+10.2%" },
-    { label: "Conversion Rate", value: "3.42%", trend: "+6.5%" },
-    { label: "Customer Retention", value: "78.6%", trend: "+4.3%" },
-    { label: "Gross Margin", value: "32.8%", trend: "+7.1%" },
+    { label: "Average Order Value", value: `${currencySymbol}${aov.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "Real-time" },
+    { label: "Gross Margin", value: `${grossMargin.toFixed(1)}%`, trend: "Real-time" },
+    { label: "Total Purchases", value: `${currencySymbol}${(metrics?.totalPurchases || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "This Month" },
+    { label: "Total Expenses", value: `${currencySymbol}${(metrics?.totalExpenses || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "This Month" },
   ];
 
   // Mini Sparkline Data
@@ -281,8 +319,8 @@ export default function DashboardPage() {
 
       {/* Metric Cards (Desktop Only) */}
       {metrics && (
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Sales */}
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Card 1: Total Sales */}
           <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
@@ -291,18 +329,18 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-bold text-slate-500">Total Sales</p>
-                  <h3 className="text-xl font-black text-slate-800">
-                    {currencySymbol}{metrics.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  <h3 className="text-lg font-black text-slate-800">
+                    {currencySymbol}{metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-emerald-500 mr-1">↑ 18.6%</span>
-                <span className="text-slate-400">vs Last Month</span>
+                <span className="text-emerald-500 mr-1">↑ 8.4%</span>
+                <span className="text-slate-400">vs last month</span>
               </div>
-              <div className="w-16 h-8">
+              <div className="w-12 h-6">
                 {mounted && (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparklineData}>
@@ -314,31 +352,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 2: Orders */}
+          {/* Card 2: COGS */}
           <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <ShoppingCart className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
+                  <Boxes className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Orders</p>
-                  <h3 className="text-xl font-black text-slate-800">
-                    {metrics.ordersCount || 1248}
+                  <p className="text-[11px] font-bold text-slate-500">COGS (Stock Cost)</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {currencySymbol}{metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-emerald-500 mr-1">↑ 12.4%</span>
-                <span className="text-slate-400">vs Last Month</span>
+                <span className="text-red-500 mr-1">↓ 2.1%</span>
+                <span className="text-slate-400">inventory value sold</span>
               </div>
-              <div className="w-16 h-8">
+              <div className="w-12 h-6">
                 {mounted && (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -346,31 +384,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 3: Customers */}
+          {/* Card 3: Other Income */}
           <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Users className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Customers</p>
-                  <h3 className="text-xl font-black text-slate-800">
-                    {metrics.customersCount || 932}
+                  <p className="text-[11px] font-bold text-slate-500">Other Income</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {currencySymbol}{metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-emerald-500 mr-1">↑ 8.7%</span>
-                <span className="text-slate-400">vs Last Month</span>
+                <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded mr-1">0.0%</span>
+                <span className="text-slate-400">additional monthly inflow</span>
               </div>
-              <div className="w-16 h-8">
+              <div className="w-12 h-6">
                 {mounted && (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -378,31 +416,63 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 4: Profit */}
+          {/* Card 4: Expenses */}
           <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Profit</p>
-                  <h3 className="text-xl font-black text-slate-800">
-                    {currencySymbol}{Math.abs(metrics.netProfit).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  <p className="text-[11px] font-bold text-slate-500">Expenses</p>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {currencySymbol}{metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-emerald-500 mr-1">↑ 15.3%</span>
-                <span className="text-slate-400">vs Last Month</span>
+                <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded mr-1">0.0%</span>
+                <span className="text-slate-400">outbound payments</span>
               </div>
-              <div className="w-16 h-8">
+              <div className="w-12 h-6">
                 {mounted && (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparklineData}>
-                      <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Net Profit */}
+          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500">Net Profit</p>
+                  <h3 className={`text-lg font-black ${metrics.netProfit < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                    {currencySymbol}{metrics.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </h3>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center text-[10px] font-bold">
+                <span className="text-red-500 mr-1">↓ 12.0%</span>
+                <span className="text-slate-400 truncate">margin {((metrics.netProfit / metrics.totalSales) * 100 || 0).toFixed(1)}%</span>
+              </div>
+              <div className="w-12 h-6">
+                {mounted && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sparklineData}>
+                      <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -519,7 +589,7 @@ export default function DashboardPage() {
           <h2 className="text-sm font-extrabold text-slate-800 mb-4">Sales by Category</h2>
           <div className="flex items-center h-48">
             <div className="w-1/2 h-full relative">
-              {mounted && (
+              {mounted && categoryData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -538,22 +608,28 @@ export default function DashboardPage() {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-xs text-slate-400">No data</div>
               )}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-xs font-black text-slate-800">{currencySymbol}{metrics?.totalSales ? (metrics.totalSales/1000).toFixed(1)+'k' : '0'}</span>
-                <span className="text-[8px] text-slate-400 font-bold">Total Sales</span>
-              </div>
+              {categoryData.length > 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xs font-black text-slate-800">{currencySymbol}{metrics?.totalSales ? (metrics.totalSales/1000).toFixed(1)+'k' : '0'}</span>
+                  <span className="text-[8px] text-slate-400 font-bold">Total Sales</span>
+                </div>
+              )}
             </div>
             <div className="w-1/2 pl-4 space-y-3">
-              {categoryData.map((cat, idx) => (
+              {categoryData.length > 0 ? categoryData.map((cat, idx) => (
                 <div key={cat.name} className="flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                    <span className="font-semibold text-slate-600">{cat.name}</span>
+                    <span className="font-semibold text-slate-600 truncate max-w-[60px]" title={cat.name}>{cat.name}</span>
                   </div>
-                  <span className="font-bold text-slate-400">{cat.value}%</span>
+                  <span className="font-bold text-slate-400 ml-1">{cat.value}%</span>
                 </div>
-              ))}
+              )) : (
+                <div className="text-xs text-slate-400 text-center">No categories found</div>
+              )}
             </div>
           </div>
         </div>

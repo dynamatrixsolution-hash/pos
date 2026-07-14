@@ -89,34 +89,39 @@ export async function GET(request: Request) {
         },
       },
       select: {
+        productId: true,
         quantity: true,
         costPrice: true,
         total: true,
       },
     });
 
-    const costOfGoodsSold = saleItems.reduce((sum, item) => sum + item.quantity * item.costPrice, 0);
+    const costOfGoodsSold = saleItems.reduce((sum: number, item: any) => sum + item.quantity * item.costPrice, 0);
     const grossProfit = totalSales - costOfGoodsSold;
     const netProfit = grossProfit + totalIncome - totalExpenses;
 
     // 5. Low Stock alerts (active branch)
-    // Products where stock level is below or equal to alertQuantity
     const products = await db.product.findMany({
       where: {
         businessId: context.businessId,
         deletedAt: null,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        alertQuantity: true,
         productStocks: {
           where: branchId ? { branchId } : undefined,
+          select: { quantity: true },
         },
         unit: { select: { name: true } },
       },
     });
 
     const lowStockAlerts = products
-      .map((prod) => {
-        const branchStock = prod.productStocks.reduce((sum: number, s: any) => sum + s.quantity, 0);
+      .map((prod: any) => {
+        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
         return {
           id: prod.id,
           name: prod.name,
@@ -126,39 +131,35 @@ export async function GET(request: Request) {
           unit: prod.unit?.name || "Pcs",
         };
       })
-      .filter((prod) => prod.currentQuantity <= prod.alertQuantity)
+      .filter((prod: any) => prod.currentQuantity <= prod.alertQuantity)
       .slice(0, 5);
 
     // 6. Top Selling Products (business-wide or branch-wide)
-    const topSalesItems = await db.saleItem.groupBy({
-      by: ["productId"],
-      _sum: {
-        quantity: true,
-        total: true,
-      },
-      where: {
-        sale: {
-          businessId: context.businessId,
-          branchId,
-          status: "COMPLETED",
-        },
-      },
-      orderBy: {
-        _sum: {
-          quantity: "desc",
-        },
-      },
-      take: 5,
+    const productQuantityMap: Record<string, { quantity: number; total: number }> = {};
+    saleItems.forEach((item: any) => {
+      if (!productQuantityMap[item.productId]) {
+        productQuantityMap[item.productId] = { quantity: 0, total: 0 };
+      }
+      productQuantityMap[item.productId].quantity += item.quantity;
+      productQuantityMap[item.productId].total += item.total;
     });
 
-    const topProductIds = topSalesItems.map((item) => item.productId);
+    const topSalesItems = Object.entries(productQuantityMap)
+      .map(([productId, metrics]) => ({
+        productId,
+        _sum: metrics,
+      }))
+      .sort((a, b) => b._sum.quantity - a._sum.quantity)
+      .slice(0, 5);
+
+    const topProductIds = topSalesItems.map((item: any) => item.productId);
     const topProductsMetadata = await db.product.findMany({
       where: { id: { in: topProductIds } },
       select: { id: true, name: true, sku: true },
     });
 
-    const topSellingProducts = topSalesItems.map((item) => {
-      const meta = topProductsMetadata.find((p) => p.id === item.productId);
+    const topSellingProducts = topSalesItems.map((item: any) => {
+      const meta = topProductsMetadata.find((p: any) => p.id === item.productId);
       return {
         id: item.productId,
         name: meta?.name || "Unknown Item",
@@ -175,14 +176,20 @@ export async function GET(request: Request) {
         branchId,
         deletedAt: null,
       },
-      include: {
+      select: {
+        id: true,
+        invoiceNumber: true,
+        total: true,
+        status: true,
+        paymentStatus: true,
+        createdAt: true,
         customer: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 5,
     });
 
-    const recentTransactions = recentSales.map((s) => ({
+    const recentTransactions = recentSales.map((s: any) => ({
       id: s.id,
       invoiceNumber: s.invoiceNumber,
       customerName: s.customer?.name || "Walk-in Customer",
@@ -240,11 +247,33 @@ export async function GET(request: Request) {
 
     // Count all low stock alert items (total alert count)
     const alertsCount = products
-      .map((prod) => {
-        const branchStock = prod.productStocks.reduce((sum: number, s: any) => sum + s.quantity, 0);
+      .map((prod: any) => {
+        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
         return branchStock <= prod.alertQuantity;
       })
       .filter(Boolean).length;
+
+    // 9. Sales by Category (current month)
+    // Computed from the already fetched saleItems in memory
+    const categoryProductIds = [...new Set(saleItems.map((item: any) => item.productId))];
+    const productsWithCats = await db.product.findMany({
+      where: { id: { in: categoryProductIds } },
+      select: { id: true, category: { select: { name: true } } },
+    });
+
+    const categoryMap: Record<string, number> = {};
+    saleItems.forEach((item: any) => {
+      const prod = productsWithCats.find((p: any) => p.id === item.productId);
+      const catName = prod?.category?.name || "Others";
+      categoryMap[catName] = (categoryMap[catName] || 0) + item.total;
+    });
+
+    const totalCatSales = Object.values(categoryMap).reduce((a: number, b: number) => a + b, 0);
+    const salesByCategory = Object.keys(categoryMap).map((name: string) => ({
+      name,
+      value: totalCatSales > 0 ? Math.round((categoryMap[name] / totalCatSales) * 100) : 0,
+      totalAmount: categoryMap[name],
+    })).sort((a, b) => b.value - a.value).slice(0, 5); // top 5 categories
 
     return NextResponse.json({
       metrics: {
@@ -263,9 +292,10 @@ export async function GET(request: Request) {
       topSellingProducts,
       recentTransactions,
       salesChart: chartData,
+      salesByCategory,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET dashboard reports error:", error);
-    return NextResponse.json({ error: "Failed to generate dashboard reports" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch dashboard reports" }, { status: 500 });
   }
 }
