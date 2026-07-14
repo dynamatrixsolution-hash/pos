@@ -85,6 +85,15 @@ export default function CustomersPage() {
     loadCustomers();
   }, [loadCustomers]);
 
+  React.useEffect(() => {
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent).detail;
+      setSearch(q);
+    };
+    window.addEventListener("global-search", handleGlobalSearch);
+    return () => window.removeEventListener("global-search", handleGlobalSearch);
+  }, []);
+
   const onSubmit = async (data: CustomerInputs) => {
     setSubmitError(null);
     try {

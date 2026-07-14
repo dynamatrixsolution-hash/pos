@@ -213,6 +213,15 @@ export default function ProductsPage() {
     loadData();
   }, [loadData]);
 
+  React.useEffect(() => {
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent).detail;
+      setSearch(q);
+    };
+    window.addEventListener("global-search", handleGlobalSearch);
+    return () => window.removeEventListener("global-search", handleGlobalSearch);
+  }, []);
+
   const handleEdit = (product: ProductItem) => {
     setEditingId(product.id);
     setSubmitError(null);

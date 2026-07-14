@@ -143,49 +143,7 @@ export default function DailyReportsPage() {
   };
 
   const exportPDF = () => {
-    if (!reportData) return toast.warning("No data available");
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(94, 80, 235);
-    doc.text(`DynaPOS - Daily Audit Report (${dateStr})`, 14, 20);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
-    doc.text(`Branch context: ${selectedBranch ? "Specific branch ID" : "All branch logs"}`, 14, 31);
-
-    let y = 42;
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(243, 244, 246);
-    doc.rect(14, y, 182, 7, "F");
-    doc.setTextColor(50, 50, 50);
-    doc.text("Financial Breakdown Metric", 16, y + 5);
-    doc.text("Value", 140, y + 5);
-
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    const metrics = [
-      ["Gross Sales Revenue", `${currencySymbol}${reportData.sales.total.toFixed(2)}`],
-      ["Sales Count", `${reportData.sales.count} invoices`],
-      ["Sales Discounts Billed", `${currencySymbol}${reportData.sales.discount.toFixed(2)}`],
-      [`Tax/VAT Collected`, `${currencySymbol}${reportData.sales.tax.toFixed(2)}`],
-      ["COGS (Cost of Sales)", `${currencySymbol}${reportData.margins.costOfGoodsSold.toFixed(2)}`],
-      ["Restock Purchases total", `${currencySymbol}${reportData.purchases.total.toFixed(2)}`],
-      ["Daily Expenses Logged", `${currencySymbol}${reportData.expenses.total.toFixed(2)}`],
-      ["Daily Other Incomes", `${currencySymbol}${reportData.income.total.toFixed(2)}`],
-      ["Net Daily Profit", `${currencySymbol}${reportData.margins.netProfit.toFixed(2)}`],
-    ];
-
-    metrics.forEach(([lbl, val]) => {
-      doc.text(lbl, 16, y + 5);
-      doc.text(val, 140, y + 5);
-      doc.line(14, y + 8, 196, y + 8);
-      y += 8;
-    });
-
-    doc.save(`daily_report_${dateStr}.pdf`);
+    window.print();
   };
 
   const tabs = [
@@ -198,49 +156,55 @@ export default function DailyReportsPage() {
   ];
 
   const getActiveTabContent = () => {
-    if (!reportData) return null;
-
     switch (activeTab) {
       case "sales":
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Sales</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Billed Revenue</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.sales.total.toFixed(2)}</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invoices Billed</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{reportData.sales.count} bills</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Invoice Volume</span>
+                <h4 className="text-lg font-black text-foreground mt-1">{reportData.sales.count} sales</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Discounts Allowed</span>
-                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.sales.discount.toFixed(2)}</h4>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">VAT Collected</span>
-                <h4 className="text-lg font-black text-[#2563EB] mt-1">{currencySymbol}{reportData.sales.tax.toFixed(2)}</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Margin Percent</span>
+                <h4 className="text-lg font-black text-[#2563EB] mt-1">{reportData.margins.grossMarginPercentage.toFixed(1)}%</h4>
               </div>
             </div>
-
-            {/* Payment Methods Breakdown Chart */}
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-5">
-              <h3 className="text-xs font-bold mb-3">Daily Sales by Payment Channel</h3>
-              <div className="h-48 w-full flex items-center justify-center">
-                {reportData.sales.byPaymentMethod.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={reportData.sales.byPaymentMethod}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="method" fontSize={10} />
-                      <YAxis fontSize={10} />
-                      <Tooltip formatter={(v: any) => [`${currencySymbol}${v.toFixed(2)}`, "Amount"]} />
-                      <Bar dataKey="amount" fill="#2563EB" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <span className="text-xs text-muted-foreground">No payment records logged for this day</span>
-                )}
-              </div>
+            
+            <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200/60 dark:border-slate-800">
+                    <th className="py-2.5 px-3">Item Product</th>
+                    <th className="py-2.5 px-3">Qty</th>
+                    <th className="py-2.5 px-3 text-right">Avg Selling Rate</th>
+                    <th className="py-2.5 px-3 text-right">Agg Discount</th>
+                    <th className="py-2.5 px-3 text-right">Vat Amt</th>
+                    <th className="py-2.5 px-3 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {reportData.sales.items.map((it: any) => (
+                    <tr key={it.productId}>
+                      <td className="py-2.5 px-3 font-semibold">{it.productName}</td>
+                      <td className="py-2.5 px-3 font-bold">{it.quantity}</td>
+                      <td className="py-2.5 px-3 text-right font-semibold">{currencySymbol}{it.avgPrice.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-red-500 font-semibold">{currencySymbol}{it.discount.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-slate-400">{currencySymbol}{it.tax.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-[#2563EB]">{currencySymbol}{it.total.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {reportData.sales.items.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-center text-slate-400">No product inventory sales items billed today</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         );
@@ -254,47 +218,77 @@ export default function DailyReportsPage() {
                 <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.purchases.total.toFixed(2)}</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Purchase Orders Received</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{reportData.purchases.count} orders</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Restock Purchases Volume</span>
+                <h4 className="text-lg font-black text-foreground mt-1">{reportData.purchases.count} invoices</h4>
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-6 rounded-2xl text-center text-xs text-muted-foreground">
-              Review daily purchases against inbound vendor supply deliveries.
+            
+            <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200/60 dark:border-slate-800">
+                    <th className="py-2.5 px-3">Billed Supplier</th>
+                    <th className="py-2.5 px-3">Items Count</th>
+                    <th className="py-2.5 px-3 text-right">Tax Paid</th>
+                    <th className="py-2.5 px-3 text-right">Total Invoice Sum</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {reportData.purchases.invoices.map((pinv: any) => (
+                    <tr key={pinv.id}>
+                      <td className="py-2.5 px-3 font-semibold">{pinv.supplierName}</td>
+                      <td className="py-2.5 px-3 font-bold">{pinv.itemsCount}</td>
+                      <td className="py-2.5 px-3 text-right text-slate-400">{currencySymbol}{pinv.tax.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-foreground">{currencySymbol}{pinv.total.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {reportData.purchases.invoices.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-center text-slate-400">No batch restock invoices registered today</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         );
 
       case "collection":
-        const totalCollections = reportData.sales.byPaymentMethod.reduce((acc: number, cur: any) => acc + cur.amount, 0);
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Cash Collections</span>
-                <h4 className="text-lg font-black text-[#10b981] mt-1">{currencySymbol}{totalCollections.toFixed(2)}</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Aggregated Sales Collections</span>
+                <h4 className="text-lg font-black text-[#10b981] mt-1">
+                  {currencySymbol}{reportData.sales.byPaymentMethod.reduce((acc: number, cur: any) => acc + cur.amount, 0).toFixed(2)}
+                </h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Voucher Count</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Billed Invoices</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.sales.count} payments</h4>
               </div>
             </div>
+            
             <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200 dark:border-slate-850">
-                    <th className="py-2 px-3">Payment Method</th>
-                    <th className="py-2 px-3 text-right">Collected Amount</th>
+                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200/60 dark:border-slate-800">
+                    <th className="py-2.5 px-3">Payment Method</th>
+                    <th className="py-2.5 px-3 text-right">Cash Received</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {reportData.sales.byPaymentMethod.map((pm: any) => (
                     <tr key={pm.method}>
                       <td className="py-2.5 px-3 font-semibold">{pm.method}</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">
-                        {currencySymbol}{pm.amount.toFixed(2)}
-                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-[#10b981]">{currencySymbol}{pm.amount.toFixed(2)}</td>
                     </tr>
                   ))}
+                  {reportData.sales.byPaymentMethod.length === 0 && (
+                    <tr>
+                      <td colSpan={2} className="py-4 text-center text-slate-400">No sales transactions processed today</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -306,16 +300,39 @@ export default function DailyReportsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Disbursed Cash Payments</span>
-                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.expenses.total.toFixed(2)}</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Payments Billed</span>
+                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.payments.total.toFixed(2)}</h4>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Disbursements Count</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{reportData.expenses.count} vouchers</h4>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Payments Volume</span>
+                <h4 className="text-lg font-black text-foreground mt-1">{reportData.payments.count} ledger logs</h4>
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-6 rounded-2xl text-center text-xs text-muted-foreground">
-              Review debited business voucher values disbursed outward.
+            
+            <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200/60 dark:border-slate-800">
+                    <th className="py-2.5 px-3">Supplier Party</th>
+                    <th className="py-2.5 px-3">Agg Payment Method</th>
+                    <th className="py-2.5 px-3 text-right">Settled Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {reportData.payments.list.map((pay: any) => (
+                    <tr key={pay.id}>
+                      <td className="py-2.5 px-3 font-semibold">{pay.supplierName}</td>
+                      <td className="py-2.5 px-3 font-semibold">{pay.paymentMethod}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-red-500">{currencySymbol}{pay.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {reportData.payments.list.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-4 text-center text-slate-400">No outward supplier payments registered today</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         );
@@ -396,7 +413,7 @@ export default function DailyReportsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header controls */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm print:hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm print:hidden">
         <div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-[#2563EB]" /> Daily Reports Portal
@@ -406,9 +423,9 @@ export default function DailyReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+        <div className="flex flex-row items-center gap-3 overflow-x-auto lg:overflow-visible w-full lg:w-auto select-none">
           {/* Preset parameters */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs shrink-0">
             <Calendar className="h-4 w-4 text-[#2563EB]" />
             <input
               type="date"
@@ -418,7 +435,7 @@ export default function DailyReportsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs shrink-0">
             <Store className="h-4 w-4 text-[#2563EB]" />
             <select
               value={selectedBranch}
@@ -434,11 +451,11 @@ export default function DailyReportsPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={exportExcel}
               disabled={isLoading || !reportData}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Excel</span>
@@ -446,7 +463,7 @@ export default function DailyReportsPage() {
             <button
               onClick={exportPDF}
               disabled={isLoading || !reportData}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>PDF</span>

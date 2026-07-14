@@ -43,6 +43,15 @@ export default function SalesPage() {
     loadSales();
   }, [loadSales]);
 
+  React.useEffect(() => {
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent).detail;
+      setSearch(q);
+    };
+    window.addEventListener("global-search", handleGlobalSearch);
+    return () => window.removeEventListener("global-search", handleGlobalSearch);
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}

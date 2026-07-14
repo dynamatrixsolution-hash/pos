@@ -77,14 +77,7 @@ export default function OutstandingReportsPage() {
   };
 
   const exportPDF = () => {
-    const data = activeTab === "customer" ? filteredCustomers : filteredSuppliers;
-    if (data.length === 0) return toast.warning("No data available");
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(245, 158, 11);
-    doc.text(`DynaPOS - Outstanding Audit Statement (${activeTab.toUpperCase()})`, 14, 20);
-    doc.save(`outstanding_${activeTab}.pdf`);
+    window.print();
   };
 
   const renderContent = () => {

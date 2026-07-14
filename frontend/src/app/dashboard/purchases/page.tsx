@@ -129,6 +129,15 @@ export default function PurchasesPage() {
     loadData();
   }, [loadData]);
 
+  React.useEffect(() => {
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent).detail;
+      setSearch(q);
+    };
+    window.addEventListener("global-search", handleGlobalSearch);
+    return () => window.removeEventListener("global-search", handleGlobalSearch);
+  }, []);
+
   const onProductChange = (index: number, productId: string) => {
     const prod = products.find((p) => p.id === productId);
     if (prod) {

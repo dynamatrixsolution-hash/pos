@@ -129,12 +129,7 @@ export default function OtherReportsPage() {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(94, 80, 235);
-    doc.text(`DynaPOS - Other Audit Statement (${activeTab.toUpperCase()})`, 14, 20);
-    doc.save(`other_reports_${activeTab}.pdf`);
+    window.print();
   };
 
   const renderContent = () => {
