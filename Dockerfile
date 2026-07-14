@@ -25,7 +25,7 @@ RUN npm run prisma:generate
 
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV BACKEND_URL "http://dynapos-backend:3000"
+ENV BACKEND_URL "http://dynaone-backend:3000"
 
 ARG APP_NAME
 RUN npm run build --workspace=${APP_NAME}
