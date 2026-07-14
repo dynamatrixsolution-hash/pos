@@ -1037,10 +1037,10 @@ export default function DashboardShellClient({
           <Calculator className="h-5 w-5" />
           <span className="text-[9px] font-bold">Reports</span>
         </Link>
-        <button onClick={() => setMobileMenuOpen(true)} className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
+        <Link href="/dashboard/profile" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
           <User className="h-5 w-5" />
           <span className="text-[9px] font-bold">Profile</span>
-        </button>
+        </Link>
       </div>
 
       <ToastContainer />

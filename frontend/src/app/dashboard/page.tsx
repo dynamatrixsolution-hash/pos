@@ -279,17 +279,17 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-2">
             <div>
               <div className="text-[10px] text-white/70 font-semibold mb-0.5">Sales</div>
-              <div className="text-lg font-black">{currencySymbol}{metrics?.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 0 }) || 0}</div>
+              <div className="text-lg font-black">{currencySymbol}{metrics?.totalSales?.toLocaleString('en-IN', { maximumFractionDigits: 0 }) ?? 0}</div>
               <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 16.5%</div>
             </div>
             <div>
               <div className="text-[10px] text-white/70 font-semibold mb-0.5">Orders</div>
-              <div className="text-lg font-black">{metrics?.ordersCount || 85}</div>
+              <div className="text-lg font-black">{metrics?.ordersCount ?? 0}</div>
               <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 10.2%</div>
             </div>
             <div>
               <div className="text-[10px] text-white/70 font-semibold mb-0.5">Customers</div>
-              <div className="text-lg font-black">{metrics?.customersCount || 42}</div>
+              <div className="text-lg font-black">{metrics?.customersCount ?? 0}</div>
               <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 8.1%</div>
             </div>
           </div>
