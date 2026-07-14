@@ -26,6 +26,9 @@ import {
   RefreshCw,
   Sliders,
   Check,
+  User,
+  FileText,
+  Upload,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,6 +72,8 @@ const businessSchema = z.object({
   phone: z.string().optional().nullable(),
   plan: z.enum(["FREE_TRIAL", "BASIC", "PREMIUM", "ENTERPRISE"]),
   durationMonths: z.number().min(1, "Duration must be at least 1 month").max(60),
+  panDocument: z.string().optional().nullable(),
+  ppPhoto: z.string().optional().nullable(),
 });
 
 type BusinessFormInputs = z.infer<typeof businessSchema>;
@@ -115,12 +120,26 @@ export default function SuperAdminBusinessesPage() {
 
   const businessNameValue = watch("businessName");
   const businessTypeValue = watch("businessType");
+  const slugValue = watch("slug");
   const planValue = watch("plan");
   const durationMonthsValue = watch("durationMonths");
   const currencyValue = watch("currency");
   const ownerNameValue = watch("ownerName");
   const emailValue = watch("email");
   const phoneValue = watch("phone");
+  const panDocumentValue = watch("panDocument");
+  const ppPhotoValue = watch("ppPhoto");
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, targetField: "panDocument" | "ppPhoto") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setValue(targetField, reader.result as string, { shouldValidate: true });
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Multi-step helpers
   const handleNextStep = async () => {
@@ -568,364 +587,615 @@ export default function SuperAdminBusinessesPage() {
           </div>
         </div>
       ) : (
-        /* Tab Contents: PROVISION MULTI-STEP PROGRESS STEPPER WIZARD */
-        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 max-w-2xl mx-auto shadow-sm">
-          {/* Progress Timeline Bar (matching the design in the image) */}
-          <div className="mb-8 border-b border-slate-100 pb-6 print:hidden">
-            <div className="flex items-center justify-between max-w-xl mx-auto">
-              {[
-                { num: 1, label: "Basic Information" },
-                { num: 2, label: "Plan, Limits & Modules" },
-                { num: 3, label: "Billing & Contacts" },
-                { num: 4, label: "Review & Confirm" },
-                { num: 5, label: "Completion" },
-              ].map((step, idx, arr) => (
-                <React.Fragment key={step.num}>
-                  {/* Step Node */}
-                  <div className="flex flex-col items-center flex-1 relative">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 text-xs font-black transition-all duration-300 ${
-                        currentStep > step.num
-                          ? "bg-emerald-500 border-emerald-500 text-white"
-                          : currentStep === step.num
-                          ? "bg-[#064E3B] border-[#064E3B] text-white ring-4 ring-[#064E3B]/10 scale-105"
-                          : "bg-white border-slate-200 text-slate-400"
-                      }`}
-                    >
-                      {currentStep > step.num ? (
-                        <Check className="h-4.5 w-4.5 stroke-[3]" />
-                      ) : (
-                        <span>{step.num}</span>
-                      )}
+        /* Tab Contents: PROVISION MULTI-STEP PROGRESS STEPPER WIZARD & PREVIEW SIDEBAR */
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Form Stepper Progress */}
+          <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+            {/* Progress Timeline Bar */}
+            <div className="mb-8 border-b border-slate-100 pb-6 print:hidden">
+              <div className="flex items-center justify-between max-w-xl mx-auto">
+                {[
+                  { num: 1, label: "Basic Info" },
+                  { num: 2, label: "Plan & Terms" },
+                  { num: 3, label: "Billing & Files" },
+                  { num: 4, label: "Review" },
+                  { num: 5, label: "Completion" },
+                ].map((step, idx, arr) => (
+                  <React.Fragment key={step.num}>
+                    {/* Step Node */}
+                    <div className="flex flex-col items-center flex-1 relative">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 text-xs font-black transition-all duration-300 ${
+                          currentStep > step.num
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : currentStep === step.num
+                            ? "bg-[#064E3B] border-[#064E3B] text-white ring-4 ring-[#064E3B]/10 scale-105"
+                            : "bg-white border-slate-200 text-slate-400"
+                        }`}
+                      >
+                        {currentStep > step.num ? (
+                          <Check className="h-4.5 w-4.5 stroke-[3]" />
+                        ) : (
+                          <span>{step.num}</span>
+                        )}
+                      </div>
+                      <span
+                        className={`text-[9px] font-extrabold uppercase tracking-wider mt-2.5 transition-all text-center max-w-[100px] ${
+                          currentStep === step.num
+                            ? "text-[#064E3B]"
+                            : currentStep > step.num
+                            ? "text-emerald-600"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
                     </div>
-                    <span
-                      className={`text-[9px] font-extrabold uppercase tracking-wider mt-2.5 transition-all text-center max-w-[100px] ${
-                        currentStep === step.num
-                          ? "text-[#064E3B]"
-                          : currentStep > step.num
-                          ? "text-emerald-600"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {step.label}
-                    </span>
+
+                    {/* Connecting Line */}
+                    {idx < arr.length - 1 && (
+                      <div className="flex-1 h-[2px] bg-slate-200 relative -top-3">
+                        <div
+                          className="absolute left-0 top-0 h-full bg-emerald-500 transition-all duration-300"
+                          style={{ width: currentStep > step.num ? "100%" : "0%" }}
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            {/* Form Step Panels */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* STEP 1: Basic Information */}
+              {currentStep === 1 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-bold text-slate-800">Basic Information</h3>
+                    <p className="text-[11px] text-slate-455 mt-0.5">Setup the workspace name, URL domain, and business operational category.</p>
                   </div>
 
-                  {/* Connecting Line */}
-                  {idx < arr.length - 1 && (
-                    <div className="flex-1 h-[2px] bg-slate-200 relative -top-3">
-                      <div
-                        className="absolute left-0 top-0 h-full bg-emerald-500 transition-all duration-300"
-                        style={{ width: currentStep > step.num ? "100%" : "0%" }}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Name</label>
+                      <input
+                        type="text"
+                        {...register("businessName")}
+                        placeholder="e.g. MedCare Pharmacy"
+                        className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.businessName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
                       />
+                      {errors.businessName && <span className="text-[9px] text-red-500">{errors.businessName.message}</span>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subdomain Slug</label>
+                      <input
+                        type="text"
+                        {...register("slug")}
+                        placeholder="medcare-pharmacy"
+                        className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.slug ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
+                      />
+                      {errors.slug && <span className="text-[9px] text-red-500">{errors.slug.message}</span>}
+                    </div>
+
+                    <div className="space-y-2 col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Business Type</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          { id: "RETAIL", label: "Retail / Supermarket", desc: "For grocery, boutiques, general stores" },
+                          { id: "PHARMACY", label: "Pharmacy Medical", desc: "Batch & expiry tracking, medicine layouts" },
+                          { id: "RESTAURANT", label: "Restaurant & Cafe", desc: "Waiters, table management, dining types" },
+                          { id: "WHOLESALE", label: "Wholesale Trade", desc: "Bulk prices, customer credit limit logs" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setValue("businessType", item.id as any, { shouldValidate: true })}
+                            className={`flex flex-col text-left p-3.5 border rounded-2xl transition-all cursor-pointer ${
+                              businessTypeValue === item.id
+                                ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-500"
+                                : "border-slate-200 bg-slate-50 hover:bg-slate-100/50"
+                            }`}
+                          >
+                            <span className="text-xs font-bold text-slate-800">{item.label}</span>
+                            <span className="text-[10px] text-slate-450 mt-1 font-medium">{item.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {errors.businessType && <span className="text-[9px] text-red-500 block mt-1">{errors.businessType.message}</span>}
+                    </div>
+
+                    <div className="space-y-1 col-span-2 sm:col-span-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Default Currency</label>
+                      <select
+                        {...register("currency")}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="NPR">NPR (Rs.)</option>
+                        <option value="AUD">AUD (A$)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
+                    >
+                      Next Step
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Plan, Limits & Modules */}
+              {currentStep === 2 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-bold text-slate-800">Plan, Limits & Modules</h3>
+                    <p className="text-[11px] text-slate-455 mt-0.5">Select a subscription licensing template and define the contract term duration.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Template</label>
+                      <select
+                        {...register("plan")}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="FREE_TRIAL">Starter (Free Trial)</option>
+                        <option value="BASIC">Basic License</option>
+                        <option value="PREMIUM">Professional License</option>
+                        <option value="ENTERPRISE">Enterprise License</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Months</label>
+                      <input
+                        type="number"
+                        {...register("durationMonths", { valueAsNumber: true })}
+                        className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.durationMonths ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
+                      />
+                      {errors.durationMonths && <span className="text-[9px] text-red-500">{errors.durationMonths.message}</span>}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
+                    >
+                      Next Step
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Billing & Contacts (PP Photo & PAN Document included) */}
+              {currentStep === 3 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-bold text-slate-800">Billing & Contacts</h3>
+                    <p className="text-[11px] text-slate-455 mt-0.5">Setup administrative details, credentials, and business registering files.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Name</label>
+                      <input
+                        type="text"
+                        {...register("ownerName")}
+                        placeholder="Sarah Lin"
+                        className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.ownerName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
+                      />
+                      {errors.ownerName && <span className="text-[9px] text-red-500">{errors.ownerName.message}</span>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                      <input
+                        type="email"
+                        {...register("email")}
+                        placeholder="owner@medcare.com"
+                        className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.email ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
+                      />
+                      {errors.email && <span className="text-[9px] text-red-500">{errors.email.message}</span>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Temporary Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-450" />
+                        <input
+                          type="password"
+                          {...register("password")}
+                          placeholder="••••••••"
+                          className={`w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.password ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
+                        />
+                      </div>
+                      {errors.password && <span className="text-[9px] text-red-500">{errors.password.message}</span>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Phone</label>
+                      <input
+                        type="text"
+                        {...register("phone")}
+                        placeholder="+1-555-0133"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* PP Photo Upload */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Owner Profile Photo (PP)</label>
+                      <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                        {ppPhotoValue ? (
+                          <div className="relative">
+                            <img src={ppPhotoValue} className="w-12 h-12 rounded-lg object-cover border border-slate-250" />
+                            <button
+                              type="button"
+                              onClick={() => setValue("ppPhoto", null, { shouldValidate: true })}
+                              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-650 transition-all cursor-pointer"
+                            >
+                              <Trash className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 bg-slate-100 border border-dashed border-slate-350 rounded-lg flex items-center justify-center text-slate-400">
+                            <User className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <label className="inline-block px-3 py-1.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all">
+                            Select Photo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, "ppPhoto")}
+                              className="hidden"
+                            />
+                          </label>
+                          <p className="text-[9px] text-slate-400 mt-1">PNG, JPG up to 2MB</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Business Registration / PAN Document Upload */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">PAN / Registration Document</label>
+                      <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                        {panDocumentValue ? (
+                          <div className="relative flex items-center gap-2 bg-emerald-50 border border-emerald-100 p-2 rounded-lg w-full">
+                            <FileText className="h-6 w-6 text-emerald-600 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-bold text-emerald-700 truncate">PAN_Document.pdf</p>
+                              <p className="text-[8px] text-emerald-600">Document Uploaded</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setValue("panDocument", null, { shouldValidate: true })}
+                              className="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-all cursor-pointer"
+                            >
+                              <Trash className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-12 h-12 bg-slate-100 border border-dashed border-slate-355 rounded-lg flex items-center justify-center text-slate-400">
+                              <Upload className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="inline-block px-3 py-1.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all">
+                                Upload File
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/*"
+                                  onChange={(e) => handleFileUpload(e, "panDocument")}
+                                  className="hidden"
+                                />
+                              </label>
+                              <p className="text-[9px] text-slate-400 mt-1">PDF or image up to 5MB</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
+                    >
+                      Next Step
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Review & Confirm */}
+              {currentStep === 4 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-bold text-slate-800">Review & Confirm</h3>
+                    <p className="text-[11px] text-slate-455 mt-0.5">Please review the provision inputs below before building the tenant workspace.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs">
+                      <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Workspace Core</h4>
+                      <div className="space-y-1.5 font-semibold text-slate-600">
+                        <div>Name: <span className="font-bold text-slate-800">{businessNameValue}</span></div>
+                        <div>Slug: <span className="font-bold text-slate-800">slug: {slugValue}</span></div>
+                        <div>Type: <span className="font-bold text-[#064E3B]">{businessTypeValue}</span></div>
+                        <div>Currency: <span className="font-bold text-slate-800 uppercase">{currencyValue}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs">
+                      <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Contract Parameters</h4>
+                      <div className="space-y-1.5 font-semibold text-slate-600">
+                        <div>Licensing Tier: <span className="font-bold text-slate-800 uppercase">{planValue === "FREE_TRIAL" ? "Starter (Free)" : planValue}</span></div>
+                        <div>Validity: <span className="font-bold text-slate-800">{durationMonthsValue} Months</span></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs col-span-2">
+                      <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Owner Contact Details</h4>
+                      <div className="grid grid-cols-2 gap-2 font-semibold text-slate-600">
+                        <div>Name: <span className="font-bold text-slate-800">{ownerNameValue}</span></div>
+                        <div>Email: <span className="font-bold text-slate-800">{emailValue}</span></div>
+                        <div>Phone: <span className="font-bold text-slate-800">{phoneValue || "Not Provided"}</span></div>
+                        <div className="col-span-2 mt-2 pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2">
+                          <div>PP Photo: <span className={`font-bold ${ppPhotoValue ? 'text-emerald-600' : 'text-slate-400'}`}>{ppPhotoValue ? '✓ Uploaded' : 'Not Uploaded'}</span></div>
+                          <div>PAN Document: <span className={`font-bold ${panDocumentValue ? 'text-emerald-600' : 'text-slate-400'}`}>{panDocumentValue ? '✓ Uploaded' : 'Not Uploaded'}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {actionError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 p-4.5 rounded-2xl text-xs font-semibold">
+                      {actionError}
                     </div>
                   )}
-                </React.Fragment>
-              ))}
-            </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider disabled:opacity-50"
+                    >
+                      {isSubmitting ? "Provisioning..." : "Confirm & Provision"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: Completion */}
+              {currentStep === 5 && (
+                <div className="text-center py-10 space-y-5 animate-in fade-in zoom-in-95 duration-350">
+                  <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-100">
+                    <CheckCircle className="w-10 h-10 stroke-[2]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-lg font-black text-slate-800">Workspace Initialized!</h3>
+                    <p className="text-xs text-slate-450 max-w-sm mx-auto leading-relaxed">
+                      Tenant organization <span className="font-bold text-slate-800">"{businessNameValue}"</span> has been successfully provisioned. The owner credentials have been generated and limits deployed.
+                    </p>
+                  </div>
+                  <div className="pt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleDone}
+                      className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider shadow-sm"
+                    >
+                      Go to Business List
+                    </button>
+                  </div>
+                </div>
+              )}
+            </form>
           </div>
 
-          {/* Form Step Panels */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* STEP 1: Basic Information */}
-            {currentStep === 1 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-800">Basic Information</h3>
-                  <p className="text-[11px] text-slate-450 mt-0.5">Setup the workspace name, URL domain, and business operational category.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Name</label>
-                    <input
-                      type="text"
-                      {...register("businessName")}
-                      placeholder="e.g. MedCare Pharmacy"
-                      className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.businessName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                    />
-                    {errors.businessName && <span className="text-[9px] text-red-500">{errors.businessName.message}</span>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subdomain Slug</label>
-                    <input
-                      type="text"
-                      {...register("slug")}
-                      placeholder="medcare-pharmacy"
-                      className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.slug ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                    />
-                    {errors.slug && <span className="text-[9px] text-red-500">{errors.slug.message}</span>}
-                  </div>
-
-                  <div className="space-y-2 col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Business Type</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[
-                        { id: "RETAIL", label: "Retail / Supermarket", desc: "For grocery, boutiques, general stores" },
-                        { id: "PHARMACY", label: "Pharmacy Medical", desc: "Batch & expiry tracking, medicine layouts" },
-                        { id: "RESTAURANT", label: "Restaurant & Cafe", desc: "Waiters, table management, dining types" },
-                        { id: "WHOLESALE", label: "Wholesale Trade", desc: "Bulk prices, customer credit limit logs" },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setValue("businessType", item.id as any, { shouldValidate: true })}
-                          className={`flex flex-col text-left p-3.5 border rounded-2xl transition-all cursor-pointer ${
-                            businessTypeValue === item.id
-                              ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-500"
-                              : "border-slate-200 bg-slate-50 hover:bg-slate-100/50"
-                          }`}
-                        >
-                          <span className="text-xs font-bold text-slate-800">{item.label}</span>
-                          <span className="text-[10px] text-slate-450 mt-1 font-medium">{item.desc}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {errors.businessType && <span className="text-[9px] text-red-500 block mt-1">{errors.businessType.message}</span>}
-                  </div>
-
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Default Currency</label>
-                    <select
-                      {...register("currency")}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                      <option value="INR">INR (₹)</option>
-                      <option value="NPR">NPR (Rs.)</option>
-                      <option value="AUD">AUD (A$)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
-                  >
-                    Next Step
-                  </button>
-                </div>
+          {/* Right Column: Information Preview Widgets (matching screenshot layout) */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Widget 1: Institution Preview */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs relative">
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Institution Preview</h4>
+                <span className="bg-[#E8F5E9] text-[#2E7D32] text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded-full">
+                  Live preview
+                </span>
               </div>
-            )}
 
-            {/* STEP 2: Plan, Limits & Modules */}
-            {currentStep === 2 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-800">Plan, Limits & Modules</h3>
-                  <p className="text-[11px] text-slate-450 mt-0.5">Select a subscription licensing template and define the contract term duration.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Template</label>
-                    <select
-                      {...register("plan")}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="FREE_TRIAL">Starter (Free Trial)</option>
-                      <option value="BASIC">Basic License</option>
-                      <option value="PREMIUM">Professional License</option>
-                      <option value="ENTERPRISE">Enterprise License</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Months</label>
-                    <input
-                      type="number"
-                      {...register("durationMonths", { valueAsNumber: true })}
-                      className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.durationMonths ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                    />
-                    {errors.durationMonths && <span className="text-[9px] text-red-500">{errors.durationMonths.message}</span>}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
-                  >
-                    Next Step
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: Billing & Contacts */}
-            {currentStep === 3 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-800">Billing & Contacts</h3>
-                  <p className="text-[11px] text-slate-450 mt-0.5">Setup the administrative contact details and credentials for the business owner.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Name</label>
-                    <input
-                      type="text"
-                      {...register("ownerName")}
-                      placeholder="Sarah Lin"
-                      className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.ownerName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                    />
-                    {errors.ownerName && <span className="text-[9px] text-red-500">{errors.ownerName.message}</span>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                    <input
-                      type="email"
-                      {...register("email")}
-                      placeholder="owner@medcare.com"
-                      className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.email ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                    />
-                    {errors.email && <span className="text-[9px] text-red-500">{errors.email.message}</span>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Temporary Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-400" />
-                      <input
-                        type="password"
-                        {...register("password")}
-                        placeholder="••••••••"
-                        className={`w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.password ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                      />
-                    </div>
-                    {errors.password && <span className="text-[9px] text-red-500">{errors.password.message}</span>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Phone</label>
-                    <input
-                      type="text"
-                      {...register("phone")}
-                      placeholder="+1-555-0133"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider"
-                  >
-                    Next Step
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: Review & Confirm */}
-            {currentStep === 4 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-200">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-800">Review & Confirm</h3>
-                  <p className="text-[11px] text-slate-450 mt-0.5">Please review the provision inputs below before building the tenant workspace.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs">
-                    <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Workspace Core</h4>
-                    <div className="space-y-1.5 font-semibold text-slate-600">
-                      <div>Name: <span className="font-bold text-slate-800">{businessNameValue}</span></div>
-                      <div>Slug: <span className="font-bold text-slate-800">slug: {watch("slug")}</span></div>
-                      <div>Type: <span className="font-bold text-[#064E3B]">{businessTypeValue}</span></div>
-                      <div>Currency: <span className="font-bold text-slate-800 uppercase">{currencyValue}</span></div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs">
-                    <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Contract Parameters</h4>
-                    <div className="space-y-1.5 font-semibold text-slate-600">
-                      <div>Licensing Tier: <span className="font-bold text-slate-800 uppercase">{planValue === "FREE_TRIAL" ? "Starter (Free)" : planValue}</span></div>
-                      <div>Validity: <span className="font-bold text-slate-800">{durationMonthsValue} Months</span></div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 text-xs col-span-2">
-                    <h4 className="font-extrabold uppercase text-[9px] text-[#064E3B] tracking-wider mb-2 border-b border-slate-200/60 pb-1">Owner Contact Details</h4>
-                    <div className="grid grid-cols-2 gap-2 font-semibold text-slate-600">
-                      <div>Name: <span className="font-bold text-slate-800">{ownerNameValue}</span></div>
-                      <div>Email: <span className="font-bold text-slate-800">{emailValue}</span></div>
-                      <div>Phone: <span className="font-bold text-slate-800">{phoneValue || "Not Provided"}</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                {actionError && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 p-4.5 rounded-2xl text-xs font-semibold">
-                    {actionError}
+              <div className="flex flex-col items-center py-4 border-b border-slate-100">
+                {ppPhotoValue ? (
+                  <img
+                    src={ppPhotoValue}
+                    className="w-16 h-16 rounded-2xl object-cover border border-slate-200"
+                    alt="Institution Logo Preview"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-2xl flex items-center justify-center text-[#2E7D32] border border-[#C8E6C9]">
+                    <Building className="h-8 w-8 stroke-[1.8]" />
                   </div>
                 )}
-
-                <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider text-slate-600"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer uppercase tracking-wider disabled:opacity-50"
-                  >
-                    {isSubmitting ? "Provisioning..." : "Confirm & Provision"}
-                  </button>
+                <h3 className="text-sm font-black text-slate-850 mt-3 truncate max-w-full">
+                  {businessNameValue || "Institution Name"}
+                </h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] text-slate-450 font-bold capitalize">
+                    {businessTypeValue?.toLowerCase() || "School"}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                    {planValue === "FREE_TRIAL" ? "Draft" : planValue || "Draft"}
+                  </span>
                 </div>
               </div>
-            )}
 
-            {/* STEP 5: Completion */}
-            {currentStep === 5 && (
-              <div className="text-center py-10 space-y-5 animate-in fade-in zoom-in-95 duration-350">
-                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-100">
-                  <CheckCircle className="w-10 h-10 stroke-[2]" />
+              {/* Metadata rows */}
+              <div className="mt-4 space-y-2.5 text-xs text-slate-650">
+                <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                  <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    <User className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Owner</span>
+                  </div>
+                  <span className="font-bold text-slate-800 truncate max-w-[180px]">
+                    {ownerNameValue || "—"}
+                  </span>
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-black text-slate-800">Workspace Initialized!</h3>
-                  <p className="text-xs text-slate-450 max-w-sm mx-auto leading-relaxed">
-                    Tenant organization <span className="font-bold text-slate-800">"{businessNameValue}"</span> has been successfully provisioned. The owner credentials have been generated and limits deployed.
-                  </p>
+
+                <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                  <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    <Mail className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Email</span>
+                  </div>
+                  <span className="font-bold text-slate-800 truncate max-w-[180px]">
+                    {emailValue || "—"}
+                  </span>
                 </div>
-                <div className="pt-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={handleDone}
-                    className="px-6 py-2.5 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider shadow-sm"
-                  >
-                    Go to Business List
-                  </button>
+
+                <div className="flex justify-between items-center border-b border-slate-50 pb-2">
+                  <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    <Phone className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Phone</span>
+                  </div>
+                  <span className="font-bold text-slate-800 truncate max-w-[180px]">
+                    {phoneValue || "—"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pb-1">
+                  <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                    <Globe className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Region / Currency</span>
+                  </div>
+                  <span className="font-bold text-slate-800 uppercase">
+                    {currencyValue || "—"}
+                  </span>
                 </div>
               </div>
-            )}
-          </form>
+            </div>
+
+            {/* Widget 2: Workflow Steps Panel */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider mb-4">Workflow</h4>
+              <div className="space-y-3.5">
+                {[
+                  { num: 1, label: "Create institution draft" },
+                  { num: 2, label: "Enter core information" },
+                  { num: 3, label: "Validate code and contact details" },
+                  { num: 4, label: "Save draft" },
+                  { num: 5, label: "Proceed to verification" },
+                ].map((step) => {
+                  const isCompleted = currentStep > step.num;
+                  const isActive = currentStep === step.num;
+
+                  return (
+                    <div key={step.num} className="flex items-center gap-3">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border ${
+                          isCompleted
+                            ? "bg-emerald-100 border-emerald-200 text-emerald-700"
+                            : isActive
+                            ? "bg-[#064E3B] border-[#064E3B] text-white"
+                            : "bg-slate-50 border-slate-200 text-slate-400"
+                        }`}
+                      >
+                        {step.num}
+                      </div>
+                      <span
+                        className={`text-xs font-semibold ${
+                          isActive
+                            ? "text-[#064E3B] font-bold"
+                            : isCompleted
+                            ? "text-emerald-700"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Widget 3: Database Spec Data Model Mapping */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider mb-4">Database & Data Model</h4>
+              
+              <div className="space-y-4 text-xs">
+                <div>
+                  <h5 className="font-extrabold uppercase text-[9px] text-slate-450 tracking-wider mb-1.5">Primary Tables</h5>
+                  <ul className="space-y-1 text-slate-650 font-semibold list-disc list-inside">
+                    <li>businesses</li>
+                    <li>subscriptions</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h5 className="font-extrabold uppercase text-[9px] text-slate-450 tracking-wider mb-2">Key Fields (Businesses)</h5>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "business_name",
+                      "slug",
+                      "business_type",
+                      "owner_name",
+                      "official_email",
+                      "official_phone",
+                      "address",
+                      "currency",
+                      "pan_document",
+                      "pp_photo",
+                      "created_at",
+                      "updated_at",
+                    ].map((key) => (
+                      <span
+                        key={key}
+                        className="bg-emerald-50 border border-emerald-100 text-[#2E7D32] text-[9px] font-bold px-2 py-0.5 rounded"
+                      >
+                        {key}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
