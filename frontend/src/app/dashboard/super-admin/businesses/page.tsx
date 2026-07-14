@@ -97,6 +97,7 @@ export default function SuperAdminBusinessesPage() {
   const [tempPassword, setTempPassword] = useState("");
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   // Custom Feature & Limit override states
   const [customFeatures, setCustomFeatures] = useState<Record<string, boolean>>({});
@@ -240,6 +241,7 @@ export default function SuperAdminBusinessesPage() {
       fetchBusinesses();
     } catch (err: any) {
       setActionError(err.message);
+      setShowErrorPopup(true);
     }
   };
 
@@ -1480,6 +1482,29 @@ export default function SuperAdminBusinessesPage() {
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer"
               >
                 Apply Custom Overrides
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showErrorPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 shadow-2xl animate-zoom-in relative">
+            <h3 className="text-sm font-black text-slate-850 mb-4 uppercase tracking-wider">Tenant Provisioning Error</h3>
+            
+            {/* Exact red error banner layout matching screenshot */}
+            <div className="py-4 px-6 bg-[#FEF2F2] border border-[#FEE2E2] rounded-2xl text-[#DC2626] text-xs font-bold text-center leading-relaxed">
+              {actionError || "An unexpected error occurred during tenant initialization."}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowErrorPopup(false)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer uppercase tracking-wider"
+              >
+                Dismiss
               </button>
             </div>
           </div>
