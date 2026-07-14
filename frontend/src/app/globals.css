@@ -175,8 +175,8 @@
   left: 6%;
   right: 6%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #2563EB, #2563EB, transparent);
-  box-shadow: 0 0 8px #2563EB, 0 0 12px #2563EB;
+  background: linear-gradient(90deg, transparent, #10B981, #10B981, transparent);
+  box-shadow: 0 0 8px #10B981, 0 0 12px #10B981;
   animation: qr-scan 3s ease-in-out infinite;
 }
 
@@ -184,7 +184,7 @@
   position: absolute;
   width: 16px;
   height: 16px;
-  border-color: #2563EB;
+  border-color: #10B981;
   border-style: solid;
   pointer-events: none;
 }
