@@ -241,22 +241,34 @@ export default function DashboardPage() {
     <div className="space-y-6 max-w-[1600px] mx-auto pb-24 md:pb-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-            Welcome back, {session?.user?.name?.split(" ")[0] || "Admin"}! 👋
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Here's what's happening with your business today.
-          </p>
+        <div className="flex justify-between w-full sm:w-auto items-start sm:items-center">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+              Welcome back, {session?.user?.name?.split(" ")[0] || "Admin"}! 👋
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              Here's what's happening with your business today.
+            </p>
+          </div>
+          
+          {/* Mobile Sync Button (Icon Only) */}
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="sm:hidden flex items-center justify-center p-2.5 bg-[#0B3B30] text-white hover:bg-[#126854] rounded-lg transition-all shadow-sm ml-4 shrink-0"
+          >
+            <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
+          </button>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="hidden sm:flex items-center px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
+
+        <div className="hidden sm:flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
             This Month <ChevronDown className="w-4 h-4 ml-2" />
           </div>
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0B3B30] text-white hover:bg-[#126854] rounded-lg text-xs font-bold transition-all shadow-sm"
+            className="flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0B3B30] text-white hover:bg-[#126854] rounded-lg text-xs font-bold transition-all shadow-sm"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             Sync Real-time Data
@@ -342,7 +354,7 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={sparklineData}>
                       <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -374,7 +386,7 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={sparklineData}>
                       <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -406,7 +418,7 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={sparklineData}>
                       <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -438,7 +450,7 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={sparklineData}>
                       <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -470,7 +482,7 @@ export default function DashboardPage() {
               </div>
               <div className="w-12 h-6">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <LineChart data={sparklineData}>
                       <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -489,7 +501,7 @@ export default function DashboardPage() {
           <h2 className="text-sm font-extrabold text-slate-800 mb-6">Sales Overview</h2>
           <div className="h-72 w-full flex-1">
             {mounted && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorSalesFill" x1="0" y1="0" x2="0" y2="1">
@@ -590,7 +602,7 @@ export default function DashboardPage() {
           <div className="flex items-center h-48">
             <div className="w-1/2 h-full relative">
               {mounted && categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
                       data={categoryData}
