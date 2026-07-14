@@ -410,6 +410,7 @@ export default function ProductsPage() {
       }, 1500);
     } catch (err: any) {
       setImportError(err.message);
+      showAlert("Import Limit Exceeded", err.message, "error");
     } finally {
       setImporting(false);
     }
