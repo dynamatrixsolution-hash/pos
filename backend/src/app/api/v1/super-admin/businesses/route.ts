@@ -15,6 +15,8 @@ const businessCreationSchema = z.object({
   phone: z.string().optional().nullable(),
   plan: z.enum(["FREE_TRIAL", "BASIC", "PREMIUM", "ENTERPRISE"]).default("FREE_TRIAL"),
   durationMonths: z.number().min(1).max(60).default(12),
+  panDocument: z.string().optional().nullable(),
+  ppPhoto: z.string().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -91,6 +93,8 @@ export async function POST(request: Request) {
       phone,
       plan,
       durationMonths,
+      panDocument,
+      ppPhoto,
     } = result.data;
 
     // Check if email is already taken
@@ -122,6 +126,8 @@ export async function POST(request: Request) {
             enableVat: true,
             vatPercentage: 10,
             pricingType: "EXCLUSIVE",
+            panDocument: panDocument || null,
+            ppPhoto: ppPhoto || null,
           },
         },
       });
