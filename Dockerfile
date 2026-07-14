@@ -19,14 +19,11 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 # Generate prisma client before building
 RUN npm run prisma:generate
-
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV BACKEND_URL "http://dynaone-backend:3000"
-
 ARG APP_NAME
 RUN npm run build --workspace=${APP_NAME}
 
@@ -39,16 +36,12 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
-
 RUN apk add --no-cache openssl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-
 ARG APP_NAME
 ENV APP_NAME=${APP_NAME}
-
 COPY --from=builder /app/${APP_NAME}/public ./${APP_NAME}/public
-
 # Set the correct permission for prerender cache
 RUN mkdir -p ${APP_NAME}/.next && chown nextjs:nodejs ${APP_NAME}/.next
 

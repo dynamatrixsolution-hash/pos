@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 40 43% 98%; /* #FDFBF7 */
-    --foreground: 0 0% 0%; /* #000000 */
-    --card: 0 0% 100%; /* #FFFFFF */
+    --background: 210 20% 98%; /* #F8F9FA */
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
-    --primary: 164 86% 16%; /* #064E3B Deep Forest */
-    --primary-foreground: 40 43% 98%;
-    --secondary: 176 69% 22%; /* #115E59 Supporting Teal */
+    --primary: 168 70% 13%; /* #0B3B30 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 166 60% 25%; /* #126854 */
     --secondary-foreground: 0 0% 100%;
-    --muted: 40 10% 92%;
-    --muted-foreground: 220 9% 46%; /* #6B7280 Muted */
-    --accent: 46 93% 47%; /* #EAB308 Gold */
-    --accent-foreground: 164 86% 16%; /* #064E3B Deep Forest */
-    --destructive: 0 84.2% 60.2%; /* #22C55E */
+    --muted: 210 14% 94%; /* #F1F3F5 */
+    --muted-foreground: 215 14% 45%; /* #6C757D */
+    --accent: 46 93% 47%; /* Gold */
+    --accent-foreground: 168 70% 13%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 20 6% 90%; /* #E7E5E4 Border */
-    --input: 40 43% 98%;
-    --ring: 164 86% 16%;
+    --border: 210 14% 89%; /* #E9ECEF */
+    --input: 210 14% 94%;
+    --ring: 168 70% 13%;
     --radius: 1.25rem;
   }
 
@@ -72,8 +72,8 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
-  --font-sans: var(--font-poppins);
-  --font-heading: var(--font-poppins);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
 
   /* Brand additions from user request */
   --color-brand-forest: #064E3B;
@@ -105,7 +105,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-poppins), sans-serif;
+    font-family: var(--font-sans), sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   h1, h2, h3, h4, h5, h6 {
@@ -240,82 +240,81 @@
 
 /* Custom Global Color Theme Overrides to Force Brand Colors Site-Wide */
 .bg-\[\#F3F4F6\] {
-  background-color: #FDFBF7 !important;
+  background-color: #F8F9FA !important;
 }
 .bg-\[\#F9FAFB\] {
   background-color: #FFFFFF !important;
 }
 .bg-\[\#2563EB\] {
-  background-color: #064E3B !important;
+  background-color: #0B3B30 !important;
 }
 .hover\:bg-\[\#1D4ED8\]:hover {
-  background-color: #115E59 !important;
+  background-color: #126854 !important;
 }
 .text-\[\#2563EB\] {
-  color: #064E3B !important;
+  color: #0B3B30 !important;
 }
 .border-\[\#2563EB\] {
-  border-color: #064E3B !important;
+  border-color: #0B3B30 !important;
 }
 .shadow-\[\#2563EB\]\/15 {
-  --tw-shadow-color: rgb(6 78 59 / 0.15) !important;
+  --tw-shadow-color: rgb(11 59 48 / 0.15) !important;
 }
 .shadow-\[\#2563EB\]\/25 {
-  --tw-shadow-color: rgb(6 78 59 / 0.25) !important;
+  --tw-shadow-color: rgb(11 59 48 / 0.25) !important;
 }
 .bg-\[\#2563EB\]\/10 {
-  background-color: rgba(6, 78, 59, 0.1) !important;
+  background-color: rgba(11, 59, 48, 0.1) !important;
 }
 .bg-\[\#2563EB\]\/20 {
-  background-color: rgba(6, 78, 59, 0.2) !important;
+  background-color: rgba(11, 59, 48, 0.2) !important;
 }
 .bg-\[\#2563EB\]\/5 {
-  background-color: rgba(6, 78, 59, 0.05) !important;
+  background-color: rgba(11, 59, 48, 0.05) !important;
 }
 .hover\:text-\[\#2563EB\]:hover {
-  color: #115E59 !important;
+  color: #126854 !important;
 }
 .focus\:ring-\[\#2563EB\]:focus {
-  --tw-ring-color: #064E3B !important;
+  --tw-ring-color: #0B3B30 !important;
 }
 .text-blue-600 {
-  color: #064E3B !important;
+  color: #0B3B30 !important;
 }
 .bg-blue-600 {
-  background-color: #064E3B !important;
+  background-color: #0B3B30 !important;
 }
 .bg-blue-500 {
-  background-color: #064E3B !important;
+  background-color: #0B3B30 !important;
 }
 .bg-blue-50 {
-  background-color: #FDFBF7 !important;
+  background-color: #F8F9FA !important;
 }
 .text-blue-500 {
-  color: #064E3B !important;
+  color: #0B3B30 !important;
 }
 .hover\:bg-blue-50:hover {
-  background-color: #115E59 !important;
+  background-color: #126854 !important;
 }
 .hover\:bg-blue-600:hover {
-  background-color: #115E59 !important;
+  background-color: #126854 !important;
 }
 .hover\:bg-blue-700:hover {
-  background-color: #115E59 !important;
+  background-color: #126854 !important;
 }
 .border-blue-200 {
-  border-color: #E7E5E4 !important;
+  border-color: #E9ECEF !important;
 }
 .border-blue-300 {
-  border-color: #E7E5E4 !important;
+  border-color: #E9ECEF !important;
 }
 .border-blue-500 {
-  border-color: #064E3B !important;
+  border-color: #0B3B30 !important;
 }
 .text-blue-700 {
-  color: #064E3B !important;
+  color: #0B3B30 !important;
 }
 .text-blue-800 {
-  color: #064E3B !important;
+  color: #0B3B30 !important;
 }
-
 

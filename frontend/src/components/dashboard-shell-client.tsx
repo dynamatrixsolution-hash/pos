@@ -454,7 +454,7 @@ export default function DashboardShellClient({
         onClick={() => isMobile && setMobileMenuOpen(false)}
         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group mb-1.5 ${
           isActive
-            ? "bg-[#115E59] hover:bg-[#0f4d49] text-white shadow-md shadow-[#115E59]/15"
+            ? "bg-[#126854] text-white"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}
       >
@@ -469,22 +469,36 @@ export default function DashboardShellClient({
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar desktop (Fixed dark theme) */}
-      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#064E3B] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30 bg-[#064E3B]">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-            <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
-              Prayassh
-            </span>
+      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#0B3B30] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
+        <div className="h-20 flex items-center justify-center px-6 border-b border-white/5 bg-[#0B3B30]">
+          <Link href="/dashboard" className="flex items-center gap-3 w-full">
+            <img src="/logo.jpg" alt="Prayassh Logo" className="h-10 w-auto rounded-lg object-contain shrink-0" />
+            <div className="flex flex-col">
+              <span className="font-black text-white tracking-tight text-lg leading-none">Prayassh</span>
+              <span className="text-[9px] text-[#EAB308] font-semibold tracking-wider mt-0.5">FROM EFFORT TO EXCELLENCE</span>
+            </div>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 py-6">
           {allowedNavigation.map((item) => renderNavItem(item))}
         </nav>
-        <div className="p-4 border-t border-emerald-800/30 bg-[#064E3B]">
+        <div className="p-4 border-t border-white/5 bg-[#0B3B30] flex flex-col gap-2">
+          <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-[#126854] to-[#0f5242] border border-white/10 relative overflow-hidden mb-2">
+            <div className="absolute top-0 right-0 p-2 opacity-20">
+              <Sun className="w-12 h-12" />
+            </div>
+            <div className="text-[#EAB308] shrink-0">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.8-6.3 4.8 2.3-7-6-4.6h7.6z"/></svg>
+            </div>
+            <div>
+              <div className="text-white text-xs font-bold">Prayassh Premium</div>
+              <div className="text-white/70 text-[10px]">v2.5.0</div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-white/50 ml-auto" />
+          </div>
           <button
             onClick={() => setLogoutConfirmOpen(true)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-[#EAB308] hover:bg-white/5 font-bold transition-colors cursor-pointer"
           >
             <LogOut className="h-5 w-5" />
             Logout
@@ -566,18 +580,20 @@ export default function DashboardShellClient({
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search products, pages, customers, suppliers..."
+                      placeholder="Search products, customers, invoices..."
                       value={headerSearchQuery}
                       onChange={(e) => {
                         setHeaderSearchQuery(e.target.value);
                         setShowSearchDropdown(true);
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
-                      className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
+                      className="flex-1 px-4 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
                     />
-                    <button className="px-3.5 bg-[#064E3B] hover:bg-[#053F30] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
-                      <Search className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center pr-3">
+                      <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground font-semibold px-2 py-1 bg-white dark:bg-slate-800 rounded border border-border">
+                        <span className="text-[12px]">⌘</span> K
+                      </div>
+                    </div>
                   </div>
 
                   {/* Search Results Dropdown */}
@@ -1000,6 +1016,31 @@ export default function DashboardShellClient({
           </div>
         </div>
       )}
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-border flex items-center justify-around px-2 py-2 pb-safe z-40 no-print">
+        <Link href="/dashboard" className="flex flex-col items-center gap-1 p-2 text-primary">
+          <Store className="h-5 w-5" />
+          <span className="text-[9px] font-bold">Home</span>
+        </Link>
+        <Link href="/dashboard/sales" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
+          <TrendingUp className="h-5 w-5" />
+          <span className="text-[9px] font-bold">Sales</span>
+        </Link>
+        <div className="relative -top-5">
+          <Link href="/dashboard/pos" className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg border-4 border-background">
+            <span className="text-2xl font-light">+</span>
+          </Link>
+        </div>
+        <Link href="/dashboard/reports" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
+          <Calculator className="h-5 w-5" />
+          <span className="text-[9px] font-bold">Reports</span>
+        </Link>
+        <button onClick={() => setMobileMenuOpen(true)} className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
+          <Menu className="h-5 w-5" />
+          <span className="text-[9px] font-bold">Menu</span>
+        </button>
+      </div>
+
       <ToastContainer />
     </div>
   );
