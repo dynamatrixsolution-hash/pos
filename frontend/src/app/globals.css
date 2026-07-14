@@ -72,10 +72,8 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
-  --font-sans: var(--font-sans);
-  --font-heading: var(--font-sans);
 
-  /* Brand additions from user request */
+  /* Brand additions */
   --color-brand-forest: #064E3B;
   --color-brand-teal: #115E59;
   --color-brand-gold: #EAB308;
@@ -83,19 +81,6 @@
   --color-brand-cream: #FDFBF7;
   --color-brand-muted: #6B7280;
   --color-brand-border: #E7E5E4;
-
-  /* Force standard blue utilities to resolve to brand colors */
-  --color-blue-50: #FDFBF7;
-  --color-blue-100: #E7E5E4;
-  --color-blue-200: #E7E5E4;
-  --color-blue-300: #E7E5E4;
-  --color-blue-400: #115E59;
-  --color-blue-450: #115E59;
-  --color-blue-500: #064E3B;
-  --color-blue-600: #064E3B;
-  --color-blue-700: #115E59;
-  --color-blue-800: #064E3B;
-  --color-blue-900: #064E3B;
 }
 
 @layer base {
@@ -113,25 +98,37 @@
   }
 }
 
-@layer utilities {
-  .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)];
-  }
-  .dark .glass {
-    @apply bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.3)];
-  }
-  .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-sm transition-all duration-300;
-  }
-  .dark .glass-card {
-    @apply bg-slate-800/50 backdrop-blur-md border border-slate-700/50 shadow-md transition-all duration-300;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
+@utility glass {
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+.dark .glass {
+  background-color: rgba(15, 23, 42, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition-property: all;
+  transition-duration: 300ms;
+}
+.dark .glass-card {
+  background-color: rgba(30, 41, 59, 0.5);
+  border-color: rgba(51, 65, 85, 0.5);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+  &::-webkit-scrollbar {
     display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
   }
 }
 
@@ -168,15 +165,9 @@
 
 /* Premium QR Code Scanner Styles */
 @keyframes qr-scan {
-  0% {
-    top: 5%;
-  }
-  50% {
-    top: 95%;
-  }
-  100% {
-    top: 5%;
-  }
+  0% { top: 5%; }
+  50% { top: 95%; }
+  100% { top: 5%; }
 }
 
 .qr-scanner-line {
@@ -198,123 +189,7 @@
   pointer-events: none;
 }
 
-.qr-scanner-corner-tl {
-  top: -2px;
-  left: -2px;
-  border-top-width: 3.5px;
-  border-left-width: 3.5px;
-  border-top-left-radius: 8px;
-  border-bottom-width: 0;
-  border-right-width: 0;
-}
-
-.qr-scanner-corner-tr {
-  top: -2px;
-  right: -2px;
-  border-top-width: 3.5px;
-  border-right-width: 3.5px;
-  border-top-right-radius: 8px;
-  border-bottom-width: 0;
-  border-left-width: 0;
-}
-
-.qr-scanner-corner-bl {
-  bottom: -2px;
-  left: -2px;
-  border-bottom-width: 3.5px;
-  border-left-width: 3.5px;
-  border-bottom-left-radius: 8px;
-  border-top-width: 0;
-  border-right-width: 0;
-}
-
-.qr-scanner-corner-br {
-  bottom: -2px;
-  right: -2px;
-  border-bottom-width: 3.5px;
-  border-right-width: 3.5px;
-  border-bottom-right-radius: 8px;
-  border-top-width: 0;
-  border-left-width: 0;
-}
-
-/* Custom Global Color Theme Overrides to Force Brand Colors Site-Wide */
-.bg-\[\#F3F4F6\] {
-  background-color: #F8F9FA !important;
-}
-.bg-\[\#F9FAFB\] {
-  background-color: #FFFFFF !important;
-}
-.bg-\[\#2563EB\] {
-  background-color: #0B3B30 !important;
-}
-.hover\:bg-\[\#1D4ED8\]:hover {
-  background-color: #126854 !important;
-}
-.text-\[\#2563EB\] {
-  color: #0B3B30 !important;
-}
-.border-\[\#2563EB\] {
-  border-color: #0B3B30 !important;
-}
-.shadow-\[\#2563EB\]\/15 {
-  --tw-shadow-color: rgb(11 59 48 / 0.15) !important;
-}
-.shadow-\[\#2563EB\]\/25 {
-  --tw-shadow-color: rgb(11 59 48 / 0.25) !important;
-}
-.bg-\[\#2563EB\]\/10 {
-  background-color: rgba(11, 59, 48, 0.1) !important;
-}
-.bg-\[\#2563EB\]\/20 {
-  background-color: rgba(11, 59, 48, 0.2) !important;
-}
-.bg-\[\#2563EB\]\/5 {
-  background-color: rgba(11, 59, 48, 0.05) !important;
-}
-.hover\:text-\[\#2563EB\]:hover {
-  color: #126854 !important;
-}
-.focus\:ring-\[\#2563EB\]:focus {
-  --tw-ring-color: #0B3B30 !important;
-}
-.text-blue-600 {
-  color: #0B3B30 !important;
-}
-.bg-blue-600 {
-  background-color: #0B3B30 !important;
-}
-.bg-blue-500 {
-  background-color: #0B3B30 !important;
-}
-.bg-blue-50 {
-  background-color: #F8F9FA !important;
-}
-.text-blue-500 {
-  color: #0B3B30 !important;
-}
-.hover\:bg-blue-50:hover {
-  background-color: #126854 !important;
-}
-.hover\:bg-blue-600:hover {
-  background-color: #126854 !important;
-}
-.hover\:bg-blue-700:hover {
-  background-color: #126854 !important;
-}
-.border-blue-200 {
-  border-color: #E9ECEF !important;
-}
-.border-blue-300 {
-  border-color: #E9ECEF !important;
-}
-.border-blue-500 {
-  border-color: #0B3B30 !important;
-}
-.text-blue-700 {
-  color: #0B3B30 !important;
-}
-.text-blue-800 {
-  color: #0B3B30 !important;
-}
-
+.qr-scanner-corner-tl { top: -2px; left: -2px; border-top-width: 3.5px; border-left-width: 3.5px; border-top-left-radius: 8px; border-bottom-width: 0; border-right-width: 0; }
+.qr-scanner-corner-tr { top: -2px; right: -2px; border-top-width: 3.5px; border-right-width: 3.5px; border-top-right-radius: 8px; border-bottom-width: 0; border-left-width: 0; }
+.qr-scanner-corner-bl { bottom: -2px; left: -2px; border-bottom-width: 3.5px; border-left-width: 3.5px; border-bottom-left-radius: 8px; border-top-width: 0; border-right-width: 0; }
+.qr-scanner-corner-br { bottom: -2px; right: -2px; border-bottom-width: 3.5px; border-right-width: 3.5px; border-bottom-right-radius: 8px; border-top-width: 0; border-left-width: 0; }
