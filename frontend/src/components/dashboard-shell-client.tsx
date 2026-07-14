@@ -1022,24 +1022,24 @@ export default function DashboardShellClient({
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-border flex items-center justify-around px-2 py-2 pb-safe z-40 no-print">
         <Link href="/dashboard" className="flex flex-col items-center gap-1 p-2 text-primary">
           <Store className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Home</span>
+          <span className="text-[9px] font-bold">Dashboard</span>
         </Link>
-        <Link href="/dashboard/sales" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
-          <TrendingUp className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Sales</span>
+        <Link href="/dashboard/pos" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
+          <ShoppingCart className="h-5 w-5" />
+          <span className="text-[9px] font-bold">POS</span>
         </Link>
         <div className="relative -top-5">
-          <Link href="/dashboard/pos" className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg border-4 border-background">
-            <span className="text-2xl font-light">+</span>
+          <Link href="/dashboard/products" className="flex flex-col items-center justify-center h-12 w-12 rounded-full bg-primary text-white shadow-lg border-4 border-background hover:scale-105 transition-transform" aria-label="Add Product">
+            <Package className="h-5 w-5" />
           </Link>
         </div>
-        <Link href="/dashboard/reports" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
+        <Link href="/dashboard/reports" className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
           <Calculator className="h-5 w-5" />
           <span className="text-[9px] font-bold">Reports</span>
         </Link>
-        <button onClick={() => setMobileMenuOpen(true)} className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-foreground">
-          <Menu className="h-5 w-5" />
-          <span className="text-[9px] font-bold">Menu</span>
+        <button onClick={() => setMobileMenuOpen(true)} className="flex flex-col items-center gap-1 p-2 text-muted-foreground hover:text-primary transition-colors">
+          <User className="h-5 w-5" />
+          <span className="text-[9px] font-bold">Profile</span>
         </button>
       </div>
 
