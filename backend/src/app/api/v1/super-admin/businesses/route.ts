@@ -8,6 +8,7 @@ const businessCreationSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
   currency: z.string().default("USD"),
+  businessType: z.string().default("RETAIL"),
   ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
       businessName,
       slug,
       currency,
+      businessType,
       ownerName,
       email,
       password,
@@ -114,6 +116,13 @@ export async function POST(request: Request) {
           slug,
           currency,
           taxConfig: { taxName: "VAT", rate: 10 },
+          settings: {
+            businessType: businessType || "RETAIL",
+            currencySymbol: currency === "NPR" ? "Rs. " : currency === "INR" ? "₹" : "$",
+            enableVat: true,
+            vatPercentage: 10,
+            pricingType: "EXCLUSIVE",
+          },
         },
       });
 
