@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Trash2, Tag, Percent, Barcode, Boxes, Edit, Camera, FileSpreadsheet, Upload, Download, Loader2, AlertTriangle, Info } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
@@ -77,10 +76,6 @@ export default function ProductsPage() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
-
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
 
   // Excel Import States
   const [importModalOpen, setImportModalOpen] = React.useState(false);
@@ -177,15 +172,6 @@ export default function ProductsPage() {
 
   const loadData = React.useCallback(async () => {
     try {
-      if (isLoading) {
-        const cached = sessionStorage.getItem("cached_products");
-        if (cached) {
-          try {
-            setProducts(JSON.parse(cached));
-            setIsLoading(false);
-          } catch (_) {}
-        }
-      }
       setIsLoading(true);
       let url = `/api/v1/products?limit=100&search=${search}`;
       if (selectedCategory && selectedCategory !== "all") {
@@ -206,9 +192,7 @@ export default function ProductsPage() {
       
       if (prodRes.ok) {
         const data = await prodRes.json();
-        const prodList = data.products || [];
-        setProducts(prodList);
-        sessionStorage.setItem("cached_products", JSON.stringify(prodList));
+        setProducts(data.products || []);
       }
       if (catRes.ok) {
         const data = await catRes.json();
@@ -228,11 +212,6 @@ export default function ProductsPage() {
   React.useEffect(() => {
     loadData();
   }, [loadData]);
-
-  React.useEffect(() => {
-    const urlSearch = searchParams?.get("search") || "";
-    setSearch(urlSearch);
-  }, [searchParams]);
 
   const handleEdit = (product: ProductItem) => {
     setEditingId(product.id);
@@ -541,17 +520,7 @@ export default function ProductsPage() {
               type="text"
               placeholder="Search products by SKU, name, or barcode..."
               value={search}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearch(val);
-                const params = new URLSearchParams(window.location.search);
-                if (val) {
-                  params.set("search", val);
-                } else {
-                  params.delete("search");
-                }
-                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               disabled={isMutating}
               className="pl-10 w-full px-4 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               suppressHydrationWarning

@@ -81,61 +81,9 @@ export default function OutstandingReportsPage() {
     if (data.length === 0) return toast.warning("No data available");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(6, 78, 59);
+    doc.setFontSize(16);
+    doc.setTextColor(245, 158, 11);
     doc.text(`DynaPOS - Outstanding Audit Statement (${activeTab.toUpperCase()})`, 14, 20);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
-    
-    let y = 35;
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(240, 240, 240);
-    doc.rect(14, y, 182, 7, "F");
-    doc.setTextColor(50, 50, 50);
-    doc.text("Name", 16, y + 5);
-    doc.text("Phone", 65, y + 5);
-    doc.text("Address", 105, y + 5);
-    doc.text(activeTab === "customer" ? "Credit Limit" : "Email", 145, y + 5);
-    doc.text("Balance / Outstanding", 175, y + 5);
-    
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    
-    data.forEach((item) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-        doc.setFillColor(240, 240, 240);
-        doc.rect(14, y, 182, 7, "F");
-        doc.setFont("helvetica", "bold");
-        doc.text("Name", 16, y + 5);
-        doc.text("Phone", 65, y + 5);
-        doc.text("Address", 105, y + 5);
-        doc.text(activeTab === "customer" ? "Credit Limit" : "Email", 145, y + 5);
-        doc.text("Balance / Outstanding", 175, y + 5);
-        y += 7;
-        doc.setFont("helvetica", "normal");
-      }
-      
-      const nameVal = item.name;
-      const phoneVal = item.phone || "N/A";
-      const addrVal = item.address || "N/A";
-      const extraVal = activeTab === "customer" ? `${currencySymbol}${item.creditLimit.toFixed(2)}` : (item.email || "N/A");
-      const balVal = `${currencySymbol}${Math.abs(item.balance || 0).toFixed(2)}`;
-      
-      doc.text(nameVal.slice(0, 22), 16, y + 5);
-      doc.text(phoneVal, 65, y + 5);
-      doc.text(addrVal.slice(0, 18), 105, y + 5);
-      doc.text(extraVal.slice(0, 18), 145, y + 5);
-      doc.text(balVal, 175, y + 5);
-      doc.line(14, y + 7, 196, y + 7);
-      y += 7;
-    });
-    
     doc.save(`outstanding_${activeTab}.pdf`);
   };
 
@@ -280,7 +228,7 @@ export default function OutstandingReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-row items-center gap-3 overflow-x-auto w-full xl:w-auto pb-1 xl:pb-0 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
             <Search className="h-4 w-4 text-slate-400" />
             <input

@@ -6,7 +6,6 @@ import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, Store, Receipt, FileText, ArrowUpRight, Loader2 } from "lucide-react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 interface SupplierItem {
   id: string;
@@ -49,10 +48,6 @@ export default function SuppliersPage() {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
   // Ledger state
   const [selectedSupplier, setSelectedSupplier] = React.useState<SupplierItem | null>(null);
   const [ledgerEntries, setLedgerEntries] = React.useState<LedgerEntry[]>([]);
@@ -78,22 +73,11 @@ export default function SuppliersPage() {
 
   const loadSuppliers = React.useCallback(async () => {
     try {
-      if (isLoading) {
-        const cached = sessionStorage.getItem("cached_suppliers");
-        if (cached) {
-          try {
-            setSuppliers(JSON.parse(cached));
-            setIsLoading(false);
-          } catch (_) {}
-        }
-      }
       setIsLoading(true);
       const res = await fetch(`/api/v1/suppliers?limit=100&search=${search}`);
       if (res.ok) {
         const data = await res.json();
-        const supplierList = data.suppliers || [];
-        setSuppliers(supplierList);
-        sessionStorage.setItem("cached_suppliers", JSON.stringify(supplierList));
+        setSuppliers(data.suppliers || []);
       }
     } catch (err) {
       console.error("Failed to load suppliers list:", err);
@@ -105,11 +89,6 @@ export default function SuppliersPage() {
   React.useEffect(() => {
     loadSuppliers();
   }, [loadSuppliers]);
-
-  React.useEffect(() => {
-    const urlSearch = searchParams?.get("search") || "";
-    setSearch(urlSearch);
-  }, [searchParams]);
 
   const onSubmit = async (data: SupplierInputs) => {
     setSubmitError(null);
@@ -181,17 +160,7 @@ export default function SuppliersPage() {
               type="text"
               placeholder="Search suppliers by name, phone, contact person..."
               value={search}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearch(val);
-                const params = new URLSearchParams(window.location.search);
-                if (val) {
-                  params.set("search", val);
-                } else {
-                  params.delete("search");
-                }
-                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 w-full px-4 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>

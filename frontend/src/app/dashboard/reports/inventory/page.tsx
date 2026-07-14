@@ -122,66 +122,9 @@ export default function InventoryReportsPage() {
     if (filteredProducts.length === 0) return toast.warning("No inventory data to export");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(6, 78, 59);
+    doc.setFontSize(16);
+    doc.setTextColor(94, 80, 235);
     doc.text(`DynaPOS - Inventory ${activeTab.toUpperCase()} Statement`, 14, 20);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
-    
-    let y = 35;
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(240, 240, 240);
-    doc.rect(14, y, 182, 7, "F");
-    doc.setTextColor(50, 50, 50);
-    doc.text("Product Name", 16, y + 5);
-    doc.text("SKU", 75, y + 5);
-    doc.text("Category", 105, y + 5);
-    doc.text("Stock Qty", 145, y + 5);
-    doc.text("Cost", 165, y + 5);
-    doc.text("Selling", 180, y + 5);
-    
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    
-    filteredProducts.forEach((p) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-        doc.setFillColor(240, 240, 240);
-        doc.rect(14, y, 182, 7, "F");
-        doc.setFont("helvetica", "bold");
-        doc.text("Product Name", 16, y + 5);
-        doc.text("SKU", 75, y + 5);
-        doc.text("Category", 105, y + 5);
-        doc.text("Stock Qty", 145, y + 5);
-        doc.text("Cost", 165, y + 5);
-        doc.text("Selling", 180, y + 5);
-        y += 7;
-        doc.setFont("helvetica", "normal");
-      }
-      
-      const stock = p.productStocks?.reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
-      const nameVal = p.name;
-      const skuVal = p.sku || "N/A";
-      const catVal = p.category?.name || "N/A";
-      const stockVal = `${stock}`;
-      const costVal = `${currencySymbol}${p.costPrice.toFixed(2)}`;
-      const sellVal = `${currencySymbol}${p.sellingPrice.toFixed(2)}`;
-      
-      doc.text(nameVal.slice(0, 26), 16, y + 5);
-      doc.text(skuVal, 75, y + 5);
-      doc.text(catVal.slice(0, 18), 105, y + 5);
-      doc.text(stockVal, 145, y + 5);
-      doc.text(costVal, 165, y + 5);
-      doc.text(sellVal, 180, y + 5);
-      doc.line(14, y + 7, 196, y + 7);
-      y += 7;
-    });
-    
     doc.save(`inventory_${activeTab}.pdf`);
   };
 
@@ -336,7 +279,7 @@ export default function InventoryReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-row items-center gap-3 overflow-x-auto w-full xl:w-auto pb-1 xl:pb-0 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
             <Search className="h-4 w-4 text-slate-400" />
             <input

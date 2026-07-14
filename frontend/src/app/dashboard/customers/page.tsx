@@ -6,7 +6,6 @@ import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Search, Plus, UserCheck, CreditCard, Receipt, FileText, ArrowUpRight, Loader2 } from "lucide-react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 interface CustomerItem {
   id: string;
@@ -49,10 +48,6 @@ export default function CustomersPage() {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
   // Ledger state
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerItem | null>(null);
   const [ledgerEntries, setLedgerEntries] = React.useState<LedgerEntry[]>([]);
@@ -73,22 +68,11 @@ export default function CustomersPage() {
 
   const loadCustomers = React.useCallback(async () => {
     try {
-      if (isLoading) {
-        const cached = sessionStorage.getItem("cached_customers");
-        if (cached) {
-          try {
-            setCustomers(JSON.parse(cached));
-            setIsLoading(false);
-          } catch (_) {}
-        }
-      }
       setIsLoading(true);
       const res = await fetch(`/api/v1/customers?limit=100&search=${search}`);
       if (res.ok) {
         const data = await res.json();
-        const customerList = data.customers || [];
-        setCustomers(customerList);
-        sessionStorage.setItem("cached_customers", JSON.stringify(customerList));
+        setCustomers(data.customers || []);
       }
     } catch (err) {
       console.error("Failed to load customers catalog:", err);
@@ -100,11 +84,6 @@ export default function CustomersPage() {
   React.useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
-
-  React.useEffect(() => {
-    const urlSearch = searchParams?.get("search") || "";
-    setSearch(urlSearch);
-  }, [searchParams]);
 
   const onSubmit = async (data: CustomerInputs) => {
     setSubmitError(null);
@@ -176,17 +155,7 @@ export default function CustomersPage() {
               type="text"
               placeholder="Search customers by name, phone, email..."
               value={search}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearch(val);
-                const params = new URLSearchParams(window.location.search);
-                if (val) {
-                  params.set("search", val);
-                } else {
-                  params.delete("search");
-                }
-                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 w-full px-4 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
