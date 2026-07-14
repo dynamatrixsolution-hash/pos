@@ -696,7 +696,8 @@ export default function POSPage() {
 
   const addUnitToCart = (product: ProductItem, qty: number) => {
     playBeep();
-    const stockQty = product.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+    const branchStock = product.productStocks.find((s: any) => s.branchId === branchId);
+    const stockQty = branchStock ? branchStock.quantity : 0;
 
     if (stockQty <= 0) {
       showAlert("Out of Stock", `Product "${product.name}" is completely out of stock.`, "error");
@@ -1389,7 +1390,8 @@ export default function POSPage() {
                   </thead>
                   <tbody>
                     {filteredProducts.slice(0, visibleCount).map((p) => {
-                      const stock = p.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+                      const branchStock = p.productStocks.find((s: any) => s.branchId === branchId);
+                      const stock = branchStock ? branchStock.quantity : 0;
                       const isPharmacy = currentOrder.posMode === "PHARMACY";
                       const batch = p.batches && p.batches.length > 0 ? p.batches[0] : null;
 
@@ -1458,7 +1460,8 @@ export default function POSPage() {
                 }`}
               >
                 {filteredProducts.slice(0, visibleCount).map((prod) => {
-                  const stock = prod.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+                  const branchStock = prod.productStocks.find((s: any) => s.branchId === branchId);
+                  const stock = branchStock ? branchStock.quantity : 0;
                   const isPharmacy = currentOrder.posMode === "PHARMACY";
                   const batch = prod.batches && prod.batches.length > 0 ? prod.batches[0] : null;
                   const isExpiringSoon =
