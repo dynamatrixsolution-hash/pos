@@ -555,10 +555,10 @@ export default function POSPage() {
       const q = debouncedQuery.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.barcode.toLowerCase().includes(q) ||
-          (p.batches && p.batches.some((b) => b.batchNumber.toLowerCase().includes(q)))
+          (p.name || "").toLowerCase().includes(q) ||
+          (p.sku || "").toLowerCase().includes(q) ||
+          (p.barcode || "").toLowerCase().includes(q) ||
+          (p.batches && p.batches.some((b) => (b.batchNumber || "").toLowerCase().includes(q)))
       );
     }
 
