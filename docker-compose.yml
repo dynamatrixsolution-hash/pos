@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: a11221
       POSTGRES_DB: prayasshpos
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -23,7 +23,7 @@ services:
     container_name: dynaone-backend
     restart: always
     ports:
-      - "3001:3000"
+      - "3003:3000"
     depends_on:
       - db
     env_file:
@@ -38,7 +38,7 @@ services:
     container_name: dynaone-frontend
     restart: always
     ports:
-      - "3002:3000"
+      - "3004:3000"
     depends_on:
       - db
     env_file:
