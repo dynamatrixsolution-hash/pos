@@ -583,8 +583,10 @@ export default function DashboardShellClient({
                       placeholder="Search products, customers, invoices..."
                       value={headerSearchQuery}
                       onChange={(e) => {
-                        setHeaderSearchQuery(e.target.value);
+                        const val = e.target.value;
+                        setHeaderSearchQuery(val);
                         setShowSearchDropdown(true);
+                        window.dispatchEvent(new CustomEvent("global-search", { detail: val }));
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
                       className="flex-1 px-4 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"

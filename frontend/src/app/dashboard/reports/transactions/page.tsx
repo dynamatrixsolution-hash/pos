@@ -149,13 +149,7 @@ export default function TransactionReportsPage() {
   };
 
   const exportPDF = () => {
-    if (items.length === 0) return toast.warning("No transactions to export");
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(94, 80, 235);
-    doc.text(`DynaPOS - ${activeTab.toUpperCase()} Transactions Report`, 14, 20);
-    doc.save(`transactions_${activeTab}.pdf`);
+    window.print();
   };
 
   const formatDateTime = (dateStr: string) => {

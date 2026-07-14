@@ -119,13 +119,7 @@ export default function InventoryReportsPage() {
   };
 
   const exportPDF = () => {
-    if (filteredProducts.length === 0) return toast.warning("No inventory data to export");
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(94, 80, 235);
-    doc.text(`DynaPOS - Inventory ${activeTab.toUpperCase()} Statement`, 14, 20);
-    doc.save(`inventory_${activeTab}.pdf`);
+    window.print();
   };
 
   const renderContent = () => {

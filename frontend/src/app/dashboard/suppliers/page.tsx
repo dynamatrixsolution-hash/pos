@@ -90,6 +90,15 @@ export default function SuppliersPage() {
     loadSuppliers();
   }, [loadSuppliers]);
 
+  React.useEffect(() => {
+    const handleGlobalSearch = (e: Event) => {
+      const q = (e as CustomEvent).detail;
+      setSearch(q);
+    };
+    window.addEventListener("global-search", handleGlobalSearch);
+    return () => window.removeEventListener("global-search", handleGlobalSearch);
+  }, []);
+
   const onSubmit = async (data: SupplierInputs) => {
     setSubmitError(null);
     try {
