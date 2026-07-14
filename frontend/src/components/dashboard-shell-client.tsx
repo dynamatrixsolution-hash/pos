@@ -3,7 +3,7 @@
 import * as React from "react";
 import ToastContainer from "@/components/toast";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearCaches } from "@/lib/cache-utils";
@@ -137,6 +137,8 @@ export default function DashboardShellClient({
   features?: Record<string, boolean>;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { update } = useSession();
   
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -211,6 +213,11 @@ export default function DashboardShellClient({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  React.useEffect(() => {
+    const searchVal = searchParams?.get("search") || "";
+    setHeaderSearchQuery(searchVal);
+  }, [searchParams]);
 
   // Inactivity tracking (5 minutes auto-logout with 30 seconds warning modal)
   React.useEffect(() => {
@@ -454,7 +461,7 @@ export default function DashboardShellClient({
         onClick={() => isMobile && setMobileMenuOpen(false)}
         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group mb-1.5 ${
           isActive
-            ? "bg-[#126854] text-white"
+            ? "bg-[#115E59] hover:bg-[#0f4d49] text-white shadow-md shadow-[#115E59]/15"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}
       >
@@ -469,36 +476,22 @@ export default function DashboardShellClient({
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar desktop (Fixed dark theme) */}
-      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#0B3B30] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
-        <div className="h-20 flex items-center justify-center px-6 border-b border-white/5 bg-[#0B3B30]">
-          <Link href="/dashboard" className="flex items-center gap-3 w-full">
-            <img src="/logo.jpg" alt="Prayassh Logo" className="h-10 w-auto rounded-lg object-contain shrink-0" />
-            <div className="flex flex-col">
-              <span className="font-black text-white tracking-tight text-lg leading-none">Prayassh</span>
-              <span className="text-[9px] text-[#EAB308] font-semibold tracking-wider mt-0.5">FROM EFFORT TO EXCELLENCE</span>
-            </div>
+      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#064E3B] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30 bg-[#064E3B]">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
+            <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
+              Prayassh
+            </span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 py-6">
           {allowedNavigation.map((item) => renderNavItem(item))}
         </nav>
-        <div className="p-4 border-t border-white/5 bg-[#0B3B30] flex flex-col gap-2">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-[#126854] to-[#0f5242] border border-white/10 relative overflow-hidden mb-2">
-            <div className="absolute top-0 right-0 p-2 opacity-20">
-              <Sun className="w-12 h-12" />
-            </div>
-            <div className="text-[#EAB308] shrink-0">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4h7.6l-6 4.6 2.3 7-6.3-4.8-6.3 4.8 2.3-7-6-4.6h7.6z"/></svg>
-            </div>
-            <div>
-              <div className="text-white text-xs font-bold">Prayassh Premium</div>
-              <div className="text-white/70 text-[10px]">v2.5.0</div>
-            </div>
-            <ChevronDown className="h-4 w-4 text-white/50 ml-auto" />
-          </div>
+        <div className="p-4 border-t border-emerald-800/30 bg-[#064E3B]">
           <button
             onClick={() => setLogoutConfirmOpen(true)}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-[#EAB308] hover:bg-white/5 font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
           >
             <LogOut className="h-5 w-5" />
             Logout
@@ -580,22 +573,26 @@ export default function DashboardShellClient({
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search products, customers, invoices..."
+                      placeholder="Search products, pages, customers, suppliers..."
                       value={headerSearchQuery}
                       onChange={(e) => {
                         const val = e.target.value;
                         setHeaderSearchQuery(val);
                         setShowSearchDropdown(true);
-                        window.dispatchEvent(new CustomEvent("global-search", { detail: val }));
+                        const params = new URLSearchParams(window.location.search);
+                        if (val) {
+                          params.set("search", val);
+                        } else {
+                          params.delete("search");
+                        }
+                        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
-                      className="flex-1 px-4 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
+                      className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
                     />
-                    <div className="flex items-center pr-3">
-                      <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground font-semibold px-2 py-1 bg-white dark:bg-slate-800 rounded border border-border">
-                        <span className="text-[12px]">⌘</span> K
-                      </div>
-                    </div>
+                    <button className="px-3.5 bg-[#064E3B] hover:bg-[#053F30] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
+                      <Search className="h-4 w-4" />
+                    </button>
                   </div>
 
                   {/* Search Results Dropdown */}
