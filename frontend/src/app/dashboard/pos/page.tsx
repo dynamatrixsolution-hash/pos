@@ -1852,7 +1852,7 @@ export default function POSPage() {
               )}
 
               {/* Bottom checkout action buttons matching mockup */}
-              <div className="space-y-2 shrink-0 font-bold text-xs select-none">
+              <div className="space-y-2 shrink-0 font-bold text-xs select-none pb-24 md:pb-0">
                 <button
                   type="button"
                   onClick={() => setCheckoutSelectionOpen(true)}
