@@ -62,6 +62,7 @@ const businessSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
   currency: z.string(),
+  businessType: z.enum(["RETAIL", "PHARMACY", "RESTAURANT", "WHOLESALE"]),
   ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -101,6 +102,7 @@ export default function SuperAdminBusinessesPage() {
       businessName: "",
       slug: "",
       currency: "USD",
+      businessType: "RETAIL",
       ownerName: "",
       email: "",
       password: "",
@@ -111,6 +113,7 @@ export default function SuperAdminBusinessesPage() {
   });
 
   const businessNameValue = watch("businessName");
+  const businessTypeValue = watch("businessType");
 
   // Sync tab with URL search parameter
   useEffect(() => {
@@ -560,6 +563,33 @@ export default function SuperAdminBusinessesPage() {
                   className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.slug ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
                 />
                 {errors.slug && <span className="text-[9px] text-red-500">{errors.slug.message}</span>}
+              </div>
+
+              <div className="space-y-2 col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Business Type</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { id: "RETAIL", label: "Retail / Supermarket", desc: "For grocery, boutiques, general stores" },
+                    { id: "PHARMACY", label: "Pharmacy Medical", desc: "Batch & expiry tracking, medicine layouts" },
+                    { id: "RESTAURANT", label: "Restaurant & Cafe", desc: "Waiters, table management, dining types" },
+                    { id: "WHOLESALE", label: "Wholesale Trade", desc: "Bulk prices, customer credit limit logs" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setValue("businessType", item.id as any, { shouldValidate: true })}
+                      className={`flex flex-col text-left p-3.5 border rounded-2xl transition-all cursor-pointer ${
+                        businessTypeValue === item.id
+                          ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-500"
+                          : "border-slate-200 bg-slate-50 hover:bg-slate-100/50"
+                      }`}
+                    >
+                      <span className="text-xs font-bold text-slate-800">{item.label}</span>
+                      <span className="text-[10px] text-slate-400 mt-1 font-medium">{item.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                {errors.businessType && <span className="text-[9px] text-red-500 block mt-1">{errors.businessType.message}</span>}
               </div>
 
               <div className="space-y-1">

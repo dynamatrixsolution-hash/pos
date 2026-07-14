@@ -160,6 +160,7 @@ export default function POSPage() {
     enableVat,
     taxName,
     businessName,
+    businessType,
     receiptHeader,
     receiptFooter,
     fonepayQr,
@@ -369,6 +370,22 @@ export default function POSPage() {
     [currentOrderId]
   );
 
+  // Automatically sync posMode with businessType from settings
+  React.useEffect(() => {
+    if (businessType && initialized) {
+      const mode = ["RETAIL", "RESTAURANT", "PHARMACY", "WHOLESALE"].includes(businessType.toUpperCase()) 
+        ? businessType.toUpperCase() as any 
+        : "RETAIL";
+      
+      setActiveOrders((prev) =>
+        prev.map((order) => ({
+          ...order,
+          posMode: mode,
+        }))
+      );
+    }
+  }, [businessType, initialized]);
+
   // UI state managers
   const [payModalOpen, setPayModalOpen] = React.useState(false);
   const [custModalOpen, setCustModalOpen] = React.useState(false);
@@ -376,6 +393,10 @@ export default function POSPage() {
   const [recallModalOpen, setRecallModalOpen] = React.useState(false);
   const [weightModalOpen, setWeightModalOpen] = React.useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
+  
+  // Checkout path selector states
+  const [checkoutSelectionOpen, setCheckoutSelectionOpen] = React.useState(false);
+  const [selectedCustomerIdInCheckout, setSelectedCustomerIdInCheckout] = React.useState("");
 
   // Popup entities
   const [detailsProduct, setDetailsProduct] = React.useState<ProductItem | null>(null);
@@ -675,7 +696,8 @@ export default function POSPage() {
 
   const addUnitToCart = (product: ProductItem, qty: number) => {
     playBeep();
-    const stockQty = product.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+    const branchStock = product.productStocks.find((s: any) => s.branchId === branchId);
+    const stockQty = branchStock ? branchStock.quantity : 0;
 
     if (stockQty <= 0) {
       showAlert("Out of Stock", `Product "${product.name}" is completely out of stock.`, "error");
@@ -1248,23 +1270,11 @@ export default function POSPage() {
               </button>
             </div>
 
-            {/* Business POS Adaptations Mode & Header collapse */}
+            {/* Business Store Name adaptation */}
             <div className="flex items-center gap-2">
-              <select
-                value={currentOrder.posMode}
-                onChange={(e) =>
-                  updateCurrentOrder((o) => ({
-                    ...o,
-                    posMode: e.target.value as any,
-                  }))
-                }
-                className="h-11 px-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-250 cursor-pointer outline-none focus:ring-1 focus:ring-[#2563EB] transition-all"
-              >
-                <option value="RETAIL">Retail / Supermarket</option>
-                <option value="PHARMACY">Pharmacy Medical</option>
-                <option value="RESTAURANT">Restaurant & Cafe</option>
-                <option value="WHOLESALE">Wholesale Trade</option>
-              </select>
+              <div className="h-11 px-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 flex items-center text-xs font-extrabold text-slate-700 dark:text-slate-250 shadow-xs uppercase tracking-wider select-none">
+                {businessName || "POS Billing"}
+              </div>
 
               {/* Header navbar toggle button */}
               <button
@@ -1380,7 +1390,8 @@ export default function POSPage() {
                   </thead>
                   <tbody>
                     {filteredProducts.slice(0, visibleCount).map((p) => {
-                      const stock = p.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+                      const branchStock = p.productStocks.find((s: any) => s.branchId === branchId);
+                      const stock = branchStock ? branchStock.quantity : 0;
                       const isPharmacy = currentOrder.posMode === "PHARMACY";
                       const batch = p.batches && p.batches.length > 0 ? p.batches[0] : null;
 
@@ -1449,7 +1460,8 @@ export default function POSPage() {
                 }`}
               >
                 {filteredProducts.slice(0, visibleCount).map((prod) => {
-                  const stock = prod.productStocks.reduce((sum, s) => sum + s.quantity, 0);
+                  const branchStock = prod.productStocks.find((s: any) => s.branchId === branchId);
+                  const stock = branchStock ? branchStock.quantity : 0;
                   const isPharmacy = currentOrder.posMode === "PHARMACY";
                   const batch = prod.batches && prod.batches.length > 0 ? prod.batches[0] : null;
                   const isExpiringSoon =
@@ -1489,21 +1501,6 @@ export default function POSPage() {
                           LOW
                         </span>
                       ) : null}
-
-                      {/* Detail overlays for alternate drug suggestion */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDetailsProduct(prod);
-                          setDetailsQuantity(1);
-                          setIsDetailsOpen(true);
-                        }}
-                        className="absolute bottom-16 right-3.5 z-10 bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 p-2 rounded-full text-slate-400 hover:text-[#2563EB] opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-sm cursor-pointer"
-                        title="Alternative Products Suggestions"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                      </button>
 
                       {/* Standard Image Representation exactly like image */}
                       {viewMode !== "compact" ? (
@@ -1587,59 +1584,7 @@ export default function POSPage() {
             <span>Cashier: {session?.user?.name?.slice(0, 16) || "Alex Owner"}</span>
           </div>
 
-          {/* Search customer or scan barcode input */}
-          <div className="relative mb-3 shrink-0">
-            <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden h-11">
-              <input
-                type="text"
-                placeholder="Search customer or scan barcode"
-                value={customerSearchQuery}
-                onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                className="w-full pl-3.5 pr-11 py-2.5 bg-transparent text-xs text-foreground placeholder-slate-400 focus:outline-none font-semibold"
-              />
-              <Search className="absolute right-3.5 h-4.5 w-4.5 text-slate-400 pointer-events-none" />
-            </div>
-
-            {/* Floating search results */}
-            {customerSearchQuery.trim() && (
-              <div className="absolute top-12 left-0 right-0 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-h-48 overflow-y-auto p-1.5 space-y-1">
-                {customers
-                  .filter(
-                    (c) =>
-                      c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
-                      c.phone.includes(customerSearchQuery)
-                  )
-                  .map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        updateCurrentOrder((o) => ({
-                          ...o,
-                          selectedCustomerId: c.id,
-                          customerType: "REGISTERED",
-                        }));
-                        setCustomerSearchQuery("");
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-slate-700 dark:text-slate-200 block"
-                    >
-                      {c.name} ({c.phone || "No Phone"})
-                    </button>
-                  ))}
-                {customers.filter(
-                  (c) =>
-                    c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
-                    c.phone.includes(customerSearchQuery)
-                ).length === 0 && (
-                  <div className="text-center py-3 text-xs text-slate-400 font-medium">
-                    No matching customers.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Restaurant / Customer header details */}
+          {/* Dining type & Table / Waiter selectors */}
           <div className="space-y-3 mb-3 shrink-0">
             {/* Dining type & Table side-by-side dropdown selectors */}
             <div className="grid grid-cols-2 gap-3">
@@ -1910,9 +1855,9 @@ export default function POSPage() {
               <div className="space-y-2 shrink-0 font-bold text-xs select-none">
                 <button
                   type="button"
-                  onClick={openCheckout}
+                  onClick={() => setCheckoutSelectionOpen(true)}
                   className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-xl shadow-md hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] text-center font-extrabold text-xs"
-                  title="Proceed to Payment Checkout (F8)"
+                  title="Proceed to Payment Checkout"
                 >
                   <CreditCard className="h-4 w-4" />
                   <span>Proceed to Checkout</span>
@@ -3099,6 +3044,111 @@ export default function POSPage() {
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
               >
                 Apply Discount
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout selection Modal */}
+      {checkoutSelectionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-blue-600" />
+                <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">Customer Select</h4>
+              </div>
+              <button
+                onClick={() => setCheckoutSelectionOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Choice buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateCurrentOrder((o) => ({
+                      ...o,
+                      selectedCustomerId: "",
+                      customerType: "WALK_IN",
+                    }));
+                    setCheckoutSelectionOpen(false);
+                    openCheckout();
+                  }}
+                  className="flex flex-col items-center justify-center text-center p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 hover:bg-slate-100/50 dark:bg-slate-950 dark:hover:bg-slate-800 cursor-pointer transition-all hover:scale-[1.02]"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-2">
+                    <Users className="h-5 w-5 text-slate-500" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Walk-In</span>
+                  <span className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Guest Checkout</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckoutSelectionOpen(false);
+                    setCustModalOpen(true);
+                  }}
+                  className="flex flex-col items-center justify-center text-center p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-blue-50/20 hover:bg-blue-50/50 border-dashed border-blue-300 cursor-pointer transition-all hover:scale-[1.02]"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-2">
+                    <Plus className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span className="text-xs font-bold text-blue-600">Register New</span>
+                  <span className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Add Customer</span>
+                </button>
+              </div>
+
+              {/* Or divider */}
+              <div className="flex items-center gap-3 my-2">
+                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-1" />
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Or Select Existing</span>
+                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-1" />
+              </div>
+
+              {/* Dropdown search select */}
+              <div className="space-y-1 text-left">
+                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Registered Customer</label>
+                <div className="relative">
+                  <select
+                    value={selectedCustomerIdInCheckout}
+                    onChange={(e) => setSelectedCustomerIdInCheckout(e.target.value)}
+                    className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-650 focus:outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="">-- Choose Customer --</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.phone || "No Phone"})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Confirm select button */}
+              <button
+                type="button"
+                disabled={!selectedCustomerIdInCheckout}
+                onClick={() => {
+                  updateCurrentOrder((o) => ({
+                    ...o,
+                    selectedCustomerId: selectedCustomerIdInCheckout,
+                    customerType: "REGISTERED",
+                  }));
+                  setCheckoutSelectionOpen(false);
+                  openCheckout();
+                }}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm & Proceed to Payment
               </button>
             </div>
           </div>

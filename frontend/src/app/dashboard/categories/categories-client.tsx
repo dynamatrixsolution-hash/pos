@@ -182,7 +182,7 @@ export default function CategoriesClient() {
         <button
           onClick={() => setActiveTab("categories")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            activeTab === "categories" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary"
+            activeTab === "categories" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -191,7 +191,7 @@ export default function CategoriesClient() {
         <button
           onClick={() => setActiveTab("subcategories")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            activeTab === "subcategories" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary"
+            activeTab === "subcategories" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
           }`}
         >
           <Tag className="h-4 w-4" />
@@ -200,7 +200,7 @@ export default function CategoriesClient() {
         <button
           onClick={() => setActiveTab("units")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            activeTab === "units" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary"
+            activeTab === "units" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
           }`}
         >
           <Ruler className="h-4 w-4" />
@@ -224,7 +224,7 @@ export default function CategoriesClient() {
       <div className="glass-card rounded-2xl overflow-hidden border border-border/50">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-secondary/50 text-xs uppercase text-muted-foreground font-semibold">
+            <thead className="bg-secondary/10 border-b border-border/60 text-xs uppercase text-secondary font-bold tracking-wider">
               <tr>
                 <th className="px-6 py-4">Name</th>
                 {activeTab === "subcategories" && <th className="px-6 py-4">Parent Category</th>}

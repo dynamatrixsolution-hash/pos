@@ -72,6 +72,12 @@ export default function RevenuePaymentsPage() {
   // Selected Invoice Modal Detail
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceItem | null>(null);
 
+  const formatCurrency = (amount: number, currencyCode: string = "NPR") => {
+    if (currencyCode === "NPR") return `Rs. ${amount.toFixed(2)}`;
+    if (currencyCode === "INR") return `₹${amount.toFixed(2)}`;
+    return `$${amount.toFixed(2)}`;
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
@@ -169,7 +175,7 @@ export default function RevenuePaymentsPage() {
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Gross Paid Revenue</p>
-            <h3 className="text-xl font-black mt-0.5">${totalRevenueSum.toFixed(2)}</h3>
+            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalRevenueSum)}</h3>
           </div>
         </div>
 
@@ -179,7 +185,7 @@ export default function RevenuePaymentsPage() {
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pending Billing</p>
-            <h3 className="text-xl font-black mt-0.5">${totalPendingSum.toFixed(2)}</h3>
+            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalPendingSum)}</h3>
           </div>
         </div>
 
@@ -189,7 +195,7 @@ export default function RevenuePaymentsPage() {
           </div>
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Failed Payments</p>
-            <h3 className="text-xl font-black mt-0.5">${totalFailedSum.toFixed(2)}</h3>
+            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalFailedSum)}</h3>
           </div>
         </div>
       </div>
@@ -243,7 +249,7 @@ export default function RevenuePaymentsPage() {
                   <XAxis dataKey="month" stroke="#64748B" style={{ fontSize: "10px" }} />
                   <YAxis stroke="#64748B" style={{ fontSize: "10px" }} />
                   <Tooltip />
-                  <Area type="monotone" dataKey="billing" name="Gross ($)" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#mrrGlow)" />
+                  <Area type="monotone" dataKey="billing" name="Gross (Rs.)" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#mrrGlow)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -264,7 +270,7 @@ export default function RevenuePaymentsPage() {
                     <XAxis dataKey="name" stroke="#64748B" style={{ fontSize: "10px" }} />
                     <YAxis stroke="#64748B" style={{ fontSize: "10px" }} />
                     <Tooltip />
-                    <Bar dataKey="value" name="Intake ($)" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="value" name="Intake (Rs.)" radius={[6, 6, 0, 0]}>
                       {planRevenueData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={planColors[entry.name] || "#3B82F6"} />
                       ))}
@@ -334,7 +340,7 @@ export default function RevenuePaymentsPage() {
                         <td className="py-3.5 px-2 text-center font-mono text-[10px] text-slate-500">{p.transactionId}</td>
                         <td className="py-3.5 px-2 text-center font-bold text-slate-650">{p.method}</td>
                         <td className="py-3.5 px-2 text-center text-slate-450">{new Date(p.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-slate-800">${p.amount.toFixed(2)}</td>
+                        <td className="py-3.5 px-2 text-right font-black text-slate-800">{formatCurrency(p.amount, p.currency)}</td>
                         <td className="py-3.5 px-2 text-right">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                             p.status === "Paid"
@@ -398,7 +404,7 @@ export default function RevenuePaymentsPage() {
                           <span className="px-2 py-0.5 rounded bg-slate-100 text-[9px] uppercase">{inv.plan}</span>
                         </td>
                         <td className="py-3.5 px-2 text-center text-slate-450">{new Date(inv.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-slate-800">${inv.amount.toFixed(2)}</td>
+                        <td className="py-3.5 px-2 text-right font-black text-slate-800">{formatCurrency(inv.amount, inv.currency)}</td>
                         <td className="py-3.5 px-2 text-right">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                             inv.status === "PAID"
@@ -482,15 +488,15 @@ export default function RevenuePaymentsPage() {
                       <p className="text-[9px] text-slate-400 font-normal mt-0.5">Monthly platform utility access rights</p>
                     </td>
                     <td className="py-3 text-right">1</td>
-                    <td className="py-3 text-right">${selectedInvoice.amount.toFixed(2)}</td>
-                    <td className="py-3 text-right font-bold text-slate-800">${selectedInvoice.amount.toFixed(2)}</td>
+                    <td className="py-3 text-right">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
+                    <td className="py-3 text-right font-bold text-slate-800">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
                   </tr>
                 </tbody>
               </table>
 
               <div className="flex justify-between items-center border-t border-slate-200 pt-4 font-black">
                 <span className="text-slate-700 font-bold text-sm">TOTAL DUE:</span>
-                <span className="text-blue-600 text-lg">${selectedInvoice.amount.toFixed(2)} USD</span>
+                <span className="text-blue-600 text-lg">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
               </div>
 
               <div className="text-center border-t border-slate-150 pt-4 text-[9px] text-slate-400 font-medium">

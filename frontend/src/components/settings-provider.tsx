@@ -9,6 +9,7 @@ interface SettingsContextType {
   pricingType: "INCLUSIVE" | "EXCLUSIVE";
   enableVat: boolean;
   businessName: string;
+  businessType: string;
   receiptHeader: string;
   receiptFooter: string;
   invoiceLogo: string;
@@ -25,6 +26,7 @@ const SettingsContext = React.createContext<SettingsContextType>({
   pricingType: "EXCLUSIVE",
   enableVat: true,
   businessName: "",
+  businessType: "RETAIL",
   receiptHeader: "",
   receiptFooter: "",
   invoiceLogo: "",
@@ -41,6 +43,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [pricingType, setPricingType] = React.useState<"INCLUSIVE" | "EXCLUSIVE">("EXCLUSIVE");
   const [enableVat, setEnableVat] = React.useState(true);
   const [businessName, setBusinessName] = React.useState("");
+  const [businessType, setBusinessType] = React.useState("RETAIL");
   const [receiptHeader, setReceiptHeader] = React.useState("");
   const [receiptFooter, setReceiptFooter] = React.useState("");
   const [invoiceLogo, setInvoiceLogo] = React.useState("");
@@ -59,6 +62,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }
         const meta = data.settings || {};
         setCurrencySymbol(meta.currencySymbol || "Rs. ");
+        setBusinessType(meta.businessType || "RETAIL");
         setEnableVat(meta.enableVat ?? true);
         setVatPercentage(meta.vatPercentage ?? (data.taxConfig?.rate || 13));
         setPricingType(meta.pricingType || "EXCLUSIVE");
@@ -88,6 +92,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         pricingType,
         enableVat,
         businessName,
+        businessType,
         receiptHeader,
         receiptFooter,
         invoiceLogo,

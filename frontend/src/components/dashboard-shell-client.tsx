@@ -393,12 +393,12 @@ export default function DashboardShellClient({
             onClick={() => toggleMenu(item.title)}
             className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group cursor-pointer ${
               hasActiveChild
-                ? "bg-[#1E3A5F] text-white" 
-                : "text-slate-300 hover:bg-[#1E3A5F] hover:text-white"
+                ? "bg-[#115E59] text-white shadow-md shadow-[#115E59]/10" 
+                : "text-slate-300 hover:bg-[#115E59]/50 hover:text-white"
             }`}
           >
             <div className="flex items-center gap-3">
-              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#38BDF8]" : "text-slate-400 group-hover:text-white"}`} />
+              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#EAB308]" : "text-slate-400 group-hover:text-white"}`} />
               {item.title}
             </div>
             <motion.div

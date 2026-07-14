@@ -410,6 +410,7 @@ export default function ProductsPage() {
       }, 1500);
     } catch (err: any) {
       setImportError(err.message);
+      showAlert("Import Limit Exceeded", err.message, "error");
     } finally {
       setImporting(false);
     }
@@ -566,7 +567,7 @@ export default function ProductsPage() {
           <button
             onClick={() => setOnlyLowStock(!onlyLowStock)}
             disabled={isMutating}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               onlyLowStock
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "border border-border hover:bg-slate-150 dark:hover:bg-slate-800 text-muted-foreground"
@@ -846,7 +847,7 @@ export default function ProductsPage() {
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-xl text-[11px] font-bold transition-colors bg-background text-foreground ${
                           isPending 
                             ? "opacity-50 cursor-not-allowed" 
-                            : "hover:bg-secondary cursor-pointer"
+                            : "hover:bg-secondary hover:text-secondary-foreground cursor-pointer"
                         }`}
                       >
                         Choose Image File

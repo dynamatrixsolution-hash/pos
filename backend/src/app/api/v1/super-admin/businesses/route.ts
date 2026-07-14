@@ -8,6 +8,7 @@ const businessCreationSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
   currency: z.string().default("USD"),
+  businessType: z.string().default("RETAIL"),
   ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
       businessName,
       slug,
       currency,
+      businessType,
       ownerName,
       email,
       password,
@@ -114,22 +116,56 @@ export async function POST(request: Request) {
           slug,
           currency,
           taxConfig: { taxName: "VAT", rate: 10 },
+          settings: {
+            businessType: businessType || "RETAIL",
+            currencySymbol: currency === "NPR" ? "Rs. " : currency === "INR" ? "₹" : "$",
+            enableVat: true,
+            vatPercentage: 10,
+            pricingType: "EXCLUSIVE",
+          },
         },
       });
 
-      // 2. Create Subscription
+      // 2. Create Subscription resolving limits from platform configurations
+      const platform = await tx.business.findUnique({
+        where: { slug: "platform-admin" },
+        select: { settings: true },
+      });
+      const settings = (platform?.settings as any) || {};
+      const platformLimits = settings.limits || {
+        Starter: { users: 1, branches: 1 },
+        Professional: { users: 5, branches: 2 },
+        Enterprise: { users: 20, branches: 5 },
+      };
+
+      let mappedPlan = "Starter";
+      if (plan === "PREMIUM") {
+        mappedPlan = "Professional";
+      } else if (plan === "ENTERPRISE") {
+        mappedPlan = "Enterprise";
+      } else if (plan === "BASIC") {
+        mappedPlan = "Starter";
+      } else if (plan === "FREE_TRIAL") {
+        mappedPlan = "Starter";
+      } else {
+        const match = Object.keys(platformLimits).find(k => k.toUpperCase() === (plan as string).toUpperCase());
+        if (match) mappedPlan = match;
+      }
+
+      const planLimits = platformLimits[mappedPlan] || { users: 1, branches: 1 };
+
       const subEndDate = new Date();
       subEndDate.setMonth(subEndDate.getMonth() + durationMonths);
 
       await tx.subscription.create({
         data: {
           businessId: newBusiness.id,
-          plan,
+          plan: mappedPlan.toUpperCase(),
           status: "ACTIVE",
           startDate: new Date(),
           endDate: subEndDate,
-          userLimit: plan === "FREE_TRIAL" ? 5 : plan === "BASIC" ? 10 : plan === "PREMIUM" ? 25 : 100,
-          branchLimit: plan === "FREE_TRIAL" ? 1 : plan === "BASIC" ? 2 : plan === "PREMIUM" ? 5 : 20,
+          userLimit: planLimits.users || 1,
+          branchLimit: planLimits.branches || 1,
         },
       });
 

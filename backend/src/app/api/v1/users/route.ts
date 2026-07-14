@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -82,16 +82,14 @@ export async function POST(request: Request) {
     }
 
     // Check user limit from subscription
-    const subscription = await db.subscription.findUnique({
-      where: { businessId: context.businessId },
-    });
-    if (subscription) {
+    const limits = await getBusinessLimits(context.businessId);
+    if (limits) {
       const activeUserCount = await db.user.count({
         where: { businessId: context.businessId, deletedAt: null },
       });
-      if (activeUserCount >= subscription.userLimit) {
+      if (activeUserCount >= limits.users) {
         return NextResponse.json(
-          { error: `User limit reached. Your subscription plan "${subscription.plan}" allows a maximum of ${subscription.userLimit} users. Please upgrade your plan.` },
+          { error: `User limit reached. Your subscription allows a maximum of ${limits.users} users. Please upgrade your plan.` },
           { status: 400 }
         );
       }
