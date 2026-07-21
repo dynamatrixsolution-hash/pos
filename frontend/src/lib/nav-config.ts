@@ -11,6 +11,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  ShieldCheck,
   Laptop,
   Activity,
   GitBranch,
@@ -355,6 +356,12 @@ export const navigationConfig: NavItem[] = [
         title: "All Businesses",
         href: "/dashboard/super-admin/businesses?tab=all",
         icon: Store,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        title: "Approval Center",
+        href: "/dashboard/super-admin/requests",
+        icon: ShieldCheck,
         roles: ["SUPER_ADMIN"],
       },
       {

@@ -9,12 +9,17 @@ const businessCreationSchema = z.object({
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
   currency: z.string().default("USD"),
   businessType: z.string().default("RETAIL"),
+  taxNumber: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
   ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   phone: z.string().optional().nullable(),
-  plan: z.enum(["FREE_TRIAL", "BASIC", "PREMIUM", "ENTERPRISE"]).default("FREE_TRIAL"),
+  plan: z.string().default("FREE_TRIAL"),
+  billingCycle: z.string().default("MONTHLY"),
   durationMonths: z.number().min(1).max(60).default(12),
+  selectedModules: z.record(z.string(), z.boolean()).optional(),
+  customLimits: z.record(z.string(), z.number()).optional(),
 });
 
 export async function GET(request: Request) {
@@ -33,6 +38,8 @@ export async function GET(request: Request) {
             plan: true,
             status: true,
             endDate: true,
+            userLimit: true,
+            branchLimit: true,
           },
         },
         users: {
@@ -43,6 +50,7 @@ export async function GET(request: Request) {
             name: true,
             email: true,
             phone: true,
+            isActive: true,
           },
         },
         _count: {
@@ -85,12 +93,17 @@ export async function POST(request: Request) {
       slug,
       currency,
       businessType,
+      taxNumber,
+      address,
       ownerName,
       email,
       password,
       phone,
       plan,
+      billingCycle,
       durationMonths,
+      selectedModules,
+      customLimits,
     } = result.data;
 
     // Check if email is already taken
@@ -115,44 +128,26 @@ export async function POST(request: Request) {
           name: businessName,
           slug,
           currency,
-          taxConfig: { taxName: "VAT", rate: 10 },
+          email,
+          phone,
+          address,
+          taxConfig: { taxName: taxNumber ? "PAN/VAT" : "VAT", rate: 10, taxNumber },
           settings: {
             businessType: businessType || "RETAIL",
             currencySymbol: currency === "NPR" ? "Rs. " : currency === "INR" ? "₹" : "$",
             enableVat: true,
             vatPercentage: 10,
             pricingType: "EXCLUSIVE",
-          },
+            customFeatures: selectedModules || {},
+            customLimits: customLimits || {},
+          } as any,
         },
       });
 
-      // 2. Create Subscription resolving limits from platform configurations
-      const platform = await tx.business.findUnique({
-        where: { slug: "platform-admin" },
-        select: { settings: true },
-      });
-      const settings = (platform?.settings as any) || {};
-      const platformLimits = settings.limits || {
-        Starter: { users: 1, branches: 1 },
-        Professional: { users: 5, branches: 2 },
-        Enterprise: { users: 20, branches: 5 },
-      };
-
-      let mappedPlan = "Starter";
-      if (plan === "PREMIUM") {
-        mappedPlan = "Professional";
-      } else if (plan === "ENTERPRISE") {
-        mappedPlan = "Enterprise";
-      } else if (plan === "BASIC") {
-        mappedPlan = "Starter";
-      } else if (plan === "FREE_TRIAL") {
-        mappedPlan = "Starter";
-      } else {
-        const match = Object.keys(platformLimits).find(k => k.toUpperCase() === (plan as string).toUpperCase());
-        if (match) mappedPlan = match;
-      }
-
-      const planLimits = platformLimits[mappedPlan] || { users: 1, branches: 1 };
+      // 2. Resolve limits
+      const limitsObj = (customLimits || {}) as any;
+      const userLimit = limitsObj.users || (plan === "ENTERPRISE" ? 20 : plan === "PREMIUM" || plan === "PROFESSIONAL" ? 5 : 3);
+      const branchLimit = limitsObj.branches || (plan === "ENTERPRISE" ? 5 : plan === "PREMIUM" || plan === "PROFESSIONAL" ? 2 : 1);
 
       const subEndDate = new Date();
       subEndDate.setMonth(subEndDate.getMonth() + durationMonths);
@@ -160,12 +155,12 @@ export async function POST(request: Request) {
       await tx.subscription.create({
         data: {
           businessId: newBusiness.id,
-          plan: mappedPlan.toUpperCase(),
+          plan: plan.toUpperCase(),
           status: "ACTIVE",
           startDate: new Date(),
           endDate: subEndDate,
-          userLimit: planLimits.users || 1,
-          branchLimit: planLimits.branches || 1,
+          userLimit,
+          branchLimit,
         },
       });
 
@@ -174,6 +169,8 @@ export async function POST(request: Request) {
         data: {
           businessId: newBusiness.id,
           name: "Main Branch",
+          address: address || undefined,
+          phone: phone || undefined,
           isMain: true,
         },
       });

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import BusinessOnboardingWizard from "@/components/business-onboarding-wizard";
 import {
   Building,
   Users,
@@ -323,6 +325,12 @@ export default function SuperAdminBusinessesPage() {
             Manage multi-tenant SaaS business tenants, subscription status, overrides, and credentials.
           </p>
         </div>
+        <Link
+          href="/dashboard/super-admin/requests"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2"
+        >
+          <Shield className="h-4 w-4" /> Business Approval Center
+        </Link>
       </div>
 
       {/* 2. Metrics Grid */}
@@ -532,159 +540,15 @@ export default function SuperAdminBusinessesPage() {
           </div>
         </div>
       ) : (
-        /* Tab Contents: PROVISION FORM */
-        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 max-w-xl mx-auto shadow-sm">
-          <h3 className="text-base font-bold mb-1 flex items-center gap-2">
-            <Building className="h-5 w-5 text-blue-600" /> Provision New Tenant Business
-          </h3>
-          <p className="text-xs text-slate-400 mb-6 border-b border-slate-100 pb-3">
-            Setup active subscription variables, workstation currencies, and owner account credentials.
-          </p>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Name</label>
-                <input
-                  type="text"
-                  {...register("businessName")}
-                  placeholder="e.g. MedCare Pharmacy"
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.businessName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                />
-                {errors.businessName && <span className="text-[9px] text-red-500">{errors.businessName.message}</span>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subdomain Slug</label>
-                <input
-                  type="text"
-                  {...register("slug")}
-                  placeholder="medcare-pharmacy"
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.slug ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                />
-                {errors.slug && <span className="text-[9px] text-red-500">{errors.slug.message}</span>}
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Business Type</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { id: "RETAIL", label: "Retail / Supermarket", desc: "For grocery, boutiques, general stores" },
-                    { id: "PHARMACY", label: "Pharmacy Medical", desc: "Batch & expiry tracking, medicine layouts" },
-                    { id: "RESTAURANT", label: "Restaurant & Cafe", desc: "Waiters, table management, dining types" },
-                    { id: "WHOLESALE", label: "Wholesale Trade", desc: "Bulk prices, customer credit limit logs" },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setValue("businessType", item.id as any, { shouldValidate: true })}
-                      className={`flex flex-col text-left p-3.5 border rounded-2xl transition-all cursor-pointer ${
-                        businessTypeValue === item.id
-                          ? "border-blue-600 bg-blue-50/40 ring-1 ring-blue-500"
-                          : "border-slate-200 bg-slate-50 hover:bg-slate-100/50"
-                      }`}
-                    >
-                      <span className="text-xs font-bold text-slate-800">{item.label}</span>
-                      <span className="text-[10px] text-slate-400 mt-1 font-medium">{item.desc}</span>
-                    </button>
-                  ))}
-                </div>
-                {errors.businessType && <span className="text-[9px] text-red-500 block mt-1">{errors.businessType.message}</span>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Default Currency</label>
-                <select
-                  {...register("currency")}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="INR">INR (₹)</option>
-                  <option value="NPR">NPR (Rs.)</option>
-                  <option value="AUD">AUD (A$)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Name</label>
-                <input
-                  type="text"
-                  {...register("ownerName")}
-                  placeholder="Sarah Lin"
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.ownerName ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                />
-                {errors.ownerName && <span className="text-[9px] text-red-500">{errors.ownerName.message}</span>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
-                <input
-                  type="email"
-                  {...register("email")}
-                  placeholder="owner@medcare.com"
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.email ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                />
-                {errors.email && <span className="text-[9px] text-red-500">{errors.email.message}</span>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Temporary Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-450" />
-                  <input
-                    type="password"
-                    {...register("password")}
-                    placeholder="••••••••"
-                    className={`w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.password ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                  />
-                </div>
-                {errors.password && <span className="text-[9px] text-red-500">{errors.password.message}</span>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Owner Phone</label>
-                <input
-                  type="text"
-                  {...register("phone")}
-                  placeholder="+1-555-0133"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Template</label>
-                <select
-                  {...register("plan")}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="FREE_TRIAL">Starter (Free Trial)</option>
-                  <option value="BASIC">Basic License</option>
-                  <option value="PREMIUM">Professional License</option>
-                  <option value="ENTERPRISE">Enterprise License</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Months</label>
-                <input
-                  type="number"
-                  {...register("durationMonths", { valueAsNumber: true })}
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-lg text-xs focus:outline-none focus:bg-white focus:ring-1 ${errors.durationMonths ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-blue-500'}`}
-                />
-                {errors.durationMonths && <span className="text-[9px] text-red-500">{errors.durationMonths.message}</span>}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md hover:-translate-y-0.5 transition-all uppercase tracking-wider disabled:opacity-50 disabled:translate-y-0"
-            >
-              {isSubmitting ? "Provisioning..." : "Provision Tenant"}
-            </button>
-          </form>
+        /* Tab Contents: PROVISION WIZARD */
+        <div className="py-2">
+          <BusinessOnboardingWizard
+            mode="SUPER_ADMIN"
+            onSuccess={() => {
+              setActiveTab("all");
+              fetchBusinesses();
+            }}
+          />
         </div>
       )}
 
