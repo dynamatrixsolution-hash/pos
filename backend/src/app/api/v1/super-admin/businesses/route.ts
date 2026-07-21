@@ -18,8 +18,8 @@ const businessCreationSchema = z.object({
   plan: z.string().default("FREE_TRIAL"),
   billingCycle: z.string().default("MONTHLY"),
   durationMonths: z.number().min(1).max(60).default(12),
-  selectedModules: z.record(z.string(), z.boolean()).optional(),
-  customLimits: z.record(z.string(), z.number()).optional(),
+  selectedModules: z.record(z.string(), z.any()).optional(),
+  customLimits: z.record(z.string(), z.any()).optional(),
 });
 
 export async function GET(request: Request) {

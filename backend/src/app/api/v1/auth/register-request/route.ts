@@ -23,8 +23,8 @@ const registerRequestSchema = z.object({
   plan: z.string().default("STARTER"),
   billingCycle: z.string().default("MONTHLY"),
   durationMonths: z.number().default(12),
-  selectedModules: z.record(z.string(), z.boolean()).optional(),
-  customLimits: z.record(z.string(), z.number()).optional(),
+  selectedModules: z.record(z.string(), z.any()).optional(),
+  customLimits: z.record(z.string(), z.any()).optional(),
 
   ownerName: z.string().min(2, "Owner name must be at least 2 characters"),
   ownerEmail: z.string().email("Invalid owner email address"),
@@ -38,8 +38,12 @@ export async function POST(request: Request) {
     const result = registerRequestSchema.safeParse(body);
 
     if (!result.success) {
+      console.error("Validation failed for register-request:", result.error.format());
       return NextResponse.json(
-        { error: "Validation failed", details: result.error.format() },
+        {
+          error: "Validation failed. Please check your inputs.",
+          details: result.error.format(),
+        },
         { status: 400 }
       );
     }
