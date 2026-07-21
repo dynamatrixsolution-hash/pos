@@ -19,7 +19,6 @@ import {
   Lock,
   Mail,
   Phone,
-  MapPin,
   Check,
   FileText,
   Package,
@@ -28,6 +27,10 @@ import {
   Eye,
   EyeOff,
   ShoppingBag,
+  Printer,
+  BarChart2,
+  Sliders,
+  Tag,
 } from "lucide-react";
 
 export interface OnboardingWizardProps {
@@ -44,6 +47,7 @@ export default function BusinessOnboardingWizard({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showCustomLimits, setShowCustomLimits] = useState<boolean>(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -51,7 +55,7 @@ export default function BusinessOnboardingWizard({
     businessName: "",
     slug: "",
     businessType: "RETAIL",
-    currency: "USD",
+    currency: "NPR",
     taxNumber: "",
     phone: "",
     email: "",
@@ -65,7 +69,7 @@ export default function BusinessOnboardingWizard({
       posBilling: true,
       inventory: true,
       batchExpiry: false,
-      purchases: true,
+      purchases: false,
       customers: true,
       suppliers: true,
       expenses: true,
@@ -77,11 +81,14 @@ export default function BusinessOnboardingWizard({
     } as Record<string, boolean>,
 
     customLimits: {
-      users: 3,
+      users: 1,
       branches: 1,
       warehouses: 1,
-      products: 5000,
-    },
+      products: 100, // 100 products
+      categories: 10, // max 10
+      printing: false, // no printing
+      reportsType: "DAILY_ONLY", // daily reports only
+    } as Record<string, any>,
 
     // Step 3: Owner Account
     ownerName: "",
@@ -123,13 +130,47 @@ export default function BusinessOnboardingWizard({
   };
 
   const handlePlanSelect = (planKey: string) => {
-    let limits = { users: 3, branches: 1, warehouses: 1, products: 5000 };
+    let limits: Record<string, any> = {
+      users: 1,
+      branches: 1,
+      warehouses: 1,
+      products: 100,
+      categories: 10,
+      printing: false,
+      reportsType: "DAILY_ONLY",
+    };
+
     if (planKey === "PROFESSIONAL") {
-      limits = { users: 5, branches: 2, warehouses: 2, products: 20000 };
+      limits = {
+        users: 5,
+        branches: 2,
+        warehouses: 2,
+        products: 1000,
+        categories: 0, // 0 = unlimited
+        printing: true,
+        reportsType: "FULL",
+      };
     } else if (planKey === "ENTERPRISE") {
-      limits = { users: 20, branches: 5, warehouses: 5, products: 100000 };
+      limits = {
+        users: 10,
+        branches: 5,
+        warehouses: 5,
+        products: 0, // 0 = unlimited
+        categories: 0, // 0 = unlimited
+        printing: true,
+        reportsType: "FULL",
+      };
     } else if (planKey === "CUSTOM") {
-      limits = { users: 10, branches: 3, warehouses: 3, products: 50000 };
+      limits = {
+        users: 15,
+        branches: 3,
+        warehouses: 3,
+        products: 5000,
+        categories: 50,
+        printing: true,
+        reportsType: "FULL",
+      };
+      setShowCustomLimits(true);
     }
 
     setFormData((prev) => ({
@@ -138,8 +179,12 @@ export default function BusinessOnboardingWizard({
       customLimits: limits,
       selectedModules: {
         ...prev.selectedModules,
-        multiBranch: planKey !== "STARTER",
-        warehouses: planKey !== "STARTER",
+        posBilling: true,
+        inventory: true,
+        purchases: planKey !== "STARTER",
+        reports: true,
+        multiBranch: planKey === "PROFESSIONAL" || planKey === "ENTERPRISE" || planKey === "CUSTOM",
+        warehouses: planKey === "PROFESSIONAL" || planKey === "ENTERPRISE" || planKey === "CUSTOM",
         apiAccess: planKey === "ENTERPRISE" || planKey === "CUSTOM",
       },
     }));
@@ -197,7 +242,6 @@ export default function BusinessOnboardingWizard({
 
     try {
       if (mode === "PUBLIC_USER") {
-        // Submit self-service registration request
         const res = await fetch("/api/v1/auth/register-request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -209,10 +253,8 @@ export default function BusinessOnboardingWizard({
           throw new Error(json.error || "Failed to submit registration request.");
         }
 
-        // Redirect to Waiting for Approval page with request ID & tracking code
         router.push(`/auth/register/status?id=${json.request.id}&code=${json.request.trackingCode}`);
       } else {
-        // Super Admin direct provisioning
         const res = await fetch("/api/v1/super-admin/businesses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -238,6 +280,13 @@ export default function BusinessOnboardingWizard({
   };
 
   const activeModulesCount = Object.values(formData.selectedModules).filter(Boolean).length;
+
+  const planPrices: Record<string, { monthly: string; setup: string }> = {
+    STARTER: { monthly: "499 / mo", setup: "Rs. 4,999 initial setup" },
+    PROFESSIONAL: { monthly: "999 / mo", setup: "Rs. 11,999 initial setup" },
+    ENTERPRISE: { monthly: "1,499 / mo", setup: "Rs. 24,999 initial setup" },
+    CUSTOM: { monthly: "Custom Pricing", setup: "Custom Setup" },
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -392,11 +441,11 @@ export default function BusinessOnboardingWizard({
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                   >
+                    <option value="NPR">NPR (Rs.) - Nepalese Rupee</option>
+                    <option value="INR">INR (₹) - Indian Rupee</option>
                     <option value="USD">USD ($) - US Dollar</option>
                     <option value="EUR">EUR (€) - Euro</option>
                     <option value="GBP">GBP (£) - British Pound</option>
-                    <option value="INR">INR (₹) - Indian Rupee</option>
-                    <option value="NPR">NPR (Rs.) - Nepalese Rupee</option>
                     <option value="AUD">AUD ($) - Australian Dollar</option>
                   </select>
                 </div>
@@ -451,7 +500,7 @@ export default function BusinessOnboardingWizard({
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1 (555) 019-2831"
+                    placeholder="+977 9800000000"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                   />
                 </div>
@@ -477,7 +526,7 @@ export default function BusinessOnboardingWizard({
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Suite 400, Financial Center, New York, NY"
+                    placeholder="New Road, Kathmandu, Nepal"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                   />
                 </div>
@@ -493,20 +542,49 @@ export default function BusinessOnboardingWizard({
                   <Layers className="h-5 w-5 text-blue-600" /> Step 2: Plan Selection & Module Configuration
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Choose a subscription plan tier and toggle active modules tailored for your POS workflow.
+                  Select your subscription plan tier with pre-configured specs or customize resource limits & module toggles.
                 </p>
               </div>
 
               {/* PLAN SELECTION CARDS */}
               <div className="space-y-3">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Select Subscription Plan
+                  Select Subscription Plan Tier
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { id: "STARTER", title: "Starter Trial", price: "Free (30 Days)", users: "3 Users", branch: "1 Branch", tag: "Popular" },
-                    { id: "PROFESSIONAL", title: "Professional", price: "$49 / month", users: "5 Users", branch: "2 Branches", tag: "Recommended" },
-                    { id: "ENTERPRISE", title: "Enterprise", price: "$149 / month", users: "20 Users", branch: "5 Branches", tag: "Unlimited" },
+                    {
+                      id: "STARTER",
+                      title: "Starter Plan",
+                      price: "Rs. 499 / mo",
+                      setup: "Rs. 4,999 setup",
+                      specs: ["Up to 100 Products", "1 Branch", "1 User", "Max 10 Categories", "Daily Reports Only", "No Receipt Printing"],
+                      badge: "Starter",
+                    },
+                    {
+                      id: "PROFESSIONAL",
+                      title: "Professional",
+                      price: "Rs. 999 / mo",
+                      setup: "Rs. 11,999 setup",
+                      specs: ["Up to 1,000 Products", "2 Branches", "5 Users (1 Owner, 4 Staff)", "Unlimited Categories", "Full Reports & Analytics", "Receipt Printing Enabled"],
+                      badge: "Recommended",
+                    },
+                    {
+                      id: "ENTERPRISE",
+                      title: "Enterprise",
+                      price: "Rs. 1,499 / mo",
+                      setup: "Rs. 24,999 setup",
+                      specs: ["Unlimited Products", "5 Branches", "10 Users (1 Owner, 9 Staff)", "Unlimited Categories", "Full Reports & Analytics", "Receipt Printing Enabled"],
+                      badge: "Best Value",
+                    },
+                    {
+                      id: "CUSTOM",
+                      title: "Custom Plan",
+                      price: "Custom Pricing",
+                      setup: "Custom Setup",
+                      specs: ["All System Features Available", "Custom User Limits", "Custom Branch Limits", "Custom Product Limits", "Full System Module Toggles"],
+                      badge: "Customizable",
+                    },
                   ].map((p) => (
                     <button
                       key={p.id}
@@ -519,26 +597,139 @@ export default function BusinessOnboardingWizard({
                       }`}
                     >
                       <div>
-                        <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {p.tag}
-                        </span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {p.badge}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">{p.setup}</span>
+                        </div>
                         <h4 className="font-bold text-slate-900 text-sm mt-2">{p.title}</h4>
-                        <p className="text-xs font-black text-blue-700 mt-1">{p.price}</p>
+                        <p className="text-xs font-black text-blue-700 mt-0.5">{p.price}</p>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-slate-200/60 text-[10px] text-slate-500 space-y-0.5">
-                        <p>• {p.users}</p>
-                        <p>• {p.branch}</p>
+
+                      <div className="mt-3 pt-3 border-t border-slate-200/60 text-[10px] text-slate-600 space-y-1">
+                        {p.specs.map((spec, i) => (
+                          <p key={i} className="flex items-center gap-1.5">
+                            <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" /> {spec}
+                          </p>
+                        ))}
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* CUSTOM LIMITS TOGGLE & FINE-TUNING PANEL */}
+              <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">Customize Resource Limits & Parameters</h4>
+                      <p className="text-[10px] text-slate-500">Fine-tune limits or feature access for this workspace</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomLimits(!showCustomLimits)}
+                    className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    {showCustomLimits ? "Hide Customization" : "Customize Limits"}
+                  </button>
+                </div>
+
+                {showCustomLimits && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-200 text-xs">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">User Limit</label>
+                      <input
+                        type="number"
+                        value={formData.customLimits.users || 1}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, users: parseInt(e.target.value) || 1 }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Branch Limit</label>
+                      <input
+                        type="number"
+                        value={formData.customLimits.branches || 1}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, branches: parseInt(e.target.value) || 1 }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Product Limit (0 = Unlimited)</label>
+                      <input
+                        type="number"
+                        value={formData.customLimits.products}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, products: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Max Categories (0 = Unlimited)</label>
+                      <input
+                        type="number"
+                        value={formData.customLimits.categories}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, categories: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Receipt Printing</label>
+                      <select
+                        value={formData.customLimits.printing ? "true" : "false"}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, printing: e.target.value === "true" }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      >
+                        <option value="true">Enabled (Yes)</option>
+                        <option value="false">Disabled (No)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Reports Access</label>
+                      <select
+                        value={formData.customLimits.reportsType || "FULL"}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          customLimits: { ...formData.customLimits, reportsType: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                      >
+                        <option value="FULL">Full Analytics & Reports</option>
+                        <option value="DAILY_ONLY">Daily Reports Only</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* MODULE TOGGLES GRID */}
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Enable ERP & POS Modules ({activeModulesCount} Selected)
+                    Enable System Modules ({activeModulesCount} Selected)
                   </label>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -630,7 +821,7 @@ export default function BusinessOnboardingWizard({
                     type="text"
                     value={formData.ownerPhone}
                     onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })}
-                    placeholder="+1 (555) 019-2831"
+                    placeholder="+977 9800000000"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                   />
                 </div>
@@ -689,8 +880,12 @@ export default function BusinessOnboardingWizard({
                 <div>
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Subscription & Limits</span>
                   <p className="text-sm font-bold text-emerald-600 mt-0.5">{formData.plan} Plan</p>
-                  <p className="text-xs text-slate-600 mt-0.5">{formData.customLimits.users} Users | {formData.customLimits.branches} Branch</p>
-                  <p className="text-[10px] text-slate-500 mt-1">{activeModulesCount} ERP Modules Enabled</p>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {formData.customLimits.users} Users | {formData.customLimits.branches} Branch | {formData.customLimits.products === 0 ? "Unlimited" : formData.customLimits.products} Products
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Printing: {formData.customLimits.printing ? "Yes" : "No"} | Reports: {formData.customLimits.reportsType === "DAILY_ONLY" ? "Daily Only" : "Full"}
+                  </p>
                 </div>
 
                 <div className="sm:col-span-2 pt-3 border-t border-slate-200/60">
@@ -793,11 +988,22 @@ export default function BusinessOnboardingWizard({
                 <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/50">
                   <span className="text-[9px] text-slate-400 font-bold uppercase block">Selected Plan</span>
                   <span className="text-xs font-bold text-emerald-400 mt-0.5 block">{formData.plan}</span>
+                  <span className="text-[9px] text-slate-400">{planPrices[formData.plan]?.monthly}</span>
                 </div>
                 <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Currency</span>
-                  <span className="text-xs font-bold text-white mt-0.5 block">{formData.currency}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Initial Setup</span>
+                  <span className="text-[10px] font-bold text-white mt-0.5 block">{planPrices[formData.plan]?.setup}</span>
                 </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 text-[10px] space-y-1">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Configured Specs</span>
+                <p className="text-slate-300">• Users: <strong className="text-white">{formData.customLimits.users}</strong></p>
+                <p className="text-slate-300">• Branches: <strong className="text-white">{formData.customLimits.branches}</strong></p>
+                <p className="text-slate-300">• Products: <strong className="text-white">{formData.customLimits.products === 0 ? "Unlimited" : formData.customLimits.products}</strong></p>
+                <p className="text-slate-300">• Categories: <strong className="text-white">{formData.customLimits.categories === 0 ? "Unlimited" : formData.customLimits.categories}</strong></p>
+                <p className="text-slate-300">• Printing: <strong className="text-white">{formData.customLimits.printing ? "Enabled" : "Disabled"}</strong></p>
+                <p className="text-slate-300">• Reports: <strong className="text-white">{formData.customLimits.reportsType === "DAILY_ONLY" ? "Daily Reports Only" : "Full Analytics"}</strong></p>
               </div>
 
               <div className="pt-2 border-t border-slate-800">
@@ -818,14 +1024,6 @@ export default function BusinessOnboardingWizard({
                   )}
                 </div>
               </div>
-
-              {formData.ownerName && (
-                <div className="pt-2 border-t border-slate-800 text-[11px]">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Administrator</span>
-                  <p className="font-bold text-slate-200 mt-0.5">{formData.ownerName}</p>
-                  <p className="text-slate-400 text-[10px]">{formData.ownerEmail}</p>
-                </div>
-              )}
             </div>
           </div>
 

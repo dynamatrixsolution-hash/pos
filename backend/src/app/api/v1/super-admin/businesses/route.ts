@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
       // 2. Resolve limits
       const limitsObj = (customLimits || {}) as any;
-      const userLimit = limitsObj.users || (plan === "ENTERPRISE" ? 20 : plan === "PREMIUM" || plan === "PROFESSIONAL" ? 5 : 3);
+      const userLimit = limitsObj.users || (plan === "ENTERPRISE" ? 10 : plan === "PREMIUM" || plan === "PROFESSIONAL" ? 5 : 1);
       const branchLimit = limitsObj.branches || (plan === "ENTERPRISE" ? 5 : plan === "PREMIUM" || plan === "PROFESSIONAL" ? 2 : 1);
 
       const subEndDate = new Date();

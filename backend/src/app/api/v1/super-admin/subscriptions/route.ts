@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 
-// We mock or retrieve platform-wide metadata settings stored in the platform-admin business
 export async function GET(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
@@ -16,7 +15,6 @@ export async function GET(request: Request) {
 
     const settings = (platform?.settings as any) || {};
 
-    // Baseline features if not configured in DB settings
     const defaultFeatures = settings.features || {
       "POS Billing": true,
       "Products": true,
@@ -40,25 +38,46 @@ export async function GET(request: Request) {
       "Backup System": true,
     };
 
-    // Baseline limits if not configured in DB settings
     const defaultLimits = settings.limits || {
       Starter: { users: 1, branches: 1, products: 100, categories: 10, printing: false, dailyReportsOnly: true },
-      Professional: { users: 5, branches: 2, products: 1000, categories: 999999, printing: true, dailyReportsOnly: false },
-      Enterprise: { users: 20, branches: 5, products: 999999, categories: 999999, printing: true, dailyReportsOnly: false },
+      Professional: { users: 5, branches: 2, products: 1000, categories: 0, printing: true, dailyReportsOnly: false },
+      Enterprise: { users: 10, branches: 5, products: 0, categories: 0, printing: true, dailyReportsOnly: false },
     };
 
-    // Baseline plans if not configured in DB settings
     const defaultPlans = settings.plans || [
-      { id: "Starter", name: "Starter", price: 499, setupPrice: 4999, currency: "NPR", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
-      { id: "Professional", name: "Professional", price: 999, setupPrice: 11999, currency: "NPR", duration: "1 Month", desc: "For growing local retail shops" },
-      { id: "Enterprise", name: "Enterprise", price: 1499, setupPrice: 24999, currency: "NPR", duration: "1 Month", desc: "For multi-branch retail stores" },
+      {
+        id: "Starter",
+        name: "Starter Plan",
+        price: 499,
+        setupPrice: 4999,
+        currency: "NPR",
+        duration: "1 Month",
+        desc: "Up to 100 products, 1 branch, 1 user, Max 10 categories, Daily reports only, No printing",
+      },
+      {
+        id: "Professional",
+        name: "Professional Plan",
+        price: 999,
+        setupPrice: 11999,
+        currency: "NPR",
+        duration: "1 Month",
+        desc: "Up to 1,000 products, 2 branches, 5 users (1 owner, 4 staff), Receipt printing, Full reports, Unlimited categories",
+      },
+      {
+        id: "Enterprise",
+        name: "Enterprise Plan",
+        price: 1499,
+        setupPrice: 24999,
+        currency: "NPR",
+        duration: "1 Month",
+        desc: "Unlimited products, 5 branches, 10 users (1 owner, 9 staff), Receipt printing, Full reports, Unlimited categories",
+      },
     ];
 
-    // Baseline currencies
     const defaultCurrencies = settings.currencies || [
       { code: "NPR", name: "Nepalese Rupee", symbol: "Rs.", allowed: true },
-      { code: "USD", name: "US Dollar", symbol: "$", allowed: true },
       { code: "INR", name: "Indian Rupee", symbol: "₹", allowed: true },
+      { code: "USD", name: "US Dollar", symbol: "$", allowed: true },
       { code: "AUD", name: "Australian Dollar", symbol: "A$", allowed: false },
       { code: "GBP", name: "British Pound", symbol: "£", allowed: false },
       { code: "EUR", name: "Euro", symbol: "€", allowed: false },

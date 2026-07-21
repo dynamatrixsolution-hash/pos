@@ -126,7 +126,7 @@ export async function POST(
       const limitsToUse = overrides?.customLimits || reqItem.customLimits || {};
 
       // Determine user and branch limits
-      const userLimit = limitsToUse.users || (planToUse === "ENTERPRISE" ? 20 : planToUse === "PROFESSIONAL" ? 5 : 3);
+      const userLimit = limitsToUse.users || (planToUse === "ENTERPRISE" ? 10 : planToUse === "PROFESSIONAL" ? 5 : 1);
       const branchLimit = limitsToUse.branches || (planToUse === "ENTERPRISE" ? 5 : planToUse === "PROFESSIONAL" ? 2 : 1);
 
       // Perform transaction to provision tenant, subscription, branch, owner user
