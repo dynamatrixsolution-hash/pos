@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
+import fs from "fs";
 
 const productCreateSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -49,7 +50,9 @@ export async function GET(request: Request) {
   const skip = (page - 1) * limit;
 
   try {
-    // Build filter conditions
+    try {
+      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `=== GET PRODUCTS CALL ===\nDate: ${new Date().toISOString()}\nContext: ${JSON.stringify(context)}\nSearchParams: ${request.url}\n`);
+    } catch(e) {}
     const where: any = {
       businessId: context.businessId,
       deletedAt: null,
@@ -114,6 +117,10 @@ export async function GET(request: Request) {
       db.product.count({ where }),
     ]);
 
+    try {
+      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `SUCCESS: returned ${products.length} products (totalCount: ${totalCount})\n`);
+    } catch(e) {}
+
     return NextResponse.json({
       products,
       pagination: {
@@ -124,6 +131,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
+    try {
+      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `ERROR: ${error.message}\n${error.stack}\n`);
+    } catch(e) {}
     console.error("GET products error:", error);
     return NextResponse.json({ error: "Failed to retrieve products" }, { status: 500 });
   }
