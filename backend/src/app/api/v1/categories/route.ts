@@ -90,12 +90,25 @@ export async function POST(request: Request) {
       }
     }
 
-    const category = await db.category.create({
-      data: {
-        name: result.data.name,
-        businessId: context.businessId,
-      },
-    });
+      const name = result.data.name.trim();
+      const existing = await db.category.findFirst({
+        where: {
+          businessId: context.businessId,
+          name: { equals: name, mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+
+      if (existing) {
+        return NextResponse.json({ error: "Category with this name already exists" }, { status: 400 });
+      }
+
+      const category = await db.category.create({
+        data: {
+          name,
+          businessId: context.businessId,
+        },
+      });
 
     return NextResponse.json(category, { status: 201 });
   } catch (error: any) {

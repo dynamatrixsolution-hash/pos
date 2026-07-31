@@ -10,7 +10,7 @@ const paymentCreateSchema = z.object({
   saleId: z.string().uuid().optional().nullable(),
   purchaseId: z.string().uuid().optional().nullable(),
   amount: z.number().positive("Amount must be greater than zero"),
-  method: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]).default("CASH"),
+  method: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   reference: z.string().optional().nullable(),
   receiptNumber: z.string().optional().nullable(),
   remarks: z.string().optional().nullable(),

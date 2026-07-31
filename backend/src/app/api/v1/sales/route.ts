@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
+import { broadcastSync } from "@/lib/websocket-client";
 
 const saleItemSchema = z.object({
   productId: z.string().uuid(),
@@ -13,7 +14,7 @@ const saleItemSchema = z.object({
 });
 
 const splitPaymentSchema = z.object({
-  method: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]),
+  method: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]),
   amount: z.number().positive(),
 });
 
@@ -26,7 +27,7 @@ const saleCreateSchema = z.object({
   tax: z.number().nonnegative().default(0), // overall invoice tax
   total: z.number().nonnegative(),
   paidAmount: z.number().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]).default("CASH"),
+  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   status: z.enum(["COMPLETED", "DRAFT", "ON_HOLD"]).default("COMPLETED"),
   notes: z.string().optional().nullable(),
@@ -368,12 +369,37 @@ export async function POST(request: Request) {
           warehouseId: payload.branchId,
           action: "CREATE",
           module: "SALE",
-          details: `Created invoice ${invoiceNumber}. Total: $${payload.total}, Paid: $${payload.paidAmount}`,
+          details: `Created invoice ${invoiceNumber}. Total: Rs. ${payload.total.toFixed(2)}, Paid: Rs. ${payload.paidAmount.toFixed(2)}`,
           newValue: JSON.parse(JSON.stringify(sale)),
           ipAddress,
           deviceInfo,
         },
       });
+
+      if (payload.tax > 0) {
+        await tx.auditLog.create({
+          data: {
+            businessId: context.businessId,
+            userId: context.userId,
+            role: context.role,
+            branchId: payload.branchId,
+            warehouseId: payload.branchId,
+            action: "TAXATION",
+            module: "SALE",
+            details: `Nepal Compliance - VAT Invoice recorded: Invoice ${invoiceNumber}. Subtotal: Rs. ${payload.subtotal.toFixed(2)}, Discount: Rs. ${payload.discount.toFixed(2)}, Taxable Value: Rs. ${(payload.subtotal - payload.discount).toFixed(2)}, VAT (13%): Rs. ${payload.tax.toFixed(2)}, Total: Rs. ${payload.total.toFixed(2)}`,
+            newValue: {
+              invoiceNumber,
+              subtotal: payload.subtotal,
+              discount: payload.discount,
+              taxableAmount: payload.subtotal - payload.discount,
+              tax: payload.tax,
+              total: payload.total
+            },
+            ipAddress,
+            deviceInfo,
+          },
+        });
+      }
 
       // 8. Write Notifications
       if (lowStockAlerts.length > 0) {
@@ -385,6 +411,7 @@ export async function POST(request: Request) {
       return sale;
     }, { maxWait: 10000, timeout: 30000 });
 
+    broadcastSync("sale", "create", saleResult);
     return NextResponse.json(saleResult, { status: 201 });
   } catch (error: any) {
     console.error("POST sale error:", error.message || error);

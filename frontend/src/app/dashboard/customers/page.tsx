@@ -53,6 +53,15 @@ export default function CustomersPage() {
   const [ledgerEntries, setLedgerEntries] = React.useState<LedgerEntry[]>([]);
   const [ledgerLoading, setLedgerLoading] = React.useState(false);
 
+  // Receive payment state
+  const [receivePaymentOpen, setReceivePaymentOpen] = React.useState(false);
+  const [receiveAmount, setReceiveAmount] = React.useState(0);
+  const [receiveMethod, setReceiveMethod] = React.useState("CASH");
+  const [receiveRef, setReceiveRef] = React.useState("");
+  const [receiveRemarks, setReceiveRemarks] = React.useState("");
+  const [receiveError, setReceiveError] = React.useState<string | null>(null);
+  const [isReceiving, setIsReceiving] = React.useState(false);
+
   const {
     register,
     handleSubmit,
@@ -121,6 +130,56 @@ export default function CustomersPage() {
       console.error("Failed to fetch customer ledger:", err);
     } finally {
       setLedgerLoading(false);
+    }
+  };
+
+  const handleReceivePaymentSubmit = async () => {
+    if (receiveAmount <= 0) {
+      setReceiveError("Please enter a positive payment amount.");
+      return;
+    }
+    if (!selectedCustomer) return;
+
+    setIsReceiving(true);
+    setReceiveError(null);
+
+    try {
+      const res = await fetch("/api/v1/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "RECEIVED",
+          customerId: selectedCustomer.id,
+          amount: receiveAmount,
+          method: receiveMethod,
+          reference: receiveRef,
+          remarks: receiveRemarks,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setReceiveError(data.error || "Failed to record payment.");
+        return;
+      }
+
+      setReceivePaymentOpen(false);
+      setReceiveAmount(0);
+      setReceiveRef("");
+      setReceiveRemarks("");
+      
+      // Refresh customer data
+      await loadCustomers();
+      
+      // Update selected customer local balance
+      setSelectedCustomer(prev => prev ? { ...prev, balance: Math.max(0, prev.balance - receiveAmount) } : null);
+      
+      // Reload statements
+      viewLedger(selectedCustomer);
+    } catch (e) {
+      setReceiveError("Network connection error.");
+    } finally {
+      setIsReceiving(false);
     }
   };
 
@@ -243,6 +302,19 @@ export default function CustomersPage() {
                     <span>Credit Ceiling: {currencySymbol}{selectedCustomer.creditLimit.toFixed(2)}</span>
                     <span className="text-destructive font-bold">Owes: {currencySymbol}{selectedCustomer.balance.toFixed(2)}</span>
                   </div>
+                  {selectedCustomer.balance > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReceiveAmount(selectedCustomer.balance);
+                        setReceivePaymentOpen(true);
+                        setReceiveError(null);
+                      }}
+                      className="mt-2.5 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      <CreditCard className="h-3.5 w-3.5" /> Receive Payment
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-2.5 overflow-y-auto max-h-[300px] pr-1">
@@ -395,6 +467,110 @@ export default function CustomersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {receivePaymentOpen && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-sm font-bold">Receive Customer Payment</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Collect outstanding credit dues from <strong>{selectedCustomer.name}</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Amount to Receive ({currencySymbol})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={receiveAmount}
+                  onChange={(e) => setReceiveAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
+                  max={selectedCustomer.balance}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Payment Method
+                </label>
+                <select
+                  value={receiveMethod}
+                  onChange={(e) => setReceiveMethod(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
+                >
+                  <option value="CASH">CASH</option>
+                  <option value="CARD">CARD</option>
+                  <option value="FONE_PAY">FONEPAY QR</option>
+                  <option value="ESEWA">eSewa Wallet</option>
+                  <option value="KHALTI">Khalti Wallet</option>
+                  <option value="NEPAL_PAY">NepalPay QR</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Reference / Receipt No.
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. TXN-8871"
+                  value={receiveRef}
+                  onChange={(e) => setReceiveRef(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Remarks / Notes
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Settled partial ledger credit"
+                  value={receiveRemarks}
+                  onChange={(e) => setReceiveRemarks(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none"
+                />
+              </div>
+
+              {receiveError && (
+                <div className="text-[10px] text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-lg font-semibold">
+                  {receiveError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setReceivePaymentOpen(false)}
+                className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isReceiving}
+                onClick={handleReceivePaymentSubmit}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isReceiving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Recording...
+                  </>
+                ) : (
+                  "Record Payment"
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

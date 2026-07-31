@@ -42,9 +42,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const name = result.data.name.trim();
+    const existing = await db.unit.findFirst({
+      where: {
+        businessId: context.businessId,
+        name: { equals: name, mode: "insensitive" },
+        deletedAt: null,
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ error: "Measurement unit with this name already exists" }, { status: 400 });
+    }
+
     const unit = await db.unit.create({
       data: {
-        name: result.data.name,
+        name,
         businessId: context.businessId,
       },
     });

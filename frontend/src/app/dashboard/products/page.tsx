@@ -4,11 +4,12 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Trash2, Tag, Percent, Barcode, Boxes, Edit, Camera, FileSpreadsheet, Upload, Download, Loader2, AlertTriangle, Info } from "lucide-react";
+import { Search, Plus, Trash2, Tag, Percent, Barcode, Boxes, Edit, Camera, FileSpreadsheet, Upload, Download, Loader2, AlertTriangle, Info, Sliders } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
+import { SearchableSelect } from "@/components/searchable-select";
 
 const BarcodeScannerModal = dynamic(() => import("@/components/barcode-scanner-modal"), {
   ssr: false,
@@ -23,6 +24,9 @@ interface ProductItem {
   sellingPrice: number;
   wholesalePrice: number;
   alertQuantity: number;
+  reorderLevel: number;
+  isVatItem: boolean;
+  taxPercentage: number;
   categoryId: string | null;
   category?: { name: string } | null;
   subcategoryId?: string | null;
@@ -50,11 +54,14 @@ const productSchema = z.object({
   sellingPrice: z.number().min(1, "Selling price must be at least 1"),
   wholesalePrice: z.number().nonnegative(),
   alertQuantity: z.number().int().nonnegative(),
+  reorderLevel: z.number().int().nonnegative(),
   categoryId: z.string().uuid().optional().nullable().or(z.literal("")),
   subcategoryId: z.string().uuid().optional().nullable().or(z.literal("")),
   initialStock: z.number().nonnegative(),
   mfgDate: z.string().optional().nullable().or(z.literal("")),
   expiryDate: z.string().optional().nullable().or(z.literal("")),
+  isVatItem: z.boolean(),
+  taxPercentage: z.number().nonnegative(),
   image: z.string().optional().nullable().or(z.literal("")),
 });
 
@@ -76,6 +83,33 @@ export default function ProductsPage() {
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+
+  // Stock Adjustment States
+  const [branches, setBranches] = React.useState<any[]>([]);
+  const [adjustModalOpen, setAdjustModalOpen] = React.useState(false);
+  const [adjustProduct, setAdjustProduct] = React.useState<ProductItem | null>(null);
+  const [adjustBranchId, setAdjustBranchId] = React.useState("");
+  const [adjustType, setAdjustType] = React.useState<"INCREASE" | "DECREASE">("INCREASE");
+  const [adjustQuantity, setAdjustQuantity] = React.useState(0);
+  const [adjustReason, setAdjustReason] = React.useState("");
+  const [adjustError, setAdjustError] = React.useState<string | null>(null);
+  const [isAdjusting, setIsAdjusting] = React.useState(false);
+
+  // Fetch branches for adjustments
+  React.useEffect(() => {
+    async function fetchBranches() {
+      try {
+        const res = await fetch("/api/v1/branches");
+        if (res.ok) {
+          const data = await res.json();
+          setBranches(data || []);
+        }
+      } catch (e) {
+        console.error("Failed to fetch branches", e);
+      }
+    }
+    fetchBranches();
+  }, []);
 
   // Excel Import States
   const [importModalOpen, setImportModalOpen] = React.useState(false);
@@ -143,12 +177,15 @@ export default function ProductsPage() {
       sellingPrice: 1,
       wholesalePrice: 0,
       alertQuantity: 5,
+      reorderLevel: 5,
       initialStock: 10,
       mfgDate: "",
       expiryDate: "",
       image: "",
       categoryId: "",
       subcategoryId: "",
+      isVatItem: true,
+      taxPercentage: 13,
     },
   });
 
@@ -223,11 +260,14 @@ export default function ProductsPage() {
     setValue("sellingPrice", product.sellingPrice);
     setValue("wholesalePrice", product.wholesalePrice || 0);
     setValue("alertQuantity", product.alertQuantity);
+    setValue("reorderLevel", product.reorderLevel ?? 5);
     setValue("categoryId", product.categoryId || "");
     setValue("subcategoryId", product.subcategoryId || "");
     setValue("initialStock", 0);
     setValue("mfgDate", "");
     setValue("expiryDate", "");
+    setValue("isVatItem", product.isVatItem ?? true);
+    setValue("taxPercentage", product.taxPercentage ?? 13);
     setValue("image", product.image || "");
     setModalOpen(true);
   };
@@ -245,6 +285,9 @@ export default function ProductsPage() {
           sellingPrice: data.sellingPrice,
           wholesalePrice: data.wholesalePrice,
           alertQuantity: data.alertQuantity,
+          reorderLevel: data.reorderLevel,
+          isVatItem: data.isVatItem,
+          taxPercentage: data.taxPercentage,
           categoryId: data.categoryId || null,
           subcategoryId: data.subcategoryId || null,
           image: data.image || null,
@@ -292,6 +335,47 @@ export default function ProductsPage() {
       setSubmitError("Failed to connect to API.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAdjustSubmit = async () => {
+    if (!adjustProduct) return;
+    if (!adjustBranchId) {
+      setAdjustError("Please select a target store branch.");
+      return;
+    }
+    if (adjustQuantity <= 0) {
+      setAdjustError("Please enter a positive adjustment quantity.");
+      return;
+    }
+
+    setIsAdjusting(true);
+    setAdjustError(null);
+
+    try {
+      const res = await fetch(`/api/v1/products/${adjustProduct.id}/adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchId: adjustBranchId,
+          type: adjustType,
+          quantity: adjustQuantity,
+          reason: adjustReason,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setAdjustError(data.error || "Failed to adjust product stock.");
+        return;
+      }
+
+      setAdjustModalOpen(false);
+      loadData();
+    } catch (e) {
+      setAdjustError("Network connection error.");
+    } finally {
+      setIsAdjusting(false);
     }
   };
 
@@ -662,6 +746,22 @@ export default function ProductsPage() {
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
+                            onClick={() => {
+                              setAdjustProduct(p);
+                              setAdjustBranchId(branches[0]?.id || "");
+                              setAdjustType("INCREASE");
+                              setAdjustQuantity(1);
+                              setAdjustReason("");
+                              setAdjustError(null);
+                              setAdjustModalOpen(true);
+                            }}
+                            disabled={isPending}
+                            className="text-muted-foreground hover:text-[#2563EB] p-1 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Adjust Stock"
+                          >
+                            <Sliders className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(p.id)}
                             disabled={isPending}
                             className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -880,40 +980,30 @@ export default function ProductsPage() {
                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
                     Category
                   </label>
-                  <select
-                    {...register("categoryId")}
-                    onChange={(e) => {
-                      register("categoryId").onChange(e);
+                  <SearchableSelect
+                    options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    value={watch("categoryId") || ""}
+                    onChange={(val) => {
+                      setValue("categoryId", val, { shouldValidate: true });
                       setValue("subcategoryId", "");
                     }}
-                    className="w-full h-10 px-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Select Category"
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
                     Subcategory
                   </label>
-                  <select
-                    {...register("subcategoryId")}
-                    className="w-full h-10 px-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
-                  >
-                    <option value="">Select Subcategory (Optional)</option>
-                    {subcategories
+                  <SearchableSelect
+                    options={subcategories
                       .filter((sc) => !watchedCategoryId || sc.categoryId === watchedCategoryId)
-                      .map((sc) => (
-                        <option key={sc.id} value={sc.id}>
-                          {sc.name}
-                        </option>
-                      ))}
-                  </select>
+                      .map((sc) => ({ value: sc.id, label: sc.name }))}
+                    value={watch("subcategoryId") || ""}
+                    onChange={(val) => setValue("subcategoryId", val, { shouldValidate: true })}
+                    placeholder="Select Subcategory (Optional)"
+                    disabled={!watchedCategoryId}
+                  />
                 </div>
               </div>
 
@@ -1018,18 +1108,60 @@ export default function ProductsPage() {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
-                      Alert Qty
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="5"
-                      {...register("alertQuantity", { valueAsNumber: true })}
-                      className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
-                    />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
+                        Alert Qty
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="5"
+                        {...register("alertQuantity", { valueAsNumber: true })}
+                        className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      />
+                    </div>
                   </div>
-                </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-3.5">
+                    <div className="flex items-center gap-2 py-2">
+                      <input
+                        type="checkbox"
+                        id="isVatItem"
+                        {...register("isVatItem")}
+                        className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-primary/25 cursor-pointer bg-background"
+                      />
+                      <label htmlFor="isVatItem" className="text-[10px] font-black text-muted-foreground uppercase tracking-wider cursor-pointer">
+                        Taxable Product (VAT 13%)
+                      </label>
+                    </div>
+
+                    {watch("isVatItem") && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
+                          Tax Percentage (%)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="13"
+                          {...register("taxPercentage", { valueAsNumber: true })}
+                          className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
+                        Reorder Stock Level
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="5"
+                        {...register("reorderLevel", { valueAsNumber: true })}
+                        className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      />
+                    </div>
+                  </div>
 
                 {!editingId && (
                   <div className="space-y-1">
@@ -1080,6 +1212,127 @@ export default function ProductsPage() {
             </form>
           </div>
         )}
+
+      {adjustModalOpen && adjustProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Stock Quantity Adjustment</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Manually adjust stock levels for <strong>{adjustProduct.name}</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Target Store / Branch
+                </label>
+                <select
+                  value={adjustBranchId}
+                  onChange={(e) => setAdjustBranchId(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none"
+                >
+                  <option value="">Select Branch</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Adjustment Type
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdjustType("INCREASE")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                      adjustType === "INCREASE"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    Increase (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdjustType("DECREASE")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                      adjustType === "DECREASE"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                    }`}
+                  >
+                    Decrease (-)
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Quantity to Adjust
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 10"
+                  value={adjustQuantity || ""}
+                  onChange={(e) => setAdjustQuantity(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none"
+                  min="1"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Reason for Adjustment
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Stocktake audit correction"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background text-foreground focus:outline-none"
+                />
+              </div>
+
+              {adjustError && (
+                <div className="text-[10px] text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-lg font-semibold">
+                  {adjustError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setAdjustModalOpen(false)}
+                className="px-4 py-2 border border-border text-xs rounded-lg hover:bg-secondary font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isAdjusting}
+                onClick={handleAdjustSubmit}
+                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isAdjusting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Adjusting...
+                  </>
+                ) : (
+                  "Apply Adjustment"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       <BarcodeScannerModal
         isOpen={scannerOpen}

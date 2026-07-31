@@ -96,12 +96,15 @@ export default function DashboardPage() {
   const [mounted, setMounted] = React.useState(false);
   const [isSyncing, setIsSyncing] = React.useState(false);
 
-  const handleSync = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
+  // Compliance filter state & lists
+  const [range, setRange] = React.useState<string>("today");
+  const [outOfStock, setOutOfStock] = React.useState<any[]>([]);
+  const [todayStats, setTodayStats] = React.useState<any>(null);
+
+  const loadDashboard = React.useCallback(async () => {
     try {
       const [dashRes, branchRes] = await Promise.all([
-        fetch("/api/v1/reports/dashboard"),
+        fetch(`/api/v1/reports/dashboard?range=${range}`),
         fetch("/api/v1/branches?limit=50"),
       ]);
       if (dashRes.ok) {
@@ -112,16 +115,23 @@ export default function DashboardPage() {
         setTopProducts(data.topSellingProducts || []);
         setChartData(data.salesChart || []);
         setCategoryData(data.salesByCategory || []);
+        setOutOfStock(data.outOfStockProducts || []);
+        setTodayStats(data.todayStats || null);
       }
       if (branchRes.ok) {
         const data = await branchRes.json();
         setBranches(data.branches || []);
       }
     } catch (err) {
-      console.error("Sync failed:", err);
-    } finally {
-      setIsSyncing(false);
+      console.error("Failed to load dashboard metrics:", err);
     }
+  }, [range]);
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    await loadDashboard();
+    setIsSyncing(false);
   };
 
   React.useEffect(() => {
@@ -143,36 +153,55 @@ export default function DashboardPage() {
       return;
     }
     
-    async function loadDashboard() {
-      try {
-        const [dashRes, branchRes] = await Promise.all([
-          fetch("/api/v1/reports/dashboard"),
-          fetch("/api/v1/branches?limit=50"),
-        ]);
-        if (dashRes.ok) {
-          const data = await dashRes.json();
-          setMetrics(data.metrics);
-          setAlerts(data.lowStockAlerts || []);
-          setTransactions(data.recentTransactions || []);
-          setTopProducts(data.topSellingProducts || []);
-          setChartData(data.salesChart || []);
-          setCategoryData(data.salesByCategory || []);
-        }
-        if (branchRes.ok) {
-          const data = await branchRes.json();
-          setBranches(data.branches || []);
-        }
-      } catch (err) {
-        console.error("Failed to load dashboard metrics:", err);
-      } finally {
-        setIsLoading(false);
-      }
+    async function initDashboard() {
+      setIsLoading(true);
+      await loadDashboard();
+      setIsLoading(false);
     }
     
     if (sessionStatus !== "loading") {
-      loadDashboard();
+      initDashboard();
     }
-  }, [sessionStatus, userRole]);
+  }, [sessionStatus, userRole, loadDashboard]);
+
+  // WebSocket real-time synchronization listener
+  React.useEffect(() => {
+    if (userRole === "SUPER_ADMIN") return;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    function connectWS() {
+      ws = new WebSocket("ws://localhost:3002");
+
+      ws.onopen = () => {
+        console.log("WebSocket connected to PosSync Server");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === "PRODUCT_ADJUSTED" || message.type === "SALE_COMPLETED" || message.type === "PURCHASE_COMPLETED") {
+            console.log("WebSocket POS Sync - Refreshing metrics...");
+            loadDashboard();
+          }
+        } catch (e) {
+          // silent ignore
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected, retrying in 5 seconds...");
+        reconnectTimeout = setTimeout(connectWS, 5000);
+      };
+    }
+
+    connectWS();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [userRole, loadDashboard]);
 
   if (sessionStatus === "loading" || isLoading) {
     return (
@@ -262,9 +291,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="hidden sm:flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600">
-            This Month <ChevronDown className="w-4 h-4 ml-2" />
-          </div>
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="flex items-center px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 outline-none cursor-pointer"
+          >
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="fiscalYear">Fiscal Year (Nepal)</option>
+          </select>
           <button
             onClick={handleSync}
             disabled={isSyncing}
@@ -333,7 +369,7 @@ export default function DashboardPage() {
       {metrics && (
         <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Card 1: Total Sales */}
-          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+          <Link href="/dashboard/sales" className="bg-white border border-slate-100 hover:border-emerald-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -360,13 +396,13 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 2: COGS */}
-          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+          <Link href="/dashboard/products" className="bg-white border border-slate-100 hover:border-orange-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-50 flex items-center justify-center">
                   <Boxes className="h-5 w-5" />
                 </div>
                 <div>
@@ -390,13 +426,13 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 3: Other Income */}
-          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+          <Link href="/dashboard/payments" className="bg-white border border-slate-100 hover:border-blue-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-50 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
@@ -420,13 +456,13 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 4: Expenses */}
-          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+          <Link href="/dashboard/expenses" className="bg-white border border-slate-100 hover:border-rose-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-50 flex items-center justify-center">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
@@ -450,13 +486,13 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Card 5: Net Profit */}
-          <div className="bg-white border border-slate-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm">
+          <Link href="/dashboard/reports" className="bg-white border border-slate-100 hover:border-red-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-50 flex items-center justify-center">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
@@ -480,7 +516,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       )}
 
@@ -608,6 +644,7 @@ export default function DashboardPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
+                    <Tooltip formatter={(value) => `${value}%`} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -656,6 +693,86 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+      {/* Row 3: Out of Stock & TodayStats widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Out of Stock Products (2/3 width) */}
+        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                <AlertTriangle className="h-4.5 w-4.5 text-red-500" />
+                Out of Stock Products
+              </h2>
+              <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-black">
+                {outOfStock.length} Critical
+              </span>
+            </div>
+            <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+              {outOfStock.length === 0 ? (
+                <div className="text-center text-slate-400 text-xs py-8 font-medium">All products are fully in stock! 🎉</div>
+              ) : (
+                outOfStock.map((p) => (
+                  <div key={p.id} className="flex justify-between items-center bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:bg-red-50/10 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">{p.name}</span>
+                      <span className="text-[9px] font-medium text-slate-400">SKU: {p.sku || "N/A"} | Min Stock: {p.alertQuantity}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-extrabold text-red-500 bg-red-50 dark:bg-red-950/20 px-2.5 py-1 rounded-lg border border-red-100 dark:border-transparent">0 Stock</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Sales & Daily Statistics (1/3 width) */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+              <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
+              Today's Sales & Daily Stats
+            </h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Today's Transactions</span>
+                  <span className="text-lg font-black text-slate-800">{todayStats?.transactionsCount ?? 0} Bills</span>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <ShoppingCart className="h-4.5 w-4.5" />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center p-3 bg-blue-50/30 rounded-xl border border-blue-100/50">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Today's Revenue</span>
+                  <span className="text-lg font-black text-slate-800">{currencySymbol}{(todayStats?.revenue ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <DollarSign className="h-4.5 w-4.5" />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center p-3 bg-slate-50/30 rounded-xl border border-slate-200/50">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Average Order Value</span>
+                  <span className="text-lg font-black text-slate-800">
+                    {currencySymbol}
+                    {todayStats?.transactionsCount
+                      ? (todayStats.revenue / todayStats.transactionsCount).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+                      : "0.00"}
+                  </span>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+                  <TrendingUp className="h-4.5 w-4.5" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

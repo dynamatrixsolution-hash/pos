@@ -59,6 +59,10 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Sale not found" }, { status: 404 });
     }
 
+    if (sale.status === "COMPLETED") {
+      return NextResponse.json({ error: "IRD Compliance: Finalized sales invoices are immutable and cannot be updated." }, { status: 400 });
+    }
+
     const updatedSale = await db.sale.update({
       where: { id: params.id },
       data: {

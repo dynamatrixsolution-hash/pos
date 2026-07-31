@@ -15,13 +15,14 @@ const purchaseItemSchema = z.object({
 const purchaseCreateSchema = z.object({
   supplierId: z.string().uuid(),
   branchId: z.string().uuid(),
+  invoiceNumber: z.string().optional().nullable().or(z.literal("")),
   items: z.array(purchaseItemSchema).min(1, "At least one item is required in the purchase order"),
   subtotal: z.number().nonnegative(),
   discount: z.number().nonnegative().default(0),
   tax: z.number().nonnegative().default(0),
   total: z.number().nonnegative(),
   paidAmount: z.number().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "CREDIT"]).default("CASH"),
+  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   notes: z.string().optional().nullable(),
 });
@@ -145,6 +146,28 @@ export async function POST(request: Request) {
           throw new Error(`Product not found: ${item.productId}`);
         }
 
+        // Verify product has category and unit
+        if (!product.categoryId) {
+          throw new Error(`Product "${product.name}" has no category assigned. Category is required for purchasing.`);
+        }
+        if (!product.unitId) {
+          throw new Error(`Product "${product.name}" has no measurement unit assigned. Unit is required for purchasing.`);
+        }
+
+        const categoryExists = await tx.category.findFirst({
+          where: { id: product.categoryId, businessId: context.businessId, deletedAt: null },
+        });
+        if (!categoryExists) {
+          throw new Error(`The category for product "${product.name}" does not exist.`);
+        }
+
+        const unitExists = await tx.unit.findFirst({
+          where: { id: product.unitId, businessId: context.businessId, deletedAt: null },
+        });
+        if (!unitExists) {
+          throw new Error(`The measurement unit for product "${product.name}" does not exist.`);
+        }
+
         // Increment Branch-wise Stock levels
         const stock = await tx.productStock.findUnique({
           where: { productId_branchId: { productId: item.productId, branchId: payload.branchId } },
@@ -232,6 +255,7 @@ export async function POST(request: Request) {
           supplierId: payload.supplierId,
           userId: context.userId,
           purchaseNumber,
+          invoiceNumber: payload.invoiceNumber || null,
           status: "RECEIVED",
           subtotal: payload.subtotal,
           discount: payload.discount,

@@ -13,7 +13,7 @@ const registerRequestSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
   businessType: z.string().default("RETAIL"),
-  currency: z.string().default("USD"),
+  currency: z.string().default("NPR"),
   taxNumber: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.string().email("Invalid business email"),
@@ -116,11 +116,11 @@ export async function POST(request: Request) {
         slug: data.slug,
         businessType: data.businessType,
         currency: data.currency,
-        taxNumber: data.taxNumber,
-        phone: data.phone,
+        taxNumber: data.taxNumber || null,
+        phone: data.phone || null,
         email: data.email,
-        address: data.address,
-        logo: data.logo,
+        address: data.address || null,
+        logo: data.logo || null,
         plan: data.plan,
         billingCycle: data.billingCycle,
         durationMonths: data.durationMonths,
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         customLimits: (data.customLimits || {}) as any,
         ownerName: data.ownerName,
         ownerEmail: data.ownerEmail,
-        ownerPhone: data.ownerPhone,
+        ownerPhone: data.ownerPhone || null,
         passwordHash,
         status: "PENDING",
       },
@@ -150,7 +150,10 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Register request error:", error);
     return NextResponse.json(
-      { error: "Failed to submit business registration request" },
+      {
+        error: error?.message || "Failed to submit business registration request",
+        details: String(error),
+      },
       { status: 500 }
     );
   }

@@ -5,8 +5,10 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Trash2, Calendar, FileText, Truck, ArrowDownCircle, Loader2 } from "lucide-react";
+import { Search, Plus, Trash2, Calendar, FileText, Truck, ArrowDownCircle, Loader2, CreditCard } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { SearchableSelect } from "@/components/searchable-select";
+import { NepaliDatePicker } from "@/components/nepali-datepicker";
 
 interface PurchaseItem {
   id: string;
@@ -30,6 +32,8 @@ interface ProductItem {
   name: string;
   sku: string;
   costPrice: number;
+  categoryId?: string | null;
+  unitId?: string | null;
 }
 
 const purchaseItemFormSchema = z.object({
@@ -43,11 +47,12 @@ const purchaseItemFormSchema = z.object({
 
 const purchaseFormSchema = z.object({
   supplierId: z.string().uuid("Invalid supplier selected"),
+  invoiceNumber: z.string().min(1, "Invoice Number is required"),
   items: z.array(purchaseItemFormSchema).min(1, "Specify at least one product"),
   discount: z.number().nonnegative(),
   tax: z.number().nonnegative(),
   paidAmount: z.number().nonnegative(),
-  paymentMethod: z.enum(["CASH", "CARD", "QR", "BANK_TRANSFER", "CREDIT"]),
+  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]),
 });
 
 type PurchaseInputs = z.infer<typeof purchaseFormSchema>;
@@ -80,7 +85,9 @@ export default function PurchasesPage() {
       discount: 0,
       tax: 0,
       paidAmount: 0,
-      items: [{ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: "", expiryDate: "" }],
+      invoiceNumber: "",
+      paymentMethod: "CASH",
+      items: [{ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: new Date().toISOString().slice(0, 10), expiryDate: new Date().toISOString().slice(0, 10) }],
     },
   });
 
@@ -136,6 +143,8 @@ export default function PurchasesPage() {
     }
   };
 
+  const [calendarMode, setCalendarMode] = React.useState<"AD" | "BS">("AD");
+
   const onSubmit = async (data: PurchaseInputs) => {
     if (!branchId) {
       setSubmitError("No branch context selected.");
@@ -143,6 +152,25 @@ export default function PurchasesPage() {
     }
 
     setSubmitError(null);
+
+    // Validate category and unit mappings in frontend
+    for (let idx = 0; idx < data.items.length; idx++) {
+      const it = data.items[idx];
+      const prod = products.find((p) => p.id === it.productId);
+      if (!prod) {
+        setSubmitError(`Row ${idx + 1}: Select a valid product.`);
+        return;
+      }
+      if (!prod.categoryId) {
+        setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no category assigned. Edit product to configure mapping.`);
+        return;
+      }
+      if (!prod.unitId) {
+        setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no unit assigned. Edit product to configure mapping.`);
+        return;
+      }
+    }
+
     const payload = {
       ...data,
       branchId,
@@ -383,20 +411,62 @@ export default function PurchasesPage() {
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                     Supplier / Vendor
                   </label>
-                  <select
-                    {...register("supplierId")}
-                    className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="">Select Vendor</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                    value={watch("supplierId") || ""}
+                    onChange={(val) => setValue("supplierId", val, { shouldValidate: true })}
+                    placeholder="Select Vendor"
+                  />
                   {errors.supplierId && (
                     <span className="text-[10px] text-destructive font-semibold">{errors.supplierId.message}</span>
                   )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Supplier Invoice Number *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. INV-9902"
+                    {...register("invoiceNumber")}
+                    className={`w-full px-3 py-2 border rounded-lg text-xs bg-background focus:outline-none ${
+                      errors.invoiceNumber ? "border-destructive" : "border-border"
+                    }`}
+                  />
+                  {errors.invoiceNumber && (
+                    <span className="text-[10px] text-destructive font-semibold">{errors.invoiceNumber.message}</span>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Calendar Mode
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCalendarMode("AD")}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all border ${
+                        calendarMode === "AD"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                      }`}
+                    >
+                      AD
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCalendarMode("BS")}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all border ${
+                        calendarMode === "BS"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:bg-secondary"
+                      }`}
+                    >
+                      BS (Nepali)
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -409,8 +479,10 @@ export default function PurchasesPage() {
                   >
                     <option value="CASH">CASH</option>
                     <option value="CARD">CARD</option>
-                    <option value="QR">QR CODE</option>
-                    <option value="BANK_TRANSFER">BANK TRANSFER</option>
+                    <option value="FONE_PAY">FONEPAY QR</option>
+                    <option value="ESEWA">eSewa Wallet</option>
+                    <option value="KHALTI">Khalti Wallet</option>
+                    <option value="NEPAL_PAY">NepalPay QR</option>
                     <option value="CREDIT">ON CREDIT (VEND BALANCE)</option>
                   </select>
                 </div>
@@ -422,61 +494,58 @@ export default function PurchasesPage() {
                   <span className="text-xs font-bold text-foreground">Purchase Items Basket</span>
                   <button
                     type="button"
-                    onClick={() => append({ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: "", expiryDate: "" })}
+                    onClick={() => append({ productId: "", quantity: 1, price: 0, batchNumber: "", manufacturingDate: new Date().toISOString().slice(0, 10), expiryDate: new Date().toISOString().slice(0, 10) })}
                     className="flex items-center gap-1 text-[11px] text-primary hover:underline font-bold cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" /> Add Row
                   </button>
                 </div>
 
-                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 animate-in fade-in duration-200">
                   {fields.map((field, index) => (
                     <div key={field.id} className="bg-secondary/30 p-3.5 rounded-lg border border-border/50 space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
                         <div className="col-span-1 sm:col-span-4 space-y-1">
-                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Product</label>
-                          <select
-                            {...register(`items.${index}.productId` as const)}
-                            onChange={(e) => onProductChange(index, e.target.value)}
-                            className="w-full px-2 py-1.5 border border-border rounded bg-background text-[11px] focus:outline-none text-foreground"
-                          >
-                            <option value="">Select Product</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} ({p.sku})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-span-1 sm:col-span-2 space-y-1">
-                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Qty</label>
-                          <input
-                            type="number"
-                            placeholder="Qty"
-                            {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
-                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none text-foreground"
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Product</label>
+                          <SearchableSelect
+                            options={products.map((p) => ({ value: p.id, label: `${p.name} (${p.sku})` }))}
+                            value={items[index]?.productId || ""}
+                            onChange={(val) => {
+                              setValue(`items.${index}.productId` as const, val, { shouldValidate: true });
+                              onProductChange(index, val);
+                            }}
+                            placeholder="Select Product"
                           />
                         </div>
 
                         <div className="col-span-1 sm:col-span-2 space-y-1">
-                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Cost ({currencySymbol})</label>
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Qty</label>
+                          <input
+                            type="number"
+                            placeholder="Qty"
+                            {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
+                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-center focus:outline-none text-foreground"
+                          />
+                        </div>
+
+                        <div className="col-span-1 sm:col-span-2 space-y-1">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Cost ({currencySymbol})</label>
                           <input
                             type="number"
                             step="0.01"
                             placeholder="Cost"
                             {...register(`items.${index}.price` as const, { valueAsNumber: true })}
-                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-right focus:outline-none text-foreground"
+                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-right focus:outline-none text-foreground"
                           />
                         </div>
 
                         <div className="col-span-1 sm:col-span-3 space-y-1">
-                          <label className="text-[9px] font-bold text-muted-foreground uppercase sm:hidden">Batch</label>
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Batch</label>
                           <input
                             type="text"
                             placeholder="Batch (optional)"
                             {...register(`items.${index}.batchNumber` as const)}
-                            className="w-full px-2 py-1.5 border border-border rounded text-[11px] bg-background text-center focus:outline-none text-foreground"
+                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-center focus:outline-none text-foreground"
                           />
                         </div>
 
@@ -484,7 +553,7 @@ export default function PurchasesPage() {
                           <button
                             type="button"
                             onClick={() => remove(index)}
-                            className="text-muted-foreground hover:text-destructive p-1.5 hover:bg-secondary rounded transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
+                            className="text-muted-foreground hover:text-destructive p-2 hover:bg-secondary rounded-xl transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="text-[10px] font-bold ml-1.5 sm:hidden">Delete Row</span>
@@ -495,21 +564,35 @@ export default function PurchasesPage() {
                       {/* Sub-row: Mfg. Date and Expiry Date */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider block">Mfg. Date (MFD)</label>
-                          <input
-                            type="date"
-                            {...register(`items.${index}.manufacturingDate` as const)}
-                            className="w-full px-2 py-1 border border-border rounded text-[11px] bg-background focus:outline-none text-foreground"
-                          />
+                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider block">Mfg. Date (MFD)</label>
+                          {calendarMode === "BS" ? (
+                            <NepaliDatePicker
+                              value={items[index]?.manufacturingDate || ""}
+                              onChange={(val) => setValue(`items.${index}.manufacturingDate`, val, { shouldValidate: true })}
+                            />
+                          ) : (
+                            <input
+                              type="date"
+                              {...register(`items.${index}.manufacturingDate` as const)}
+                              className="w-full px-2.5 py-2 border border-border rounded-xl text-[11px] bg-background focus:outline-none text-foreground font-medium"
+                            />
+                          )}
                         </div>
 
                         <div className="space-y-1">
                           <label className="text-[9px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider block">Expiry Date</label>
-                          <input
-                            type="date"
-                            {...register(`items.${index}.expiryDate` as const)}
-                            className="w-full px-2 py-1 border border-border rounded text-[11px] bg-background focus:outline-none text-foreground"
-                          />
+                          {calendarMode === "BS" ? (
+                            <NepaliDatePicker
+                              value={items[index]?.expiryDate || ""}
+                              onChange={(val) => setValue(`items.${index}.expiryDate`, val, { shouldValidate: true })}
+                            />
+                          ) : (
+                            <input
+                              type="date"
+                              {...register(`items.${index}.expiryDate` as const)}
+                              className="w-full px-2.5 py-2 border border-border rounded-xl text-[11px] bg-background focus:outline-none text-foreground font-medium"
+                            />
+                          )}
                         </div>
                       </div>
                     </div>

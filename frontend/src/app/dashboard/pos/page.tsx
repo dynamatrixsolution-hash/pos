@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
 import dynamic from "next/dynamic";
+import { SearchableSelect } from "@/components/searchable-select";
 
 const BarcodeScannerModal = dynamic(() => import("@/components/barcode-scanner-modal"), {
   ssr: false,
@@ -117,6 +118,9 @@ interface ActiveOrder {
     cash: number;
     card: number;
     fonepay: number;
+    esewa: number;
+    khalti: number;
+    nepalpay: number;
     credit: number;
   };
 }
@@ -283,7 +287,7 @@ export default function POSPage() {
       diningType: "TAKE_AWAY",
       waiterId: "Sales Person 01",
       posMode: "RETAIL",
-      splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
+      splitPayments: { cash: 0, card: 0, fonepay: 0, esewa: 0, khalti: 0, nepalpay: 0, credit: 0 },
     },
   ]);
   const [currentOrderId, setCurrentOrderId] = React.useState<string>("1");
@@ -635,7 +639,7 @@ export default function POSPage() {
       diningType: "TAKE_AWAY",
       waiterId: session?.user?.name || "Sales Person 01",
       posMode: currentOrder.posMode,
-      splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
+      splitPayments: { cash: 0, card: 0, fonepay: 0, esewa: 0, khalti: 0, nepalpay: 0, credit: 0 },
     };
     setActiveOrders([...activeOrders, newTab]);
     setCurrentOrderId(nextId);
@@ -821,6 +825,9 @@ export default function POSPage() {
       ? currentOrder.splitPayments.cash +
         currentOrder.splitPayments.card +
         currentOrder.splitPayments.fonepay +
+        currentOrder.splitPayments.esewa +
+        currentOrder.splitPayments.khalti +
+        currentOrder.splitPayments.nepalpay +
         currentOrder.splitPayments.credit
       : splitType === "PERSONS"
       ? personsPayments.reduce((sum, v) => sum + v, 0)
@@ -903,6 +910,15 @@ export default function POSPage() {
       if (currentOrder.splitPayments.fonepay > 0) {
         splitPaymentsList.push({ method: "FONE_PAY", amount: currentOrder.splitPayments.fonepay });
       }
+      if (currentOrder.splitPayments.esewa > 0) {
+        splitPaymentsList.push({ method: "ESEWA", amount: currentOrder.splitPayments.esewa });
+      }
+      if (currentOrder.splitPayments.khalti > 0) {
+        splitPaymentsList.push({ method: "KHALTI", amount: currentOrder.splitPayments.khalti });
+      }
+      if (currentOrder.splitPayments.nepalpay > 0) {
+        splitPaymentsList.push({ method: "NEPAL_PAY", amount: currentOrder.splitPayments.nepalpay });
+      }
       if (currentOrder.splitPayments.credit > 0) {
         splitPaymentsList.push({ method: "CREDIT", amount: currentOrder.splitPayments.credit });
       }
@@ -914,7 +930,10 @@ export default function POSPage() {
         : splitType === "METHOD"
         ? currentOrder.splitPayments.cash +
           currentOrder.splitPayments.card +
-          currentOrder.splitPayments.fonepay
+          currentOrder.splitPayments.fonepay +
+          currentOrder.splitPayments.esewa +
+          currentOrder.splitPayments.khalti +
+          currentOrder.splitPayments.nepalpay
         : totalPaidInSplits;
 
     let paymentStatus = "PAID";
@@ -989,7 +1008,7 @@ export default function POSPage() {
                 customerType: "WALK_IN",
                 overallDiscount: 0,
                 invoiceNotes: "",
-                splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
+                splitPayments: { cash: 0, card: 0, fonepay: 0, esewa: 0, khalti: 0, nepalpay: 0, credit: 0 },
               }
             : o
         );
@@ -1051,7 +1070,7 @@ export default function POSPage() {
               customerType: "WALK_IN",
               overallDiscount: 0,
               invoiceNotes: "",
-              splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
+              splitPayments: { cash: 0, card: 0, fonepay: 0, esewa: 0, khalti: 0, nepalpay: 0, credit: 0 },
             }
           : o
       );
@@ -1185,7 +1204,7 @@ export default function POSPage() {
         selectedCustomerId: "",
         overallDiscount: 0,
         invoiceNotes: "",
-        splitPayments: { cash: 0, card: 0, fonepay: 0, credit: 0 },
+        splitPayments: { cash: 0, card: 0, fonepay: 0, esewa: 0, khalti: 0, nepalpay: 0, credit: 0 },
       }));
     };
 
@@ -1588,11 +1607,15 @@ export default function POSPage() {
           <div className="space-y-3 mb-3 shrink-0">
             {/* Dining type & Table side-by-side dropdown selectors */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <select
+              <div className="relative flex-1">
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "Walk-in Customer" },
+                    ...customers.map((c) => ({ value: c.id, label: `${c.name} (${c.phone || "No Phone"})` })),
+                    { value: "new", label: "+ Register New Customer" }
+                  ]}
                   value={currentOrder.selectedCustomerId || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
+                  onChange={(val) => {
                     if (val === "new") {
                       setCustModalOpen(true);
                     } else {
@@ -1603,17 +1626,8 @@ export default function POSPage() {
                       }));
                     }
                   }}
-                  className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-slate-500 focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="">Walk-in Customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                  <option value="new" className="text-[#2563EB] font-bold">+ Register New</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  placeholder="Select Customer..."
+                />
               </div>
 
               <div className="relative">
@@ -1852,7 +1866,30 @@ export default function POSPage() {
               )}
 
               {/* Bottom checkout action buttons matching mockup */}
-              <div className="space-y-2 shrink-0 font-bold text-xs select-none pb-24 md:pb-0">
+              <div className="space-y-2.5 shrink-0 font-bold text-xs select-none pb-24 md:pb-0">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currentOrder.cart.length > 0) setHoldModalOpen(true);
+                    }}
+                    className="py-2.5 px-3 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
+                    title="Hold current cart to suspend/save"
+                  >
+                    <Pause className="h-3.5 w-3.5" />
+                    <span>Hold Sale</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecallModalOpen(true)}
+                    className="py-2.5 px-3 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
+                    title="Recall a saved/held cart"
+                  >
+                    <Play className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
+                    <span>Recall ({heldBills.length})</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setCheckoutSelectionOpen(true)}
@@ -2489,7 +2526,7 @@ export default function POSPage() {
                     Payment Method
                   </label>
                   <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/80">
-                    {["CASH", "CARD", "FONE_PAY", "CREDIT"].map((method) => (
+                    {["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"].map((method) => (
                       <button
                         key={method}
                         type="button"
@@ -2500,7 +2537,7 @@ export default function POSPage() {
                             : "text-slate-500 hover:text-slate-800 dark:text-slate-405"
                         }`}
                       >
-                        {method === "FONE_PAY" ? "FONE PAY" : method}
+                        {method === "FONE_PAY" ? "FonePay" : method === "ESEWA" ? "eSewa" : method === "KHALTI" ? "Khalti" : method === "NEPAL_PAY" ? "NepalPay" : method}
                       </button>
                     ))}
                   </div>
@@ -2534,10 +2571,10 @@ export default function POSPage() {
                 )}
 
                 {/* Dynamic QR Code Generator for Fone Pay */}
-                {singlePaymentMethod === "FONE_PAY" && (
+                {(singlePaymentMethod === "FONE_PAY" || singlePaymentMethod === "ESEWA" || singlePaymentMethod === "KHALTI" || singlePaymentMethod === "NEPAL_PAY") && (
                   <div className="flex flex-col items-center justify-center p-5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl animate-in fade-in duration-250 text-center gap-4">
                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                      Dynamic Fonepay QR
+                      Dynamic {singlePaymentMethod === "FONE_PAY" ? "Fonepay QR" : singlePaymentMethod === "ESEWA" ? "eSewa QR" : singlePaymentMethod === "KHALTI" ? "Khalti QR" : "NepalPay QR"}
                     </span>
                     
                     {/* QR Code Container with Premium Focus Corners and Scanning Line */}
@@ -2552,16 +2589,15 @@ export default function POSPage() {
                       <div className="qr-scanner-line" />
 
                       <img
-                        src={fonepayQr || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
                           JSON.stringify({
+                            gateway: singlePaymentMethod,
                             name: businessName || "Ramila Gharti",
-                            eSewa_id: "9845478587",
                             amount: grandTotal,
-                            amt: grandTotal,
-                            total_amount: grandTotal,
+                            invoice: currentOrder.invoiceNumber,
                           })
                         )}`}
-                        alt="Fonepay QR Code"
+                        alt="Digital QR Code"
                         className="w-[145px] h-[145px] object-contain select-none transition-transform duration-300 group-hover:scale-102"
                       />
                     </div>
@@ -2571,7 +2607,7 @@ export default function POSPage() {
                         Scan to Pay: <span className="text-[#2563EB] dark:text-[#7f74f7] text-sm font-black">{currencySymbol}{grandTotal.toFixed(2)}</span>
                       </p>
                       <p className="text-[10px] text-slate-450 dark:text-slate-400 leading-relaxed max-w-[240px]">
-                        Scan the dynamic Fonepay QR code using any digital wallet or mobile banking app to complete the transaction.
+                        Scan the dynamic {singlePaymentMethod} QR code using any digital wallet or mobile banking app to complete the transaction.
                       </p>
                     </div>
                   </div>
@@ -2621,14 +2657,17 @@ export default function POSPage() {
 
             {splitType === "METHOD" && (
               <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
-                <div className="grid grid-cols-4 gap-2 items-center text-[9px] font-black text-slate-400 uppercase text-center border-b pb-1.5 border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-7 gap-1 items-center text-[8px] font-black text-slate-400 uppercase text-center border-b pb-1.5 border-slate-200 dark:border-slate-800">
                   <span>Cash</span>
                   <span>Card</span>
-                  <span>Fone Pay</span>
+                  <span>FonePay</span>
+                  <span>eSewa</span>
+                  <span>Khalti</span>
+                  <span>NepalPay</span>
                   <span>Credit</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {["cash", "card", "fonepay", "credit"].map((method) => (
+                <div className="grid grid-cols-7 gap-1 text-[10px]">
+                  {["cash", "card", "fonepay", "esewa", "khalti", "nepalpay", "credit"].map((method) => (
                     <input
                       key={method}
                       type="number"
@@ -2643,7 +2682,7 @@ export default function POSPage() {
                           },
                         }))
                       }
-                      className="px-1 py-1 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded text-xs font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
+                      className="w-full px-0.5 py-1 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded text-[10px] font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
                     />
                   ))}
                 </div>
@@ -3116,21 +3155,12 @@ export default function POSPage() {
               {/* Dropdown search select */}
               <div className="space-y-1 text-left">
                 <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Registered Customer</label>
-                <div className="relative">
-                  <select
-                    value={selectedCustomerIdInCheckout}
-                    onChange={(e) => setSelectedCustomerIdInCheckout(e.target.value)}
-                    className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-slate-650 focus:outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="">-- Choose Customer --</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.phone || "No Phone"})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                </div>
+                <SearchableSelect
+                  options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.phone || "No Phone"})` }))}
+                  value={selectedCustomerIdInCheckout}
+                  onChange={(val) => setSelectedCustomerIdInCheckout(val)}
+                  placeholder="Choose Customer..."
+                />
               </div>
 
               {/* Confirm select button */}

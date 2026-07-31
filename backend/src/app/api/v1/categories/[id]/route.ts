@@ -41,9 +41,23 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
+    const name = result.data.name.trim();
+    const duplicate = await db.category.findFirst({
+      where: {
+        businessId: context.businessId,
+        name: { equals: name, mode: "insensitive" },
+        deletedAt: null,
+        id: { not: params.id },
+      },
+    });
+
+    if (duplicate) {
+      return NextResponse.json({ error: "Category with this name already exists" }, { status: 400 });
+    }
+
     const category = await db.category.update({
       where: { id: params.id },
-      data: { name: result.data.name },
+      data: { name },
     });
 
     return NextResponse.json(category);

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Loader2, Layers, Tag, Ruler, AlertTriangle, Info } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 
 type Category = { id: string; name: string; _count?: { products: number } };
 type Subcategory = { id: string; name: string; categoryId: string; category?: { id: string; name: string }; _count?: { products: number } };
@@ -111,6 +112,36 @@ export default function CategoriesClient() {
     if (activeTab === "subcategories" && !formCategoryId) {
       setError("Parent Category is required");
       return;
+    }
+
+    // Duplicate check validation
+    if (activeTab === "categories") {
+      const isDup = categories.some(
+        (c) => c.name.toLowerCase().trim() === formName.toLowerCase().trim() && c.id !== editingId
+      );
+      if (isDup) {
+        setError("A category with this name already exists.");
+        return;
+      }
+    } else if (activeTab === "subcategories") {
+      const isDup = subcategories.some(
+        (sc) =>
+          sc.name.toLowerCase().trim() === formName.toLowerCase().trim() &&
+          sc.categoryId === formCategoryId &&
+          sc.id !== editingId
+      );
+      if (isDup) {
+        setError("A subcategory with this name already exists under the selected parent category.");
+        return;
+      }
+    } else if (activeTab === "units") {
+      const isDup = units.some(
+        (u) => u.name.toLowerCase().trim() === formName.toLowerCase().trim() && u.id !== editingId
+      );
+      if (isDup) {
+        setError("A measurement unit with this name already exists.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -323,18 +354,12 @@ export default function CategoriesClient() {
               {activeTab === "subcategories" && (
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">Parent Category</label>
-                  <select
+                  <SearchableSelect
+                    options={categories.map((cat) => ({ value: cat.id, label: cat.name }))}
                     value={formCategoryId}
-                    onChange={(e) => setFormCategoryId(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  >
-                    <option value="" disabled>Select parent category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormCategoryId(val)}
+                    placeholder="Select parent category..."
+                  />
                 </div>
               )}
 

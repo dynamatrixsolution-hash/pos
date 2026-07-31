@@ -193,10 +193,12 @@ model Product {
   sellingPrice   Float          @default(0)
   wholesalePrice Float          @default(0)
   alertQuantity  Int            @default(5)
+  reorderLevel   Int            @default(5)
   image          String?
   batchTracking  Boolean        @default(false)
   expiryTracking Boolean        @default(false)
   isVatItem      Boolean        @default(true)
+  taxPercentage  Float          @default(13)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
@@ -367,6 +369,7 @@ model Purchase {
   userId         String
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchaseNumber String     @unique
+  invoiceNumber  String?
   status         String     @default("RECEIVED") // ORDERED, RECEIVED, CANCELLED
   subtotal       Float      @default(0)
   discount       Float      @default(0)

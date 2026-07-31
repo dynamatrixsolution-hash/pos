@@ -13,12 +13,15 @@ const productUpdateSchema = z.object({
   sellingPrice: z.number().min(1, "Selling price must be at least 1").optional(),
   wholesalePrice: z.number().nonnegative().optional(),
   alertQuantity: z.number().int().nonnegative().optional(),
+  reorderLevel: z.number().int().nonnegative().optional(),
   categoryId: z.string().uuid().optional().nullable(),
   subcategoryId: z.string().uuid().optional().nullable(),
   brandId: z.string().uuid().optional().nullable(),
   unitId: z.string().uuid().optional().nullable(),
   batchTracking: z.boolean().optional(),
   expiryTracking: z.boolean().optional(),
+  isVatItem: z.boolean().optional(),
+  taxPercentage: z.number().nonnegative().optional(),
   image: z.string().optional().nullable(),
 });
 
@@ -120,6 +123,20 @@ export async function PUT(
       newValue: updatedProduct,
       request,
     });
+
+    if (existingProduct.isVatItem !== (updatedProduct as any).isVatItem || (existingProduct as any).taxPercentage !== (updatedProduct as any).taxPercentage) {
+      await logActivity({
+        userId: context.userId,
+        businessId: context.businessId,
+        role: context.role,
+        moduleName: "TAXATION",
+        actionType: "PRODUCT_TAX_UPDATE",
+        details: `Nepal Compliance - Product "${updatedProduct.name}" tax settings updated: Taxable=${(updatedProduct as any).isVatItem}, TaxRate=${(updatedProduct as any).taxPercentage}%`,
+        oldValue: { isVatItem: existingProduct.isVatItem, taxPercentage: (existingProduct as any).taxPercentage },
+        newValue: { isVatItem: (updatedProduct as any).isVatItem, taxPercentage: (updatedProduct as any).taxPercentage },
+        request,
+      });
+    }
 
     return NextResponse.json(updatedProduct);
   } catch (error: any) {

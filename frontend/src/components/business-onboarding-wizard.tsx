@@ -250,7 +250,8 @@ export default function BusinessOnboardingWizard({
 
         const json = await res.json();
         if (!res.ok) {
-          throw new Error(json.error || "Failed to submit registration request.");
+          const detailMsg = typeof json.details === "string" ? json.details : json.details ? JSON.stringify(json.details) : "";
+          throw new Error(json.error ? `${json.error}${detailMsg ? `: ${detailMsg}` : ""}` : "Failed to submit registration request.");
         }
 
         router.push(`/auth/register/status?id=${json.request.id}&code=${json.request.trackingCode}`);

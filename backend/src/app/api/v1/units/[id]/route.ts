@@ -36,9 +36,23 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Unit not found" }, { status: 404 });
     }
 
+    const name = result.data.name.trim();
+    const duplicate = await db.unit.findFirst({
+      where: {
+        businessId: context.businessId,
+        name: { equals: name, mode: "insensitive" },
+        deletedAt: null,
+        id: { not: params.id },
+      },
+    });
+
+    if (duplicate) {
+      return NextResponse.json({ error: "Measurement unit with this name already exists" }, { status: 400 });
+    }
+
     const unit = await db.unit.update({
       where: { id: params.id },
-      data: { name: result.data.name },
+      data: { name },
     });
 
     return NextResponse.json(unit);

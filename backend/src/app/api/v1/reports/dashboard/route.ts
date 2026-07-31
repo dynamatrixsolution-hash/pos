@@ -10,12 +10,54 @@ export async function GET(request: Request) {
   const branchId = searchParams.get("branchId") || context.branchId || undefined;
 
   try {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const range = searchParams.get("range") || "today";
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Load business settings for Nepal Fiscal Year preference
+    const business = await db.business.findUnique({
+      where: { id: context.businessId },
+      select: { settings: true },
+    });
+    const settings = (business?.settings as any) || {};
+    const useNepali = settings.nepaliFiscalYear ?? false;
+
+    let start = new Date();
+    let end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    if (range === "today") {
+      start.setHours(0, 0, 0, 0);
+    } else if (range === "week") {
+      const day = start.getDay();
+      const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday
+      start.setDate(diff);
+      start.setHours(0, 0, 0, 0);
+    } else if (range === "month") {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+    } else if (range === "fiscalYear") {
+      if (useNepali) {
+        // Nepal Fiscal Year starts on Shrawan 1 (approx July 16) and ends on Ashadh 31 (approx July 15 next year)
+        const currentYear = start.getFullYear();
+        const currentMonth = start.getMonth(); // 0-indexed: July is 6
+        const currentDate = start.getDate();
+
+        if (currentMonth > 6 || (currentMonth === 6 && currentDate >= 16)) {
+          start = new Date(currentYear, 6, 16, 0, 0, 0, 0);
+          end = new Date(currentYear + 1, 6, 15, 23, 59, 59, 999);
+        } else {
+          start = new Date(currentYear - 1, 6, 16, 0, 0, 0, 0);
+          end = new Date(currentYear, 6, 15, 23, 59, 59, 999);
+        }
+      } else {
+        // Calendar Year
+        const currentYear = start.getFullYear();
+        start = new Date(currentYear, 0, 1, 0, 0, 0, 0);
+        end = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+      }
+    } else {
+      // Default to today
+      start.setHours(0, 0, 0, 0);
+    }
 
     // 1. Total Sales (current month)
     const salesAggregate = await db.sale.aggregate({
@@ -23,7 +65,7 @@ export async function GET(request: Request) {
         businessId: context.businessId,
         branchId,
         status: "COMPLETED",
-        createdAt: { gte: startOfMonth, lte: endOfDay },
+        createdAt: { gte: start, lte: end },
       },
       _sum: {
         total: true,
@@ -40,7 +82,7 @@ export async function GET(request: Request) {
         businessId: context.businessId,
         branchId,
         status: "RECEIVED",
-        createdAt: { gte: startOfMonth, lte: endOfDay },
+        createdAt: { gte: start, lte: end },
       },
       _sum: {
         total: true,
@@ -54,7 +96,7 @@ export async function GET(request: Request) {
       where: {
         businessId: context.businessId,
         branchId,
-        createdAt: { gte: startOfMonth, lte: endOfDay },
+        createdAt: { gte: start, lte: end },
       },
       _sum: {
         amount: true,
@@ -68,7 +110,7 @@ export async function GET(request: Request) {
       where: {
         businessId: context.businessId,
         branchId,
-        createdAt: { gte: startOfMonth, lte: endOfDay },
+        createdAt: { gte: start, lte: end },
       },
       _sum: {
         amount: true,
@@ -85,7 +127,7 @@ export async function GET(request: Request) {
           businessId: context.businessId,
           branchId,
           status: "COMPLETED",
-          createdAt: { gte: startOfMonth, lte: endOfDay },
+          createdAt: { gte: start, lte: end },
         },
       },
       select: {
@@ -233,7 +275,7 @@ export async function GET(request: Request) {
         businessId: context.businessId,
         branchId,
         status: "COMPLETED",
-        createdAt: { gte: startOfMonth, lte: endOfDay },
+        createdAt: { gte: start, lte: end },
       },
     });
 
@@ -275,6 +317,45 @@ export async function GET(request: Request) {
       totalAmount: categoryMap[name],
     })).sort((a, b) => b.value - a.value).slice(0, 5); // top 5 categories
 
+    const outOfStockProducts = products
+      .map((prod: any) => {
+        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
+        return {
+          id: prod.id,
+          name: prod.name,
+          sku: prod.sku || "",
+          currentQuantity: branchStock,
+          unit: prod.unit?.name || "Pcs",
+        };
+      })
+      .filter((prod: any) => prod.currentQuantity <= 0)
+      .slice(0, 10);
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todaySalesRes = await db.sale.aggregate({
+      where: {
+        businessId: context.businessId,
+        branchId,
+        status: "COMPLETED",
+        createdAt: { gte: startOfToday, lte: endOfToday },
+      },
+      _sum: {
+        total: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const todayStats = {
+      sales: todaySalesRes._sum.total || 0,
+      orders: todaySalesRes._count.id || 0,
+    };
+
     return NextResponse.json({
       metrics: {
         totalSales,
@@ -293,6 +374,8 @@ export async function GET(request: Request) {
       recentTransactions,
       salesChart: chartData,
       salesByCategory,
+      outOfStockProducts,
+      todayStats,
     });
   } catch (error: unknown) {
     console.error("GET dashboard reports error:", error);
