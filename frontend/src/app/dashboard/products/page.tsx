@@ -494,7 +494,8 @@ export default function ProductsPage() {
       }, 1500);
     } catch (err: any) {
       setImportError(err.message);
-      showAlert("Import Limit Exceeded", err.message, "error");
+      const title = err.message.toLowerCase().includes("limit") ? "Import Limit Exceeded" : "Import Failed";
+      showAlert(title, err.message, "error");
     } finally {
       setImporting(false);
     }

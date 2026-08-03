@@ -13,7 +13,8 @@
     "start": "npm run start --workspaces",
     "prisma:generate": "npm run generate --workspace=@dynapos/db",
     "prisma:migrate": "npm run migrate --workspace=@dynapos/db",
-    "prisma:seed": "npm run seed --workspace=@dynapos/db"
+    "prisma:seed": "npm run seed --workspace=@dynapos/db",
+    "prisma:push": "npx prisma db push --schema packages/db/prisma/schema.prisma"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
