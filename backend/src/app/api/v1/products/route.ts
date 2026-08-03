@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
-import fs from "fs";
 
 const productCreateSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
@@ -50,9 +49,6 @@ export async function GET(request: Request) {
   const skip = (page - 1) * limit;
 
   try {
-    try {
-      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `=== GET PRODUCTS CALL ===\nDate: ${new Date().toISOString()}\nContext: ${JSON.stringify(context)}\nSearchParams: ${request.url}\n`);
-    } catch(e) {}
     const where: any = {
       businessId: context.businessId,
       deletedAt: null,
@@ -79,15 +75,16 @@ export async function GET(request: Request) {
     }
 
     if (lowStock && branchId) {
-      // Find products where the active branch stock is less than alertQuantity
-      where.productStocks = {
-        some: {
-          branchId: branchId,
-          quantity: {
-            lt: db.product.fields.alertQuantity,
-          },
-        },
-      };
+      // Find products where the active branch stock is less than alertQuantity using raw SQL query to get product IDs
+      const lowStockProducts = await db.$queryRaw<Array<{ productId: string }>>`
+        SELECT ps."productId"
+        FROM "ProductStock" ps
+        JOIN "Product" p ON ps."productId" = p.id
+        WHERE ps."branchId" = ${branchId}
+          AND ps.quantity < p."alertQuantity"
+      `;
+      const lowStockIds = lowStockProducts.map(p => p.productId);
+      where.id = { in: lowStockIds };
     }
 
     const [products, totalCount] = await Promise.all([
@@ -117,10 +114,6 @@ export async function GET(request: Request) {
       db.product.count({ where }),
     ]);
 
-    try {
-      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `SUCCESS: returned ${products.length} products (totalCount: ${totalCount})\n`);
-    } catch(e) {}
-
     return NextResponse.json({
       products,
       pagination: {
@@ -131,11 +124,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    try {
-      fs.appendFileSync("c:/Users/ACER/OneDrive/Desktop/dynapos/diagnostic.log", `ERROR: ${error.message}\n${error.stack}\n`);
-    } catch(e) {}
     console.error("GET products error:", error);
-    return NextResponse.json({ error: "Failed to retrieve products" }, { status: 500 });
+    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
   }
 }
 

@@ -30,8 +30,7 @@ export default function RootLayout({
       <head>
         <link
           rel="stylesheet"
-          href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css"
-          crossOrigin="anonymous"
+          href="/nepali.datepicker.v5.0.6.min.css"
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
@@ -41,7 +40,7 @@ export default function RootLayout({
           </ThemeProvider>
         </SessionProvider>
         <Script
-          src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"
+          src="/nepali.datepicker.v5.0.6.min.js"
           strategy="beforeInteractive"
         />
       </body>
