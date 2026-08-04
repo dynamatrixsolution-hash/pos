@@ -193,7 +193,6 @@ model Product {
   sellingPrice   Float          @default(0)
   wholesalePrice Float          @default(0)
   alertQuantity  Int            @default(5)
-  reorderLevel   Int            @default(5)
   image          String?
   batchTracking  Boolean        @default(false)
   expiryTracking Boolean        @default(false)

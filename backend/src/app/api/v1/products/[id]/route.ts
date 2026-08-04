@@ -13,7 +13,6 @@ const productUpdateSchema = z.object({
   sellingPrice: z.number().min(1, "Selling price must be at least 1").optional(),
   wholesalePrice: z.number().nonnegative().optional(),
   alertQuantity: z.number().int().nonnegative().optional(),
-  reorderLevel: z.number().int().nonnegative().optional(),
   categoryId: z.string().uuid().optional().nullable(),
   subcategoryId: z.string().uuid().optional().nullable(),
   brandId: z.string().uuid().optional().nullable(),

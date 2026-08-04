@@ -24,7 +24,6 @@ interface ProductItem {
   sellingPrice: number;
   wholesalePrice: number;
   alertQuantity: number;
-  reorderLevel: number;
   isVatItem: boolean;
   taxPercentage: number;
   categoryId: string | null;
@@ -54,7 +53,6 @@ const productSchema = z.object({
   sellingPrice: z.number().min(1, "Selling price must be at least 1"),
   wholesalePrice: z.number().nonnegative(),
   alertQuantity: z.number().int().nonnegative(),
-  reorderLevel: z.number().int().nonnegative(),
   categoryId: z.string().uuid().optional().nullable().or(z.literal("")),
   subcategoryId: z.string().uuid().optional().nullable().or(z.literal("")),
   initialStock: z.number().nonnegative(),
@@ -177,7 +175,6 @@ export default function ProductsPage() {
       sellingPrice: 1,
       wholesalePrice: 0,
       alertQuantity: 5,
-      reorderLevel: 5,
       initialStock: 10,
       mfgDate: "",
       expiryDate: "",
@@ -260,7 +257,6 @@ export default function ProductsPage() {
     setValue("sellingPrice", product.sellingPrice);
     setValue("wholesalePrice", product.wholesalePrice || 0);
     setValue("alertQuantity", product.alertQuantity);
-    setValue("reorderLevel", product.reorderLevel ?? 5);
     setValue("categoryId", product.categoryId || "");
     setValue("subcategoryId", product.subcategoryId || "");
     setValue("initialStock", 0);
@@ -285,7 +281,6 @@ export default function ProductsPage() {
           sellingPrice: data.sellingPrice,
           wholesalePrice: data.wholesalePrice,
           alertQuantity: data.alertQuantity,
-          reorderLevel: data.reorderLevel,
           isVatItem: data.isVatItem,
           taxPercentage: data.taxPercentage,
           categoryId: data.categoryId || null,
@@ -1150,19 +1145,7 @@ export default function ProductsPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
-                        Reorder Stock Level
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="5"
-                        {...register("reorderLevel", { valueAsNumber: true })}
-                        className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
-                      />
-                    </div>
-                  </div>
+
 
                 {!editingId && (
                   <div className="space-y-1">

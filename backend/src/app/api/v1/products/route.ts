@@ -13,7 +13,6 @@ const productCreateSchema = z.object({
   sellingPrice: z.number().min(1, "Selling price must be at least 1"),
   wholesalePrice: z.number().nonnegative().default(0),
   alertQuantity: z.number().int().nonnegative().default(5),
-  reorderLevel: z.number().int().nonnegative().default(5),
   categoryId: z.string().uuid().optional().nullable(),
   subcategoryId: z.string().uuid().optional().nullable(),
   brandId: z.string().uuid().optional().nullable(),
