@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
-import { broadcastSync } from "@/lib/websocket-client";
 
 const adjustSchema = z.object({
   branchId: z.string().uuid("Invalid Branch ID"),
@@ -93,8 +92,6 @@ export async function POST(
       newValue: { quantity: newQty, type, reason },
       request,
     });
-
-    broadcastSync("inventory", "adjust", { productId, newQty });
 
     return NextResponse.json({
       message: "Stock level adjusted successfully",

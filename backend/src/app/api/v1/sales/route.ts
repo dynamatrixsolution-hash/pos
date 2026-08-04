@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
-import { broadcastSync } from "@/lib/websocket-client";
 
 const saleItemSchema = z.object({
   productId: z.string().uuid(),
@@ -410,8 +409,6 @@ export async function POST(request: Request) {
 
       return sale;
     }, { maxWait: 10000, timeout: 30000 });
-
-    broadcastSync("sale", "create", saleResult);
     return NextResponse.json(saleResult, { status: 201 });
   } catch (error: any) {
     console.error("POST sale error:", error.message || error);

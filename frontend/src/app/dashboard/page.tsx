@@ -164,44 +164,7 @@ export default function DashboardPage() {
     }
   }, [sessionStatus, userRole, loadDashboard]);
 
-  // WebSocket real-time synchronization listener
-  React.useEffect(() => {
-    if (userRole === "SUPER_ADMIN") return;
-    let ws: WebSocket | null = null;
-    let reconnectTimeout: any = null;
 
-    function connectWS() {
-      ws = new WebSocket("ws://localhost:3002");
-
-      ws.onopen = () => {
-        console.log("WebSocket connected to PosSync Server");
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === "PRODUCT_ADJUSTED" || message.type === "SALE_COMPLETED" || message.type === "PURCHASE_COMPLETED") {
-            console.log("WebSocket POS Sync - Refreshing metrics...");
-            loadDashboard();
-          }
-        } catch (e) {
-          // silent ignore
-        }
-      };
-
-      ws.onclose = () => {
-        console.log("WebSocket disconnected, retrying in 5 seconds...");
-        reconnectTimeout = setTimeout(connectWS, 5000);
-      };
-    }
-
-    connectWS();
-
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
-  }, [userRole, loadDashboard]);
 
   if (sessionStatus === "loading" || isLoading) {
     return (
