@@ -72,6 +72,11 @@ export async function GET(request: Request) {
           customer: true,
           user: { select: { name: true, email: true } },
           payments: true,
+          saleItems: {
+            include: {
+              product: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,

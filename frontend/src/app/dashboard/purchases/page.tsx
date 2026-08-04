@@ -137,6 +137,15 @@ export default function PurchasesPage() {
   }, [loadData]);
 
   const onProductChange = (index: number, productId: string) => {
+    const currentItems = getValues("items");
+    const existingIndex = currentItems.findIndex((it, idx) => idx !== index && it.productId === productId);
+    if (existingIndex !== -1) {
+      const existingQty = currentItems[existingIndex].quantity || 1;
+      setValue(`items.${existingIndex}.quantity`, existingQty + 1);
+      toast.info("Increased quantity for existing product in purchase order");
+      remove(index);
+      return;
+    }
     const prod = products.find((p) => p.id === productId);
     if (prod) {
       setValue(`items.${index}.price`, prod.costPrice);

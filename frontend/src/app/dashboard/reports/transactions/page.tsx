@@ -151,11 +151,74 @@ export default function TransactionReportsPage() {
   const exportPDF = () => {
     if (items.length === 0) return toast.warning("No transactions to export");
     const doc = new jsPDF();
+    
+    // Header styling
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.setTextColor(94, 80, 235);
-    doc.text(`DynaPOS - ${activeTab.toUpperCase()} Transactions Report`, 14, 20);
-    doc.save(`transactions_${activeTab}.pdf`);
+    doc.setTextColor(37, 99, 235);
+    doc.text(`DynaPOS - ${activeTab.toUpperCase()} Transactions Report`, 14, 18);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    const dateRangeStr = startDate && endDate ? `Date Range: ${startDate} to ${endDate}` : `Filter: ${datePreset.replace("_", " ").toUpperCase()}`;
+    doc.text(`Generated on: ${new Date().toLocaleString()} | ${dateRangeStr}`, 14, 25);
+    
+    let y = 35;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 41, 59);
+    
+    // Table Headers
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y - 5, 182, 8, "F");
+    doc.text("DATE", 16, y);
+    doc.text("INVOICE / PO NO", 45, y);
+    doc.text("PARTY / CUSTOMER", 90, y);
+    doc.text("PRODUCTS PURCHASED", 135, y);
+    doc.text("AMOUNT", 175, y);
+    y += 10;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(51, 65, 85);
+    
+    let totalSum = 0;
+    items.forEach((item) => {
+      if (y > 275) {
+        doc.addPage();
+        y = 20;
+      }
+      const { date } = formatDateTime(item.createdAt);
+      const inv = item.invoiceNumber || item.purchaseNumber || item.voucherNumber || item.id.slice(0, 8);
+      const party = item.customer?.name || item.supplier?.name || item.partyName || "Walk-in Customer";
+      const amt = item.total ?? item.amount ?? 0;
+      totalSum += Number(amt);
+      
+      const purchasedStr = (item.saleItems || item.items || []).map((i: any) => `${i.product?.name || "Item"} x${i.quantity}`).join(", ") || (item.category || item.notes || "—");
+
+      doc.text(date.slice(0, 10), 16, y);
+      doc.text(String(inv).slice(0, 20), 45, y);
+      doc.text(String(party).slice(0, 20), 90, y);
+      doc.text(String(purchasedStr).slice(0, 22), 135, y);
+      doc.text(`${currencySymbol} ${Number(amt).toFixed(2)}`, 175, y);
+      y += 8;
+    });
+    
+    // Total Footer Line
+    y += 4;
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(203, 213, 225);
+    doc.line(14, y, 196, y);
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`TOTAL AMOUNT (${items.length} records):`, 14, y);
+    doc.text(`${currencySymbol} ${totalSum.toFixed(2)}`, 175, y);
+    
+    doc.save(`transactions_${activeTab}_report.pdf`);
+    toast.success("PDF report generated successfully!");
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -193,6 +256,7 @@ export default function TransactionReportsPage() {
               <th className="py-4 px-6">DATE | TIME</th>
               <th className="py-4 px-6">INVOICE NO</th>
               <th className="py-4 px-6">CUSTOMER</th>
+              <th className="py-4 px-6">PRODUCTS PURCHASED</th>
               <th className="py-4 px-6">METHOD</th>
               <th className="py-4 px-6 text-right">AMOUNT</th>
             </tr>
@@ -201,6 +265,7 @@ export default function TransactionReportsPage() {
             {items.map((item) => {
               const { date, time } = formatDateTime(item.createdAt);
               const method = formatMethod(item.payments?.[0]?.method || item.paymentMethod);
+              const purchasedItems = item.saleItems || item.items || [];
               return (
                 <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="py-4 px-6">
@@ -209,6 +274,20 @@ export default function TransactionReportsPage() {
                   </td>
                   <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.invoiceNumber}</td>
                   <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.customer?.name || "Walk-in Customer"}</td>
+                  <td className="py-4 px-6">
+                    {purchasedItems.length > 0 ? (
+                      <div className="flex flex-col gap-1 max-w-[260px]">
+                        {purchasedItems.map((si: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between text-[11px] bg-slate-100/70 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300 truncate mr-2">{si.product?.name || "Product"}</span>
+                            <span className="font-bold text-[#2563EB] shrink-0">x{si.quantity} ({currencySymbol} {(si.price ?? 0).toFixed(2)})</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-medium">—</span>
+                    )}
+                  </td>
                   <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400">{method}</td>
                   <td className="py-4 px-6 text-right font-black text-slate-900 dark:text-white text-sm">
                     {currencySymbol} {(item.total ?? 0).toFixed(2)}
@@ -343,19 +422,46 @@ export default function TransactionReportsPage() {
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           {/* Preset parameters */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
-            <Calendar className="h-4 w-4 text-[#2563EB]" />
-            <select
-              value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value)}
-              className="bg-transparent border-none outline-none font-bold text-foreground cursor-pointer text-xs focus:ring-0"
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="this_week">This Week</option>
-              <option value="last_30">Last 30 Days</option>
-              <option value="this_month">This Month</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+              <Calendar className="h-4 w-4 text-[#2563EB]" />
+              <select
+                value={datePreset}
+                onChange={(e) => setDatePreset(e.target.value)}
+                className="bg-transparent border-none outline-none font-bold text-foreground cursor-pointer text-xs focus:ring-0"
+              >
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="this_week">This Week</option>
+                <option value="last_30">Last 30 Days</option>
+                <option value="this_month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+
+            {datePreset === "custom" && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold"
+                />
+                <span className="text-xs text-muted-foreground font-bold">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">

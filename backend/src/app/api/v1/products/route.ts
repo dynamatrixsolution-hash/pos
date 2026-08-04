@@ -161,7 +161,91 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create the product scoping to business
+    // Check if a product with the same name, SKU, or barcode already exists for this business
+    const existingProduct = await db.product.findFirst({
+      where: {
+        businessId: context.businessId,
+        deletedAt: null,
+        OR: [
+          { name: { equals: productData.name, mode: "insensitive" } },
+          ...(productData.sku ? [{ sku: productData.sku }] : []),
+          ...(productData.barcode ? [{ barcode: productData.barcode }] : []),
+        ],
+      },
+    });
+
+    if (existingProduct) {
+      const addedQty = (initialStock !== undefined && initialStock > 0) ? initialStock : 1;
+      const updated = await db.$transaction(async (tx) => {
+        // Update product prices if provided
+        const prod = await tx.product.update({
+          where: { id: existingProduct.id },
+          data: {
+            costPrice: productData.costPrice || existingProduct.costPrice,
+            sellingPrice: productData.sellingPrice || existingProduct.sellingPrice,
+            wholesalePrice: productData.wholesalePrice || existingProduct.wholesalePrice,
+            description: productData.description || existingProduct.description,
+          },
+        });
+
+        if (context.branchId) {
+          const currentStock = await tx.productStock.findUnique({
+            where: {
+              productId_branchId: {
+                productId: existingProduct.id,
+                branchId: context.branchId,
+              },
+            },
+          });
+
+          if (currentStock) {
+            await tx.productStock.update({
+              where: { id: currentStock.id },
+              data: { quantity: { increment: addedQty } },
+            });
+          } else {
+            await tx.productStock.create({
+              data: {
+                productId: existingProduct.id,
+                branchId: context.branchId,
+                quantity: addedQty,
+              },
+            });
+          }
+
+          // Create/update batch
+          const batchNum = `BAT-${new Date().toISOString().slice(0, 10)}-${Math.floor(Math.random() * 1000)}`;
+          await tx.batch.create({
+            data: {
+              productId: existingProduct.id,
+              branchId: context.branchId,
+              batchNumber: batchNum,
+              quantity: addedQty,
+              costPrice: prod.costPrice,
+              sellingPrice: prod.sellingPrice,
+              expiryDate: expiryDate ? new Date(expiryDate) : null,
+              manufacturingDate: manufacturingDate ? new Date(manufacturingDate) : null,
+            },
+          });
+        }
+        return prod;
+      });
+
+      await logActivity({
+        userId: context.userId,
+        businessId: context.businessId,
+        role: context.role,
+        moduleName: "PRODUCT",
+        actionType: "STOCK_ADJUSTMENT",
+        details: `Existing product "${existingProduct.name}" quantity increased by ${addedQty}`,
+        newValue: updated,
+        request,
+      });
+
+      return NextResponse.json(updated, { status: 200 });
+    }
+
+    // Create new product if it doesn't exist
     const product = await db.$transaction(async (tx) => {
       const newProduct = await tx.product.create({
         data: {
