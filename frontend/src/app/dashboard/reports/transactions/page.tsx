@@ -14,6 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Package,
+  Eye,
+  X,
+  ShoppingBag,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
@@ -29,6 +33,7 @@ export default function TransactionReportsPage() {
   const [datePreset, setDatePreset] = React.useState<string>("this_month");
   const [startDate, setStartDate] = React.useState<string>("");
   const [endDate, setEndDate] = React.useState<string>("");
+  const [selectedSaleDetails, setSelectedSaleDetails] = React.useState<any | null>(null);
 
   const [items, setItems] = React.useState<any[]>([]);
   const [page, setPage] = React.useState<number>(1);
@@ -274,15 +279,36 @@ export default function TransactionReportsPage() {
                   </td>
                   <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.invoiceNumber}</td>
                   <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.customer?.name || "Walk-in Customer"}</td>
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 relative">
                     {purchasedItems.length > 0 ? (
-                      <div className="flex flex-col gap-1 max-w-[260px]">
-                        {purchasedItems.map((si: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between text-[11px] bg-slate-100/70 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200/50 dark:border-slate-800">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300 truncate mr-2">{si.product?.name || "Product"}</span>
-                            <span className="font-bold text-[#2563EB] shrink-0">x{si.quantity} ({currencySymbol} {(si.price ?? 0).toFixed(2)})</span>
+                      <div className="relative group inline-block">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSaleDetails(item)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                        >
+                          <Package className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>{purchasedItems.length} Products ({purchasedItems.reduce((acc: number, cur: any) => acc + (cur.quantity || 1), 0)} items)</span>
+                          <Eye className="h-3 w-3 opacity-60 ml-0.5" />
+                        </button>
+
+                        {/* Floating Hover Popover */}
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-72 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl space-y-1.5">
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                            Products in #{item.invoiceNumber}
                           </div>
-                        ))}
+                          <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                            {purchasedItems.map((si: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
+                                <span className="font-semibold text-slate-700 dark:text-slate-200 truncate mr-2">{si.product?.name || "Product"}</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">x{si.quantity} ({currencySymbol}{(si.price ?? 0).toFixed(2)})</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-100 dark:border-slate-800 font-medium">
+                            Click to view full detail modal
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-slate-400 text-xs font-medium">—</span>
@@ -439,29 +465,31 @@ export default function TransactionReportsPage() {
               </select>
             </div>
 
-            {datePreset === "custom" && (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPage(1);
-                  }}
-                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold"
-                />
-                <span className="text-xs text-muted-foreground font-bold">to</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPage(1);
-                  }}
-                  className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold"
-                />
-              </div>
-            )}
+            {/* Always visible Start Date & End Date pickers */}
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+              <span className="text-[10px] font-black text-slate-400 uppercase">From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setDatePreset("custom");
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent border-none outline-none text-xs font-bold text-foreground cursor-pointer focus:ring-0"
+              />
+              <span className="text-[10px] font-black text-slate-400 uppercase ml-1">To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setDatePreset("custom");
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent border-none outline-none text-xs font-bold text-foreground cursor-pointer focus:ring-0"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
@@ -575,6 +603,54 @@ export default function TransactionReportsPage() {
           </div>
         )}
       </div>
+
+      {/* Click Modal for Purchased Products Details */}
+      {selectedSaleDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5 text-blue-600" />
+                  Purchased Products Breakdown
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Invoice: <span className="font-bold text-slate-700 dark:text-slate-200">#{selectedSaleDetails.invoiceNumber}</span> | Customer: <span className="font-bold text-slate-700 dark:text-slate-200">{selectedSaleDetails.customer?.name || "Walk-in Customer"}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSaleDetails(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
+              {(selectedSaleDetails.saleItems || selectedSaleDetails.items || []).map((si: any, idx: number) => (
+                <div key={idx} className="pt-2.5 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-slate-800 dark:text-slate-100">{si.product?.name || "Product"}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Unit Selling Price: {currencySymbol}{(si.price ?? 0).toFixed(2)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-blue-600 dark:text-blue-400">Qty: x{si.quantity}</div>
+                    <div className="font-bold text-slate-700 dark:text-slate-300 text-xs mt-0.5">Subtotal: {currencySymbol}{(si.total ?? (si.price * si.quantity)).toFixed(2)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between font-bold text-xs">
+              <span className="text-slate-500">Total Invoice Grand Amount:</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white">
+                {currencySymbol}{(selectedSaleDetails.total ?? 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
