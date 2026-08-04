@@ -642,11 +642,33 @@ export default function TransactionReportsPage() {
               ))}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between font-bold text-xs">
-              <span className="text-slate-500">Total Invoice Grand Amount:</span>
-              <span className="text-sm font-black text-slate-900 dark:text-white">
-                {currencySymbol}{(selectedSaleDetails.total ?? 0).toFixed(2)}
-              </span>
+            {/* Financial Details Summary */}
+            <div className="pt-3 border-t border-dashed border-slate-200 dark:border-slate-800 space-y-1.5 font-mono text-xs">
+              <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                <span>Subtotal:</span>
+                <span className="font-bold">{currencySymbol} {(selectedSaleDetails.subtotal ?? (selectedSaleDetails.saleItems || selectedSaleDetails.items || []).reduce((sum: number, i: any) => sum + (i.total ?? i.price * i.quantity), 0)).toFixed(2)}</span>
+              </div>
+              
+              {selectedSaleDetails.discount > 0 && (
+                <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
+                  <span>Discount:</span>
+                  <span className="font-bold">- {currencySymbol} {(selectedSaleDetails.discount ?? 0).toFixed(2)}</span>
+                </div>
+              )}
+
+              {selectedSaleDetails.tax > 0 && (
+                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>Tax (VAT):</span>
+                  <span className="font-bold">+ {currencySymbol} {(selectedSaleDetails.tax ?? 0).toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between font-extrabold text-sm">
+                <span className="text-slate-900 dark:text-white uppercase tracking-wider font-sans">GRAND TOTAL:</span>
+                <span className="text-base font-black text-blue-600 dark:text-blue-400">
+                  {currencySymbol} {(selectedSaleDetails.total ?? 0).toFixed(2)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
