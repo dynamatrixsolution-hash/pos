@@ -25,7 +25,6 @@ interface ProductItem {
   wholesalePrice: number;
   alertQuantity: number;
   isVatItem: boolean;
-  taxPercentage: number;
   categoryId: string | null;
   category?: { name: string } | null;
   subcategoryId?: string | null;
@@ -59,7 +58,6 @@ const productSchema = z.object({
   mfgDate: z.string().optional().nullable().or(z.literal("")),
   expiryDate: z.string().optional().nullable().or(z.literal("")),
   isVatItem: z.boolean(),
-  taxPercentage: z.number().nonnegative(),
   image: z.string().optional().nullable().or(z.literal("")),
 });
 
@@ -182,7 +180,6 @@ export default function ProductsPage() {
       categoryId: "",
       subcategoryId: "",
       isVatItem: true,
-      taxPercentage: 13,
     },
   });
 
@@ -263,7 +260,6 @@ export default function ProductsPage() {
     setValue("mfgDate", "");
     setValue("expiryDate", "");
     setValue("isVatItem", product.isVatItem ?? true);
-    setValue("taxPercentage", product.taxPercentage ?? 13);
     setValue("image", product.image || "");
     setModalOpen(true);
   };
@@ -282,7 +278,6 @@ export default function ProductsPage() {
           wholesalePrice: data.wholesalePrice,
           alertQuantity: data.alertQuantity,
           isVatItem: data.isVatItem,
-          taxPercentage: data.taxPercentage,
           categoryId: data.categoryId || null,
           subcategoryId: data.subcategoryId || null,
           image: data.image || null,
@@ -1130,19 +1125,7 @@ export default function ProductsPage() {
                       </label>
                     </div>
 
-                    {watch("isVatItem") && (
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block mb-1">
-                          Tax Percentage (%)
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="13"
-                          {...register("taxPercentage", { valueAsNumber: true })}
-                          className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
-                        />
-                      </div>
-                    )}
+
                   </div>
 
 

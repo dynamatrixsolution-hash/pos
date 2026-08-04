@@ -20,7 +20,6 @@ const productCreateSchema = z.object({
   batchTracking: z.boolean().default(false),
   expiryTracking: z.boolean().default(false),
   isVatItem: z.boolean().default(true),
-  taxPercentage: z.number().nonnegative().default(13),
   image: z.string().optional().nullable(),
   initialStock: z.number().nonnegative().optional(), // optional initial stock for main branch
   manufacturingDate: z.string().optional().nullable(),

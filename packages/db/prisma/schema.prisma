@@ -197,7 +197,6 @@ model Product {
   batchTracking  Boolean        @default(false)
   expiryTracking Boolean        @default(false)
   isVatItem      Boolean        @default(true)
-  taxPercentage  Float          @default(13)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
