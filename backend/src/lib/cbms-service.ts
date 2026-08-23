@@ -35,12 +35,14 @@ export class CbmsService {
         customer: true,
         user: true,
         business: true,
+        payments: true,
       },
     });
 
     if (!sale) throw new Error("Sale not found");
 
     const settings = (sale.business?.settings as any) || {};
+    const paymentMethod = sale.payments[0]?.method || "CASH";
 
     return {
       username: settings.cbmsUsername || "TEST_USER",
@@ -60,8 +62,8 @@ export class CbmsService {
       printed_time: sale.firstPrintedAt?.toISOString() || "",
       entered_by: sale.user?.name || "System Cashier",
       printed_by: sale.user?.name || "System Cashier",
-      is_realtime: sale.isRealtime,
-      payment_method: sale.paymentMethod || "CASH",
+      is_realtime: true, // Submitted directly from active POS workflow
+      payment_method: paymentMethod,
       vat_refund_amount: sale.vatRefundAmount || 0,
       transaction_id: sale.transactionId || "",
     };

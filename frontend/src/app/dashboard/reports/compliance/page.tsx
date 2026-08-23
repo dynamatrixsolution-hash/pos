@@ -61,7 +61,7 @@ export default function ComplianceReportsPage() {
     }
   };
 
-  const handleExport = (format: "csv" | "print") => {
+  const handleExport = (format: "excel" | "xml" | "pdf" | "print") => {
     if (data.length === 0) {
       alert("No data available to export");
       return;
@@ -72,24 +72,17 @@ export default function ComplianceReportsPage() {
       return;
     }
 
-    // CSV format exporter
-    const headers = Object.keys(data[0]);
-    const csvRows = [
-      headers.join(","), // header row
-      ...data.map((row) =>
-        headers
-          .map((fieldName) => {
-            const escape = ("" + (row[fieldName] ?? "")).replace(/"/g, '""');
-            return `"${escape}"`;
-          })
-          .join(",")
-      ),
-    ];
-    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const params = new URLSearchParams({
+      reportType,
+      startDate,
+      endDate,
+      format,
+      ...(selectedFy && { fiscalYearId: selectedFy }),
+    });
+
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `IRD_Report_${reportType}_${startDate}_to_${endDate}.csv`);
+    link.setAttribute("href", `/api/v1/reports/compliance?${params.toString()}`);
+    link.setAttribute("download", `IRD_${reportType}_${startDate}_to_${endDate}.${format === 'excel' ? 'xls' : format}`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -180,16 +173,28 @@ export default function ComplianceReportsPage() {
             </button>
 
             {data.length > 0 && (
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 font-semibold">
                 <button
-                  onClick={() => handleExport("csv")}
-                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs font-bold rounded-lg transition-all duration-300"
+                  onClick={() => handleExport("excel")}
+                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 rounded-lg transition-all duration-300"
                 >
-                  Export CSV / Excel
+                  Export Excel
+                </button>
+                <button
+                  onClick={() => handleExport("xml")}
+                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 rounded-lg transition-all duration-300"
+                >
+                  Export XML
+                </button>
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 rounded-lg transition-all duration-300"
+                >
+                  Export PDF
                 </button>
                 <button
                   onClick={() => handleExport("print")}
-                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs font-bold rounded-lg transition-all duration-300"
+                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-xs text-slate-200 rounded-lg transition-all duration-300"
                 >
                   Print Report
                 </button>
