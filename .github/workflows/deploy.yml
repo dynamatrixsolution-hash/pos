@@ -1,32 +1,32 @@
-name: Auto Deploy to VPS
-
-on:
-  push:
-    branches:
-      - main
-      - master
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🚚 Get latest code
-        uses: actions/checkout@v4
-
-      - name: 🔑 Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-
-      - name: 🔒 Add Server to Known Hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
-
-      - name: 📂 Copy files to VPS via Rsync
-        run: |
-          rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='packages/db/node_modules' ./ root@${{ secrets.VPS_IP }}:/www/wwwroot/pos.prayassh.com/
-
-      - name: 🐳 Rebuild Docker Containers
-        run: |
-          ssh root@${{ secrets.VPS_IP }} "cd /www/wwwroot/pos.prayassh.com && sudo docker compose up -d --build && sudo docker image prune -f"
+# name: Auto Deploy to VPS
+# 
+# on:
+#   push:
+#     branches:
+#       - main
+#       - master
+# 
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: 🚚 Get latest code
+#         uses: actions/checkout@v4
+# 
+#       - name: 🔑 Setup SSH
+#         uses: webfactory/ssh-agent@v0.9.0
+#         with:
+#           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+# 
+#       - name: 🔒 Add Server to Known Hosts
+#         run: |
+#           mkdir -p ~/.ssh
+#           ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+# 
+#       - name: 📂 Copy files to VPS via Rsync
+#         run: |
+#           rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.env' --exclude='packages/db/node_modules' ./ root@${{ secrets.VPS_IP }}:/www/wwwroot/pos.prayassh.com/
+# 
+#       - name: 🐳 Rebuild Docker Containers
+#         run: |
+#           ssh root@${{ secrets.VPS_IP }} "cd /www/wwwroot/pos.prayassh.com && sudo docker compose up -d --build && sudo docker image prune -f"

@@ -77,3 +77,32 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update sale" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const sale = await db.sale.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+    });
+
+    if (!sale) {
+      return NextResponse.json({ error: "Sale not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      { error: "IRD Compliance: Finalized sales invoices are immutable and cannot be physically deleted from the system." },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error("DELETE sale error:", error);
+    return NextResponse.json({ error: "Failed to delete sale" }, { status: 500 });
+  }
+}
+

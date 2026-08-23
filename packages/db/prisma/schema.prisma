@@ -48,6 +48,11 @@ model Business {
   auditLogs        AuditLog[]
   notifications    Notification[]
   openingStocks    OpeningStock[]
+  fiscalYears       FiscalYear[]
+  fiscalYearSequences FiscalYearInvoiceSequence[]
+  creditNotes       CreditNote[]
+  debitNotes        DebitNote[]
+  cbmsSyncQueues    CbmsSyncQueue[]
 }
 
 model Subscription {
@@ -89,6 +94,9 @@ model Branch {
   customers            Customer[]
   openingStocks        OpeningStock[]
   payments             Payment[]
+  fiscalYearSequences  FiscalYearInvoiceSequence[]
+  creditNotes          CreditNote[]
+  debitNotes           DebitNote[]
 }
 
 model User {
@@ -109,17 +117,22 @@ model User {
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
 
-  sales      Sale[]
-  purchases  Purchase[]
-  expenses   Expense[]
-  incomes    Income[]
-  auditLogs  AuditLog[]
+  sales                 Sale[]
+  purchases             Purchase[]
+  expenses              Expense[]
+  incomes               Income[]
+  auditLogs             AuditLog[]
   enteredOpeningStocks  OpeningStock[]  @relation("EnteredBy")
   approvedOpeningStocks OpeningStock[]  @relation("ApprovedBy")
   requestedTransfers    StockTransfer[] @relation("RequestedTransfers")
   approvedTransfers     StockTransfer[] @relation("ApprovedTransfers")
   receivedTransfers     StockTransfer[] @relation("ReceivedTransfers")
   payments              Payment[]
+  firstPrintedSales     Sale[]          @relation("FirstPrintedBy")
+  lastPrintedSales      Sale[]          @relation("LastPrintedBy")
+  cancelledSales        Sale[]          @relation("CancelledSales")
+  creditNotes           CreditNote[]
+  debitNotes            DebitNote[]
 }
 
 model Category {
@@ -207,6 +220,8 @@ model Product {
   purchaseItems       PurchaseItem[]
   stockTransferItems  StockTransferItem[]
   openingStocks       OpeningStock[]
+  creditNoteItems     CreditNoteItem[]
+  debitNoteItems      DebitNoteItem[]
 }
 
 model ProductStock {
@@ -336,9 +351,36 @@ model Sale {
   updatedAt     DateTime     @updatedAt
   deletedAt     DateTime?
 
-  saleItems   SaleItem[]
-  payments    Payment[]
-  saleReturns SaleReturn[]
+  saleItems         SaleItem[]
+  payments          Payment[]
+  saleReturns       SaleReturn[]
+  fiscalYearId      String?
+  fiscalYear        FiscalYear?  @relation(fields: [fiscalYearId], references: [id], onDelete: SetNull)
+  isPrinted         Boolean      @default(false)
+  printCount        Int          @default(0)
+  firstPrintedAt    DateTime?
+  firstPrintedById  String?
+  firstPrintedBy    User?        @relation("FirstPrintedBy", fields: [firstPrintedById], references: [id], onDelete: SetNull)
+  lastPrintedAt     DateTime?
+  lastPrintedById   String?
+  lastPrintedBy     User?        @relation("LastPrintedBy", fields: [lastPrintedById], references: [id], onDelete: SetNull)
+  isActive          Boolean      @default(true) // Is active (true) or cancelled/corrected (false)
+  syncWithIrd       String       @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  vatRefundAmount   Float        @default(0)
+  transactionId     String?
+  correctedInvoiceId String?
+  cancellationReason String?
+  cancelledById     String?
+  cancelledBy       User?        @relation("CancelledSales", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelledAt       DateTime?
+  cbmsRequestId     String?
+  cbmsResponseId    String?
+  cbmsSyncTime      DateTime?
+  cbmsError         String?
+  cbmsRetryCount    Int          @default(0)
+  creditNotes       CreditNote[]
+  debitNotes        DebitNote[]
+  cbmsSyncQueues    CbmsSyncQueue[]
 }
 
 model SaleItem {
@@ -665,3 +707,125 @@ model BusinessRegistrationRequest {
   updatedAt         DateTime @updatedAt
 }
 
+model FiscalYear {
+  id         String     @id @default(uuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String     // e.g. "2080/81"
+  startDate  DateTime
+  endDate    DateTime
+  isActive   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  sales      Sale[]
+  sequences  FiscalYearInvoiceSequence[]
+}
+
+model FiscalYearInvoiceSequence {
+  id           String     @id @default(uuid())
+  businessId   String
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  fiscalYearId String
+  fiscalYear   FiscalYear @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  nextValue    Int        @default(1)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([businessId, branchId, fiscalYearId])
+}
+
+model CreditNote {
+  id            String           @id @default(uuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  noteNumber    String           @unique
+  saleId        String
+  sale          Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  reason        String
+  subtotal      Float            @default(0)
+  discount      Float            @default(0)
+  tax           Float            @default(0)
+  total         Float            @default(0)
+  createdById   String
+  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  syncWithIrd   String           @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  cbmsSyncTime  DateTime?
+  cbmsError     String?
+  items         CreditNoteItem[]
+  cbmsSyncQueues CbmsSyncQueue[]
+}
+
+model CreditNoteItem {
+  id           String     @id @default(uuid())
+  creditNoteId String
+  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity     Float
+  price        Float
+  total        Float
+}
+
+model DebitNote {
+  id            String           @id @default(uuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  noteNumber    String           @unique
+  saleId        String
+  sale          Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  reason        String
+  subtotal      Float            @default(0)
+  discount      Float            @default(0)
+  tax           Float            @default(0)
+  total         Float            @default(0)
+  createdById   String
+  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  syncWithIrd   String           @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  cbmsSyncTime  DateTime?
+  cbmsError     String?
+  items         DebitNoteItem[]
+  cbmsSyncQueues CbmsSyncQueue[]
+}
+
+model DebitNoteItem {
+  id          String    @id @default(uuid())
+  debitNoteId String
+  debitNote   DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity    Float
+  price       Float
+  total       Float
+}
+
+model CbmsSyncQueue {
+  id             String      @id @default(uuid())
+  businessId     String
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleId         String?
+  sale           Sale?       @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  creditNoteId   String?
+  creditNote     CreditNote? @relation(fields: [creditNoteId], references: [id], onDelete: SetNull)
+  debitNoteId    String?
+  debitNote      DebitNote?  @relation(fields: [debitNoteId], references: [id], onDelete: SetNull)
+  action         String      // INVOICE_SUBMIT, INVOICE_CANCEL, CREDIT_NOTE_SUBMIT, DEBIT_NOTE_SUBMIT
+  syncStatus     String      @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  attemptCount   Int         @default(0)
+  lastAttempt    DateTime?
+  nextRetry      DateTime?
+  requestPayload Json?
+  responsePayload Json?
+  errorMessage   String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}

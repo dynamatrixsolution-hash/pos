@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
+import { CbmsService } from "@/lib/cbms-service";
 
 const saleItemSchema = z.object({
   productId: z.string().uuid(),
@@ -166,49 +167,82 @@ export async function POST(request: Request) {
       const settings = (business?.settings as any) || {};
       const salesPrefix = settings.salesPrefix || settings.invoicePrefix || "INV";
 
-      // 2. Generate Unique Invoice Number
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const dateStr = `${year}${month}${day}`;
-
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-      const countToday = await tx.sale.count({
-        where: {
-          businessId: context.businessId,
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
+      // 2. Fetch Active Fiscal Year
+      const activeFiscalYear = await tx.fiscalYear.findFirst({
+        where: { businessId: context.businessId, isActive: true },
       });
-
-      let sequence = countToday + 1;
-      let invoiceNumber = `${salesPrefix}-${dateStr}-${String(sequence).padStart(4, "0")}`;
-
-      // Ensure zero invoice number collision
-      let existingSale = await tx.sale.findUnique({ where: { invoiceNumber } });
-      while (existingSale) {
-        sequence++;
-        invoiceNumber = `${salesPrefix}-${dateStr}-${String(sequence).padStart(4, "0")}`;
-        existingSale = await tx.sale.findUnique({ where: { invoiceNumber } });
+      if (!activeFiscalYear) {
+        throw new Error("IRD Compliance: No active fiscal year configured. Please configure a fiscal year in settings first.");
       }
 
-      // 3. Process Stock Deductions & Alerts
+      // 3. Concurrency-Safe Sequential Invoice Numbering
+      let sequenceRecord;
+      try {
+        sequenceRecord = await tx.fiscalYearInvoiceSequence.update({
+          where: {
+            businessId_branchId_fiscalYearId: {
+              businessId: context.businessId,
+              branchId: payload.branchId,
+              fiscalYearId: activeFiscalYear.id,
+            },
+          },
+          data: { nextValue: { increment: 1 } },
+        });
+      } catch (e) {
+        sequenceRecord = await tx.fiscalYearInvoiceSequence.upsert({
+          where: {
+            businessId_branchId_fiscalYearId: {
+              businessId: context.businessId,
+              branchId: payload.branchId,
+              fiscalYearId: activeFiscalYear.id,
+            },
+          },
+          update: { nextValue: { increment: 1 } },
+          create: {
+            businessId: context.businessId,
+            branchId: payload.branchId,
+            fiscalYearId: activeFiscalYear.id,
+            nextValue: 2,
+          },
+        });
+      }
+      const sequenceValue = sequenceRecord.nextValue - 1;
+      const cleanFyName = activeFiscalYear.name.replace("/", "");
+      const invoiceNumber = `${salesPrefix}-${cleanFyName}-${String(sequenceValue).padStart(6, "0")}`;
+
+      // 4. Server-Side Calculations and Stock Deductions
+      let calculatedSubtotal = 0;
+      let lineDiscountsSum = 0;
+      let taxableAmountSum = 0;
       const saleItemsData = [];
       const lowStockAlerts = [];
 
+      const enableVat = settings.enableVat !== false;
+      const defaultVatRate = settings.vatPercentage || 13.0;
+
       for (const item of payload.items) {
-        // Fetch active product
         const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId, deletedAt: null },
         });
 
         if (!product) {
           throw new Error(`Product not found: ${item.productId}`);
+        }
+
+        const customer = payload.customerId ? await tx.customer.findFirst({ where: { id: payload.customerId } }) : null;
+        const isWholesale = customer?.customerType === "WHOLESALE";
+        const basePrice = isWholesale ? product.wholesalePrice : product.sellingPrice;
+
+        const itemQty = item.quantity;
+        const itemPrice = basePrice;
+        const itemLineDiscount = (item.discount || 0) * itemQty;
+
+        calculatedSubtotal += itemPrice * itemQty;
+        lineDiscountsSum += itemLineDiscount;
+
+        const lineSubtotalAfterDiscount = (itemPrice * itemQty) - itemLineDiscount;
+        if (product.isVatItem) {
+          taxableAmountSum += lineSubtotalAfterDiscount;
         }
 
         // Deduct Branch-wise Stock levels
@@ -226,17 +260,16 @@ export async function POST(request: Request) {
           data: { quantity: newStockQty },
         });
 
-        // Trigger stock alert if under limit
         if (newStockQty <= product.alertQuantity) {
           lowStockAlerts.push({
             title: "Low Stock Alert",
-            message: `Product "${product.name}" is low in stock (${newStockQty} ${product.unitId || "pcs"} remaining in active branch).`,
+            message: `Product "${product.name}" is low in stock (${newStockQty} remaining in active branch).`,
             type: "STOCK",
             businessId: context.businessId,
           });
         }
 
-        // Handle batch tracking deductions if applicable
+        // Handle batch tracking
         if (product.batchTracking && item.batchNumber) {
           const batch = await tx.batch.findFirst({
             where: {
@@ -257,20 +290,30 @@ export async function POST(request: Request) {
           });
         }
 
-        // Prepare item details to write
         saleItemsData.push({
           productId: item.productId,
           batchNumber: item.batchNumber,
           quantity: item.quantity,
-          costPrice: product.costPrice, // Store current cost price for profit margins
-          price: item.price,
+          costPrice: product.costPrice,
+          price: itemPrice,
           discount: item.discount,
-          tax: item.tax,
-          total: item.quantity * item.price,
+          tax: product.isVatItem && enableVat ? (lineSubtotalAfterDiscount * (defaultVatRate / 100)) : 0,
+          total: lineSubtotalAfterDiscount,
         });
       }
 
-      // 4. Create Sale record
+      const finalTaxableAmount = Math.max(0, taxableAmountSum - payload.discount);
+      const finalVatAmount = enableVat ? finalTaxableAmount * (defaultVatRate / 100) : 0;
+      const finalTotal = (calculatedSubtotal - (lineDiscountsSum + payload.discount)) + finalVatAmount;
+
+      // 10% VAT Refund for electronic payment modes
+      let vatRefundAmount = 0;
+      const isElectronicPayment = ["ESEWA", "KHALTI", "FONE_PAY", "NEPAL_PAY", "CARD"].includes(payload.paymentMethod);
+      if (isElectronicPayment && finalVatAmount > 0) {
+        vatRefundAmount = finalVatAmount * 0.10;
+      }
+
+      // 5. Create Sale record
       const sale = await tx.sale.create({
         data: {
           businessId: context.businessId,
@@ -279,13 +322,15 @@ export async function POST(request: Request) {
           userId: context.userId,
           invoiceNumber,
           status: payload.status,
-          subtotal: payload.subtotal,
-          discount: payload.discount,
-          tax: payload.tax,
-          total: payload.total,
+          subtotal: calculatedSubtotal,
+          discount: lineDiscountsSum + payload.discount,
+          tax: finalVatAmount,
+          total: finalTotal,
           paidAmount: payload.paidAmount,
           paymentStatus: payload.paymentStatus,
           notes: payload.notes,
+          fiscalYearId: activeFiscalYear.id,
+          vatRefundAmount,
           saleItems: {
             createMany: {
               data: saleItemsData,
@@ -297,7 +342,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // 5. Create Ledger and Balance entries for Customers if transaction is credit
+      // 6. Create Ledger and Balance entries for Customers if transaction is credit
       if (payload.customerId) {
         const customer = await tx.customer.findFirst({
           where: { id: payload.customerId, businessId: context.businessId },
@@ -305,23 +350,20 @@ export async function POST(request: Request) {
 
         if (!customer) throw new Error("Customer not found");
 
-        const unpaidAmt = payload.total - payload.paidAmount;
+        const unpaidAmt = finalTotal - payload.paidAmount;
 
         if (unpaidAmt > 0) {
-          // Verify credit limits for any customer type when paying on credit
           if (customer.balance + unpaidAmt > customer.creditLimit) {
             throw new Error(`Transaction violates customer credit limit. Limit: $${customer.creditLimit}, Current balance: $${customer.balance}, Added charge: $${unpaidAmt}`);
           }
 
           const newCustomerBalance = customer.balance + unpaidAmt;
 
-          // Update customer balance
           await tx.customer.update({
             where: { id: customer.id },
             data: { balance: newCustomerBalance },
           });
 
-          // Write ledger transaction
           await tx.customerLedger.create({
             data: {
               customerId: customer.id,
@@ -336,7 +378,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 6. Create Payment records (supporting split payments or single method payment)
+      // 7. Create Payment records
       if (payload.splitPayments && payload.splitPayments.length > 0) {
         for (const splitPay of payload.splitPayments) {
           if (splitPay.amount > 0) {
@@ -363,7 +405,7 @@ export async function POST(request: Request) {
         });
       }
 
-      // 7. Write Audit Log
+      // 8. Write Audit Logs
       await tx.auditLog.create({
         data: {
           businessId: context.businessId,
@@ -373,14 +415,14 @@ export async function POST(request: Request) {
           warehouseId: payload.branchId,
           action: "CREATE",
           module: "SALE",
-          details: `Created invoice ${invoiceNumber}. Total: Rs. ${payload.total.toFixed(2)}, Paid: Rs. ${payload.paidAmount.toFixed(2)}`,
+          details: `Created invoice ${invoiceNumber}. Total: Rs. ${finalTotal.toFixed(2)}, Paid: Rs. ${payload.paidAmount.toFixed(2)}`,
           newValue: JSON.parse(JSON.stringify(sale)),
           ipAddress,
           deviceInfo,
         },
       });
 
-      if (payload.tax > 0) {
+      if (finalVatAmount > 0) {
         await tx.auditLog.create({
           data: {
             businessId: context.businessId,
@@ -390,14 +432,14 @@ export async function POST(request: Request) {
             warehouseId: payload.branchId,
             action: "TAXATION",
             module: "SALE",
-            details: `Nepal Compliance - VAT Invoice recorded: Invoice ${invoiceNumber}. Subtotal: Rs. ${payload.subtotal.toFixed(2)}, Discount: Rs. ${payload.discount.toFixed(2)}, Taxable Value: Rs. ${(payload.subtotal - payload.discount).toFixed(2)}, VAT (13%): Rs. ${payload.tax.toFixed(2)}, Total: Rs. ${payload.total.toFixed(2)}`,
+            details: `Nepal Compliance - VAT Invoice recorded: Invoice ${invoiceNumber}. Subtotal: Rs. ${calculatedSubtotal.toFixed(2)}, Discount: Rs. ${(lineDiscountsSum + payload.discount).toFixed(2)}, Taxable Value: Rs. ${finalTaxableAmount.toFixed(2)}, VAT (13%): Rs. ${finalVatAmount.toFixed(2)}, Total: Rs. ${finalTotal.toFixed(2)}`,
             newValue: {
               invoiceNumber,
-              subtotal: payload.subtotal,
-              discount: payload.discount,
-              taxableAmount: payload.subtotal - payload.discount,
-              tax: payload.tax,
-              total: payload.total
+              subtotal: calculatedSubtotal,
+              discount: lineDiscountsSum + payload.discount,
+              taxableAmount: finalTaxableAmount,
+              tax: finalVatAmount,
+              total: finalTotal
             },
             ipAddress,
             deviceInfo,
@@ -405,7 +447,7 @@ export async function POST(request: Request) {
         });
       }
 
-      // 8. Write Notifications
+      // 9. Write Notifications
       if (lowStockAlerts.length > 0) {
         await tx.notification.createMany({
           data: lowStockAlerts,
@@ -414,6 +456,14 @@ export async function POST(request: Request) {
 
       return sale;
     }, { maxWait: 10000, timeout: 30000 });
+
+    // 10. Fire and forget CBMS submission background job
+    if (saleResult.status === "COMPLETED") {
+      CbmsService.submitInvoice(saleResult.id).catch((e) => {
+        console.error("Async CBMS submission failed:", e);
+      });
+    }
+
     return NextResponse.json(saleResult, { status: 201 });
   } catch (error: any) {
     console.error("POST sale error:", error.message || error);
