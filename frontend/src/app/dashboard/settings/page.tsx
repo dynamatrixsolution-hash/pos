@@ -27,7 +27,12 @@ import {
   Upload,
   Trash2,
   CreditCard,
+  QrCode,
+  Copy,
+  Check,
+  Eye,
 } from "lucide-react";
+import ThermalReceipt, { DEFAULT_QR_SVG } from "@/components/pos/thermal-receipt";
 
 interface AuditLogItem {
   id: string;
@@ -70,6 +75,14 @@ export default function SettingsPage() {
   const [invoiceLogo, setInvoiceLogo] = React.useState("");
   const [receiptLogo, setReceiptLogo] = React.useState("");
   const [fonepayQr, setFonepayQr] = React.useState("");
+  const [paymentQrImage, setPaymentQrImage] = React.useState("");
+  const [paymentQrMedium, setPaymentQrMedium] = React.useState("Fonepay");
+  const [paymentUpiId, setPaymentUpiId] = React.useState("");
+  const [paymentAccountName, setPaymentAccountName] = React.useState("");
+  const [receiptTitle, setReceiptTitle] = React.useState("POS GST INVOICE");
+  const [showTaxBreakup, setShowTaxBreakup] = React.useState(true);
+  const [showQrCode, setShowQrCode] = React.useState(true);
+  const [copiedKioskCmd, setCopiedKioskCmd] = React.useState(false);
   const [panNumber, setPanNumber] = React.useState("");
   const [vatNumber, setVatNumber] = React.useState("");
   const [taxRegDetails, setTaxRegDetails] = React.useState("");
@@ -151,7 +164,14 @@ export default function SettingsPage() {
         setWebsite(meta.website || "");
         setInvoiceLogo(meta.invoiceLogo || "");
         setReceiptLogo(meta.receiptLogo || "");
-        setFonepayQr(meta.fonepayQr || "");
+        setFonepayQr(meta.fonepayQr || meta.paymentQrImage || "");
+        setPaymentQrImage(meta.paymentQrImage || meta.fonepayQr || "");
+        setPaymentQrMedium(meta.paymentQrMedium || "Fonepay");
+        setPaymentUpiId(meta.paymentUpiId || "");
+        setPaymentAccountName(meta.paymentAccountName || data.name || "");
+        setReceiptTitle(meta.receiptTitle || "POS GST INVOICE");
+        setShowTaxBreakup(meta.showTaxBreakup ?? true);
+        setShowQrCode(meta.showQrCode ?? true);
         setPanNumber(meta.panNumber || "");
         setVatNumber(meta.vatNumber || "");
         setTaxRegDetails(meta.taxRegDetails || "");
@@ -264,7 +284,7 @@ export default function SettingsPage() {
           website,
           invoiceLogo,
           receiptLogo,
-          fonepayQr,
+          fonepayQr: paymentQrImage || fonepayQr || null,
           panNumber,
           vatNumber,
           taxRegDetails,
@@ -297,6 +317,13 @@ export default function SettingsPage() {
           barcodeLength: Number(barcodeLength),
           barcodePrefix,
           autoBarcodeGen,
+          paymentQrImage: paymentQrImage || fonepayQr || null,
+          paymentQrMedium,
+          paymentUpiId: paymentUpiId || null,
+          paymentAccountName: paymentAccountName || name || null,
+          receiptTitle,
+          showTaxBreakup,
+          showQrCode,
         }),
       });
 
@@ -318,7 +345,7 @@ export default function SettingsPage() {
   };
 
   // Logo base64 upload helpers
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "invoice" | "receipt" | "fonepay") => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "invoice" | "receipt" | "fonepay" | "paymentQr") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -327,7 +354,10 @@ export default function SettingsPage() {
       const base64String = reader.result as string;
       if (type === "invoice") setInvoiceLogo(base64String);
       else if (type === "receipt") setReceiptLogo(base64String);
-      else setFonepayQr(base64String);
+      else {
+        setFonepayQr(base64String);
+        setPaymentQrImage(base64String);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -743,16 +773,27 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Fonepay payment QR card */}
+                  {/* Payment QR card (Fonepay / UPI / eSewa / Bank QR) */}
                   <div className="border border-border rounded-xl p-4 space-y-3">
-                    <h4 className="text-xs font-bold">Fonepay Merchant QR</h4>
-                    {fonepayQr ? (
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold flex items-center gap-1.5">
+                        <QrCode className="h-4 w-4 text-emerald-500" /> Payment QR Code
+                      </h4>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        {paymentQrMedium}
+                      </span>
+                    </div>
+
+                    {(paymentQrImage || fonepayQr) ? (
                       <div className="relative border border-dashed border-border/80 rounded-lg p-2.5 h-36 flex items-center justify-center bg-secondary/10">
-                        <img src={fonepayQr} alt="Fonepay QR Preview" className="max-h-full max-w-full object-contain" />
+                        <img src={paymentQrImage || fonepayQr} alt="Payment QR Preview" className="max-h-full max-w-full object-contain" />
                         <button
                           type="button"
-                          onClick={() => setFonepayQr("")}
-                          className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full transition-colors"
+                          onClick={() => {
+                            setPaymentQrImage("");
+                            setFonepayQr("");
+                          }}
+                          className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full transition-colors cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -760,14 +801,16 @@ export default function SettingsPage() {
                     ) : (
                       <div className="border border-dashed border-border/80 rounded-lg p-6 h-36 flex flex-col items-center justify-center text-center text-muted-foreground bg-secondary/5">
                         <Upload className="h-8 w-8 stroke-1 mb-2" />
-                        <span className="text-[10px] font-bold uppercase">Click below to upload</span>
+                        <span className="text-[10px] font-bold uppercase">Click below to upload payment QR</span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">Fonepay, UPI, eSewa, Bank QR</span>
                       </div>
                     )}
+
                     <div className="space-y-2">
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleLogoUpload(e, "fonepay")}
+                        onChange={(e) => handleLogoUpload(e, "paymentQr")}
                         className="hidden"
                         id="fonepay-qr-uploader"
                       />
@@ -776,14 +819,146 @@ export default function SettingsPage() {
                         className="flex items-center justify-center gap-1.5 py-2 px-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-sm"
                       >
                         <Upload className="h-4 w-4" />
-                        Choose Fonepay QR file
+                        Choose QR Image File
                       </label>
                       <input
                         type="text"
-                        placeholder="Or paste Fonepay QR image URL..."
-                        value={fonepayQr}
-                        onChange={(e) => setFonepayQr(e.target.value)}
+                        placeholder="Or paste QR image URL..."
+                        value={paymentQrImage || fonepayQr}
+                        onChange={(e) => {
+                          setPaymentQrImage(e.target.value);
+                          setFonepayQr(e.target.value);
+                        }}
                         className="w-full bg-background border border-border px-2.5 py-1.5 rounded-lg text-[10px] outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Payment Medium</label>
+                        <select
+                          value={paymentQrMedium}
+                          onChange={(e) => setPaymentQrMedium(e.target.value)}
+                          disabled={!isAuthorized || isSubmitting}
+                          className="w-full bg-background border border-border px-2 py-1.5 rounded-lg text-xs font-semibold outline-none"
+                        >
+                          <option value="Fonepay">Fonepay</option>
+                          <option value="UPI">UPI (Google Pay / PhonePe)</option>
+                          <option value="eSewa">eSewa</option>
+                          <option value="Khalti">Khalti</option>
+                          <option value="NepalPay">NepalPay</option>
+                          <option value="Bank QR">Bank QR</option>
+                          <option value="Scan & Pay">Custom Scan & Pay</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[9px] uppercase font-bold text-muted-foreground tracking-wider">UPI / Merchant ID</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. dbg@upi or 9800000000"
+                          value={paymentUpiId}
+                          onChange={(e) => setPaymentUpiId(e.target.value)}
+                          disabled={!isAuthorized || isSubmitting}
+                          className="w-full bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 pt-1">
+                      <label className="block text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Merchant / Account Display Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Daily Basket Grocery"
+                        value={paymentAccountName}
+                        onChange={(e) => setPaymentAccountName(e.target.value)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="w-full bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Thermal Receipt Preview Card */}
+                <div className="border border-border/70 rounded-2xl p-4 sm:p-5 bg-card space-y-3 mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                    <div>
+                      <h4 className="text-sm font-black flex items-center gap-1.5 text-foreground">
+                        <Eye className="h-4 w-4 text-primary" /> Live Thermal Receipt Preview ({receiptWidth})
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Real-time simulation of your printed bill with your store branding, tax details, and payment QR.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">Paper Width:</span>
+                      <div className="flex gap-1">
+                        {(["80mm", "58mm", "auto"] as const).map((w) => (
+                          <button
+                            key={w}
+                            type="button"
+                            onClick={() => setReceiptWidth(w)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                              receiptWidth === w
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
+                            }`}
+                          >
+                            {w}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-100 dark:bg-slate-950/60 p-4 sm:p-6 rounded-xl flex justify-center overflow-x-auto">
+                    <div className="bg-white text-black p-2 sm:p-4 rounded shadow-md border border-slate-300 dark:border-slate-800">
+                      <ThermalReceipt
+                        data={{
+                          invoiceNumber: "POS-2049",
+                          createdAt: new Date().toISOString(),
+                          cashierName: session?.user?.name || "Rita",
+                          customerName: "Aman Kumar",
+                          customerPhone: "+91 90000 11111",
+                          customerPan: "22BBBBB1111B1Z1",
+                          items: [
+                            { name: "Basmati Rice", quantity: 2, price: 68.0, hsn: "1001", taxRate: 5 },
+                            { name: "Whole Wheat Bread", quantity: 1, price: 52.0, hsn: "1905", taxRate: 5 },
+                            { name: "Soft Drink", quantity: 3, price: 110.0, hsn: "2202", taxRate: 18 },
+                            { name: "Face Wash", quantity: 1, price: 220.0, hsn: "3304", taxRate: 18 },
+                          ],
+                          subtotal: 738.0,
+                          discount: 0.0,
+                          taxableValue: 738.0,
+                          tax: 108.4,
+                          taxBreakup: [
+                            { label: "5% slab", rate: 5, cgst: 4.7, sgst: 4.7, amount: 9.4 },
+                            { label: "18% slab", rate: 18, cgst: 49.5, sgst: 49.5, amount: 99.0 },
+                          ],
+                          total: 846.4,
+                          roundOff: -0.4,
+                          roundedTotal: 846.0,
+                        }}
+                        settings={{
+                          businessName: name || "Daily Basket Grocery",
+                          address: address || "22 Market Lane, City",
+                          phone: phone || "+91 90000 00000",
+                          panNumber: panNumber || "22AAAAA0000A1Z5",
+                          vatNumber,
+                          receiptTitle,
+                          receiptHeader,
+                          receiptFooter,
+                          receiptLogo,
+                          invoiceLogo,
+                          receiptWidth,
+                          currencySymbol,
+                          paymentQrImage: paymentQrImage || fonepayQr || DEFAULT_QR_SVG,
+                          paymentQrMedium,
+                          paymentUpiId: paymentUpiId || "dbg@upi",
+                          paymentAccountName: paymentAccountName || name || "Daily Basket Grocery",
+                          showTaxBreakup,
+                          showQrCode,
+                        }}
                       />
                     </div>
                   </div>
@@ -1174,31 +1349,105 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Receipt Width Selection</label>
+                      <label className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Receipt Roll Paper Width (Auto-Detect)</label>
                       <select
                         value={receiptWidth}
                         onChange={(e) => setReceiptWidth(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
                         className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
                       >
-                        <option value="80mm">80mm Standard Width</option>
-                        <option value="58mm">58mm Compact Width</option>
+                        <option value="80mm">80mm Standard POS Thermal Roll (3 inch)</option>
+                        <option value="58mm">58mm Compact Mobile Thermal Roll (2 inch)</option>
+                        <option value="auto">Auto (Responsive Continuous Roll)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Receipt Title Heading</label>
+                      <select
+                        value={receiptTitle}
+                        onChange={(e) => setReceiptTitle(e.target.value)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                      >
+                        <option value="POS GST INVOICE">POS GST INVOICE</option>
+                        <option value="TAX INVOICE">TAX INVOICE</option>
+                        <option value="BILL OF SUPPLY">BILL OF SUPPLY</option>
+                        <option value="RETAIL INVOICE">RETAIL INVOICE</option>
+                        <option value="SALES RECEIPT">SALES RECEIPT</option>
                       </select>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 bg-background border border-border/60 rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-foreground">Auto Print Receipt After Billing Checkout</span>
-                      <span className="text-[10px] text-muted-foreground">Trigger print automatically when billing completes</span>
+                  <div className="space-y-2 pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between p-2.5 bg-background border border-border/60 rounded-lg">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">Auto Print Receipt After Billing Checkout</span>
+                        <span className="text-[10px] text-muted-foreground">Immediately sends print command to thermal printer when sale completes</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={autoPrint}
+                        onChange={(e) => setAutoPrint(e.target.checked)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="h-4 w-4 text-primary focus:ring-primary rounded cursor-pointer"
+                      />
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={autoPrint}
-                      onChange={(e) => setAutoPrint(e.target.checked)}
-                      disabled={!isAuthorized || isSubmitting}
-                      className="h-4 w-4 text-primary focus:ring-primary rounded"
-                    />
+
+                    <div className="flex items-center justify-between p-2.5 bg-background border border-border/60 rounded-lg">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">Display Tax / GST Breakup Box</span>
+                        <span className="text-[10px] text-muted-foreground">Prints CGST, SGST slabs or VAT breakup box on the thermal receipt</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={showTaxBreakup}
+                        onChange={(e) => setShowTaxBreakup(e.target.checked)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="h-4 w-4 text-primary focus:ring-primary rounded cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 bg-background border border-border/60 rounded-lg">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">Print Payment QR Code on Receipt</span>
+                        <span className="text-[10px] text-muted-foreground">Includes Fonepay / UPI Scan & Pay QR at the bottom of the bill</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={showQrCode}
+                        onChange={(e) => setShowQrCode(e.target.checked)}
+                        disabled={!isAuthorized || isSubmitting}
+                        className="h-4 w-4 text-primary focus:ring-primary rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Silent Kiosk Printing Instruction Card */}
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <Printer className="h-4 w-4" /> 100% Silent Direct Printing (Zero Dialog Popups)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('chrome.exe --kiosk-printing --kiosk "http://localhost:3000/dashboard/pos"');
+                          setCopiedKioskCmd(true);
+                          setTimeout(() => setCopiedKioskCmd(false), 2500);
+                        }}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer"
+                      >
+                        {copiedKioskCmd ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedKioskCmd ? "Copied Command!" : "Copy Shortcut"}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      To print bills directly to your thermal printer with <strong>zero dialog boxes</strong>, launch Google Chrome or Microsoft Edge with the <code className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 px-1.5 py-0.5 rounded font-mono text-[10px]">--kiosk-printing</code> flag.
+                    </p>
+                    <div className="bg-background/80 p-2 rounded-lg font-mono text-[10px] text-muted-foreground select-all overflow-x-auto">
+                      chrome.exe --kiosk-printing --kiosk &quot;http://localhost:3000/dashboard/pos&quot;
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/60 pt-4">

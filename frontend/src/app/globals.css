@@ -151,18 +151,31 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Print Styling for POS receipt templates */
+/* Print Styling for POS Thermal Receipt Templates */
+@page {
+  size: auto;
+  margin: 0mm !important;
+}
+
 @media print {
-  body {
-    background: white;
-    color: black;
-    font-size: 12pt;
+  html, body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .no-print {
     display: none !important;
   }
   .print-only {
     display: block !important;
+  }
+  .thermal-receipt-root {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 

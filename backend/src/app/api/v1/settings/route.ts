@@ -52,6 +52,13 @@ const settingsSchema = z.object({
   receiptHeader: z.string().optional().nullable(),
   receiptFooter: z.string().optional().nullable(),
   fonepayQr: z.string().optional().nullable(),
+  paymentQrImage: z.string().optional().nullable(),
+  paymentQrMedium: z.string().optional().default("Fonepay"),
+  paymentUpiId: z.string().optional().nullable(),
+  paymentAccountName: z.string().optional().nullable(),
+  receiptTitle: z.string().optional().default("POS GST INVOICE"),
+  showTaxBreakup: z.boolean().optional().default(true),
+  showQrCode: z.boolean().optional().default(true),
 });
 
 export async function GET() {

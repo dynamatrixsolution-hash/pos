@@ -1,12 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Search, TrendingUp, Calendar, ArrowRight, User } from "lucide-react";
+import { Search, TrendingUp, Calendar, ArrowRight, User, Printer } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { printThermalReceipt } from "@/lib/thermal-printer";
+import { ReceiptData, ReceiptSettings } from "@/components/pos/thermal-receipt";
 
 interface SaleItem {
   id: string;
   invoiceNumber: string;
+  subtotal?: number;
+  tax?: number;
   total: number;
   paidAmount: number;
   payments: Array<{ method: string }>;
@@ -14,15 +18,45 @@ interface SaleItem {
   status: string;
   notes: string | null;
   createdAt: string;
-  customer?: { name: string } | null;
+  customer?: { name: string; phone?: string; panNumber?: string } | null;
   user: { name: string };
+  saleItems?: Array<{
+    id: string;
+    quantity: number;
+    price: number;
+    discount?: number;
+    product?: { name: string; sku?: string; barcode?: string };
+  }>;
 }
 
 export default function SalesPage() {
-  const { currencySymbol } = useSettings();
+  const {
+    currencySymbol,
+    businessName,
+    address,
+    phone,
+    panNumber,
+    vatNumber,
+    taxName,
+    receiptTitle,
+    receiptHeader,
+    receiptFooter,
+    receiptLogo,
+    invoiceLogo,
+    receiptWidth,
+    paymentQrImage,
+    fonepayQr,
+    paymentQrMedium,
+    paymentUpiId,
+    paymentAccountName,
+    showTaxBreakup,
+    showQrCode,
+  } = useSettings();
+
   const [sales, setSales] = React.useState<SaleItem[]>([]);
   const [search, setSearch] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(true);
+  const [printingId, setPrintingId] = React.useState<string | null>(null);
 
   const loadSales = React.useCallback(async () => {
     try {
@@ -42,6 +76,62 @@ export default function SalesPage() {
   React.useEffect(() => {
     loadSales();
   }, [loadSales]);
+
+  const handleReprintSale = async (sale: SaleItem) => {
+    setPrintingId(sale.id);
+    try {
+      const items = (sale.saleItems || []).map((si) => ({
+        id: si.id,
+        name: si.product?.name || "Product Item",
+        quantity: si.quantity,
+        price: si.price,
+        discount: si.discount || 0,
+        sku: si.product?.sku,
+        barcode: si.product?.barcode,
+      }));
+
+      const receiptData: ReceiptData = {
+        invoiceNumber: sale.invoiceNumber,
+        createdAt: sale.createdAt,
+        cashierName: sale.user.name,
+        customerName: sale.customer?.name,
+        customerPhone: sale.customer?.phone,
+        customerPan: sale.customer?.panNumber,
+        items,
+        subtotal: sale.subtotal ?? (sale.total - (sale.tax || 0)),
+        tax: sale.tax || 0,
+        total: sale.total,
+        paidAmount: sale.paidAmount,
+        roundedTotal: Math.round(sale.total),
+      };
+
+      const receiptSettings: ReceiptSettings = {
+        businessName,
+        address,
+        phone,
+        panNumber,
+        vatNumber,
+        taxName,
+        currencySymbol,
+        receiptTitle,
+        receiptHeader,
+        receiptFooter,
+        receiptLogo,
+        invoiceLogo,
+        receiptWidth,
+        paymentQrImage: paymentQrImage || fonepayQr,
+        paymentQrMedium,
+        paymentUpiId,
+        paymentAccountName: paymentAccountName || businessName,
+        showTaxBreakup,
+        showQrCode,
+      };
+
+      await printThermalReceipt(receiptData, receiptSettings, sale.id);
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -86,6 +176,7 @@ export default function SalesPage() {
                   <th className="py-3 px-2 text-center">Method</th>
                   <th className="py-3 px-2 text-center">Payment Status</th>
                   <th className="py-3 px-2">Cashier</th>
+                  <th className="py-3 px-2 text-center">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -125,6 +216,18 @@ export default function SalesPage() {
                       </span>
                     </td>
                     <td className="py-3 px-2 text-muted-foreground">{sale.user.name}</td>
+                    <td className="py-3 px-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleReprintSale(sale)}
+                        disabled={printingId === sale.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary hover:bg-primary hover:text-white text-secondary-foreground rounded-lg text-[10px] font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        title="Reprint Thermal Receipt"
+                      >
+                        <Printer className="h-3 w-3" />
+                        <span>{printingId === sale.id ? "Printing..." : "Print"}</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

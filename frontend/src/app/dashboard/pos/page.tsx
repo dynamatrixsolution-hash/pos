@@ -9,6 +9,8 @@ import { SearchableSelect } from "@/components/searchable-select";
 const BarcodeScannerModal = dynamic(() => import("@/components/barcode-scanner-modal"), {
   ssr: false,
 });
+import ThermalReceipt, { ReceiptData, ReceiptSettings } from "@/components/pos/thermal-receipt";
+import { printThermalReceipt } from "@/lib/thermal-printer";
 import {
   Search,
   ShoppingCart,
@@ -165,12 +167,35 @@ export default function POSPage() {
     taxName,
     businessName,
     businessType,
+    phone,
+    address,
+    panNumber,
+    vatNumber,
     receiptHeader,
     receiptFooter,
+    receiptTitle,
+    receiptWidth,
+    autoPrint,
     fonepayQr,
+    paymentQrImage,
+    paymentQrMedium,
+    paymentUpiId,
+    paymentAccountName,
+    showTaxBreakup,
+    showQrCode,
     invoiceLogo,
     receiptLogo,
   } = useSettings();
+
+  const [printingStatus, setPrintingStatus] = React.useState<{
+    active: boolean;
+    invoiceNumber: string;
+    total: number;
+    customerName: string;
+    cashierName: string;
+  } | null>(null);
+
+  const [lastInvoice, setLastInvoice] = React.useState<any | null>(null);
 
   const [posScannerOpen, setPosScannerOpen] = React.useState(false);
   const [scanToast, setScanToast] = React.useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -364,6 +389,151 @@ export default function POSPage() {
   const roundOff = parseFloat((Math.round(total) - total).toFixed(2));
   const grandTotal = Math.round(total);
 
+  // Dedicated Thermal Receipt Print Handler
+  const handlePrintReceipt = React.useCallback(
+    (invoice?: any) => {
+      const target = invoice || lastInvoice;
+
+      if (activePlan.toUpperCase() === "STARTER") {
+        showAlert(
+          "Printing Restricted",
+          "Receipt printing is not available on the Starter plan. Please upgrade your subscription to enable this feature.",
+          "error"
+        );
+        return;
+      }
+
+      // If neither target invoice nor cart items exist, return
+      if (!target && currentOrder.cart.length === 0) return;
+
+      const receiptItems = target
+        ? (target.invoiceItems || target.items || []).map((it: any) => ({
+            id: it.id,
+            name: it.name,
+            quantity: it.quantity,
+            price: it.price,
+            discount: it.discount,
+            sku: it.sku,
+            barcode: it.barcode,
+            hsn: it.hsn,
+            taxRate: it.taxRate,
+          }))
+        : currentOrder.cart.map((it) => ({
+            id: it.id,
+            name: it.name,
+            quantity: it.quantity,
+            price: it.price,
+            discount: it.discount,
+            sku: it.sku,
+            barcode: it.barcode,
+            taxRate: vatPercentage,
+          }));
+
+      const activeCust = customers.find((c) => c.id === currentOrder.selectedCustomerId);
+
+      const receiptData: ReceiptData = {
+        invoiceNumber: target?.invoiceNumber || currentOrder.invoiceNumber || "POS-INV",
+        createdAt: target?.createdAt || new Date(),
+        cashierName: target?.cashierName || session?.user?.name || "Cashier",
+        customerName: target?.customerName || (target ? undefined : activeCust?.name),
+        customerPhone: target?.customerPhone || (target ? undefined : activeCust?.phone),
+        customerPan: target?.customerPan,
+        tableNumber: target?.tableNumber || (currentOrder.posMode === "RESTAURANT" ? currentOrder.tableNumber : undefined),
+        items: receiptItems,
+        subtotal: target?.subtotal ?? subtotal,
+        discount: target?.overallDiscount ?? rawOverallDiscount,
+        taxableValue: target?.taxableAmount ?? (target?.subtotal ? target.subtotal - (target.overallDiscount || 0) : Math.max(0, subtotal - rawOverallDiscount)),
+        tax: target?.tax ?? tax,
+        taxBreakup: enableVat && tax > 0
+          ? [
+              { label: `${taxName} 50%`, rate: vatPercentage, cgst: cgst, sgst: sgst, amount: tax }
+            ]
+          : undefined,
+        total: target?.total ?? total,
+        paidAmount: target?.paidAmount,
+        roundOff: target?.roundOff ?? roundOff,
+        roundedTotal: target?.roundedTotal ?? grandTotal,
+        paymentMethod: target?.paymentMethod,
+      };
+
+      const receiptSettings: ReceiptSettings = {
+        businessName: businessName || "Store Billing",
+        address: address || "",
+        phone: phone || "",
+        panNumber: panNumber || "",
+        vatNumber: vatNumber || "",
+        taxName: taxName || "GST",
+        currencySymbol: currencySymbol || "Rs. ",
+        receiptTitle: receiptTitle || "POS GST INVOICE",
+        receiptHeader,
+        receiptFooter,
+        receiptLogo,
+        invoiceLogo,
+        receiptWidth: receiptWidth || "80mm",
+        paymentQrImage: paymentQrImage || fonepayQr,
+        paymentQrMedium: paymentQrMedium || "Fonepay",
+        paymentUpiId: paymentUpiId || "",
+        paymentAccountName: paymentAccountName || businessName || "",
+        showTaxBreakup: showTaxBreakup !== false,
+        showQrCode: showQrCode !== false,
+      };
+
+      // Show cashier status card
+      setPrintingStatus({
+        active: true,
+        invoiceNumber: receiptData.invoiceNumber,
+        total: receiptData.roundedTotal || receiptData.total,
+        customerName: receiptData.customerName || "Walk-in",
+        cashierName: receiptData.cashierName || "Cashier",
+      });
+
+      // Background iframe thermal printing (zero layout shifts, silent in kiosk mode)
+      printThermalReceipt(receiptData, receiptSettings, target?.id);
+
+      // Auto dismiss status card after 4.5 seconds
+      setTimeout(() => {
+        setPrintingStatus((prev) => (prev ? { ...prev, active: false } : null));
+      }, 4500);
+    },
+    [
+      lastInvoice,
+      currentOrder,
+      customers,
+      activePlan,
+      session?.user?.name,
+      subtotal,
+      rawOverallDiscount,
+      tax,
+      cgst,
+      sgst,
+      total,
+      roundOff,
+      grandTotal,
+      enableVat,
+      taxName,
+      vatPercentage,
+      businessName,
+      address,
+      phone,
+      panNumber,
+      vatNumber,
+      currencySymbol,
+      receiptTitle,
+      receiptHeader,
+      receiptFooter,
+      receiptLogo,
+      invoiceLogo,
+      receiptWidth,
+      paymentQrImage,
+      fonepayQr,
+      paymentQrMedium,
+      paymentUpiId,
+      paymentAccountName,
+      showTaxBreakup,
+      showQrCode,
+    ]
+  );
+
 
   const updateCurrentOrder = React.useCallback(
     (updater: (order: ActiveOrder) => ActiveOrder) => {
@@ -469,9 +639,8 @@ export default function POSPage() {
   const [singlePaymentMethod, setSinglePaymentMethod] = React.useState<string>("CASH");
   const [amountTendered, setAmountTendered] = React.useState<number>(0);
   const [isAmountTenderedManuallySet, setIsAmountTenderedManuallySet] = React.useState<boolean>(false);
-  const [submitError, setSubmitError] = React.useState<string>("");
+  const [submitError, setSubmitError] = React.useState<string>("" );
   const [isCheckingOut, setIsCheckingOut] = React.useState(false);
-  const [lastInvoice, setLastInvoice] = React.useState<any | null>(null);
 
   // Sync amountTendered with grandTotal until user edits it manually
   React.useEffect(() => {
@@ -599,8 +768,10 @@ export default function POSPage() {
         e.preventDefault();
         if (activePlan.toUpperCase() === "STARTER") {
           showAlert("Printing Restricted", "Receipt printing is not available on the Starter plan. Please upgrade your subscription to enable this feature.", "error");
+        } else if (lastInvoice) {
+          handlePrintReceipt(lastInvoice);
         } else if (currentOrder.cart.length > 0) {
-          window.print();
+          handlePrintReceipt();
         }
       } else if (e.key === "F8") {
         e.preventDefault();
@@ -987,13 +1158,22 @@ export default function POSPage() {
         return;
       }
 
-      setLastInvoice({
+      const invoiceData = {
         ...data,
         invoiceItems: currentOrder.cart,
         customerName: activeCustomer?.name || "Walk-in Customer",
+        customerPhone: activeCustomer?.phone || "",
+        customerPan: (activeCustomer as any)?.panNumber || "",
         cashierName: session?.user?.name || "Cashier",
         tableNumber: currentOrder.posMode === "RESTAURANT" ? currentOrder.tableNumber : undefined,
-      });
+        subtotal,
+        total: grandTotal,
+        roundOff,
+        roundedTotal: grandTotal,
+        tax,
+      };
+
+      setLastInvoice(invoiceData);
 
       // Reset Active Tab
       setActiveOrders((prev) => {
@@ -1023,13 +1203,11 @@ export default function POSPage() {
       setIsAmountTenderedManuallySet(false);
       setAmountTendered(0);
 
-      setTimeout(() => {
-        if (activePlan.toUpperCase() !== "STARTER") {
-          window.print();
-        } else {
-          showAlert("Checkout Complete", "Billing checkout completed successfully. Note: Receipt printing is disabled on the Starter plan.", "info");
-        }
-      }, 300);
+      if (autoPrint || activePlan.toUpperCase() !== "STARTER") {
+        setTimeout(() => {
+          handlePrintReceipt(invoiceData);
+        }, 120);
+      }
     } catch (_) {
       setSubmitError("API Connection failure.");
     } finally {
@@ -2367,63 +2545,109 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* 5. Print Layout Structure (Hidden in Screen View) */}
+      {/* 5. Thermal Receipt Printing Container & Cashier Status Notification */}
       {lastInvoice && (
-        <div className="hidden print-only max-w-[80mm] mx-auto text-black p-4 text-xs font-mono">
-          <div className="text-center space-y-1 border-b border-dashed border-black pb-4 mb-4">
-            {(receiptLogo || invoiceLogo) && (
-              <img
-                src={receiptLogo || invoiceLogo}
-                alt="Business Logo"
-                className="max-h-12 max-w-full object-contain mx-auto mb-2 select-none"
-              />
-            )}
-            <h2 className="text-base font-black">{businessName || "Store Billing"}</h2>
-            {receiptHeader && <p className="text-[10px] whitespace-pre-wrap">{receiptHeader}</p>}
-            <p className="text-[10px]">Receipt #: {lastInvoice.invoiceNumber || "INV-9022"}</p>
-            <p className="text-[10px]">Date: {new Date().toLocaleString()}</p>
-            {lastInvoice.tableNumber && <p className="text-[10px]">Restaurant Table: {lastInvoice.tableNumber}</p>}
-            <p className="text-[10px]">Cashier: {lastInvoice.cashierName}</p>
-          </div>
+        <div className="hidden print-only">
+          <ThermalReceipt
+            data={{
+              invoiceNumber: lastInvoice.invoiceNumber || "INV-9022",
+              createdAt: lastInvoice.createdAt || new Date(),
+              cashierName: lastInvoice.cashierName || session?.user?.name || "Cashier",
+              customerName: lastInvoice.customerName,
+              customerPhone: lastInvoice.customerPhone,
+              customerPan: lastInvoice.customerPan,
+              tableNumber: lastInvoice.tableNumber,
+              items: (lastInvoice.invoiceItems || []).map((it: any) => ({
+                name: it.name,
+                quantity: it.quantity,
+                price: it.price,
+                discount: it.discount,
+                sku: it.sku,
+                barcode: it.barcode,
+                hsn: it.hsn,
+                taxRate: it.taxRate,
+              })),
+              subtotal: lastInvoice.subtotal ?? subtotal,
+              discount: lastInvoice.overallDiscount ?? 0,
+              taxableValue: lastInvoice.taxableAmount ?? (lastInvoice.subtotal - (lastInvoice.overallDiscount || 0)),
+              tax: lastInvoice.tax ?? tax,
+              total: lastInvoice.total ?? total,
+              roundOff: lastInvoice.roundOff ?? roundOff,
+              roundedTotal: lastInvoice.roundedTotal ?? grandTotal,
+            }}
+            settings={{
+              businessName,
+              address,
+              phone,
+              panNumber,
+              vatNumber,
+              taxName,
+              currencySymbol,
+              receiptTitle,
+              receiptHeader,
+              receiptFooter,
+              receiptLogo,
+              invoiceLogo,
+              receiptWidth,
+              paymentQrImage: paymentQrImage || fonepayQr,
+              paymentQrMedium,
+              paymentUpiId,
+              paymentAccountName: paymentAccountName || businessName,
+              showTaxBreakup,
+              showQrCode,
+            }}
+          />
+        </div>
+      )}
 
-          <div className="space-y-2 border-b border-dashed border-black pb-4 mb-4">
-            <div className="flex justify-between font-bold text-[9px] uppercase">
-              <span className="w-1/2">Item Description</span>
-              <span className="w-1/6 text-center">Qty</span>
-              <span className="w-1/3 text-right">Total</span>
-            </div>
-            {lastInvoice.invoiceItems.map((item: any) => (
-              <div key={item.id} className="flex justify-between text-[9px]">
-                <span className="w-1/2 truncate">{item.name}</span>
-                <span className="w-1/6 text-center">{item.quantity}</span>
-                <span className="w-1/3 text-right">{currencySymbol}{((item.price - item.discount) * item.quantity).toFixed(2)}</span>
+      {/* Cashier Printing Notification Floating Card */}
+      {printingStatus && printingStatus.active && (
+        <div className="fixed bottom-6 right-6 z-[120] bg-slate-900 text-white dark:bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-4 w-84 animate-in slide-in-from-bottom-5 fade-in duration-200 no-print">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center relative shrink-0">
+                <Printer className="h-5 w-5 animate-pulse" />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
               </div>
-            ))}
-          </div>
-
-          <div className="space-y-1 text-[9px]">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>{currencySymbol}{lastInvoice.subtotal.toFixed(2)}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-black tracking-wide truncate">Bill is printing...</h4>
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded">Thermal</span>
+                </div>
+                <p className="text-[11px] text-slate-300 font-mono mt-0.5 truncate">
+                  {printingStatus.invoiceNumber} • {currencySymbol}{printingStatus.total.toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span>Tax ({taxName} {vatPercentage}%):</span>
-              <span>{currencySymbol}{lastInvoice.tax.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-xs pt-1 border-t border-dotted border-black">
-              <span>GRAND TOTAL:</span>
-              <span>{currencySymbol}{lastInvoice.total.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div className="text-center space-y-1 mt-6 border-t pt-4">
-            <p className="text-[9px] font-bold whitespace-pre-wrap">{receiptFooter || `Thank you for choosing ${businessName || "us"}!`}</p>
             <button
-              onClick={() => setLastInvoice(null)}
-              className="no-print border border-black px-3 py-1 rounded text-[10px] mt-4 hover:bg-gray-100"
+              onClick={() => setPrintingStatus((prev) => (prev ? { ...prev, active: false } : null))}
+              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
             >
-              Done printing
+              <X className="h-4 w-4" />
             </button>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400 truncate max-w-[170px]">
+              Customer: <strong className="text-white">{printingStatus.customerName}</strong>
+            </span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => handlePrintReceipt()}
+                className="px-2.5 py-1 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+              >
+                Reprint
+              </button>
+              <button
+                onClick={() => setPrintingStatus(null)}
+                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
