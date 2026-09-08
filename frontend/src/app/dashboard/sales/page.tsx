@@ -92,6 +92,7 @@ export default function SalesPage() {
 
       const receiptData: ReceiptData = {
         invoiceNumber: sale.invoiceNumber,
+        isReprint: true,
         createdAt: sale.createdAt,
         cashierName: sale.user.name,
         customerName: sale.customer?.name,

@@ -16,6 +16,7 @@ export interface ReceiptItem {
 
 export interface ReceiptData {
   invoiceNumber: string;
+  isReprint?: boolean;
   createdAt?: string | Date;
   cashierName?: string;
   customerName?: string;
@@ -111,42 +112,6 @@ export function generateThermalReceiptHtml(
   const upiId = settings.paymentUpiId || "dbg@upi";
   const accountName = settings.paymentAccountName || settings.businessName || "Store Merchant";
   const showQr = settings.showQrCode !== false;
-  const showTaxBreakup = settings.showTaxBreakup !== false;
-
-  // Build GST / Tax Breakup rows
-  let breakupHtml = "";
-  if (showTaxBreakup && tax > 0) {
-    if (data.taxBreakup && data.taxBreakup.length > 0) {
-      breakupHtml = data.taxBreakup
-        .map(
-          (b) => `
-          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-            <span>CGST ${(b.rate / 2).toFixed(1)}% (${b.rate}% slab)</span>
-            <span>${((b.cgst ?? b.amount / 2)).toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-            <span>SGST ${(b.rate / 2).toFixed(1)}% (${b.rate}% slab)</span>
-            <span>${((b.sgst ?? b.amount / 2)).toFixed(2)}</span>
-          </div>
-        `
-        )
-        .join("");
-    } else {
-      // Default half/half CGST & SGST or single VAT line
-      const cgst = (tax / 2).toFixed(2);
-      const sgst = (tax / 2).toFixed(2);
-      breakupHtml = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-          <span>CGST (Tax Share)</span>
-          <span>${cgst}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-          <span>SGST (Tax Share)</span>
-          <span>${sgst}</span>
-        </div>
-      `;
-    }
-  }
 
   // Build Item rows
   const itemsHtml = data.items
@@ -202,6 +167,26 @@ export function generateThermalReceiptHtml(
       background: #ffffff;
       -webkit-font-smoothing: antialiased;
     ">
+      <!-- COPY OF ORIGINAL Banner (Rendered when printing bill again) -->
+      ${
+        data.isReprint
+          ? `
+        <div style="
+          text-align: center;
+          font-weight: 900;
+          font-size: 1.15em;
+          letter-spacing: 1.5px;
+          border-top: 1.5px dashed #000000;
+          border-bottom: 1.5px dashed #000000;
+          padding: 4px 0;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+        ">
+          *** COPY OF ORIGINAL ***
+        </div>
+        `
+          : ""
+      }
       ${logoHtml}
 
       <!-- Header Title & Store Details -->
@@ -279,28 +264,6 @@ export function generateThermalReceiptHtml(
           <span>${taxableValue.toFixed(2)}</span>
         </div>
       </div>
-
-      <!-- GST / Tax Breakup Box (Shaded light gray box matching reference) -->
-      ${
-        breakupHtml
-          ? `
-        <div style="
-          background-color: #f4f4f5;
-          border: 1px solid #e4e4e7;
-          border-radius: 4px;
-          padding: 5px 6px;
-          margin: 6px 0;
-          font-size: 0.88em;
-          line-height: 1.35;
-        ">
-          <div style="font-weight: bold; margin-bottom: 3px; font-size: 0.95em;">
-            ${settings.taxName || "GST"} Breakup
-          </div>
-          ${breakupHtml}
-        </div>
-        `
-          : ""
-      }
 
       <!-- Grand Total & Round Off -->
       <div style="font-size: 0.95em; line-height: 1.4; margin-top: 4px;">

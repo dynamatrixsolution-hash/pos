@@ -196,6 +196,18 @@ export default function POSPage() {
   } | null>(null);
 
   const [lastInvoice, setLastInvoice] = React.useState<any | null>(null);
+  const [availableBranches, setAvailableBranches] = React.useState<any[]>([]);
+
+  // Fetch branches as fallback context if user has no assigned branchId
+  React.useEffect(() => {
+    fetch("/api/v1/branches")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAvailableBranches(data);
+        else if (data && Array.isArray(data.branches)) setAvailableBranches(data.branches);
+      })
+      .catch((err) => console.error("Could not fetch branches in POS:", err));
+  }, []);
 
   const [posScannerOpen, setPosScannerOpen] = React.useState(false);
   const [scanToast, setScanToast] = React.useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -391,7 +403,7 @@ export default function POSPage() {
 
   // Dedicated Thermal Receipt Print Handler
   const handlePrintReceipt = React.useCallback(
-    (invoice?: any) => {
+    (invoice?: any, isReprint = false) => {
       const target = invoice || lastInvoice;
 
       if (activePlan.toUpperCase() === "STARTER") {
@@ -433,6 +445,7 @@ export default function POSPage() {
 
       const receiptData: ReceiptData = {
         invoiceNumber: target?.invoiceNumber || currentOrder.invoiceNumber || "POS-INV",
+        isReprint,
         createdAt: target?.createdAt || new Date(),
         cashierName: target?.cashierName || session?.user?.name || "Cashier",
         customerName: target?.customerName || (target ? undefined : activeCust?.name),
@@ -444,11 +457,6 @@ export default function POSPage() {
         discount: target?.overallDiscount ?? rawOverallDiscount,
         taxableValue: target?.taxableAmount ?? (target?.subtotal ? target.subtotal - (target.overallDiscount || 0) : Math.max(0, subtotal - rawOverallDiscount)),
         tax: target?.tax ?? tax,
-        taxBreakup: enableVat && tax > 0
-          ? [
-              { label: `${taxName} 50%`, rate: vatPercentage, cgst: cgst, sgst: sgst, amount: tax }
-            ]
-          : undefined,
         total: target?.total ?? total,
         paidAmount: target?.paidAmount,
         roundOff: target?.roundOff ?? roundOff,
@@ -769,9 +777,9 @@ export default function POSPage() {
         if (activePlan.toUpperCase() === "STARTER") {
           showAlert("Printing Restricted", "Receipt printing is not available on the Starter plan. Please upgrade your subscription to enable this feature.", "error");
         } else if (lastInvoice) {
-          handlePrintReceipt(lastInvoice);
+          handlePrintReceipt(lastInvoice, true);
         } else if (currentOrder.cart.length > 0) {
-          handlePrintReceipt();
+          handlePrintReceipt(undefined, false);
         }
       } else if (e.key === "F8") {
         e.preventDefault();
@@ -1030,10 +1038,7 @@ export default function POSPage() {
   };
 
   const handleCheckoutSubmit = async () => {
-    if (!branchId) {
-      setSubmitError("No branch context available.");
-      return;
-    }
+    const effectiveBranchId = branchId || (session?.user as any)?.branchId || availableBranches[0]?.id;
 
     if (
       (splitType === "METHOD" || splitType === "PERSONS") &&
@@ -1050,7 +1055,7 @@ export default function POSPage() {
       (splitType === "METHOD" && currentOrder.splitPayments.credit > 0);
 
     if (isPayingCredit) {
-      if (!currentOrder.selectedCustomerId) {
+      if (!currentOrder.selectedCustomerId || currentOrder.selectedCustomerId === "WALK_IN" || currentOrder.selectedCustomerId === "walk_in") {
         setSubmitError("A registered customer must be selected to complete a credit transaction.");
         return;
       }
@@ -1115,22 +1120,29 @@ export default function POSPage() {
       paymentStatus = paidAmtPayload >= grandTotal ? "PAID" : "PARTIAL";
     }
 
+    const sanitizedCustomerId =
+      currentOrder.selectedCustomerId &&
+      currentOrder.selectedCustomerId !== "WALK_IN" &&
+      currentOrder.selectedCustomerId !== "walk_in"
+        ? currentOrder.selectedCustomerId
+        : null;
+
     const payload = {
-      customerId: currentOrder.selectedCustomerId || null,
-      branchId,
+      customerId: sanitizedCustomerId,
+      branchId: effectiveBranchId || undefined,
       items: currentOrder.cart.map((i) => ({
         productId: i.id,
-        batchNumber: i.batchNumber,
-        quantity: i.quantity,
-        price: i.price - i.discount,
-        discount: i.discount,
-        tax: i.tax,
+        batchNumber: i.batchNumber || null,
+        quantity: Math.max(1, Number(i.quantity) || 1),
+        price: Math.max(0, Number(i.price) || 0),
+        discount: Math.max(0, Number(i.discount) || 0),
+        tax: Math.max(0, Number(i.tax) || 0),
       })),
-      subtotal,
-      discount: rawOverallDiscount + discountSales + couponDiscount,
-      tax,
-      total: grandTotal,
-      paidAmount: paidAmtPayload,
+      subtotal: Math.max(0, Number(subtotal) || 0),
+      discount: Math.max(0, Number(rawOverallDiscount || 0) + Number(discountSales || 0) + Number(couponDiscount || 0)),
+      tax: Math.max(0, Number(tax) || 0),
+      total: Math.max(0, Number(grandTotal) || 0),
+      paidAmount: Math.max(0, Number(paidAmtPayload) || 0),
       paymentMethod:
         splitType === "METHOD"
           ? "CASH"
@@ -1141,7 +1153,7 @@ export default function POSPage() {
           : (singlePaymentMethod as any),
       paymentStatus: paymentStatus as any,
       status: "COMPLETED",
-      notes: currentOrder.invoiceNotes,
+      notes: currentOrder.invoiceNotes || "",
       splitPayments: splitPaymentsList.length > 0 ? splitPaymentsList : undefined,
     };
 
@@ -1154,7 +1166,10 @@ export default function POSPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setSubmitError(data.error || "POS transaction failed.");
+        console.error("Sale POST failed:", data);
+        const detailedError = data.error || (data.details ? JSON.stringify(data.details) : "POS transaction failed.");
+        setSubmitError(detailedError);
+        showAlert("Transaction Failed", detailedError, "error");
         return;
       }
 
@@ -1472,6 +1487,22 @@ export default function POSPage() {
               <div className="h-11 px-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 flex items-center text-xs font-extrabold text-slate-700 dark:text-slate-250 shadow-xs uppercase tracking-wider select-none">
                 {businessName || "POS Billing"}
               </div>
+
+              {/* Print Bill Again button (renders with Copy of Original header) */}
+              {lastInvoice && (
+                <button
+                  type="button"
+                  onClick={() => handlePrintReceipt(lastInvoice, true)}
+                  className="h-11 px-3.5 border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 rounded-xl flex items-center gap-1.5 text-xs font-black shadow-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-all active:scale-95"
+                  title="Print Last Bill Again (Copy of Original)"
+                >
+                  <Printer className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="hidden sm:inline">Print Bill Again</span>
+                  <span className="text-[9px] bg-amber-200 dark:bg-amber-800/80 px-1 py-0.5 rounded font-bold uppercase tracking-wider text-amber-900 dark:text-amber-100">
+                    Copy
+                  </span>
+                </button>
+              )}
 
               {/* Header navbar toggle button */}
               <button
@@ -2636,10 +2667,12 @@ export default function POSPage() {
             </span>
             <div className="flex gap-1.5">
               <button
-                onClick={() => handlePrintReceipt()}
-                className="px-2.5 py-1 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                onClick={() => handlePrintReceipt(lastInvoice, true)}
+                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                title="Print Bill Again (Copy of Original)"
               >
-                Reprint
+                <Printer className="h-3 w-3" />
+                Print Bill Again (Copy)
               </button>
               <button
                 onClick={() => setPrintingStatus(null)}

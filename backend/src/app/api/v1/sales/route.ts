@@ -4,30 +4,45 @@ import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/a
 import { z } from "zod";
 import { CbmsService } from "@/lib/cbms-service";
 
+const normalizePaymentMethod = (val: any) => {
+  if (!val) return "CASH";
+  const str = String(val).toUpperCase().replace(/\s+/g, "_").replace(/-/g, "_");
+  if (str === "FONEPAY") return "FONE_PAY";
+  if (str === "NEPALPAY") return "NEPAL_PAY";
+  const validMethods = ["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"];
+  return validMethods.includes(str) ? str : "CASH";
+};
+
 const saleItemSchema = z.object({
-  productId: z.string().uuid(),
+  productId: z.string().min(1, "Product ID is required"),
   batchNumber: z.string().optional().nullable(),
-  quantity: z.number().positive(),
-  price: z.number().nonnegative(),
-  discount: z.number().nonnegative().default(0),
-  tax: z.number().nonnegative().default(0),
+  quantity: z.preprocess((v) => Math.max(0.001, Number(v) || 1), z.number().positive()),
+  price: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
+  discount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
+  tax: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
 });
 
 const splitPaymentSchema = z.object({
-  method: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]),
-  amount: z.number().positive(),
+  method: z.preprocess(normalizePaymentMethod, z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"])),
+  amount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().positive()),
 });
 
 const saleCreateSchema = z.object({
-  customerId: z.string().uuid().optional().nullable(),
-  branchId: z.string().uuid(),
+  customerId: z.preprocess((val) => {
+    if (!val || val === "" || val === "WALK_IN" || val === "walk_in" || val === "null" || val === "undefined") return null;
+    return val;
+  }, z.string().nullable().optional()),
+  branchId: z.preprocess((val) => {
+    if (!val || val === "" || val === "null" || val === "undefined") return undefined;
+    return val;
+  }, z.string().optional().nullable()),
   items: z.array(saleItemSchema).min(1, "At least one item is required in the checkout cart"),
-  subtotal: z.number().nonnegative(),
-  discount: z.number().nonnegative().default(0), // overall invoice discount
-  tax: z.number().nonnegative().default(0), // overall invoice tax
-  total: z.number().nonnegative(),
-  paidAmount: z.number().nonnegative().default(0),
-  paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
+  subtotal: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
+  discount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
+  tax: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
+  total: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
+  paidAmount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
+  paymentMethod: z.preprocess(normalizePaymentMethod, z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"])).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   status: z.enum(["COMPLETED", "DRAFT", "ON_HOLD"]).default("COMPLETED"),
   notes: z.string().optional().nullable(),
@@ -115,23 +130,55 @@ export async function POST(request: Request) {
     const result = saleCreateSchema.safeParse(body);
 
     if (!result.success) {
+      console.error("Sale validation error details:", JSON.stringify(result.error.format()));
+      const errorMsg = "Validation failed: " + result.error.issues.map((e: any) => `${e.path.join(".")}: ${e.message}`).join("; ");
       return NextResponse.json(
-        { error: "Validation failed", details: result.error.format() },
+        { error: errorMsg, details: result.error.format() },
         { status: 400 }
       );
     }
 
     const payload = result.data;
 
+    // Resolve active branch context safely
+    let effectiveBranchId = payload.branchId || context.branchId;
+    if (!effectiveBranchId) {
+      let defaultBranch = await db.branch.findFirst({
+        where: { businessId: context.businessId, deletedAt: null },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!defaultBranch) {
+        defaultBranch = await db.branch.create({
+          data: {
+            businessId: context.businessId,
+            name: "Main Branch",
+            address: "Head Office",
+            isMain: true,
+          },
+        });
+      }
+      effectiveBranchId = defaultBranch.id;
+    }
+
+    // Resolve customer safely
+    let resolvedCustomerId: string | null = null;
+    if (payload.customerId) {
+      const cust = await db.customer.findFirst({
+        where: { id: payload.customerId, businessId: context.businessId, deletedAt: null },
+      });
+      resolvedCustomerId = cust ? cust.id : null;
+    }
+
     const hasCreditPayment = payload.paymentMethod === "CREDIT" || 
       (payload.splitPayments && payload.splitPayments.some(sp => sp.method === "CREDIT"));
 
-    if (hasCreditPayment && !payload.customerId) {
+    if (hasCreditPayment && !resolvedCustomerId) {
       return NextResponse.json(
         { error: "A registered customer must be selected to complete a credit transaction." },
         { status: 400 }
       );
     }
+
     // Check monthly transaction limit
     const limits = await getBusinessLimits(context.businessId);
     if (limits) {
@@ -167,12 +214,32 @@ export async function POST(request: Request) {
       const settings = (business?.settings as any) || {};
       const salesPrefix = settings.salesPrefix || settings.invoicePrefix || "INV";
 
-      // 2. Fetch Active Fiscal Year
-      const activeFiscalYear = await tx.fiscalYear.findFirst({
+      // 2. Fetch Active Fiscal Year with automatic fallback/seeding
+      let activeFiscalYear = await tx.fiscalYear.findFirst({
         where: { businessId: context.businessId, isActive: true },
       });
       if (!activeFiscalYear) {
-        throw new Error("IRD Compliance: No active fiscal year configured. Please configure a fiscal year in settings first.");
+        activeFiscalYear = await tx.fiscalYear.findFirst({
+          where: { businessId: context.businessId },
+          orderBy: { createdAt: "desc" },
+        });
+        if (activeFiscalYear) {
+          await tx.fiscalYear.update({
+            where: { id: activeFiscalYear.id },
+            data: { isActive: true },
+          });
+        } else {
+          const currentYear = new Date().getFullYear();
+          activeFiscalYear = await tx.fiscalYear.create({
+            data: {
+              businessId: context.businessId,
+              name: `${currentYear}/${(currentYear + 1).toString().slice(-2)}`,
+              startDate: new Date(currentYear, 0, 1),
+              endDate: new Date(currentYear, 11, 31, 23, 59, 59),
+              isActive: true,
+            },
+          });
+        }
       }
 
       // 3. Concurrency-Safe Sequential Invoice Numbering
@@ -182,7 +249,7 @@ export async function POST(request: Request) {
           where: {
             businessId_branchId_fiscalYearId: {
               businessId: context.businessId,
-              branchId: payload.branchId,
+              branchId: effectiveBranchId,
               fiscalYearId: activeFiscalYear.id,
             },
           },
@@ -193,14 +260,14 @@ export async function POST(request: Request) {
           where: {
             businessId_branchId_fiscalYearId: {
               businessId: context.businessId,
-              branchId: payload.branchId,
+              branchId: effectiveBranchId,
               fiscalYearId: activeFiscalYear.id,
             },
           },
           update: { nextValue: { increment: 1 } },
           create: {
             businessId: context.businessId,
-            branchId: payload.branchId,
+            branchId: effectiveBranchId,
             fiscalYearId: activeFiscalYear.id,
             nextValue: 2,
           },
@@ -229,7 +296,7 @@ export async function POST(request: Request) {
           throw new Error(`Product not found: ${item.productId}`);
         }
 
-        const customer = payload.customerId ? await tx.customer.findFirst({ where: { id: payload.customerId } }) : null;
+        const customer = resolvedCustomerId ? await tx.customer.findFirst({ where: { id: resolvedCustomerId } }) : null;
         const isWholesale = customer?.customerType === "WHOLESALE";
         const basePrice = isWholesale ? product.wholesalePrice : product.sellingPrice;
 
@@ -245,13 +312,24 @@ export async function POST(request: Request) {
           taxableAmountSum += lineSubtotalAfterDiscount;
         }
 
-        // Deduct Branch-wise Stock levels
-        const stock = await tx.productStock.findUnique({
-          where: { productId_branchId: { productId: item.productId, branchId: payload.branchId } },
+        // Deduct Branch-wise Stock levels with auto-initialization fallback
+        let stock = await tx.productStock.findUnique({
+          where: { productId_branchId: { productId: item.productId, branchId: effectiveBranchId } },
         });
 
-        if (!stock || stock.quantity < item.quantity) {
-          throw new Error(`Insufficient stock for product "${product.name}". Available: ${stock?.quantity || 0}, Requested: ${item.quantity}`);
+        if (!stock) {
+          stock = await tx.productStock.create({
+            data: {
+              productId: item.productId,
+              branchId: effectiveBranchId,
+              quantity: 0,
+            },
+          });
+        }
+
+        const allowNegativeStock = settings.allowNegativeStock !== false && settings.preventNegativeStock !== true;
+        if (!allowNegativeStock && stock.quantity < item.quantity) {
+          throw new Error(`Insufficient stock for product "${product.name}". Available: ${stock.quantity}, Requested: ${item.quantity}`);
         }
 
         const newStockQty = stock.quantity - item.quantity;
@@ -274,7 +352,7 @@ export async function POST(request: Request) {
           const batch = await tx.batch.findFirst({
             where: {
               productId: item.productId,
-              branchId: payload.branchId,
+              branchId: effectiveBranchId,
               batchNumber: item.batchNumber,
               deletedAt: null,
             },
@@ -317,8 +395,8 @@ export async function POST(request: Request) {
       const sale = await tx.sale.create({
         data: {
           businessId: context.businessId,
-          branchId: payload.branchId,
-          customerId: payload.customerId,
+          branchId: effectiveBranchId,
+          customerId: resolvedCustomerId,
           userId: context.userId,
           invoiceNumber,
           status: payload.status,
@@ -343,38 +421,38 @@ export async function POST(request: Request) {
       });
 
       // 6. Create Ledger and Balance entries for Customers if transaction is credit
-      if (payload.customerId) {
+      if (resolvedCustomerId) {
         const customer = await tx.customer.findFirst({
-          where: { id: payload.customerId, businessId: context.businessId },
+          where: { id: resolvedCustomerId, businessId: context.businessId },
         });
 
-        if (!customer) throw new Error("Customer not found");
+        if (customer) {
+          const unpaidAmt = finalTotal - payload.paidAmount;
 
-        const unpaidAmt = finalTotal - payload.paidAmount;
+          if (unpaidAmt > 0) {
+            if (customer.balance + unpaidAmt > customer.creditLimit) {
+              throw new Error(`Transaction violates customer credit limit. Limit: Rs. ${customer.creditLimit}, Current balance: Rs. ${customer.balance}, Added charge: Rs. ${unpaidAmt}`);
+            }
 
-        if (unpaidAmt > 0) {
-          if (customer.balance + unpaidAmt > customer.creditLimit) {
-            throw new Error(`Transaction violates customer credit limit. Limit: $${customer.creditLimit}, Current balance: $${customer.balance}, Added charge: $${unpaidAmt}`);
+            const newCustomerBalance = customer.balance + unpaidAmt;
+
+            await tx.customer.update({
+              where: { id: customer.id },
+              data: { balance: newCustomerBalance },
+            });
+
+            await tx.customerLedger.create({
+              data: {
+                customerId: customer.id,
+                type: "SALE",
+                reference: invoiceNumber,
+                debit: unpaidAmt,
+                credit: 0.0,
+                balance: newCustomerBalance,
+                description: `Sales billing invoice credit charge. Status: ${payload.paymentStatus}`,
+              },
+            });
           }
-
-          const newCustomerBalance = customer.balance + unpaidAmt;
-
-          await tx.customer.update({
-            where: { id: customer.id },
-            data: { balance: newCustomerBalance },
-          });
-
-          await tx.customerLedger.create({
-            data: {
-              customerId: customer.id,
-              type: "SALE",
-              reference: invoiceNumber,
-              debit: unpaidAmt,
-              credit: 0.0,
-              balance: newCustomerBalance,
-              description: `Sales billing invoice credit charge. Status: ${payload.paymentStatus}`,
-            },
-          });
         }
       }
 
@@ -411,8 +489,8 @@ export async function POST(request: Request) {
           businessId: context.businessId,
           userId: context.userId,
           role: context.role,
-          branchId: payload.branchId,
-          warehouseId: payload.branchId,
+          branchId: effectiveBranchId,
+          warehouseId: effectiveBranchId,
           action: "CREATE",
           module: "SALE",
           details: `Created invoice ${invoiceNumber}. Total: Rs. ${finalTotal.toFixed(2)}, Paid: Rs. ${payload.paidAmount.toFixed(2)}`,
@@ -428,8 +506,8 @@ export async function POST(request: Request) {
             businessId: context.businessId,
             userId: context.userId,
             role: context.role,
-            branchId: payload.branchId,
-            warehouseId: payload.branchId,
+            branchId: effectiveBranchId,
+            warehouseId: effectiveBranchId,
             action: "TAXATION",
             module: "SALE",
             details: `Nepal Compliance - VAT Invoice recorded: Invoice ${invoiceNumber}. Subtotal: Rs. ${calculatedSubtotal.toFixed(2)}, Discount: Rs. ${(lineDiscountsSum + payload.discount).toFixed(2)}, Taxable Value: Rs. ${finalTaxableAmount.toFixed(2)}, VAT (13%): Rs. ${finalVatAmount.toFixed(2)}, Total: Rs. ${finalTotal.toFixed(2)}`,
