@@ -1,3 +1,5 @@
+import { CommerceError, money, reconcilePayment, requireStaff } from "@/lib/commerce-policy";
+import { commerceTransaction, resolveBranch, checkBranch } from "@/lib/commerce-transaction";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
@@ -10,13 +12,13 @@ const normalizePaymentMethod = (val: any) => {
   if (str === "FONEPAY") return "FONE_PAY";
   if (str === "NEPALPAY") return "NEPAL_PAY";
   const validMethods = ["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"];
-  return validMethods.includes(str) ? str : "CASH";
+  return validMethods.includes(str) ? str : "INVALID";
 };
 
 const saleItemSchema = z.object({
   productId: z.string().min(1, "Product ID is required"),
   batchNumber: z.string().optional().nullable(),
-  quantity: z.preprocess((v) => Math.max(0.001, Number(v) || 1), z.number().positive()),
+  quantity: z.coerce.number().positive(),
   price: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
   discount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
   tax: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
@@ -41,12 +43,14 @@ const saleCreateSchema = z.object({
   discount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
   tax: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
   total: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
-  paidAmount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
+  paidAmount: z.coerce.number().nonnegative().default(0),
   paymentMethod: z.preprocess(normalizePaymentMethod, z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"])).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   status: z.enum(["COMPLETED", "DRAFT", "ON_HOLD"]).default("COMPLETED"),
   notes: z.string().optional().nullable(),
   splitPayments: z.array(splitPaymentSchema).optional(),
+  paymentSource: z.literal("STAFF_RECORDED").optional(),
+  paymentReference: z.string().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -55,7 +59,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const customerId = searchParams.get("customerId");
-  const branchId = searchParams.get("branchId") || context.branchId;
+  let branchId = searchParams.get("branchId") || context.branchId;
   const status = searchParams.get("status");
   const paymentStatus = searchParams.get("paymentStatus");
   const page = parseInt(searchParams.get("page") || "1", 10);
@@ -63,6 +67,7 @@ export async function GET(request: Request) {
   const skip = (page - 1) * limit;
 
   try {
+    branchId = await checkBranch(context, branchId);
     const where: any = {
       businessId: context.businessId,
       deletedAt: null,
@@ -112,7 +117,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET sales error:", error);
-    return NextResponse.json({ error: "Failed to fetch sales" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof CommerceError ? error.message : "Failed to fetch sales" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -140,25 +145,9 @@ export async function POST(request: Request) {
 
     const payload = result.data;
 
-    // Resolve active branch context safely
-    let effectiveBranchId = payload.branchId || context.branchId;
-    if (!effectiveBranchId) {
-      let defaultBranch = await db.branch.findFirst({
-        where: { businessId: context.businessId, deletedAt: null },
-        orderBy: { createdAt: "asc" },
-      });
-      if (!defaultBranch) {
-        defaultBranch = await db.branch.create({
-          data: {
-            businessId: context.businessId,
-            name: "Main Branch",
-            address: "Head Office",
-            isMain: true,
-          },
-        });
-      }
-      effectiveBranchId = defaultBranch.id;
-    }
+    requireStaff(context);
+    if (payload.status !== "COMPLETED") throw new CommerceError("Drafts and holds must remain local until finalized");
+    const effectiveBranchId = await checkBranch(context, payload.branchId);
 
     // Resolve customer safely
     let resolvedCustomerId: string | null = null;
@@ -166,7 +155,8 @@ export async function POST(request: Request) {
       const cust = await db.customer.findFirst({
         where: { id: payload.customerId, businessId: context.businessId, deletedAt: null },
       });
-      resolvedCustomerId = cust ? cust.id : null;
+      if (!cust || (cust.branchId && cust.branchId !== effectiveBranchId)) throw new CommerceError("Customer access denied", 403);
+      resolvedCustomerId = cust.id;
     }
 
     const hasCreditPayment = payload.paymentMethod === "CREDIT" || 
@@ -179,6 +169,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Execute the complete sale pipeline in a single database transaction
+    const saleResult = await commerceTransaction(request, context, "CHECKOUT", body, async (tx) => {
+      await resolveBranch(tx, context, effectiveBranchId);
     // Check monthly transaction limit
     const limits = await getBusinessLimits(context.businessId);
     if (limits) {
@@ -186,7 +179,7 @@ export async function POST(request: Request) {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       
-      const monthlySalesCount = await db.sale.count({
+      const monthlySalesCount = await tx.sale.count({
         where: {
           businessId: context.businessId,
           createdAt: {
@@ -197,15 +190,11 @@ export async function POST(request: Request) {
       });
 
       if (monthlySalesCount >= limits.transactions) {
-        return NextResponse.json(
-          { error: `Monthly transaction limit reached. Your subscription allows a maximum of ${limits.transactions} transactions per month. Please upgrade your plan.` },
-          { status: 400 }
-        );
+        throw new CommerceError(`Monthly transaction limit reached. Your subscription allows a maximum of ${limits.transactions} transactions per month. Please upgrade your plan.`);
       }
     }
 
-    // Execute the complete sale pipeline in a single database transaction
-    const saleResult = await db.$transaction(async (tx) => {
+
       // 1. Fetch Business Settings to retrieve custom prefix
       const business = await tx.business.findUnique({
         where: { id: context.businessId },
@@ -243,39 +232,14 @@ export async function POST(request: Request) {
       }
 
       // 3. Concurrency-Safe Sequential Invoice Numbering
-      let sequenceRecord;
-      try {
-        sequenceRecord = await tx.fiscalYearInvoiceSequence.update({
-          where: {
-            businessId_branchId_fiscalYearId: {
-              businessId: context.businessId,
-              branchId: effectiveBranchId,
-              fiscalYearId: activeFiscalYear.id,
-            },
-          },
-          data: { nextValue: { increment: 1 } },
-        });
-      } catch (e) {
-        sequenceRecord = await tx.fiscalYearInvoiceSequence.upsert({
-          where: {
-            businessId_branchId_fiscalYearId: {
-              businessId: context.businessId,
-              branchId: effectiveBranchId,
-              fiscalYearId: activeFiscalYear.id,
-            },
-          },
-          update: { nextValue: { increment: 1 } },
-          create: {
-            businessId: context.businessId,
-            branchId: effectiveBranchId,
-            fiscalYearId: activeFiscalYear.id,
-            nextValue: 2,
-          },
-        });
-      }
+      const sequenceRecord = await tx.fiscalYearInvoiceSequence.upsert({
+        where: { businessId_branchId_fiscalYearId: { businessId: context.businessId, branchId: effectiveBranchId, fiscalYearId: activeFiscalYear.id } },
+        update: { nextValue: { increment: 1 } },
+        create: { businessId: context.businessId, branchId: effectiveBranchId, fiscalYearId: activeFiscalYear.id, nextValue: 2 },
+      });
       const sequenceValue = sequenceRecord.nextValue - 1;
       const cleanFyName = activeFiscalYear.name.replace("/", "");
-      const invoiceNumber = `${salesPrefix}-${cleanFyName}-${String(sequenceValue).padStart(6, "0")}`;
+      const invoiceNumber = `${salesPrefix}-${context.businessId}-${effectiveBranchId}-${cleanFyName}-${String(sequenceValue).padStart(6, "0")}`;
 
       // 4. Server-Side Calculations and Stock Deductions
       let calculatedSubtotal = 0;
@@ -285,7 +249,7 @@ export async function POST(request: Request) {
       const lowStockAlerts = [];
 
       const enableVat = settings.enableVat !== false;
-      const defaultVatRate = settings.vatPercentage || 13.0;
+      const defaultVatRate = settings.vatPercentage ?? 13.0;
 
       for (const item of payload.items) {
         const product = await tx.product.findFirst({
@@ -303,6 +267,7 @@ export async function POST(request: Request) {
         const itemQty = item.quantity;
         const itemPrice = basePrice;
         const itemLineDiscount = (item.discount || 0) * itemQty;
+        if (item.discount > itemPrice) throw new CommerceError("Line discount exceeds price");
 
         calculatedSubtotal += itemPrice * itemQty;
         lineDiscountsSum += itemLineDiscount;
@@ -335,7 +300,7 @@ export async function POST(request: Request) {
         const newStockQty = stock.quantity - item.quantity;
         await tx.productStock.update({
           where: { id: stock.id },
-          data: { quantity: newStockQty },
+          data: { quantity: { decrement: item.quantity } },
         });
 
         if (newStockQty <= product.alertQuantity) {
@@ -364,7 +329,7 @@ export async function POST(request: Request) {
 
           await tx.batch.update({
             where: { id: batch.id },
-            data: { quantity: batch.quantity - item.quantity },
+            data: { quantity: { decrement: item.quantity } },
           });
         }
 
@@ -380,9 +345,10 @@ export async function POST(request: Request) {
         });
       }
 
+      if (payload.discount > calculatedSubtotal - lineDiscountsSum) throw new CommerceError("Discount exceeds subtotal");
       const finalTaxableAmount = Math.max(0, taxableAmountSum - payload.discount);
-      const finalVatAmount = enableVat ? finalTaxableAmount * (defaultVatRate / 100) : 0;
-      const finalTotal = (calculatedSubtotal - (lineDiscountsSum + payload.discount)) + finalVatAmount;
+      const finalVatAmount = money(enableVat ? finalTaxableAmount * (defaultVatRate / 100) : 0);
+      const finalTotal = money((calculatedSubtotal - (lineDiscountsSum + payload.discount)) + finalVatAmount);
 
       // 10% VAT Refund for electronic payment modes
       let vatRefundAmount = 0;
@@ -390,6 +356,9 @@ export async function POST(request: Request) {
       if (isElectronicPayment && finalVatAmount > 0) {
         vatRefundAmount = finalVatAmount * 0.10;
       }
+
+      const settlement = reconcilePayment(payload, finalTotal, context);
+      if (settlement.paidAmount < finalTotal && !resolvedCustomerId) throw new CommerceError("Unpaid balance requires a registered customer");
 
       // 5. Create Sale record
       const sale = await tx.sale.create({
@@ -404,8 +373,8 @@ export async function POST(request: Request) {
           discount: lineDiscountsSum + payload.discount,
           tax: finalVatAmount,
           total: finalTotal,
-          paidAmount: payload.paidAmount,
-          paymentStatus: payload.paymentStatus,
+          paidAmount: settlement.paidAmount,
+          paymentStatus: settlement.paymentStatus,
           notes: payload.notes,
           fiscalYearId: activeFiscalYear.id,
           vatRefundAmount,
@@ -427,7 +396,7 @@ export async function POST(request: Request) {
         });
 
         if (customer) {
-          const unpaidAmt = finalTotal - payload.paidAmount;
+          const unpaidAmt = finalTotal - settlement.paidAmount;
 
           if (unpaidAmt > 0) {
             if (customer.balance + unpaidAmt > customer.creditLimit) {
@@ -449,38 +418,21 @@ export async function POST(request: Request) {
                 debit: unpaidAmt,
                 credit: 0.0,
                 balance: newCustomerBalance,
-                description: `Sales billing invoice credit charge. Status: ${payload.paymentStatus}`,
+                description: `Sales billing invoice credit charge. Status: ${settlement.paymentStatus}`,
               },
             });
           }
         }
       }
 
-      // 7. Create Payment records
-      if (payload.splitPayments && payload.splitPayments.length > 0) {
-        for (const splitPay of payload.splitPayments) {
-          if (splitPay.amount > 0) {
-            await tx.payment.create({
-              data: {
-                businessId: context.businessId,
-                saleId: sale.id,
-                amount: splitPay.amount,
-                method: splitPay.method,
-                reference: `POS Split Pay against ${invoiceNumber}`,
-              },
-            });
-          }
-        }
-      } else if (payload.paidAmount > 0) {
-        await tx.payment.create({
-          data: {
-            businessId: context.businessId,
-            saleId: sale.id,
-            amount: payload.paidAmount,
-            method: payload.paymentMethod,
-            reference: `POS Pay against ${invoiceNumber}`,
-          },
-        });
+      // CREDIT is a receivable, never a collected payment.
+      for (const payment of settlement.payments) {
+        await tx.payment.create({ data: {
+          businessId: context.businessId, branchId: effectiveBranchId, userId: context.userId,
+          customerId: resolvedCustomerId,
+          saleId: sale.id, amount: payment.amount, method: payment.method,
+          source: "STAFF_RECORDED", type: "RECEIVED", reference: payload.paymentReference || null,
+        } });
       }
 
       // 8. Write Audit Logs
@@ -493,7 +445,7 @@ export async function POST(request: Request) {
           warehouseId: effectiveBranchId,
           action: "CREATE",
           module: "SALE",
-          details: `Created invoice ${invoiceNumber}. Total: Rs. ${finalTotal.toFixed(2)}, Paid: Rs. ${payload.paidAmount.toFixed(2)}`,
+          details: `Created invoice ${invoiceNumber}. Total: Rs. ${finalTotal.toFixed(2)}, Paid: Rs. ${settlement.paidAmount.toFixed(2)}`,
           newValue: JSON.parse(JSON.stringify(sale)),
           ipAddress,
           deviceInfo,
@@ -533,10 +485,11 @@ export async function POST(request: Request) {
       }
 
       return sale;
-    }, { maxWait: 10000, timeout: 30000 });
+    });
 
+    // Mock fiscal integration remains disabled outside explicit development opt-in.
     // 10. Fire and forget CBMS submission background job
-    if (saleResult.status === "COMPLETED") {
+    if (process.env.ENABLE_MOCK_CBMS === "true" && saleResult.status === "COMPLETED") {
       CbmsService.submitInvoice(saleResult.id).catch((e) => {
         console.error("Async CBMS submission failed:", e);
       });
@@ -551,6 +504,6 @@ export async function POST(request: Request) {
     } else if (errorMessage.includes("PrismaClient") || errorMessage.includes("invocation")) {
       errorMessage = "Transaction processing error. Please verify order items and try again.";
     }
-    return NextResponse.json({ error: errorMessage }, { status: 400 });
+    return NextResponse.json({ error: errorMessage }, { status: error instanceof CommerceError ? error.status : 400 });
   }
 }

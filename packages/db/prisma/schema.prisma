@@ -458,12 +458,26 @@ model Payment {
   userId        String?   // receivedBy or sentBy
   user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   amount        Float
+  source        String    @default("LEGACY_UNVERIFIED")
   method        String    @default("CASH") // CASH, CARD, QR, BANK_TRANSFER, CREDIT
   reference     String?   // Reference number
   receiptNumber String?   // Receipt or voucher number
   remarks       String?   // Notes/remarks
   type          String    @default("RECEIVED") // RECEIVED or SENT
   createdAt     DateTime  @default(now())
+}
+
+// Responses commit atomically with business effects. Do not purge while clients may retry.
+model RequestResult {
+  id          String   @id @default(uuid())
+  businessId  String
+  operation   String
+  key         String
+  requestHash String
+  response    Json
+  createdAt   DateTime @default(now())
+
+  @@unique([businessId, operation, key])
 }
 
 model SaleReturn {
@@ -634,6 +648,7 @@ model Notification {
 }
 
 model OpeningStock {
+  appliedAt         DateTime?
   id                String    @id @default(uuid())
   businessId        String
   business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)

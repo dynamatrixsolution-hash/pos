@@ -1,3 +1,5 @@
+import { checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -27,6 +29,7 @@ export async function POST(
       return NextResponse.json({ error: "Sale invoice not found" }, { status: 404 });
     }
 
+    await checkBranch(context, sale.branchId);
     const isFirstPrint = !sale.isPrinted;
     const now = new Date();
 
@@ -83,6 +86,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST print error:", error);
-    return NextResponse.json({ error: "Failed to record print action" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to record print action" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

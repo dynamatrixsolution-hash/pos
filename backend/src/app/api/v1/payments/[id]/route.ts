@@ -1,3 +1,5 @@
+import { checkBranch, serializable } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
@@ -17,10 +19,12 @@ export async function GET(
   const { id } = await params;
 
   try {
+    const allowedBranchId = await checkBranch(context, context.branchId);
     const payment = await db.payment.findFirst({
       where: {
         id: id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}),
       },
       include: {
         customer: true,
@@ -35,11 +39,11 @@ export async function GET(
     if (!payment) {
       // Check if it's an Income record
       const inc = await db.income.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
         include: {
           category: true,
           branch: true,
-          user: true,
+          user: { select: { id: true, name: true } },
         }
       });
       if (inc) {
@@ -69,11 +73,11 @@ export async function GET(
 
       // Check if it's an Expense record
       const exp = await db.expense.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
         include: {
           category: true,
           branch: true,
-          user: true,
+          user: { select: { id: true, name: true } },
         }
       });
       if (exp) {
@@ -106,7 +110,7 @@ export async function GET(
 
     return NextResponse.json(payment);
   } catch (error: any) {
-    return NextResponse.json({ error: "Failed to fetch payment details" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch payment details" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -124,6 +128,8 @@ export async function PUT(
   const { id } = await params;
 
   try {
+    const allowedBranchId = await checkBranch(context, context.branchId);
+    requireStaff(context, true);
     const body = await request.json();
     const result = paymentUpdateSchema.safeParse(body);
 
@@ -138,13 +144,14 @@ export async function PUT(
       where: {
         id: id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}),
       },
     });
 
     if (!payment) {
       // Check if it's an Income record
       const inc = await db.income.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
       });
       if (inc) {
         const updatedInc = await db.income.update({
@@ -159,7 +166,7 @@ export async function PUT(
 
       // Check if it's an Expense record
       const exp = await db.expense.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
       });
       if (exp) {
         const updatedExp = await db.expense.update({
@@ -185,7 +192,7 @@ export async function PUT(
 
     return NextResponse.json(updatedPayment);
   } catch (error: any) {
-    return NextResponse.json({ error: "Failed to update payment details" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update payment details" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -208,17 +215,19 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    const allowedBranchId = await checkBranch(context, context.branchId);
     const payment = await db.payment.findFirst({
       where: {
         id: id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}),
       },
     });
 
     if (!payment) {
       // Check if it's an Income record
       const inc = await db.income.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
       });
       if (inc) {
         await db.income.update({
@@ -246,7 +255,7 @@ export async function DELETE(
 
       // Check if it's an Expense record
       const exp = await db.expense.findFirst({
-        where: { id: id, businessId: context.businessId },
+        where: { id: id, businessId: context.businessId, ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: allowedBranchId } : {}) },
       });
       if (exp) {
         await db.expense.update({
@@ -275,7 +284,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    const reversalResult = await db.$transaction(async (tx) => {
+    requireStaff(context, true);
+    if (payment.saleId || payment.purchaseId) throw new CommerceError("Invoice-linked payments require an allocated reversal workflow", 409);
+    const reversalResult = await serializable(async (tx) => {
+      const current = await tx.payment.findFirst({ where: { id: payment.id, businessId: context.businessId } });
+      if (!current) throw new CommerceError("Payment already reversed", 409);
       // 1. If customer payment, reverse customer outstanding balance and append reversal log
       if (payment.type === "RECEIVED" && payment.customerId) {
         const customer = await tx.customer.findFirst({
@@ -357,6 +370,6 @@ export async function DELETE(
     return NextResponse.json(reversalResult);
   } catch (error: any) {
     console.error("DELETE payment error:", error);
-    return NextResponse.json({ error: error.message || "Failed to reverse payment" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to reverse payment" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

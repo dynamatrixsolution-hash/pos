@@ -14,9 +14,18 @@
     "prisma:generate": "npm run generate --workspace=@dynapos/db",
     "prisma:migrate": "npm run migrate --workspace=@dynapos/db",
     "prisma:seed": "npm run seed --workspace=@dynapos/db",
-    "prisma:push": "npx prisma db push --schema packages/db/prisma/schema.prisma"
+    "prisma:push": "npx prisma db push --schema packages/db/prisma/schema.prisma",
+    "test": "vitest run",
+    "test:integration": "node scripts/restro-env.mjs integration",
+    "restro:init": "node scripts/restro-env.mjs init",
+    "restro:db": "node scripts/restro-env.mjs db",
+    "restro:migrate": "node scripts/restro-env.mjs migrate",
+    "restro:dev": "node scripts/restro-env.mjs dev",
+    "typecheck": "tsc -p backend/tsconfig.json --noEmit --incremental false && tsc -p frontend/tsconfig.json --noEmit --incremental false"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
   }
 }

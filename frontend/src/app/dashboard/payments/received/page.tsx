@@ -1,4 +1,5 @@
 "use client";
+import { postCommerce } from "@/lib/idempotent-request";
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
@@ -219,11 +220,7 @@ export default function PaymentReceivedPage() {
         createdAt: addDate ? new Date(addDate).toISOString() : null,
       };
 
-      const res = await fetch("/api/v1/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await postCommerce("/api/v1/payments", payload, `${session?.user?.email}`);
 
       if (!res.ok) {
         const errData = await res.json();

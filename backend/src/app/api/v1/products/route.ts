@@ -1,3 +1,4 @@
+import { serializable, checkBranch } from "@/lib/commerce-transaction";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
     }
 
     const data = result.data;
+    if (context.branchId) await checkBranch(context, context.branchId);
     const { initialStock, manufacturingDate, expiryDate, ...productData } = data;
 
     // Check product limit from subscription settings
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
 
     if (existingProduct) {
       const addedQty = (initialStock !== undefined && initialStock > 0) ? initialStock : 1;
-      const updated = await db.$transaction(async (tx) => {
+      const updated = await serializable(async (tx) => {
         // Update product prices if provided
         const prod = await tx.product.update({
           where: { id: existingProduct.id },
@@ -246,7 +248,7 @@ export async function POST(request: Request) {
     }
 
     // Create new product if it doesn't exist
-    const product = await db.$transaction(async (tx) => {
+    const product = await serializable(async (tx) => {
       const newProduct = await tx.product.create({
         data: {
           ...productData,

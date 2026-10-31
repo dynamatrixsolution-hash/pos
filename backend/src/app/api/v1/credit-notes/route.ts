@@ -1,5 +1,6 @@
+import { resolveBranch, commerceTransaction } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
 
     const { saleId, reason, items } = result.data;
 
-    const creditNoteResult = await db.$transaction(async (tx) => {
+    const creditNoteResult = await commerceTransaction(request, context, "CREDIT_NOTE", body, async (tx) => {
       // 1. Fetch sale
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -50,7 +51,10 @@ export async function POST(request: Request) {
       });
 
       if (!sale) throw new Error("Sale invoice not found");
-      if (sale.businessId !== context.businessId) throw new Error("Unauthorized tenant access");
+      if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
+      await resolveBranch(tx, context, sale.branchId);
+      if (!sale.isActive) throw new CommerceError("Invoice is inactive");
+      if (new Set(items.map(i => i.productId)).size !== items.length) throw new CommerceError("Duplicate return product");
 
       // 2. Generate unique Credit Note Number
       const count = await tx.creditNote.count({
@@ -77,7 +81,8 @@ export async function POST(request: Request) {
         if (!originalItem) {
           throw new Error(`Product ${item.productId} was not part of the original sale.`);
         }
-        if (item.quantity > originalItem.quantity) {
+        const returned = await tx.creditNoteItem.aggregate({ where: { creditNote: { saleId }, productId: item.productId }, _sum: { quantity: true } });
+        if (item.quantity + (returned._sum.quantity || 0) > originalItem.quantity) {
           throw new Error(`Credit quantity exceeds original sold quantity for product ${item.productId}.`);
         }
 
@@ -179,16 +184,16 @@ export async function POST(request: Request) {
       });
 
       return cn;
-    }, { maxWait: 10000, timeout: 30000 });
+    });
 
     // 7. Fire off async CBMS submission
-    CbmsService.submitCreditNote(creditNoteResult.id).catch((e) => {
+    (process.env.ENABLE_MOCK_CBMS === "true" ? CbmsService.submitCreditNote(creditNoteResult.id) : Promise.resolve(false)).catch((e) => {
       console.error("Async Credit Note submit failed:", e);
     });
 
     return NextResponse.json(creditNoteResult, { status: 201 });
   } catch (error: any) {
     console.error("POST credit-note error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to create Credit Note" }, { status: 400 });
+    return NextResponse.json({ error: error.message || "Failed to create Credit Note" }, { status: error instanceof CommerceError ? error.status : 400 });
   }
 }

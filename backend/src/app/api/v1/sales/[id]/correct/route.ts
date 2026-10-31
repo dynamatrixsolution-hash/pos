@@ -1,5 +1,6 @@
+import { resolveBranch, commerceTransaction } from "@/lib/commerce-transaction";
+import { CommerceError, money, reconcilePayment } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
@@ -22,6 +23,8 @@ const correctSchema = z.object({
   paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   notes: z.string().optional().nullable(),
+  paymentSource: z.literal("STAFF_RECORDED").optional(),
+  paymentReference: z.string().optional().nullable(),
 });
 
 export async function POST(
@@ -55,7 +58,7 @@ export async function POST(
     const payload = result.data;
     const originalSaleId = params.id;
 
-    const newSaleResult = await db.$transaction(async (tx) => {
+    const newSaleResult = await commerceTransaction(request, context, "CORRECT_INVOICE", { originalSaleId, ...body }, async (tx) => {
       // 1. Fetch original sale to correct
       const originalSale = await tx.sale.findUnique({
         where: { id: originalSaleId },
@@ -63,9 +66,17 @@ export async function POST(
       });
 
       if (!originalSale) throw new Error("Original invoice not found");
-      if (originalSale.businessId !== context.businessId) throw new Error("Unauthorized tenant access");
+      if (originalSale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
+      await resolveBranch(tx, context, originalSale.branchId);
       if (!originalSale.isActive) throw new Error("Original invoice is not active (cannot correct a cancelled or already corrected invoice)");
 
+      const existingPayments = await tx.payment.count({ where: { saleId: originalSale.id } });
+      const existingCredits = await tx.creditNote.count({ where: { saleId: originalSale.id } });
+      if (existingPayments || existingCredits) throw new CommerceError("Settled/credited invoices require a reconciled correction workflow", 409);
+      if (payload.customerId) {
+        const customer = await tx.customer.findFirst({ where: { id: payload.customerId, businessId: context.businessId, deletedAt: null } });
+        if (!customer || (customer.branchId && customer.branchId !== originalSale.branchId)) throw new CommerceError("Customer access denied", 403);
+      }
       // 2. Adjust Stock back (Revert deductions of the original sale)
       for (const item of originalSale.saleItems) {
         const stock = await tx.productStock.findUnique({
@@ -154,39 +165,14 @@ export async function POST(
       }
 
       // 4. Concurrency-Safe Sequential Invoice Numbering
-      let sequenceRecord;
-      try {
-        sequenceRecord = await tx.fiscalYearInvoiceSequence.update({
-          where: {
-            businessId_branchId_fiscalYearId: {
-              businessId: context.businessId,
-              branchId: originalSale.branchId,
-              fiscalYearId: activeFiscalYear.id,
-            },
-          },
-          data: { nextValue: { increment: 1 } },
-        });
-      } catch (e) {
-        sequenceRecord = await tx.fiscalYearInvoiceSequence.upsert({
-          where: {
-            businessId_branchId_fiscalYearId: {
-              businessId: context.businessId,
-              branchId: originalSale.branchId,
-              fiscalYearId: activeFiscalYear.id,
-            },
-          },
-          update: { nextValue: { increment: 1 } },
-          create: {
-            businessId: context.businessId,
-            branchId: originalSale.branchId,
-            fiscalYearId: activeFiscalYear.id,
-            nextValue: 2,
-          },
-        });
-      }
+      const sequenceRecord = await tx.fiscalYearInvoiceSequence.upsert({
+        where: { businessId_branchId_fiscalYearId: { businessId: context.businessId, branchId: originalSale.branchId, fiscalYearId: activeFiscalYear.id } },
+        update: { nextValue: { increment: 1 } },
+        create: { businessId: context.businessId, branchId: originalSale.branchId, fiscalYearId: activeFiscalYear.id, nextValue: 2 },
+      });
       const sequenceValue = sequenceRecord.nextValue - 1;
       const cleanFyName = activeFiscalYear.name.replace("/", "");
-      const newInvoiceNumber = `${salesPrefix}-${cleanFyName}-${String(sequenceValue).padStart(6, "0")}`;
+      const newInvoiceNumber = `${salesPrefix}-${context.businessId}-${originalSale.branchId}-${cleanFyName}-${String(sequenceValue).padStart(6, "0")}`;
 
       // 5. Server-Side Calculations and Stock Deductions for the new sale
       let calculatedSubtotal = 0;
@@ -196,7 +182,7 @@ export async function POST(
       const lowStockAlerts = [];
 
       const enableVat = settings.enableVat !== false;
-      const defaultVatRate = settings.vatPercentage || 13.0;
+      const defaultVatRate = settings.vatPercentage ?? 13.0;
 
       for (const item of payload.items) {
         const product = await tx.product.findFirst({
@@ -211,6 +197,7 @@ export async function POST(
         const itemQty = item.quantity;
         const itemPrice = basePrice;
         const itemLineDiscount = (item.discount || 0) * itemQty;
+        if (item.discount > itemPrice) throw new CommerceError("Line discount exceeds price");
 
         calculatedSubtotal += itemPrice * itemQty;
         lineDiscountsSum += itemLineDiscount;
@@ -273,9 +260,10 @@ export async function POST(
         });
       }
 
+      if (payload.discount > calculatedSubtotal - lineDiscountsSum) throw new CommerceError("Discount exceeds subtotal");
       const finalTaxableAmount = Math.max(0, taxableAmountSum - payload.discount);
-      const finalVatAmount = enableVat ? finalTaxableAmount * (defaultVatRate / 100) : 0;
-      const finalTotal = (calculatedSubtotal - (lineDiscountsSum + payload.discount)) + finalVatAmount;
+      const finalVatAmount = money(enableVat ? finalTaxableAmount * (defaultVatRate / 100) : 0);
+      const finalTotal = money((calculatedSubtotal - (lineDiscountsSum + payload.discount)) + finalVatAmount);
 
       // 10% VAT Refund for electronic payments
       let vatRefundAmount = 0;
@@ -284,6 +272,8 @@ export async function POST(
         vatRefundAmount = finalVatAmount * 0.10;
       }
 
+      const settlement = reconcilePayment(payload, finalTotal, context);
+      if (settlement.paidAmount < finalTotal && !payload.customerId) throw new CommerceError("Unpaid balance requires a customer");
       // Create new Sale record carrying corrected link reference
       const sale = await tx.sale.create({
         data: {
@@ -297,8 +287,8 @@ export async function POST(
           discount: lineDiscountsSum + payload.discount,
           tax: finalVatAmount,
           total: finalTotal,
-          paidAmount: payload.paidAmount,
-          paymentStatus: payload.paymentStatus,
+          paidAmount: settlement.paidAmount,
+          paymentStatus: settlement.paymentStatus,
           notes: payload.notes || `Corrected invoice referencing #${originalSale.invoiceNumber}`,
           fiscalYearId: activeFiscalYear.id,
           vatRefundAmount,
@@ -321,7 +311,7 @@ export async function POST(
         });
 
         if (customer) {
-          const unpaidAmt = finalTotal - payload.paidAmount;
+          const unpaidAmt = finalTotal - settlement.paidAmount;
 
           if (unpaidAmt > 0) {
             if (customer.balance + unpaidAmt > customer.creditLimit) {
@@ -351,14 +341,15 @@ export async function POST(
       }
 
       // Create Payment records
-      if (payload.paidAmount > 0) {
+      if (settlement.paidAmount > 0) {
         await tx.payment.create({
           data: {
             businessId: context.businessId,
             saleId: sale.id,
-            amount: payload.paidAmount,
+            amount: settlement.paidAmount,
+            source: "STAFF_RECORDED", branchId: originalSale.branchId, userId: context.userId,
             method: payload.paymentMethod,
-            reference: `POS Pay against corrected ${newInvoiceNumber}`,
+            reference: payload.paymentReference || `POS Pay against corrected ${newInvoiceNumber}`,
           },
         });
       }
@@ -381,13 +372,13 @@ export async function POST(
       });
 
       return sale;
-    }, { maxWait: 10000, timeout: 30000 });
+    });
 
     // Submit cancellation log and new invoice to CBMS
-    CbmsService.submitCancellation(originalSaleId, `CORRECTED: ${payload.reason}`).catch((e) =>
+    (process.env.ENABLE_MOCK_CBMS === "true" ? CbmsService.submitCancellation(originalSaleId, `CORRECTED: ${payload.reason}`) : Promise.resolve(false)).catch((e) =>
       console.error("Async cancel CBMS failed:", e)
     );
-    CbmsService.submitInvoice(newSaleResult.id).catch((e) =>
+    (process.env.ENABLE_MOCK_CBMS === "true" ? CbmsService.submitInvoice(newSaleResult.id) : Promise.resolve(false)).catch((e) =>
       console.error("Async new invoice CBMS failed:", e)
     );
 
@@ -399,6 +390,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST correct error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to process invoice correction" }, { status: 400 });
+    return NextResponse.json({ error: error.message || "Failed to process invoice correction" }, { status: error instanceof CommerceError ? error.status : 400 });
   }
 }

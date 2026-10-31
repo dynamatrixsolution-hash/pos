@@ -65,18 +65,14 @@ export const authConfig = {
       }
       return true;
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.businessId = (user as any).businessId;
         token.branchId = (user as any).branchId;
       }
-      // Handle session update triggers
-      if (trigger === "update" && session) {
-        token.role = session.role ?? token.role;
-        token.branchId = session.branchId ?? token.branchId;
-      }
+      // Authority is resolved from the database, never from client session updates.
       return token;
     },
     async session({ session, token }) {

@@ -53,6 +53,7 @@ const purchaseFormSchema = z.object({
   discount: z.number().nonnegative(),
   tax: z.number().nonnegative(),
   paidAmount: z.number().nonnegative(),
+  paymentReference: z.string().optional(),
   paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]),
 });
 
@@ -482,7 +483,7 @@ export default function PurchasesPage() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Payment Method
+                    Staff-recorded payment method
                   </label>
                   <select
                     {...register("paymentMethod")}
@@ -499,6 +500,11 @@ export default function PurchasesPage() {
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Non-cash payment reference</label>
+                <input {...register("paymentReference")} placeholder="Required for non-cash collections" className="w-full px-3 py-2 border border-border rounded-lg text-xs bg-background" />
+                <p className="text-xs text-muted-foreground">Staff-recorded entry; the reference does not verify payment with a provider.</p>
+              </div>
               {/* Items Table fields */}
               <div className="space-y-2 border-t border-border pt-4">
                 <div className="flex justify-between items-center">

@@ -1,5 +1,6 @@
+import { commerceTransaction, resolveBranch } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { z } from "zod";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
 
     const { saleId, reason, items } = result.data;
 
-    const debitNoteResult = await db.$transaction(async (tx) => {
+    const debitNoteResult = await commerceTransaction(request, context, "DEBIT_NOTE", body, async (tx) => {
       // 1. Fetch sale
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -49,7 +50,9 @@ export async function POST(request: Request) {
       });
 
       if (!sale) throw new Error("Sale invoice not found");
-      if (sale.businessId !== context.businessId) throw new Error("Unauthorized tenant access");
+      if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
+      await resolveBranch(tx, context, sale.branchId);
+      if (!sale.isActive) throw new CommerceError("Invoice is inactive");
 
       // 2. Generate unique Debit Note Number
       const count = await tx.debitNote.count({
@@ -171,7 +174,7 @@ export async function POST(request: Request) {
       });
 
       return dn;
-    }, { maxWait: 10000, timeout: 30000 });
+    });
 
     return NextResponse.json(debitNoteResult, { status: 201 });
   } catch (error: any) {

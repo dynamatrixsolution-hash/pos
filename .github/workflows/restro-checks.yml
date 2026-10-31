@@ -1,0 +1,38 @@
+name: Restro isolated checks
+on:
+  push:
+    branches: [restro]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  commerce:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: restro_dev
+          POSTGRES_PASSWORD: ephemeral-ci-only
+          POSTGRES_DB: restro_test
+        ports: ["55439:5432"]
+        options: >-
+          --health-cmd "pg_isready -U restro_dev -d restro_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://restro_dev:ephemeral-ci-only@127.0.0.1:55439/restro_test
+      DIRECT_URL: postgresql://restro_dev:ephemeral-ci-only@127.0.0.1:55439/restro_test
+      TEST_DATABASE_URL: postgresql://restro_dev:ephemeral-ci-only@127.0.0.1:55439/restro_test
+      ENABLE_MOCK_CBMS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run prisma:generate
+      - run: node node_modules/prisma/build/index.js migrate deploy --schema packages/db/prisma/schema.prisma
+      - run: npm test
+      - run: node scripts/run-db-tests.mjs
+      - run: npm run typecheck

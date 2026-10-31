@@ -12,25 +12,27 @@ export interface SessionContext {
 export async function getSessionContext(): Promise<SessionContext | null> {
   const session = await auth();
   
-  if (!session || !session.user || !(session.user as any).businessId || !(session.user as any).id) {
+  const sessionUser = session?.user as { id?: string; businessId?: string } | undefined;
+  if (!sessionUser?.id || !sessionUser.businessId) {
     return null;
   }
 
   // Verify user exists in the database (handles stale session cookies after database resets)
   const userExists = await db.user.findUnique({
-    where: { id: (session.user as any).id },
-    select: { id: true, businessId: true },
+    where: { id: sessionUser.id },
+    select: { id: true, businessId: true, branchId: true, role: true, isActive: true, deletedAt: true, business: { select: { deletedAt: true } } },
   });
 
-  if (!userExists || userExists.businessId !== (session.user as any).businessId) {
+  if (!userExists || !userExists.isActive || userExists.deletedAt || userExists.business.deletedAt || !["OWNER", "MANAGER", "CASHIER", "SUPER_ADMIN"].includes(userExists.role) || userExists.businessId !== sessionUser.businessId) {
     return null;
   }
+  if (!["OWNER", "SUPER_ADMIN"].includes(userExists.role) && !userExists.branchId) return null;
 
   return {
-    userId: (session.user as any).id as string,
-    businessId: (session.user as any).businessId as string,
-    branchId: (session.user as any).branchId as string | null,
-    role: (session.user as any).role as string,
+    userId: sessionUser.id as string,
+    businessId: sessionUser.businessId as string,
+    branchId: userExists.branchId,
+    role: userExists.role,
   };
 }
 

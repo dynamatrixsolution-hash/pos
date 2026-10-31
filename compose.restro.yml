@@ -1,0 +1,19 @@
+# Standalone development database. Never combine with docker-compose.yml.
+services:
+  restro-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: restro_dev
+      POSTGRES_PASSWORD: ${RESTRO_DB_PASSWORD:?Run node scripts/restro-env.mjs init first}
+      POSTGRES_DB: restro_test
+    ports:
+      - "127.0.0.1:55439:5432"
+    volumes:
+      - restro_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restro_dev -d restro_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  restro_dev_data:

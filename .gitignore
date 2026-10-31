@@ -43,7 +43,6 @@ next-env.d.ts
 
 # prisma
 src/generated/prisma/
-packages/db/prisma/migrations/
 packages/db/client/
 frontend/client/
 

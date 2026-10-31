@@ -1,3 +1,5 @@
+import { checkBranch, serializable } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
@@ -38,6 +40,8 @@ export async function POST(
 
     const { branchId, type, quantity, reason } = result.data;
 
+    requireStaff(context, true);
+    await checkBranch(context, branchId);
     // Verify product belongs to user's business
     const product = await db.product.findFirst({
       where: {
@@ -51,8 +55,9 @@ export async function POST(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const { oldQty, newQty } = await serializable(async tx => {
     // Get active/existing stock
-    const stock = await db.productStock.findFirst({
+    const stock = await tx.productStock.findFirst({
       where: {
         productId,
         branchId,
@@ -65,13 +70,13 @@ export async function POST(
     if (stock) {
       oldQty = stock.quantity;
       newQty = type === "INCREASE" ? oldQty + quantity : Math.max(0, oldQty - quantity);
-      await db.productStock.update({
+      await tx.productStock.update({
         where: { id: stock.id },
         data: { quantity: newQty },
       });
     } else {
       newQty = type === "INCREASE" ? quantity : 0;
-      await db.productStock.create({
+      await tx.productStock.create({
         data: {
           productId,
           branchId,
@@ -79,6 +84,9 @@ export async function POST(
         },
       });
     }
+
+      return { oldQty, newQty };
+    });
 
     // Log the stock adjustment
     await logActivity({
@@ -102,6 +110,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST product adjust error:", error);
-    return NextResponse.json({ error: "Failed to adjust product stock levels" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to adjust product stock levels" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

@@ -1,3 +1,5 @@
+import { checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -12,6 +14,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       where: {
         id: params.id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: await checkBranch(context, context.branchId) } : {}),
         deletedAt: null,
       },
       include: {
@@ -34,7 +37,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json(sale);
   } catch (error: any) {
     console.error("GET sale error:", error);
-    return NextResponse.json({ error: "Failed to retrieve sale" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to retrieve sale" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -44,13 +47,12 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   if (!context) return authErrorResponse();
 
   try {
-    const body = await request.json();
-    const { status, paymentStatus } = body;
 
     const sale = await db.sale.findFirst({
       where: {
         id: params.id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: await checkBranch(context, context.branchId) } : {}),
         deletedAt: null,
       },
     });
@@ -63,18 +65,10 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "IRD Compliance: Finalized sales invoices are immutable and cannot be updated." }, { status: 400 });
     }
 
-    const updatedSale = await db.sale.update({
-      where: { id: params.id },
-      data: {
-        ...(status && { status }),
-        ...(paymentStatus && { paymentStatus }),
-      },
-    });
-
-    return NextResponse.json(updatedSale);
+    return NextResponse.json({ error: "Status and settlement transitions must use authorized checkout/payment commands" }, { status: 409 });
   } catch (error: any) {
     console.error("PUT sale error:", error);
-    return NextResponse.json({ error: "Failed to update sale" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update sale" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -88,6 +82,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
       where: {
         id: params.id,
         businessId: context.businessId,
+        ...(!["OWNER", "SUPER_ADMIN"].includes(context.role) ? { branchId: await checkBranch(context, context.branchId) } : {}),
         deletedAt: null,
       },
     });
@@ -102,7 +97,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     );
   } catch (error: any) {
     console.error("DELETE sale error:", error);
-    return NextResponse.json({ error: "Failed to delete sale" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete sale" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 

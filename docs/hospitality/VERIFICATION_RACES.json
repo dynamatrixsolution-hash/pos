@@ -1,0 +1,587 @@
+{
+  "sourceSnapshotSha256": "659d4250254a1950fdf11353c88710467222feedd1fb6c1d82a84af4d70da880",
+  "mode": "races",
+  "success": true,
+  "rounds": [
+    {
+      "round": 1,
+      "exit": 0,
+      "report": "scratch/verification-races-1-2c7dca61-2e7e-4686-8471-b9252b5da8ef.json",
+      "log": "scratch/verification-races-1-2c7dca61-2e7e-4686-8471-b9252b5da8ef.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1036,
+            1037
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1036,
+            1037
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1037,
+            1036
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1036,
+            1037
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1037,
+            1036
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1036,
+            1037
+          ]
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "exit": 0,
+      "report": "scratch/verification-races-2-5022303c-7a29-4e7d-9e80-406fde81c9ac.json",
+      "log": "scratch/verification-races-2-5022303c-7a29-4e7d-9e80-406fde81c9ac.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1046,
+            1047
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1047,
+            1046
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1047,
+            1046
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1046,
+            1047
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1046,
+            1047
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1046,
+            1047
+          ]
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "exit": 0,
+      "report": "scratch/verification-races-3-91591121-a4cb-4b09-843e-aad7253fd826.json",
+      "log": "scratch/verification-races-3-91591121-a4cb-4b09-843e-aad7253fd826.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1057,
+            1058
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1058,
+            1057
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1058,
+            1057
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1057,
+            1058
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1058,
+            1057
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1058,
+            1057
+          ]
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "exit": 0,
+      "report": "scratch/verification-races-4-fba5d345-2036-4708-aeed-8b0b8bfcf833.json",
+      "log": "scratch/verification-races-4-fba5d345-2036-4708-aeed-8b0b8bfcf833.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1067,
+            1068
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1068,
+            1067
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1068,
+            1067
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1068,
+            1067
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1067,
+            1068
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1068,
+            1067
+          ]
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "exit": 0,
+      "report": "scratch/verification-races-5-5da3bb16-6211-4b38-89f5-172bf923d79c.json",
+      "log": "scratch/verification-races-5-5da3bb16-6211-4b38-89f5-172bf923d79c.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1077,
+            1085
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1077,
+            1085
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1077,
+            1085
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1077,
+            1085
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1077,
+            1085
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1077,
+            1085
+          ]
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "exit": 0,
+      "report": "scratch/verification-races-6-092a933d-d83d-43fd-b0f2-9b22c810b30c.json",
+      "log": "scratch/verification-races-6-092a933d-d83d-43fd-b0f2-9b22c810b30c.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1094,
+            1095
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1095,
+            1094
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1095,
+            1094
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1094,
+            1095
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1094,
+            1095
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1094,
+            1095
+          ]
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "exit": 0,
+      "report": "scratch/verification-races-7-5c8880a0-0b40-4df3-8c6d-27b33810ed56.json",
+      "log": "scratch/verification-races-7-5c8880a0-0b40-4df3-8c6d-27b33810ed56.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1104,
+            1105
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1105,
+            1104
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1105,
+            1104
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1105,
+            1104
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1105,
+            1104
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1105,
+            1104
+          ]
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "exit": 0,
+      "report": "scratch/verification-races-8-a4c4a4c6-7329-4359-8bd3-f96a40693e27.json",
+      "log": "scratch/verification-races-8-a4c4a4c6-7329-4359-8bd3-f96a40693e27.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1114,
+            1115
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1115,
+            1114
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1114,
+            1115
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1115,
+            1114
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1114,
+            1115
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1115,
+            1114
+          ]
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "exit": 0,
+      "report": "scratch/verification-races-9-aef8668e-6447-40f4-9452-025b0e8cd7aa.json",
+      "log": "scratch/verification-races-9-aef8668e-6447-40f4-9452-025b0e8cd7aa.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1124,
+            1125
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1125,
+            1124
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1124,
+            1125
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1124,
+            1125
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1124,
+            1125
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1124,
+            1125
+          ]
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "exit": 0,
+      "report": "scratch/verification-races-10-9b9e3403-d842-4b44-8274-9a6275c4c8ff.json",
+      "log": "scratch/verification-races-10-9b9e3403-d842-4b44-8274-9a6275c4c8ff.txt",
+      "passed": 6,
+      "deselected": 8,
+      "witnesses": [
+        {
+          "test": "replays a concurrent duplicate without duplicating any effects",
+          "attempts": 4,
+          "pids": [
+            1134,
+            1135
+          ]
+        },
+        {
+          "test": "sells the last unit once when negative stock is forbidden",
+          "attempts": 3,
+          "pids": [
+            1135,
+            1134
+          ]
+        },
+        {
+          "test": "preserves every decrement when configured to allow negative stock",
+          "attempts": 3,
+          "pids": [
+            1134,
+            1135
+          ]
+        },
+        {
+          "test": "authorizes manual payments and replays them without duplicate settlement",
+          "attempts": 4,
+          "pids": [
+            1134,
+            1135
+          ]
+        },
+        {
+          "test": "uses independent overlapping PostgreSQL transactions",
+          "attempts": 2,
+          "pids": [
+            1135,
+            1134
+          ]
+        },
+        {
+          "test": "posts concurrent and repeated opening-stock approvals exactly once",
+          "attempts": 5,
+          "pids": [
+            1135,
+            1134
+          ]
+        }
+      ]
+    }
+  ]
+}

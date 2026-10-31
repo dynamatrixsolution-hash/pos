@@ -1,3 +1,5 @@
+import { checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -12,6 +14,7 @@ export async function GET(request: Request) {
   const endDateStr = searchParams.get("endDate");
 
   try {
+    const authorizedBranch = await checkBranch(context, branchId);
     let startDate = new Date();
     startDate.setDate(1);
     startDate.setHours(0, 0, 0, 0);
@@ -40,15 +43,13 @@ export async function GET(request: Request) {
       createdAt: { gte: startDate, lte: endDate },
     };
 
-    if (branchId) {
-      whereClauseCommon.branchId = branchId;
-    }
+    whereClauseCommon.branchId = authorizedBranch;
 
     // 1. Sales Aggregates
     const salesAggregate = await db.sale.aggregate({
       where: {
         ...whereClauseCommon,
-        status: "COMPLETED",
+        status: "COMPLETED", isActive: true,
       },
       _sum: {
         total: true,
@@ -72,7 +73,8 @@ export async function GET(request: Request) {
         businessId: context.businessId,
         createdAt: { gte: startDate, lte: endDate },
         saleId: { not: null },
-        sale: branchId ? { branchId } : undefined,
+        method: { not: "CREDIT" },
+        sale: { branchId: authorizedBranch },
       },
       _sum: {
         amount: true,
@@ -162,7 +164,7 @@ export async function GET(request: Request) {
       where: {
         sale: {
           ...whereClauseCommon,
-          status: "COMPLETED",
+          status: "COMPLETED", isActive: true,
         },
       },
       select: {
@@ -186,7 +188,7 @@ export async function GET(request: Request) {
       where: {
         sale: {
           ...whereClauseCommon,
-          status: "COMPLETED",
+          status: "COMPLETED", isActive: true,
         },
       },
       orderBy: {
@@ -246,6 +248,6 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET reports error:", error);
-    return NextResponse.json({ error: "Failed to generate reports" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate reports" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

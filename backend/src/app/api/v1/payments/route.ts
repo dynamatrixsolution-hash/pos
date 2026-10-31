@@ -1,6 +1,9 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { CommerceError, requireStaff, reconcilePayment, settlementStatus, money } from "@/lib/commerce-policy";
+import { commerceTransaction, resolveBranch, checkBranch } from "@/lib/commerce-transaction";
+import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
 import { z } from "zod";
 
 const paymentCreateSchema = z.object({
@@ -12,6 +15,7 @@ const paymentCreateSchema = z.object({
   amount: z.number().positive("Amount must be greater than zero"),
   method: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   reference: z.string().optional().nullable(),
+  paymentSource: z.literal("STAFF_RECORDED").optional(),
   receiptNumber: z.string().optional().nullable(),
   remarks: z.string().optional().nullable(),
   branchId: z.string().uuid().optional().nullable(),
@@ -37,10 +41,8 @@ export async function GET(request: Request) {
   const skip = (page - 1) * limit;
 
   try {
-    let activeBranchId = branchId;
-    if (["CASHIER", "MANAGER"].includes(context.role) && context.branchId) {
-      activeBranchId = context.branchId;
-    }
+    const activeBranchId = await checkBranch(context, branchId);
+
 
     const paymentWhere: any = {
       businessId: context.businessId,
@@ -248,170 +250,80 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET payments error:", error);
-    return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof CommerceError ? error.message : "Failed to fetch payments" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
 export async function POST(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
-
-  // Cashier cannot add manual sent/received payments unless allowed.
-  // In most enterprise systems, Manager and above can record manual payments. Let's allow Manager/Owner.
-  if (context.role === "CASHIER") {
-    return roleErrorResponse();
-  }
-
-  const headers = request.headers;
-  const xForwardedFor = headers.get("x-forwarded-for");
-  const ipAddress = xForwardedFor ? xForwardedFor.split(",")[0].trim() : (headers.get("x-real-ip") || "127.0.0.1");
-  const deviceInfo = headers.get("user-agent") || "Unknown Device";
-
   try {
+    requireStaff(context, true);
     const body = await request.json();
-    const result = paymentCreateSchema.safeParse(body);
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: result.error.format() },
-        { status: 400 }
-      );
-    }
-
-    const data = result.data;
-    const activeBranchId = data.branchId || context.branchId;
-
-    if (!activeBranchId) {
-      return NextResponse.json({ error: "Branch context is required" }, { status: 400 });
-    }
-
-    const paymentResult = await db.$transaction(async (tx) => {
-      // 1. Generate Receipt/Voucher Number
-      const prefix = data.type === "RECEIVED" ? "REC" : "VOU";
-      const today = data.createdAt ? new Date(data.createdAt) : new Date();
-      const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
-      
-      const count = await tx.payment.count({
-        where: {
-          businessId: context.businessId,
-          type: data.type,
-          createdAt: {
-            gte: new Date(today.setHours(0, 0, 0, 0)),
-            lte: new Date(today.setHours(23, 59, 59, 999)),
-          },
-        },
-      });
-
-      const receiptNumber = data.receiptNumber || `${prefix}-${dateStr}-${String(count + 1).padStart(4, "0")}`;
-
-      // 2. Create the Payment
-      const payment = await tx.payment.create({
-        data: {
-          businessId: context.businessId,
-          customerId: data.customerId || null,
-          supplierId: data.supplierId || null,
-          saleId: data.saleId || null,
-          purchaseId: data.purchaseId || null,
-          branchId: activeBranchId,
-          userId: context.userId,
-          amount: data.amount,
-          method: data.method,
-          reference: data.reference || null,
-          receiptNumber,
-          remarks: data.remarks || null,
-          type: data.type,
-          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-        },
-        include: {
-          customer: true,
-          supplier: true,
-          branch: true,
-          user: { select: { name: true } },
-        },
-      });
-
-      // 3. Customer outstanding balance deduction (RECEIVED)
-      if (data.type === "RECEIVED" && data.customerId) {
-        const customer = await tx.customer.findFirst({
-          where: { id: data.customerId, businessId: context.businessId },
-        });
-
-        if (!customer) {
-          throw new Error("Customer not found");
-        }
-
-        const newBalance = customer.balance - data.amount;
-        await tx.customer.update({
-          where: { id: customer.id },
-          data: { balance: newBalance },
-        });
-
-        await tx.customerLedger.create({
-          data: {
-            customerId: customer.id,
-            type: "PAYMENT",
-            reference: receiptNumber,
-            debit: 0,
-            credit: data.amount,
-            balance: newBalance,
-            description: data.remarks || `Standalone payment received against receipt ${receiptNumber}`,
-            createdAt: payment.createdAt,
-          },
-        });
+    const parsed = paymentCreateSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.format() }, { status: 400 });
+    const data = parsed.data;
+    const result = await commerceTransaction(request, context, "PAYMENT", body, async tx => {
+      const branchId = await resolveBranch(tx, context, data.branchId);
+      if (data.method === "CREDIT") throw new CommerceError("Credit is not a collected payment");
+      reconcilePayment({ paidAmount: data.amount, paymentMethod: data.method, paymentReference: data.reference, paymentSource: data.paymentSource }, data.amount, context);
+      if (data.saleId && data.purchaseId) throw new CommerceError("Payment may target only one invoice");
+      if (data.type === "RECEIVED" && (data.supplierId || data.purchaseId)) throw new CommerceError("Invalid received payment target");
+      if (data.type === "SENT" && (data.customerId || data.saleId)) throw new CommerceError("Invalid sent payment target");
+      let customerId = data.customerId || null;
+      let supplierId = data.supplierId || null;
+      if (data.saleId) {
+        const sale = await tx.sale.findFirst({ where: { id: data.saleId, businessId: context.businessId, branchId, deletedAt: null, isActive: true, status: "COMPLETED" } });
+        if (!sale) throw new CommerceError("Invoice access denied", 403);
+        if (customerId && customerId !== sale.customerId) throw new CommerceError("Customer does not match invoice");
+        customerId = sale.customerId;
+        if (data.amount > sale.total - sale.paidAmount + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
+        const paidAmount = money(sale.paidAmount + data.amount);
+        await tx.sale.update({ where: { id: sale.id }, data: { paidAmount, paymentStatus: settlementStatus(sale.total, paidAmount) } });
       }
-
-      // 4. Supplier balance deduction (SENT)
-      if (data.type === "SENT" && data.supplierId) {
-        const supplier = await tx.supplier.findFirst({
-          where: { id: data.supplierId, businessId: context.businessId },
-        });
-
-        if (!supplier) {
-          throw new Error("Supplier not found");
-        }
-
-        const newBalance = supplier.balance - data.amount;
-        await tx.supplier.update({
-          where: { id: supplier.id },
-          data: { balance: newBalance },
-        });
-
-        await tx.supplierLedger.create({
-          data: {
-            supplierId: supplier.id,
-            type: "PAYMENT",
-            reference: receiptNumber,
-            debit: data.amount,
-            credit: 0,
-            balance: newBalance,
-            description: data.remarks || `Standalone payment sent to supplier against voucher ${receiptNumber}`,
-            createdAt: payment.createdAt,
-          },
-        });
+      if (data.purchaseId) {
+        const purchase = await tx.purchase.findFirst({ where: { id: data.purchaseId, businessId: context.businessId, branchId, deletedAt: null, status: "RECEIVED" } });
+        if (!purchase) throw new CommerceError("Invoice access denied", 403);
+        if (supplierId && supplierId !== purchase.supplierId) throw new CommerceError("Supplier does not match invoice");
+        supplierId = purchase.supplierId;
+        if (data.amount > purchase.total - purchase.paidAmount + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
+        const paidAmount = money(purchase.paidAmount + data.amount);
+        await tx.purchase.update({ where: { id: purchase.id }, data: { paidAmount, paymentStatus: settlementStatus(purchase.total, paidAmount) } });
       }
-
-      // 5. Audit Log creation
-      await tx.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          branchId: activeBranchId,
-          action: "CREATE",
-          module: "PAYMENT",
-          details: `${data.type} Payment created: ${receiptNumber}, Amount: ${data.amount}, Method: ${data.method}`,
-          newValue: JSON.parse(JSON.stringify(payment)),
-          ipAddress,
-          deviceInfo,
-        },
-      });
-
+      if (!customerId && !supplierId && !data.saleId && !data.purchaseId) throw new CommerceError("A payment target is required");
+      const receiptNumber = data.receiptNumber || `${data.type === "RECEIVED" ? "REC" : "VOU"}-${randomUUID()}`;
+      if (customerId) {
+        const customer = await tx.customer.findFirst({ where: { id: customerId, businessId: context.businessId, deletedAt: null } });
+        if (!customer || (customer.branchId && customer.branchId !== branchId)) throw new CommerceError("Customer access denied", 403);
+        if (data.amount > customer.balance + 0.005) throw new CommerceError("Payment exceeds customer outstanding balance");
+        const balance = money(customer.balance - data.amount);
+        await tx.customer.update({ where: { id: customer.id }, data: { balance } });
+        await tx.customerLedger.create({ data: { customerId, type: "PAYMENT", reference: receiptNumber, credit: data.amount, balance, description: data.remarks } });
+      }
+      if (supplierId) {
+        const supplier = await tx.supplier.findFirst({ where: { id: supplierId, businessId: context.businessId, deletedAt: null } });
+        if (!supplier) throw new CommerceError("Supplier access denied", 403);
+        if (data.amount > supplier.balance + 0.005) throw new CommerceError("Payment exceeds supplier outstanding balance");
+        const balance = money(supplier.balance - data.amount);
+        await tx.supplier.update({ where: { id: supplier.id }, data: { balance } });
+        await tx.supplierLedger.create({ data: { supplierId, type: "PAYMENT", reference: receiptNumber, debit: data.amount, balance, description: data.remarks } });
+      }
+      const payment = await tx.payment.create({ data: {
+        businessId: context.businessId, branchId, userId: context.userId, customerId, supplierId,
+        saleId: data.saleId, purchaseId: data.purchaseId, amount: data.amount,
+        method: data.method, source: "STAFF_RECORDED", type: data.type,
+        reference: data.reference, receiptNumber, remarks: data.remarks,
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+      }, include: { customer: true, supplier: true, branch: true, user: { select: { name: true } } } });
+      await tx.auditLog.create({ data: {
+        businessId: context.businessId, branchId, userId: context.userId, role: context.role,
+        action: "CREATE", module: "PAYMENT", details: "Staff-recorded payment (not provider verified)",
+        newValue: JSON.parse(JSON.stringify(payment)),
+      } });
       return payment;
     });
-
-    return NextResponse.json(paymentResult, { status: 201 });
-  } catch (error: any) {
-    console.error("POST payment error:", error);
-    return NextResponse.json({ error: error.message || "Failed to save payment" }, { status: 500 });
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof CommerceError ? error.message : "Payment failed" }, { status: error instanceof CommerceError ? error.status : 400 });
   }
 }

@@ -1,3 +1,5 @@
+import { serializable, checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
@@ -11,6 +13,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   const { id } = params;
 
   try {
+    requireStaff(context, true);
     const { action, remarks } = await request.json(); // APPROVE, REJECT, DISPATCH, RECEIVE
     
     const transfer = await db.stockTransfer.findUnique({
@@ -22,6 +25,8 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
       return NextResponse.json({ error: "Stock transfer not found" }, { status: 404 });
     }
 
+    await checkBranch(context, transfer.sourceBranchId);
+    await checkBranch(context, transfer.targetBranchId);
     const currentStatus = transfer.status;
     let newStatus = currentStatus;
 
@@ -35,7 +40,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
       newStatus = "APPROVED";
       
-      const updated = await db.$transaction(async (tx) => {
+      const updated = await serializable(async (tx) => {
+        const current = await tx.stockTransfer.findUnique({ where: { id } });
+        if (current?.status !== "PENDING") throw new CommerceError("Transfer already processed", 409);
         // Deduct items from source branch stock and add to target branch stock
         for (const item of transfer.items) {
           const sourceStock = await tx.productStock.findUnique({
@@ -239,6 +246,6 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid action type" }, { status: 400 });
   } catch (error: any) {
     console.error("PATCH transfer error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update stock transfer" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to update stock transfer" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

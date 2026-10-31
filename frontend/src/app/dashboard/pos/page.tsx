@@ -1,4 +1,5 @@
 "use client";
+import { postCommerce } from "@/lib/idempotent-request";
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
@@ -1127,7 +1128,12 @@ export default function POSPage() {
         ? currentOrder.selectedCustomerId
         : null;
 
+    const hasNonCash = splitPaymentsList.some(p => p.method !== "CASH" && p.method !== "CREDIT") || (splitType !== "METHOD" && !["CASH", "CREDIT"].includes(singlePaymentMethod));
+    const paymentReference = hasNonCash ? window.prompt("Staff-recorded payment reference (not provider verified):") : null;
+    if (hasNonCash && !paymentReference?.trim()) { setSubmitError("A non-cash payment reference is required"); return; }
     const payload = {
+      paymentSource: "STAFF_RECORDED",
+      paymentReference,
       customerId: sanitizedCustomerId,
       branchId: effectiveBranchId || undefined,
       items: currentOrder.cart.map((i) => ({
@@ -1159,11 +1165,7 @@ export default function POSPage() {
 
     setIsCheckingOut(true);
     try {
-      const res = await fetch("/api/v1/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await postCommerce("/api/v1/sales", payload, `${session?.user?.email}:${currentOrderId}`);
       const data = await res.json();
       if (!res.ok) {
         console.error("Sale POST failed:", data);
@@ -1181,11 +1183,11 @@ export default function POSPage() {
         customerPan: (activeCustomer as any)?.panNumber || "",
         cashierName: session?.user?.name || "Cashier",
         tableNumber: currentOrder.posMode === "RESTAURANT" ? currentOrder.tableNumber : undefined,
-        subtotal,
-        total: grandTotal,
-        roundOff,
-        roundedTotal: grandTotal,
-        tax,
+        subtotal: data.subtotal,
+        total: data.total,
+        roundOff: 0,
+        roundedTotal: data.total,
+        tax: data.tax,
       };
 
       setLastInvoice(invoiceData);
@@ -1223,8 +1225,8 @@ export default function POSPage() {
           handlePrintReceipt(invoiceData);
         }, 120);
       }
-    } catch (_) {
-      setSubmitError("API Connection failure.");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "API Connection failure.");
     } finally {
       setIsCheckingOut(false);
     }

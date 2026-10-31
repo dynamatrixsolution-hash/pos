@@ -1,5 +1,6 @@
+import { resolveBranch, serializable } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
@@ -39,7 +40,7 @@ export async function POST(
     const { reason } = result.data;
     const saleId = params.id;
 
-    const updatedSale = await db.$transaction(async (tx) => {
+    const updatedSale = await serializable(async (tx) => {
       // 1. Fetch sale
       const sale = await tx.sale.findUnique({
         where: { id: saleId },
@@ -49,9 +50,13 @@ export async function POST(
       });
 
       if (!sale) throw new Error("Sale invoice not found");
-      if (sale.businessId !== context.businessId) throw new Error("Unauthorized tenant access");
+      if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
+      await resolveBranch(tx, context, sale.branchId);
       if (!sale.isActive) throw new Error("Invoice is already cancelled");
 
+      if (sale.paidAmount > 0 || await tx.payment.count({ where: { saleId } })) throw new CommerceError("Paid invoices require a reconciled refund workflow", 409);
+      const credits = await tx.creditNote.count({ where: { saleId } });
+      if (credits) throw new CommerceError("Invoices with credit notes require reconciled reversal", 409);
       // 2. Adjust Stock back (Revert deductions)
       for (const item of sale.saleItems) {
         // Increment branch stock
@@ -150,7 +155,7 @@ export async function POST(
     });
 
     // 6. Async submit cancellation request to CBMS
-    CbmsService.submitCancellation(saleId, reason).catch((e) => {
+    (process.env.ENABLE_MOCK_CBMS === "true" ? CbmsService.submitCancellation(saleId, reason) : Promise.resolve(false)).catch((e) => {
       console.error("Async CBMS cancellation submit failed:", e);
     });
 
@@ -162,6 +167,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST cancel error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to cancel invoice" }, { status: 400 });
+    return NextResponse.json({ error: error.message || "Failed to cancel invoice" }, { status: error instanceof CommerceError ? error.status : 400 });
   }
 }

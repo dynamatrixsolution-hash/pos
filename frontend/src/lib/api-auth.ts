@@ -1,9 +1,9 @@
+import { getSessionContext } from "@/lib/api-helper";
 /**
  * API Authorization Utilities
  * Provides functions to authorize API requests based on user role and branch access
  */
 
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { hasPermission, canAccessRoute } from "@/lib/rbac";
 import { NextRequest, NextResponse } from "next/server";
@@ -20,19 +20,8 @@ export interface AuthContext {
  * Get auth context from session
  */
 export async function getAuthContext(): Promise<AuthContext | null> {
-  const session = await auth();
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = session.user as any;
-  return {
-    userId: user.id,
-    businessId: user.businessId,
-    branchId: user.branchId,
-    role: user.role || "CASHIER",
-    user,
-  };
+  const context = await getSessionContext();
+  return context ? { ...context, user: { id: context.userId, ...context } } : null;
 }
 
 /**
@@ -116,10 +105,9 @@ export async function verifyBranchAccess(
 
   if (!user) return false;
 
-  // SUPER_ADMIN and OWNER can access any branch
-  if (["SUPER_ADMIN", "OWNER"].includes(user.role)) {
-    return true;
-  }
+  const branch = await db.branch.findFirst({ where: { id: branchId, businessId: user.businessId, isActive: true, deletedAt: null } });
+  if (!branch || !user.isActive || user.deletedAt) return false;
+  if (["SUPER_ADMIN", "OWNER"].includes(user.role)) return true;
 
   // MANAGER and CASHIER can only access their assigned branch
   return user.branchId === branchId;
@@ -143,7 +131,7 @@ export function applyBranchFilter(query: any, authContext: AuthContext) {
     };
   }
 
-  return query;
+  return { ...query, branchId: "__NO_BRANCH_ACCESS__" };
 }
 
 /**

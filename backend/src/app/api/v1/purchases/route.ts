@@ -1,3 +1,5 @@
+import { checkBranch, resolveBranch, serializable } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff, money, reconcilePayment } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
@@ -25,6 +27,8 @@ const purchaseCreateSchema = z.object({
   paymentMethod: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   notes: z.string().optional().nullable(),
+  paymentSource: z.literal("STAFF_RECORDED").optional(),
+  paymentReference: z.string().optional().nullable(),
 });
 
 export async function GET(request: Request) {
@@ -33,12 +37,13 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const supplierId = searchParams.get("supplierId");
-  const branchId = searchParams.get("branchId") || context.branchId;
+  let branchId = searchParams.get("branchId") || context.branchId;
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
 
   try {
+    branchId = await checkBranch(context, branchId);
     const where: any = {
       businessId: context.businessId,
       deletedAt: null,
@@ -73,7 +78,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET purchases error:", error);
-    return NextResponse.json({ error: "Failed to fetch purchases" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch purchases" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -103,9 +108,12 @@ export async function POST(request: Request) {
     }
 
     const payload = result.data;
+    requireStaff(context, true);
+    await checkBranch(context, payload.branchId);
 
     // Run the complete purchase intake pipeline inside a transaction
-    const purchaseResult = await db.$transaction(async (tx) => {
+    const purchaseResult = await serializable(async (tx) => {
+      await resolveBranch(tx, context, payload.branchId);
       // 1. Fetch Business Settings to retrieve custom prefix
       const business = await tx.business.findUnique({
         where: { id: context.businessId },
@@ -247,6 +255,10 @@ export async function POST(request: Request) {
         });
       }
 
+      const subtotal = payload.items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+      if (payload.discount > subtotal) throw new CommerceError("Discount exceeds subtotal");
+      const total = money(subtotal - payload.discount + payload.tax);
+      const settlement = reconcilePayment(payload, total, context);
       // 4. Create Purchase record
       const purchase = await tx.purchase.create({
         data: {
@@ -257,12 +269,12 @@ export async function POST(request: Request) {
           purchaseNumber,
           invoiceNumber: payload.invoiceNumber || null,
           status: "RECEIVED",
-          subtotal: payload.subtotal,
+          subtotal,
           discount: payload.discount,
           tax: payload.tax,
-          total: payload.total,
-          paidAmount: payload.paidAmount,
-          paymentStatus: payload.paymentStatus,
+          total,
+          paidAmount: settlement.paidAmount,
+          paymentStatus: settlement.paymentStatus,
           notes: payload.notes,
           purchaseItems: {
             createMany: {
@@ -282,7 +294,7 @@ export async function POST(request: Request) {
 
       if (!supplier) throw new Error("Supplier not found");
 
-      const unpaidAmt = payload.total - payload.paidAmount;
+      const unpaidAmt = total - settlement.paidAmount;
 
       if (unpaidAmt > 0) {
         const newSupplierBalance = supplier.balance + unpaidAmt;
@@ -308,14 +320,16 @@ export async function POST(request: Request) {
       }
 
       // 6. Create Payment record if cash paid
-      if (payload.paidAmount > 0) {
+      if (settlement.paidAmount > 0) {
         await tx.payment.create({
           data: {
             businessId: context.businessId,
             purchaseId: purchase.id,
-            amount: payload.paidAmount,
+            supplierId: payload.supplierId,
+            branchId: payload.branchId, userId: context.userId, type: "SENT", source: "STAFF_RECORDED",
+            amount: settlement.paidAmount,
             method: payload.paymentMethod,
-            reference: `PO Pay against ${purchaseNumber}`,
+            reference: payload.paymentReference || `PO Pay against ${purchaseNumber}`,
           },
         });
       }
@@ -338,11 +352,11 @@ export async function POST(request: Request) {
       });
 
       return purchase;
-    }, { maxWait: 10000, timeout: 30000 });
+    });
 
     return NextResponse.json(purchaseResult, { status: 201 });
   } catch (error: any) {
     console.error("POST purchase error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to process purchase" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to process purchase" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

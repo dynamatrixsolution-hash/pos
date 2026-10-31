@@ -1,3 +1,5 @@
+import { checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -21,6 +23,7 @@ export async function GET(request: Request) {
   if (!context) return authErrorResponse();
 
   try {
+    await checkBranch(context, context.branchId);
     const isOwner = ["SUPER_ADMIN", "OWNER"].includes(context.role);
     const userBranchId = context.branchId;
 
@@ -56,7 +59,7 @@ export async function GET(request: Request) {
     return NextResponse.json(transfers);
   } catch (error: any) {
     console.error("GET transfers error:", error);
-    return NextResponse.json({ error: "Failed to fetch transfers" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch transfers" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -77,6 +80,12 @@ export async function POST(request: Request) {
 
     const { sourceBranchId, targetBranchId, items, notes } = result.data;
 
+    requireStaff(context, true);
+    await checkBranch(context, sourceBranchId);
+    await checkBranch(context, targetBranchId);
+    for (const item of items) {
+      if (!await db.product.findFirst({ where: { id: item.productId, businessId: context.businessId, deletedAt: null } })) throw new CommerceError("Product access denied", 403);
+    }
     if (sourceBranchId === targetBranchId) {
       return NextResponse.json(
         { error: "Source and target branch cannot be the same" },
@@ -137,6 +146,6 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error: any) {
     console.error("POST stock transfer error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to transfer stock" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to transfer stock" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

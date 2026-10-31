@@ -1,3 +1,5 @@
+import { checkBranch } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
@@ -12,6 +14,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   const { id } = params;
 
   try {
+    requireStaff(context, true);
     const body = await request.json();
     const entry = await db.openingStock.findUnique({
       where: { id },
@@ -21,10 +24,14 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
       return NextResponse.json({ error: "Opening stock entry not found" }, { status: 404 });
     }
 
+    await checkBranch(context, entry.branchId);
     if (entry.approvalStatus !== "PENDING") {
       return NextResponse.json({ error: "Cannot edit an entry that has already been processed" }, { status: 400 });
     }
 
+    if (body.branchId) await checkBranch(context, body.branchId);
+    if (body.productId && !await db.product.findFirst({ where: { id: body.productId, businessId: context.businessId, deletedAt: null } })) throw new CommerceError("Product access denied", 403);
+    if (body.supplierId && !await db.supplier.findFirst({ where: { id: body.supplierId, businessId: context.businessId, deletedAt: null } })) throw new CommerceError("Supplier access denied", 403);
     const qty = body.quantity !== undefined ? body.quantity : entry.quantity;
     const rate = body.purchaseRate !== undefined ? body.purchaseRate : entry.purchaseRate;
     const totalValue = qty * rate;
@@ -65,7 +72,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ message: "Opening stock updated successfully", entry: updated });
   } catch (error: any) {
     console.error("PUT opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update opening stock" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to update opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -77,6 +84,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
   const { id } = params;
 
   try {
+    requireStaff(context, true);
     const entry = await db.openingStock.findUnique({
       where: { id },
     });
@@ -85,6 +93,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
       return NextResponse.json({ error: "Opening stock entry not found" }, { status: 404 });
     }
 
+    await checkBranch(context, entry.branchId);
     if (entry.approvalStatus !== "PENDING") {
       return NextResponse.json({ error: "Cannot delete an approved/rejected opening stock entry" }, { status: 400 });
     }
@@ -107,7 +116,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     return NextResponse.json({ message: "Opening stock entry deleted successfully" });
   } catch (error: any) {
     console.error("DELETE opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete opening stock" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to delete opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -123,6 +132,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   const { id } = params;
 
   try {
+    requireStaff(context, true);
     const { status } = await request.json();
     
     if (!["APPROVED", "REJECTED"].includes(status)) {
@@ -137,6 +147,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
       return NextResponse.json({ error: "Opening stock entry not found" }, { status: 404 });
     }
 
+    await checkBranch(context, entry.branchId);
     if (entry.approvalStatus !== "PENDING") {
       return NextResponse.json({ error: "This entry has already been processed" }, { status: 400 });
     }
@@ -168,6 +179,6 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     return NextResponse.json({ message: `Opening stock entry ${status.toLowerCase()} successfully`, entry: updated });
   } catch (error: any) {
     console.error("PATCH opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update status" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to update status" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }

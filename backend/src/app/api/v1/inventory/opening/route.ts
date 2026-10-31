@@ -1,3 +1,5 @@
+import { serializable, checkBranch, resolveBranch } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -88,7 +90,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ entries });
   } catch (error: any) {
     console.error("GET opening stock error:", error);
-    return NextResponse.json({ error: "Failed to fetch opening stock entries" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch opening stock entries" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
@@ -97,8 +99,14 @@ export async function POST(request: Request) {
   if (!context) return authErrorResponse();
 
   try {
+    requireStaff(context, true);
     const body = await request.json();
     const isBulk = Array.isArray(body);
+    const validateOpening = async (item: { branchId: string; productId: string; supplierId?: string | null }) => {
+      await checkBranch(context, item.branchId);
+      if (!await db.product.findFirst({ where: { id: item.productId, businessId: context.businessId, deletedAt: null } })) throw new CommerceError("Product access denied", 403);
+      if (item.supplierId && !await db.supplier.findFirst({ where: { id: item.supplierId, businessId: context.businessId, deletedAt: null } })) throw new CommerceError("Supplier access denied", 403);
+    };
 
     if (isBulk) {
       const result = bulkImportSchema.safeParse(body);
@@ -107,6 +115,7 @@ export async function POST(request: Request) {
       }
 
       const items = result.data;
+      for (const item of items) await validateOpening(item);
       const createdEntries = [];
 
       for (const item of items) {
@@ -161,6 +170,7 @@ export async function POST(request: Request) {
       }
 
       const item = result.data;
+      await validateOpening(item);
       const totalValue = item.quantity * item.purchaseRate;
 
       const entry = await db.openingStock.create({
@@ -206,12 +216,12 @@ export async function POST(request: Request) {
     }
   } catch (error: any) {
     console.error("POST opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create opening stock" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to create opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
 
 export async function approveOpeningStockTransaction(entryId: string, businessId: string, userId: string) {
-  await db.$transaction(async (tx) => {
+  await serializable(async (tx) => {
     const entry = await tx.openingStock.findUnique({
       where: { id: entryId },
       include: { product: true },
@@ -221,6 +231,11 @@ export async function approveOpeningStockTransaction(entryId: string, businessId
       throw new Error("Opening stock entry not found");
     }
 
+    if (entry.appliedAt) return;
+    if (entry.approvalStatus !== "APPROVED") throw new CommerceError("Opening stock is not approved");
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    await resolveBranch(tx, { userId, businessId, branchId: user.branchId, role: user.role }, entry.branchId);
+    await tx.openingStock.update({ where: { id: entryId }, data: { appliedAt: new Date() } });
     const existingStock = await tx.productStock.findUnique({
       where: { productId_branchId: { productId: entry.productId, branchId: entry.branchId } },
     });

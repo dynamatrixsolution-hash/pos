@@ -1,3 +1,5 @@
+import { checkBranch, serializable } from "@/lib/commerce-transaction";
+import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
@@ -28,6 +30,8 @@ export async function POST(request: Request) {
 
     const { productId, branchId, type, quantity, notes } = result.data;
 
+    requireStaff(context, true);
+    await checkBranch(context, branchId);
     // Verify product exists and belongs to business
     const product = await db.product.findFirst({
       where: { id: productId, businessId: context.businessId, deletedAt: null },
@@ -37,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     // Run transaction
-    const adjustmentResult = await db.$transaction(async (tx) => {
+    const adjustmentResult = await serializable(async (tx) => {
       // Find current stock
       const stock = await tx.productStock.findUnique({
         where: { productId_branchId: { productId, branchId } },
@@ -106,6 +110,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("POST inventory adjust error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to adjust inventory" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to adjust inventory" }, { status: error instanceof CommerceError ? error.status : 500 });
   }
 }
