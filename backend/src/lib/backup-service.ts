@@ -1,254 +1,147 @@
-import { db } from "@/lib/db";
-import * as fs from "fs";
-import * as path from "path";
+import { db, Prisma, PrismaClient } from "@dynapos/db";
+import { createHash, randomUUID } from "node:crypto";
+import { promises as fs, constants } from "node:fs";
+import path from "node:path";
+import { BackupError, backupModels, BackupRow, encryptionKey, MigrationIdentity, MAX_BACKUP_BYTES, openSnapshot, schemaHash, sealSnapshot, TenantSnapshot, validateSnapshot } from "./backup-format";
 
+export { BackupError } from "./backup-format";
 export interface BackupMetadata {
-  filename: string;
-  sizeBytes: number;
-  timestamp: string;
-  tables: Record<string, number>;
-  checksum: string;
-  verified: boolean;
-  status: "SUCCESS" | "FAILED";
-  errorMessage?: string;
+  filename: string; sizeBytes: number; timestamp: string; tables: Record<string, number>;
+  checksum: string; verified: false; integrityVerified: true; status: "SUCCESS";
+  formatVersion: 2; recoveryStatus: "NOT_REHEARSED";
 }
+type Delegate = {
+  findMany(args: { where: Record<string, unknown>; orderBy: { id: "asc" } }): Promise<BackupRow[]>;
+  createMany(args: { data: BackupRow[] }): Promise<{ count: number }>;
+};
+function delegate(client: Prisma.TransactionClient, model: string): Delegate {
+  return (client as unknown as Record<string, Delegate>)[model[0].toLowerCase() + model.slice(1)];
+}
+function scope(modelName: string, businessId: string): Record<string, unknown> {
+  const model = backupModels.find(candidate => candidate.name === modelName)!;
+  if (modelName === "Business") return { id: businessId };
+  if (model.fields.some(field => field.name === "businessId")) return { businessId };
+  const relations = model.fields.filter(field => field.relationFromFields?.length);
+  if (!relations.length) throw new BackupError(`Unclassified tenant model: ${modelName}`);
+  return { OR: relations.map(field => ({ [field.name]: scope(field.type, businessId) })) };
+}
+function identifier(name: string) {
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) throw new BackupError("Unsupported backup database identifier");
+  return Prisma.raw(`"${name}"`);
+}
+/** Finished, not rolled-back migrations: the schema identity a snapshot is bound to. */
+async function appliedMigrations(client: Prisma.TransactionClient): Promise<MigrationIdentity[]> {
+  const rows = await client.$queryRaw<{ migration_name: string; checksum: string }[]>(Prisma.sql`SELECT migration_name, checksum FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name`);
+  return rows.map(row => ({ name: row.migration_name, checksum: row.checksum }));
+}
+function sameMigrations(a: MigrationIdentity[], b: MigrationIdentity[]) { return JSON.stringify(a) === JSON.stringify(b); }
+function safeFailure(error: unknown, fallback: string) { return error instanceof BackupError ? error : new BackupError(fallback, 500); }
 
-export class BackupService {
-  private static backupDir = path.join(process.cwd(), "scratch", "backups");
-
-  private static ensureBackupDir() {
-    if (!fs.existsSync(this.backupDir)) {
-      fs.mkdirSync(this.backupDir, { recursive: true });
-    }
+export class TenantBackupStore {
+  private key: Buffer;
+  constructor(private client: PrismaClient, private directory: string, encodedKey: string | undefined) {
+    if (!path.isAbsolute(directory)) throw new BackupError("An absolute persistent BACKUP_DIRECTORY is required", 503);
+    this.key = encryptionKey(encodedKey);
   }
-
-  /**
-   * Performs a complete technical database backup.
-   * Fetches all tables programmatically, serializes to JSON, computes checksums, and saves the file.
-   */
-  public static async executeBackup(businessId: string): Promise<BackupMetadata> {
-    this.ensureBackupDir();
-    const timestamp = new Date().toISOString();
-    const filename = `backup-${businessId}-${Date.now()}.json`;
-    const filepath = path.join(this.backupDir, filename);
-
+  /** One MVCC snapshot, including historical/deleted rows; no independently timed table reads. */
+  async capture(businessId: string): Promise<TenantSnapshot> {
     try {
-      // We dump all key business entities to ensure complete tenant data backup
-      const [
-        users,
-        customers,
-        products,
-        sales,
-        saleItems,
-        creditNotes,
-        creditNoteItems,
-        debitNotes,
-        debitNoteItems,
-        auditLogs,
-        cbmsSyncQueues,
-        fiscalYears,
-        sequences
-      ] = await Promise.all([
-        db.user.findMany({ where: { businessId } }),
-        db.customer.findMany({ where: { businessId } }),
-        db.product.findMany({ where: { businessId } }),
-        db.sale.findMany({ where: { businessId } }),
-        db.saleItem.findMany({ where: { sale: { businessId } } }),
-        db.creditNote.findMany({ where: { businessId } }),
-        db.creditNoteItem.findMany({ where: { creditNote: { businessId } } }),
-        db.debitNote.findMany({ where: { businessId } }),
-        db.debitNoteItem.findMany({ where: { debitNote: { businessId } } }),
-        db.auditLog.findMany({ where: { businessId } }),
-        db.cbmsSyncQueue.findMany({ where: { businessId } }),
-        db.fiscalYear.findMany({ where: { businessId } }),
-        db.fiscalYearInvoiceSequence.findMany({ where: { businessId } }),
-      ]);
-
-      const backupData = {
-        businessId,
-        version: "1.0",
-        data: {
-          users,
-          customers,
-          products,
-          sales,
-          saleItems,
-          creditNotes,
-          creditNoteItems,
-          debitNotes,
-          debitNoteItems,
-          auditLogs,
-          cbmsSyncQueues,
-          fiscalYears,
-          sequences,
-        },
-      };
-
-      const serialized = JSON.stringify(backupData, null, 2);
-      fs.writeFileSync(filepath, serialized, "utf-8");
-
-      const size = fs.statSync(filepath).size;
-      const crypto = require("crypto");
-      const hash = crypto.createHash("sha256").update(serialized).digest("hex");
-
-      const metadata: BackupMetadata = {
-        filename,
-        sizeBytes: size,
-        timestamp,
-        tables: {
-          users: users.length,
-          customers: customers.length,
-          products: products.length,
-          sales: sales.length,
-          saleItems: saleItems.length,
-          creditNotes: creditNotes.length,
-          debitNotes: debitNotes.length,
-          auditLogs: auditLogs.length,
-          cbmsSyncQueues: cbmsSyncQueues.length,
-          fiscalYears: fiscalYears.length,
-        },
-        checksum: hash,
-        verified: true,
-        status: "SUCCESS",
-      };
-
-      // Save backup metadata log in the same dir
-      fs.writeFileSync(filepath + ".meta", JSON.stringify(metadata, null, 2), "utf-8");
-
-      return metadata;
-    } catch (err: any) {
-      console.error("Backup execution failed:", err);
-      const failedMeta: BackupMetadata = {
-        filename,
-        sizeBytes: 0,
-        timestamp,
-        tables: {},
-        checksum: "",
-        verified: false,
-        status: "FAILED",
-        errorMessage: err.message || "Unknown backup error",
-      };
-      return failedMeta;
-    }
-  }
-
-  /**
-   * Retrieves all completed backup records for a business.
-   */
-  public static async listBackups(businessId: string): Promise<BackupMetadata[]> {
-    this.ensureBackupDir();
-    const files = fs.readdirSync(this.backupDir);
-    const list: BackupMetadata[] = [];
-
-    files.forEach((file) => {
-      if (file.startsWith(`backup-${businessId}`) && file.endsWith(".meta")) {
-        try {
-          const content = fs.readFileSync(path.join(this.backupDir, file), "utf-8");
-          list.push(JSON.parse(content));
-        } catch (e) {
-          console.error("Failed to parse backup metadata:", file);
+      return await this.client.$transaction(async tx => {
+        const tables: TenantSnapshot["tables"] = {}, jsonDatabaseNulls: TenantSnapshot["jsonDatabaseNulls"] = {};
+        for (const model of backupModels) {
+          let where = scope(model.name, businessId);
+          if (["SaleReturnItem", "PurchaseReturnItem"].includes(model.name)) where = { OR: [where, { productId: { in: (tables.Product || []).map(row => row.id) } }] };
+          const rows = await delegate(tx, model.name).findMany({ where, orderBy: { id: "asc" } });
+          tables[model.name] = JSON.parse(JSON.stringify(rows));
+          jsonDatabaseNulls[model.name] = {};
+          const jsonFields = model.fields.filter(field => field.type === "Json" && field.kind !== "object");
+          if (rows.length && jsonFields.length) {
+            const flags = await tx.$queryRaw<BackupRow[]>(Prisma.sql`SELECT "id", ${Prisma.join(jsonFields.map(field => Prisma.sql`${identifier(field.name)} IS NULL AS ${identifier(field.name)}`))} FROM ${identifier(model.name)} WHERE "id" IN (${Prisma.join(rows.map(row => row.id as string))}) ORDER BY "id"`);
+            for (const row of flags) {
+              const nulls = jsonFields.filter(field => row[field.name] === true).map(field => field.name);
+              if (nulls.length) jsonDatabaseNulls[model.name][row.id as string] = nulls;
+            }
+          }
         }
-      }
-    });
-
-    return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const migrations = await appliedMigrations(tx);
+        return validateSnapshot({ version: 2, businessId, createdAt: new Date().toISOString(), schemaHash, migrations, tables, jsonDatabaseNulls }, businessId);
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 60000 });
+    } catch (error) { throw safeFailure(error, "Snapshot capture failed; no archive created"); }
   }
-
-  /**
-   * Restores tenant data in a single transactional pipeline.
-   */
-  public static async executeRestore(businessId: string, filename: string): Promise<boolean> {
-    this.ensureBackupDir();
-    const filepath = path.join(this.backupDir, filename);
-
-    if (!fs.existsSync(filepath)) {
-      throw new Error("Backup file not found");
+  private async root() {
+    await fs.mkdir(this.directory, { recursive: true, mode: 0o700 });
+    return fs.realpath(this.directory);
+  }
+  private async read(filename: string): Promise<Buffer> {
+    if (!/^backup-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pbackup$/.test(filename)) throw new BackupError("Invalid archive filename; legacy JSON recovery is unsupported");
+    const root = await this.root(), file = path.join(root, filename);
+    try {
+      if ((await fs.lstat(file)).isSymbolicLink() || path.dirname(await fs.realpath(file)) !== root) throw new BackupError("Archive path is not confined");
+      const handle = await fs.open(file, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+      try {
+        const stat = await handle.stat();
+        if (!stat.isFile() || stat.size > MAX_BACKUP_BYTES) throw new BackupError("Invalid archive file or size");
+        return await handle.readFile();
+      } finally { await handle.close(); }
+    } catch (error) { throw safeFailure(error, "Archive unavailable"); }
+  }
+  async load(businessId: string, filename: string) { return openSnapshot(await this.read(filename), this.key, businessId); }
+  private metadata(filename: string, bytes: Buffer, snapshot: TenantSnapshot): BackupMetadata {
+    return { filename, sizeBytes: bytes.length, timestamp: snapshot.createdAt, tables: Object.fromEntries(backupModels.map(model => [model.name, snapshot.tables[model.name].length])), checksum: createHash("sha256").update(bytes).digest("hex"), verified: false, integrityVerified: true, status: "SUCCESS", formatVersion: 2, recoveryStatus: "NOT_REHEARSED" };
+  }
+  async executeBackup(businessId: string): Promise<BackupMetadata> {
+    const snapshot = await this.capture(businessId), bytes = sealSnapshot(snapshot, this.key);
+    const filename = `backup-${randomUUID()}.pbackup`, root = await this.root();
+    const temporary = path.join(root, `${filename}.partial`), destination = path.join(root, filename);
+    try {
+      const handle = await fs.open(temporary, "wx", 0o600);
+      try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
+      await fs.rename(temporary, destination);
+      return this.metadata(filename, bytes, openSnapshot(bytes, this.key, businessId));
+    } catch (error) {
+      await fs.unlink(temporary).catch(() => undefined);
+      throw safeFailure(error, "Encrypted archive write failed");
     }
-
-    const content = fs.readFileSync(filepath, "utf-8");
-    const backup = JSON.parse(content);
-
-    if (backup.businessId !== businessId) {
-      throw new Error("Backup mismatch: cannot restore data of another business tenant.");
+  }
+  async listBackups(businessId: string): Promise<BackupMetadata[]> {
+    const result: BackupMetadata[] = [];
+    for (const filename of (await fs.readdir(await this.root())).filter(name => name.endsWith(".pbackup"))) {
+      try {
+        const bytes = await this.read(filename);
+        result.push(this.metadata(filename, bytes, openSnapshot(bytes, this.key, businessId)));
+      } catch { /* Never trust legacy metadata, foreign tenants or unauthenticated files. */ }
     }
-
-    const { data } = backup;
-
-    await db.$transaction(async (tx) => {
-      // 1. Delete existing records related to this tenant (respecting order of foreign keys)
-      // Clear transactional logs first
-      await tx.cbmsSyncQueue.deleteMany({ where: { businessId } });
-      await tx.auditLog.deleteMany({ where: { businessId } });
-      await tx.payment.deleteMany({ where: { businessId } });
-      await tx.creditNoteItem.deleteMany({ where: { creditNote: { businessId } } });
-      await tx.creditNote.deleteMany({ where: { businessId } });
-      await tx.debitNoteItem.deleteMany({ where: { debitNote: { businessId } } });
-      await tx.debitNote.deleteMany({ where: { businessId } });
-      await tx.saleItem.deleteMany({ where: { sale: { businessId } } });
-      await tx.sale.deleteMany({ where: { businessId } });
-      await tx.fiscalYearInvoiceSequence.deleteMany({ where: { businessId } });
-      await tx.fiscalYear.deleteMany({ where: { businessId } });
-
-      // Clean master logs
-      await tx.productStock.deleteMany({ where: { branch: { businessId } } });
-      await tx.product.deleteMany({ where: { businessId } });
-      await tx.customerLedger.deleteMany({ where: { customer: { businessId } } });
-      await tx.customer.deleteMany({ where: { businessId } });
-
-      // 2. Restore Master tables
-      if (data.customers.length > 0) {
-        await tx.customer.createMany({ data: data.customers });
-      }
-
-      if (data.products.length > 0) {
-        await tx.product.createMany({ data: data.products });
-      }
-
-      // 3. Restore Fiscal settings
-      if (data.fiscalYears.length > 0) {
-        await tx.fiscalYear.createMany({ data: data.fiscalYears });
-      }
-
-      if (data.sequences.length > 0) {
-        await tx.fiscalYearInvoiceSequence.createMany({ data: data.sequences });
-      }
-
-      // 4. Restore Sales transactional details
-      if (data.sales.length > 0) {
-        await tx.sale.createMany({ data: data.sales });
-      }
-
-      if (data.saleItems.length > 0) {
-        await tx.saleItem.createMany({ data: data.saleItems });
-      }
-
-      // 5. Restore credit/debit adjustments
-      if (data.creditNotes.length > 0) {
-        await tx.creditNote.createMany({ data: data.creditNotes });
-      }
-
-      if (data.creditNoteItems.length > 0) {
-        await tx.creditNoteItem.createMany({ data: data.creditNoteItems });
-      }
-
-      if (data.debitNotes.length > 0) {
-        await tx.debitNote.createMany({ data: data.debitNotes });
-      }
-
-      if (data.debitNoteItems.length > 0) {
-        await tx.debitNoteItem.createMany({ data: data.debitNoteItems });
-      }
-
-      // 6. Restore audits and CBMS logs
-      if (data.auditLogs.length > 0) {
-        await tx.auditLog.createMany({ data: data.auditLogs });
-      }
-
-      if (data.cbmsSyncQueues.length > 0) {
-        await tx.cbmsSyncQueue.createMany({ data: data.cbmsSyncQueues });
-      }
-    }, { timeout: 30000 });
-
-    return true;
+    return result.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }
+  /** Additive recovery only: no deletes, overwrites, ID remapping or recomputation. */
+  async restoreMissingTenant(businessId: string, filename: string): Promise<void> {
+    const snapshot = await this.load(businessId, filename);
+    try {
+      await this.client.$transaction(async tx => {
+        // Schema/migration identity must match exactly before any row is written.
+        if (!sameMigrations(snapshot.migrations, await appliedMigrations(tx))) throw new BackupError("Target database migration history differs from the archive; recovery refused before any write", 409);
+        if (await tx.business.findUnique({ where: { id: businessId } })) throw new BackupError("In-place restore is disabled; recover only into an absent tenant", 409);
+        for (const model of backupModels) {
+          const data = snapshot.tables[model.name].map(row => {
+            const result = { ...row };
+            for (const field of model.fields.filter(field => field.type === "Json" && field.kind !== "object")) {
+              if (row[field.name] === null) result[field.name] = snapshot.jsonDatabaseNulls[model.name][row.id as string]?.includes(field.name) ? Prisma.DbNull : Prisma.JsonNull;
+            }
+            return result;
+          });
+          if (data.length) await delegate(tx, model.name).createMany({ data });
+        }
+        await tx.auditLog.create({ data: { businessId, action: "BACKUP_RESTORE", module: "BACKUP", role: "RECOVERY_OPERATOR", details: `Recovered missing tenant from authenticated archive ${filename}; existing records were not overwritten.` } });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 60000 });
+    } catch (error) { throw safeFailure(error, "Recovery transaction failed; no data committed"); }
+  }
+}
+export function configuredBackupStore() { return new TenantBackupStore(db, process.env.BACKUP_DIRECTORY || "", process.env.BACKUP_ENCRYPTION_KEY); }
+export class BackupService {
+  static executeBackup(businessId: string) { return configuredBackupStore().executeBackup(businessId); }
+  static listBackups(businessId: string) { return configuredBackupStore().listBackups(businessId); }
+  static async executeRestore(businessId: string, filename: string): Promise<never> {
+    void businessId; void filename;
+    throw new BackupError("Live overwrite restore is disabled. Use isolated operator recovery into an absent tenant.", 409);
   }
 }

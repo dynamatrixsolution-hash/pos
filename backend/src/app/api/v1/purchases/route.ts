@@ -297,7 +297,7 @@ export async function POST(request: Request) {
       const unpaidAmt = total - settlement.paidAmount;
 
       if (unpaidAmt > 0) {
-        const newSupplierBalance = supplier.balance + unpaidAmt;
+        const newSupplierBalance = Number(supplier.balance) + unpaidAmt;
 
         // Update supplier balance
         await tx.supplier.update({

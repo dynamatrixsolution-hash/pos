@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       id: p.id,
       businessName: p.business?.name || "Unknown Merchant",
       plan: p.remarks && p.remarks.toLowerCase().includes("plan") ? p.remarks.split(" ").slice(-1)[0] : "BASIC",
-      amount: p.amount,
+      amount: Number(p.amount),
       currency: p.business?.currency || "NPR",
       method: p.method,
       transactionId: p.receiptNumber || p.id.split("-")[0].toUpperCase(),

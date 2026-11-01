@@ -457,7 +457,7 @@ export default function DailyReportsPage() {
 
       {/* Print details header */}
       <div className="hidden print:block border-b-2 border-[#2563EB] pb-3 mb-5">
-        <h1 className="text-2xl font-black text-[#2563EB]">DynaPOS Daily Audit</h1>
+        <h1 className="text-2xl font-black text-[#2563EB]">RestroInn Daily Audit</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Date preset: {dateStr} | Generated: {mounted ? new Date().toLocaleString() : ""}</p>
       </div>
 

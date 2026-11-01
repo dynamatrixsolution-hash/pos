@@ -137,11 +137,16 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl p-8 space-y-6">
         {/* Branding header */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden">
-            <img src="/logo.jpg" alt="Prayassh Logo" className="h-12 w-12 rounded-xl object-contain shrink-0" />
+        <div className="flex flex-col items-center text-center space-y-3">
+          <div className="h-16 w-16 rounded-2xl flex items-center justify-center overflow-hidden shadow-md shadow-[#6B2837]/20 border border-border">
+            <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-16 w-16 rounded-2xl object-cover shrink-0" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Welcome to Prayassh</h1>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight text-foreground">Welcome to RestroInn</h1>
+            <p className="text-[11px] font-bold text-[#A77B38] uppercase tracking-widest mt-0.5">
+              Hotel & Restaurant Software
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground">
             Enter your credentials below to log into your sales terminal.
           </p>
@@ -204,7 +209,7 @@ function LoginForm() {
 
         {/* Registration redirect */}
         <div className="text-center text-xs text-muted-foreground border-t border-border/50 pt-4">
-          Need a DynaPOS workspace?{" "}
+          Need a RestroInn workspace?{" "}
           <Link href="/auth/register" className="text-primary hover:underline font-bold">
             Create Business
           </Link>

@@ -54,7 +54,7 @@ export async function POST(
       await resolveBranch(tx, context, sale.branchId);
       if (!sale.isActive) throw new Error("Invoice is already cancelled");
 
-      if (sale.paidAmount > 0 || await tx.payment.count({ where: { saleId } })) throw new CommerceError("Paid invoices require a reconciled refund workflow", 409);
+      if (Number(sale.paidAmount) > 0 || await tx.payment.count({ where: { saleId } })) throw new CommerceError("Paid invoices require a reconciled refund workflow", 409);
       const credits = await tx.creditNote.count({ where: { saleId } });
       if (credits) throw new CommerceError("Invoices with credit notes require reconciled reversal", 409);
       // 2. Adjust Stock back (Revert deductions)
@@ -98,10 +98,10 @@ export async function POST(
         });
 
         if (customer) {
-          const unpaidAmt = sale.total - sale.paidAmount;
+          const unpaidAmt = Number(sale.total) - Number(sale.paidAmount);
 
           if (unpaidAmt > 0) {
-            const newCustomerBalance = Math.max(0, customer.balance - unpaidAmt);
+            const newCustomerBalance = Math.max(0, Number(customer.balance) - unpaidAmt);
 
             await tx.customer.update({
               where: { id: customer.id },

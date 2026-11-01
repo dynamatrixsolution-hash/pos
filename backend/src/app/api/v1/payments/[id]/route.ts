@@ -296,7 +296,7 @@ export async function DELETE(
         });
 
         if (customer) {
-          const reversedBalance = customer.balance + payment.amount;
+          const reversedBalance = customer.balance.add(payment.amount);
           await tx.customer.update({
             where: { id: customer.id },
             data: { balance: reversedBalance },
@@ -323,7 +323,7 @@ export async function DELETE(
         });
 
         if (supplier) {
-          const reversedBalance = supplier.balance + payment.amount;
+          const reversedBalance = supplier.balance.add(payment.amount);
           await tx.supplier.update({
             where: { id: supplier.id },
             data: { balance: reversedBalance },
@@ -343,9 +343,14 @@ export async function DELETE(
         }
       }
 
-      // 3. Delete the Payment record
-      await tx.payment.delete({
-        where: { id: payment.id },
+      // 3. Record immutable PaymentReversal record (never hard-delete payment)
+      await tx.paymentReversal.create({
+        data: {
+          businessId: context.businessId,
+          paymentId: payment.id,
+          reason: "Payment reversed via payment management action",
+          reversedById: context.userId,
+        },
       });
 
       // 4. Record Audit Log for Reversal
@@ -355,9 +360,9 @@ export async function DELETE(
           userId: context.userId,
           role: context.role,
           branchId: payment.branchId || context.branchId,
-          action: "DELETE",
+          action: "REVERSE",
           module: "PAYMENT",
-          details: `REVERSED and deleted payment ${payment.receiptNumber} of $${payment.amount} (${payment.type})`,
+          details: `REVERSED payment ${payment.receiptNumber} of $${payment.amount} (${payment.type})`,
           oldValue: JSON.parse(JSON.stringify(payment)),
           ipAddress,
           deviceInfo,

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const smtp = settings.smtp || {
       host: "smtp.mailgun.org",
       port: 587,
-      user: "postmaster@prayassh.com",
+      user: "postmaster@restroinn.com",
       password: "••••••••••••••••",
       encryption: "TLS",
     };
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     };
 
     const general = {
-      name: platform?.name || "Prayassh SaaS Platform",
+      name: platform?.name || "RestroInn Hospitality Platform",
       phone: platform?.phone || "+1-800-555-0100",
       email: platform?.email || "admin@dynapos.com",
       address: platform?.address || "DynaPOS Headquarters",

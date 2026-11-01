@@ -103,14 +103,26 @@ export async function verifyBranchAccess(
     include: { branch: true },
   });
 
-  if (!user) return false;
+  if (!user || !user.isActive || user.deletedAt) return false;
 
   const branch = await db.branch.findFirst({ where: { id: branchId, businessId: user.businessId, isActive: true, deletedAt: null } });
-  if (!branch || !user.isActive || user.deletedAt) return false;
+  if (!branch) return false;
   if (["SUPER_ADMIN", "OWNER"].includes(user.role)) return true;
 
-  // MANAGER and CASHIER can only access their assigned branch
-  return user.branchId === branchId;
+  // Primary branch match
+  if (user.branchId === branchId) return true;
+
+  // Check explicit UserBranchMembership
+  const membership = await (db as any).userBranchMembership?.findFirst({
+    where: {
+      userId,
+      branchId,
+      businessId: user.businessId,
+      isActive: true,
+    },
+  });
+
+  return !!membership;
 }
 
 /**
@@ -172,22 +184,37 @@ export async function getAccessibleBranches(
   }
 
   if (authContext.role === "SUPER_ADMIN") {
-    // Super admin can only see owner's branches through business
-    // This would typically be limited by the Business they're viewing
     return [];
   }
 
+  const branchIds = new Set<string>();
   if (authContext.branchId) {
-    // Manager and Cashier can see their branch only
-    return await db.branch.findMany({
-      where: {
-        id: authContext.branchId,
-        deletedAt: null,
-      },
-    });
+    branchIds.add(authContext.branchId);
   }
 
-  return [];
+  const memberships = await (db as any).userBranchMembership?.findMany({
+    where: {
+      userId: authContext.userId,
+      businessId: authContext.businessId,
+      isActive: true,
+    },
+    select: { branchId: true },
+  }) || [];
+
+  for (const m of memberships) {
+    if (m.branchId) branchIds.add(m.branchId);
+  }
+
+  if (branchIds.size === 0) return [];
+
+  return await db.branch.findMany({
+    where: {
+      id: { in: Array.from(branchIds) },
+      businessId: authContext.businessId,
+      deletedAt: null,
+      isActive: true,
+    },
+  });
 }
 
 /**

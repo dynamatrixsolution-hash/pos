@@ -86,12 +86,12 @@ export async function GET(request: Request) {
       });
 
       rawData = sales.map((sale) => {
-        const hasVat = sale.tax > 0;
+        const hasVat = Number(sale.tax) > 0;
         const totalLineAmount = sale.total;
         const lineTax = sale.tax;
         const lineDiscount = sale.discount;
-        const taxableSalesAmount = hasVat ? (sale.subtotal - lineDiscount) : 0;
-        const nonTaxableSalesAmount = !hasVat ? (sale.subtotal - lineDiscount) : 0;
+        const taxableSalesAmount = hasVat ? (Number(sale.subtotal) - Number(lineDiscount)) : 0;
+        const nonTaxableSalesAmount = !hasVat ? (Number(sale.subtotal) - Number(lineDiscount)) : 0;
 
         return {
           date: sale.createdAt.toISOString().split("T")[0],

@@ -26,10 +26,12 @@ export const authConfig = {
             }
           }
 
-          // CASHIER Route Protection: Cashiers can access POS, Sales, Products, Customers, and Inventory
+          // CASHIER Route Protection: Cashiers can access POS, Restaurant, Hotel, Sales, Products, Customers, and Inventory
           if (role === "CASHIER") {
             const allowedPaths = [
               "/dashboard/pos",
+              "/dashboard/restaurant",
+              "/dashboard/hotel",
               "/dashboard/sales",
               "/dashboard/products",
               "/dashboard/customers",

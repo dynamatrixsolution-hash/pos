@@ -56,7 +56,7 @@ export async function GET(request: Request) {
 
       const totalQuantity = visibleStocks.reduce((sum, stock) => sum + stock.quantity, 0);
       const isLowStock = totalQuantity <= p.alertQuantity;
-      const valuation = totalQuantity * p.costPrice;
+      const valuation = totalQuantity * Number(p.costPrice);
 
       return {
         id: p.id,

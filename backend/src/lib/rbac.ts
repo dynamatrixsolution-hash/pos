@@ -18,6 +18,9 @@ export interface RolePermissions {
 export const rolePermissions: RolePermissions = {
   CASHIER: [
     { resource: "pos", actions: ["create", "view"] }, // POS Billing
+    { resource: "restaurant", actions: ["create", "view", "update"] }, // Restaurant POS & Tables
+    { resource: "hotel", actions: ["create", "view", "update"] }, // Hotel Front Desk & Service Desk
+    { resource: "pilot", actions: ["create", "view"] }, // Pilot Rollout & Hardware Rehearsals
     { resource: "inventory", actions: ["create", "view", "update", "delete"] }, // Full inventory access
     { resource: "products", actions: ["create", "view"] }, // View and add products
     { resource: "customers", actions: ["view", "create"] }, // View and register customers
@@ -27,6 +30,9 @@ export const rolePermissions: RolePermissions = {
     // All services but limited to assigned warehouse
     { resource: "dashboard", actions: ["view"] },
     { resource: "pos", actions: ["create", "view"] },
+    { resource: "restaurant", actions: ["create", "view", "update", "delete"] },
+    { resource: "hotel", actions: ["create", "view", "update", "delete"] },
+    { resource: "pilot", actions: ["create", "view", "update", "delete"] },
     { resource: "products", actions: ["view", "update"] },
     { resource: "categories", actions: ["view"] },
     { resource: "purchases", actions: ["create", "view", "update"] },
@@ -39,11 +45,15 @@ export const rolePermissions: RolePermissions = {
     { resource: "sales", actions: ["view"] },
     { resource: "branches", actions: ["view"] }, // View only
     { resource: "users", actions: ["view"] }, // View only users in their branch
+    { resource: "settings", actions: ["view", "update"] },
   ],
   OWNER: [
     // All services
     { resource: "dashboard", actions: ["view"] },
     { resource: "pos", actions: ["create", "view"] },
+    { resource: "restaurant", actions: ["create", "view", "update", "delete"] },
+    { resource: "hotel", actions: ["create", "view", "update", "delete"] },
+    { resource: "pilot", actions: ["create", "view", "update", "delete"] },
     { resource: "products", actions: ["create", "view", "update", "delete"] },
     { resource: "categories", actions: ["create", "view", "update", "delete"] },
     { resource: "purchases", actions: ["create", "view", "update", "delete"] },
@@ -64,6 +74,8 @@ export const rolePermissions: RolePermissions = {
     { resource: "users", actions: ["view"] }, // View users (employees)
     { resource: "reports", actions: ["view"] }, // View statistics/reports
     { resource: "dashboard", actions: ["view"] }, // Super admin dashboard
+    { resource: "hotel", actions: ["view"] },
+    { resource: "pilot", actions: ["view"] },
   ],
 };
 
@@ -71,6 +83,8 @@ export const rolePermissions: RolePermissions = {
 export const accessibleResources = {
   CASHIER: [
     "/dashboard/pos",
+    "/dashboard/restaurant",
+    "/dashboard/hotel",
     "/dashboard/inventory",
     "/dashboard/customers",
     "/dashboard/products",
@@ -79,6 +93,8 @@ export const accessibleResources = {
   MANAGER: [
     "/dashboard",
     "/dashboard/pos",
+    "/dashboard/restaurant",
+    "/dashboard/hotel",
     "/dashboard/products",
     "/dashboard/categories",
     "/dashboard/purchases",
@@ -93,6 +109,8 @@ export const accessibleResources = {
   OWNER: [
     "/dashboard",
     "/dashboard/pos",
+    "/dashboard/restaurant",
+    "/dashboard/hotel",
     "/dashboard/products",
     "/dashboard/categories",
     "/dashboard/purchases",

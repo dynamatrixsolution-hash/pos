@@ -115,11 +115,11 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(await db.sale.count({ where: { businessId } })).toBe(1);
     expect(await db.payment.count({ where: { businessId } })).toBe(1);
     expect(await stock()).toBe(0);
-    expect((await db.sale.findFirstOrThrow({ where: { businessId } })).paidAmount).toBe(40);
-    expect((await db.payment.findFirstOrThrow({ where: { businessId } })).amount).toBe(40);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(60);
+    expect(Number((await db.sale.findFirstOrThrow({ where: { businessId } })).paidAmount)).toBe(40);
+    expect(Number((await db.payment.findFirstOrThrow({ where: { businessId } })).amount)).toBe(40);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(60);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(1);
-    expect((await db.customerLedger.findFirstOrThrow({ where: { customerId } })).debit).toBe(60);
+    expect(Number((await db.customerLedger.findFirstOrThrow({ where: { customerId } })).debit)).toBe(60);
     expect(await db.requestResult.count({ where: { businessId } })).toBe(1);
     expect((await checkout(req(body({ customerId, paidAmount: 39 }), key))).status).toBe(409);
   });
@@ -129,8 +129,8 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(await stock()).toBe(0);
     expect(await db.sale.count({ where: { businessId } })).toBe(1);
     expect(await db.payment.count({ where: { businessId } })).toBe(1);
-    expect((await db.payment.aggregate({ where: { businessId }, _sum: { amount: true } }))._sum.amount).toBe(100);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+    expect(Number((await db.payment.aggregate({ where: { businessId }, _sum: { amount: true } }))._sum.amount)).toBe(100);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(0);
     expect(await db.requestResult.count({ where: { businessId } })).toBe(1);
   });
@@ -141,8 +141,8 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(await stock()).toBe(-1);
     expect(await db.sale.count({ where: { businessId } })).toBe(2);
     expect(await db.payment.count({ where: { businessId } })).toBe(2);
-    expect((await db.payment.aggregate({ where: { businessId }, _sum: { amount: true } }))._sum.amount).toBe(200);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+    expect(Number((await db.payment.aggregate({ where: { businessId }, _sum: { amount: true } }))._sum.amount)).toBe(200);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(0);
     expect(await db.requestResult.count({ where: { businessId } })).toBe(2);
   });
@@ -167,13 +167,14 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(responses.map(r => r.status)).toEqual([201, 201]);
     expect(await db.payment.count({ where: { businessId } })).toBe(1);
     expect((await db.sale.findUniqueOrThrow({ where: { id: sale.id } })).paymentStatus).toBe("PAID");
-    expect((await db.sale.findUniqueOrThrow({ where: { id: sale.id } })).paidAmount).toBe(100);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+    expect(Number((await db.sale.findUniqueOrThrow({ where: { id: sale.id } })).paidAmount)).toBe(100);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
     expect(await stock()).toBe(0);
     expect(await db.sale.count({ where: { businessId } })).toBe(1);
-    expect((await db.payment.findFirstOrThrow({ where: { businessId } })).amount).toBe(100);
+    expect(Number((await db.payment.findFirstOrThrow({ where: { businessId } })).amount)).toBe(100);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(2);
-    expect((await db.customerLedger.aggregate({ where: { customerId }, _sum: { debit: true, credit: true } }))._sum).toEqual({ debit: 100, credit: 100 });
+    const ledgerSum = (await db.customerLedger.aggregate({ where: { customerId }, _sum: { debit: true, credit: true } }))._sum;
+    expect({ debit: Number(ledgerSum.debit), credit: Number(ledgerSum.credit) }).toEqual({ debit: 100, credit: 100 });
     expect(await db.requestResult.count({ where: { businessId } })).toBe(2);
   });
   it("uses independent overlapping PostgreSQL transactions", async () => {
@@ -203,7 +204,7 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(await db.sale.count({ where: { businessId } })).toBe(0);
     expect(await db.payment.count({ where: { businessId } })).toBe(0);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(0);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
     expect(await db.auditLog.count({ where: { businessId } })).toBe(0);
     expect(await db.requestResult.count({ where: { businessId } })).toBe(0);
   });
@@ -230,7 +231,7 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
       expect(await db.sale.count({ where: { businessId } })).toBe(0);
       expect(await db.payment.count({ where: { businessId } })).toBe(0);
       expect(await db.customerLedger.count({ where: { customerId } })).toBe(0);
-      expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+      expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
       expect(await db.auditLog.count({ where: { businessId } })).toBe(0);
       expect(await db.requestResult.count({ where: { businessId } })).toBe(0);
       expect(await db.fiscalYearInvoiceSequence.findMany({ where: { businessId } })).toEqual(sequenceBefore);
@@ -257,7 +258,7 @@ describe.skipIf(!target)("real PostgreSQL checkout atomicity", () => {
     expect(await db.openingStock.count({ where: { businessId } })).toBe(1);
     expect(await db.batch.count({ where: { productId } })).toBe(1);
     expect(await db.productStock.count({ where: { productId, branchId } })).toBe(1);
-    expect((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance).toBe(0);
+    expect(Number((await db.customer.findUniqueOrThrow({ where: { id: customerId } })).balance)).toBe(0);
     expect(await db.customerLedger.count({ where: { customerId } })).toBe(0);
   });
   it("rejects paid cancellation, settled correction and linked payment reversal without partial effects", async () => {

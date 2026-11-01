@@ -67,6 +67,15 @@ function SubscriptionTimer({
   const [timeLeft, setTimeLeft] = React.useState("");
   const [urgency, setUrgency] = React.useState<"normal" | "warning" | "danger">("normal");
 
+  const formattedEnd = React.useMemo(() => {
+    const d = new Date(endDate);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, [endDate]);
+
   React.useEffect(() => {
     function updateTimer() {
       const end = new Date(endDate);
@@ -111,12 +120,13 @@ function SubscriptionTimer({
 
   return (
     <div
+      suppressHydrationWarning
       className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${colorClasses[urgency]} transition-all duration-300 shadow-xs`}
-      title={`Plan: ${plan} (Ends: ${new Date(endDate).toLocaleDateString()})`}
+      title={`Plan: ${plan}${formattedEnd ? ` (Ends: ${formattedEnd})` : ""}`}
     >
       <Clock className="h-3 w-3" />
       <span className="hidden xs:inline uppercase tracking-wider text-[8px] opacity-75">{plan}:</span>
-      <span>{timeLeft}</span>
+      <span suppressHydrationWarning>{timeLeft}</span>
     </div>
   );
 }
@@ -393,12 +403,12 @@ export default function DashboardShellClient({
             onClick={() => toggleMenu(item.title)}
             className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group cursor-pointer ${
               hasActiveChild
-                ? "bg-[#115E59] text-white shadow-md shadow-[#115E59]/10" 
-                : "text-slate-300 hover:bg-[#115E59]/50 hover:text-white"
+                ? "bg-[#6B2837] text-white shadow-md shadow-[#6B2837]/20" 
+                : "text-slate-300 hover:bg-[#6B2837]/50 hover:text-white"
             }`}
           >
             <div className="flex items-center gap-3">
-              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#EAB308]" : "text-slate-400 group-hover:text-white"}`} />
+              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#A77B38]" : "text-slate-400 group-hover:text-white"}`} />
               {item.title}
             </div>
             <motion.div
@@ -418,7 +428,7 @@ export default function DashboardShellClient({
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="pl-6 pr-2 py-1.5 space-y-1 border-l border-emerald-800/30 ml-5 mt-1">
+                <div className="pl-6 pr-2 py-1.5 space-y-1 border-l border-[#3B2D31] ml-5 mt-1">
                   {allowedChildren.map((child) => {
                     const isChildActive = pathname === child.href;
                     const ChildIcon = child.icon;
@@ -429,7 +439,7 @@ export default function DashboardShellClient({
                         onClick={() => isMobile && setMobileMenuOpen(false)}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 ${
                           isChildActive
-                            ? "bg-[#115E59] text-white"
+                            ? "bg-[#6B2837] text-white"
                             : "text-slate-400 hover:text-white hover:bg-white/10"
                         }`}
                       >
@@ -454,7 +464,7 @@ export default function DashboardShellClient({
         onClick={() => isMobile && setMobileMenuOpen(false)}
         className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-200 group mb-1.5 ${
           isActive
-            ? "bg-[#115E59] hover:bg-[#0f4d49] text-white shadow-md shadow-[#115E59]/15"
+            ? "bg-[#6B2837] hover:bg-[#541E2A] text-white shadow-md shadow-[#6B2837]/25"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}
       >
@@ -469,19 +479,19 @@ export default function DashboardShellClient({
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Sidebar desktop (Fixed dark theme) */}
-      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#064E3B] border-r border-emerald-800/30 no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30 bg-[#064E3B]">
+      <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#241C1E] border-r border-[#3B2D31] no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-[#3B2D31] bg-[#241C1E]">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
+            <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
             <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
-              Prayassh
+              RestroInn
             </span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 py-6">
           {allowedNavigation.map((item) => renderNavItem(item))}
         </nav>
-        <div className="p-4 border-t border-emerald-800/30 bg-[#064E3B]">
+        <div className="p-4 border-t border-[#3B2D31] bg-[#241C1E]">
           <button
             onClick={() => setLogoutConfirmOpen(true)}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
@@ -503,7 +513,7 @@ export default function DashboardShellClient({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="md:hidden font-bold text-base sm:text-xl text-[#064E3B] shrink-0">Prayassh</div>
+            <div className="md:hidden font-bold text-base sm:text-xl text-[#6B2837] shrink-0">RestroInn</div>
             
             {activeBranch && user.role !== "SUPER_ADMIN" && (
               <div className="relative">
@@ -575,7 +585,7 @@ export default function DashboardShellClient({
                       onFocus={() => setShowSearchDropdown(true)}
                       className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
                     />
-                    <button className="px-3.5 bg-[#064E3B] hover:bg-[#053F30] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
+                    <button className="px-3.5 bg-[#241C1E] hover:bg-[#541E2A] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
                       <Search className="h-4 w-4" />
                     </button>
                   </div>
@@ -888,14 +898,14 @@ export default function DashboardShellClient({
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
               className="fixed inset-y-0 left-0 w-72 z-50 flex flex-col md:hidden"
-              style={{ backgroundColor: "#064E3B" }}
+              style={{ backgroundColor: "#241C1E" }}
             >
-              <div className="h-16 flex items-center justify-between px-6 border-b border-emerald-800/30">
+              <div className="h-16 flex items-center justify-between px-6 border-b border-[#3B2D31]">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                  <img src="/logo.jpg" alt="Prayassh Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
+                  <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
                   <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
-                    Prayassh
-                  </span>
+                    RestroInn
+            </span>
                 </Link>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
@@ -907,7 +917,7 @@ export default function DashboardShellClient({
               <nav className="flex-1 overflow-y-auto px-4 py-6">
                 {allowedNavigation.map((item) => renderNavItem(item, true))}
               </nav>
-              <div className="p-4 border-t border-emerald-800/30">
+              <div className="p-4 border-t border-[#3B2D31]">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

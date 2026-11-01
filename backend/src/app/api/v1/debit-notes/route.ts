@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         });
 
         if (customer) {
-          const newCustomerBalance = customer.balance + total;
+          const newCustomerBalance = Number(customer.balance) + total;
 
           await tx.customer.update({
             where: { id: customer.id },

@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%; /* #F8F9FA */
-    --foreground: 0 0% 0%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 168 70% 13%; /* #0B3B30 */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 166 60% 25%; /* #126854 */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 210 14% 94%; /* #F1F3F5 */
-    --muted-foreground: 215 14% 45%; /* #6C757D */
-    --accent: 46 93% 47%; /* Gold */
-    --accent-foreground: 168 70% 13%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 38 41% 95%; /* #F7F3EC Warm ivory */
+    --foreground: 20 12% 14%; /* #292320 Espresso */
+    --card: 38 100% 98%; /* #FFFCF7 Porcelain */
+    --card-foreground: 20 12% 14%; /* #292320 Espresso */
+    --popover: 38 100% 98%; /* #FFFCF7 Porcelain */
+    --popover-foreground: 20 12% 14%; /* #292320 Espresso */
+    --primary: 347 46% 29%; /* #6B2837 Deep burgundy */
+    --primary-foreground: 38 100% 98%; /* #FFFCF7 Porcelain */
+    --secondary: 35 33% 90%; /* #EEE7DD Warm stone */
+    --secondary-foreground: 20 12% 14%; /* #292320 Espresso */
+    --muted: 35 33% 90%; /* #EEE7DD Warm stone */
+    --muted-foreground: 28 9% 41%; /* #71675E Warm gray */
+    --accent: 36 50% 44%; /* #A77B38 Muted brass */
+    --accent-foreground: 38 100% 98%;
+    --destructive: 1 56% 45%; /* #B33432 Status Red */
     --destructive-foreground: 0 0% 100%;
-    --border: 210 14% 89%; /* #E9ECEF */
-    --input: 210 14% 94%;
-    --ring: 168 70% 13%;
-    --radius: 1.25rem;
+    --border: 34 23% 80%; /* #D8CEC1 Sandstone */
+    --input: 34 23% 80%; /* #D8CEC1 Sandstone */
+    --ring: 347 46% 29%; /* #6B2837 Deep burgundy */
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 164 70% 8%; /* Dark Forest */
-    --foreground: 40 43% 98%;
-    --card: 164 70% 12%;
-    --card-foreground: 40 43% 98%;
-    --popover: 164 70% 12%;
-    --popover-foreground: 40 43% 98%;
-    --primary: 164 86% 16%;
-    --primary-foreground: 40 43% 98%;
-    --secondary: 176 69% 22%; /* #115E59 Supporting Teal */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 164 40% 15%;
-    --muted-foreground: 220 9% 60%;
-    --accent: 46 93% 47%; /* #EAB308 Gold */
-    --accent-foreground: 164 86% 16%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 40 43% 98%;
-    --border: 164 40% 18%;
-    --input: 164 40% 18%;
-    --ring: 164 86% 16%;
+    --background: 20 15% 10%; /* #1F1A18 Dark espresso */
+    --foreground: 38 41% 95%; /* #F7F3EC Warm ivory */
+    --card: 20 12% 14%; /* #28211F Porcelain dark surface */
+    --card-foreground: 38 41% 95%;
+    --popover: 20 12% 14%;
+    --popover-foreground: 38 41% 95%;
+    --primary: 347 48% 46%; /* #9A3B50 Warm rose burgundy for dark mode */
+    --primary-foreground: 38 100% 98%;
+    --secondary: 20 10% 20%;
+    --secondary-foreground: 38 41% 95%;
+    --muted: 20 10% 18%;
+    --muted-foreground: 30 12% 65%;
+    --accent: 36 50% 50%; /* #BF9146 Muted brass */
+    --accent-foreground: 20 15% 10%;
+    --destructive: 1 56% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 10% 25%;
+    --input: 20 10% 25%;
+    --ring: 347 48% 46%;
   }
 }
 
@@ -75,27 +75,45 @@
   --font-sans: var(--font-sans);
   --font-heading: var(--font-sans);
 
-  /* Brand additions from user request */
-  --color-brand-forest: #064E3B;
-  --color-brand-teal: #115E59;
-  --color-brand-gold: #EAB308;
-  --color-brand-success: #22C55E;
-  --color-brand-cream: #FDFBF7;
-  --color-brand-muted: #6B7280;
-  --color-brand-border: #E7E5E4;
+  /* RestroInn Semantic Color Tokens */
+  --color-burgundy: #6B2837;
+  --color-burgundy-hover: #541E2A;
+  --color-ivory: #F7F3EC;
+  --color-porcelain: #FFFCF7;
+  --color-stone: #EEE7DD;
+  --color-espresso: #292320;
+  --color-warmgray: #71675E;
+  --color-sandstone: #D8CEC1;
+  --color-brass: #A77B38;
+  --color-brass-hover: #8F682E;
 
-  /* Force standard blue utilities to resolve to brand colors */
-  --color-blue-50: #FDFBF7;
-  --color-blue-100: #E7E5E4;
-  --color-blue-200: #E7E5E4;
-  --color-blue-300: #E7E5E4;
-  --color-blue-400: #115E59;
-  --color-blue-450: #115E59;
-  --color-blue-500: #064E3B;
-  --color-blue-600: #064E3B;
-  --color-blue-700: #115E59;
-  --color-blue-800: #064E3B;
-  --color-blue-900: #064E3B;
+  /* Operational Status Tokens */
+  --color-status-ready: #28634B;
+  --color-status-pending: #946000;
+  --color-status-cancelled: #B33432;
+  --color-status-info: #315F85;
+
+  /* Brand semantic additions */
+  --color-brand-burgundy: #6B2837;
+  --color-brand-ivory: #F7F3EC;
+  --color-brand-brass: #A77B38;
+  --color-brand-forest: #28634B;
+  --color-brand-ochre: #946000;
+  --color-brand-red: #B33432;
+  --color-brand-blue: #315F85;
+
+  /* Force standard blue utilities to resolve to RestroInn brand colors */
+  --color-blue-50: #F7F3EC;
+  --color-blue-100: #EEE7DD;
+  --color-blue-200: #D8CEC1;
+  --color-blue-300: #D8CEC1;
+  --color-blue-400: #883446;
+  --color-blue-450: #6B2837;
+  --color-blue-500: #6B2837;
+  --color-blue-600: #6B2837;
+  --color-blue-700: #541E2A;
+  --color-blue-800: #3E161F;
+  --color-blue-900: #292320;
 }
 
 @layer base {
@@ -132,6 +150,28 @@
   .scrollbar-hide {
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
+  }
+
+  /* Operational Status Badge Classes */
+  .badge-status-ready {
+    background-color: #EAF3EE !important;
+    color: #28634B !important;
+    border-color: #C3DED0 !important;
+  }
+  .badge-status-pending {
+    background-color: #FDF5E7 !important;
+    color: #946000 !important;
+    border-color: #EDD7AD !important;
+  }
+  .badge-status-cancelled {
+    background-color: #FAEAEC !important;
+    color: #B33432 !important;
+    border-color: #E9B6B7 !important;
+  }
+  .badge-status-info {
+    background-color: #EDF4F9 !important;
+    color: #315F85 !important;
+    border-color: #B8D2E6 !important;
   }
 }
 
@@ -197,8 +237,8 @@
   left: 6%;
   right: 6%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #2563EB, #2563EB, transparent);
-  box-shadow: 0 0 8px #2563EB, 0 0 12px #2563EB;
+  background: linear-gradient(90deg, transparent, #6B2837, #6B2837, transparent);
+  box-shadow: 0 0 8px #6B2837, 0 0 12px #6B2837;
   animation: qr-scan 3s ease-in-out infinite;
 }
 
@@ -206,7 +246,7 @@
   position: absolute;
   width: 16px;
   height: 16px;
-  border-color: #2563EB;
+  border-color: #A77B38;
   border-style: solid;
   pointer-events: none;
 }
@@ -251,83 +291,139 @@
   border-left-width: 0;
 }
 
-/* Custom Global Color Theme Overrides to Force Brand Colors Site-Wide */
+/* Custom Global Color Theme Overrides: RestroInn Theme */
 .bg-\[\#F3F4F6\] {
-  background-color: #F8F9FA !important;
+  background-color: #F7F3EC !important; /* Warm ivory */
 }
 .bg-\[\#F9FAFB\] {
-  background-color: #FFFFFF !important;
+  background-color: #FFFCF7 !important; /* Porcelain */
 }
 .bg-\[\#2563EB\] {
-  background-color: #0B3B30 !important;
+  background-color: #6B2837 !important; /* Deep burgundy */
 }
 .hover\:bg-\[\#1D4ED8\]:hover {
-  background-color: #126854 !important;
+  background-color: #541E2A !important;
 }
 .text-\[\#2563EB\] {
-  color: #0B3B30 !important;
+  color: #6B2837 !important;
 }
 .border-\[\#2563EB\] {
-  border-color: #0B3B30 !important;
+  border-color: #6B2837 !important;
 }
 .shadow-\[\#2563EB\]\/15 {
-  --tw-shadow-color: rgb(11 59 48 / 0.15) !important;
+  --tw-shadow-color: rgb(107 40 55 / 0.15) !important;
 }
 .shadow-\[\#2563EB\]\/25 {
-  --tw-shadow-color: rgb(11 59 48 / 0.25) !important;
+  --tw-shadow-color: rgb(107 40 55 / 0.25) !important;
 }
 .bg-\[\#2563EB\]\/10 {
-  background-color: rgba(11, 59, 48, 0.1) !important;
+  background-color: rgba(107, 40, 55, 0.1) !important;
 }
 .bg-\[\#2563EB\]\/20 {
-  background-color: rgba(11, 59, 48, 0.2) !important;
+  background-color: rgba(107, 40, 55, 0.2) !important;
 }
 .bg-\[\#2563EB\]\/5 {
-  background-color: rgba(11, 59, 48, 0.05) !important;
+  background-color: rgba(107, 40, 55, 0.05) !important;
 }
 .hover\:text-\[\#2563EB\]:hover {
-  color: #126854 !important;
+  color: #541E2A !important;
 }
 .focus\:ring-\[\#2563EB\]:focus {
-  --tw-ring-color: #0B3B30 !important;
+  --tw-ring-color: #6B2837 !important;
 }
 .text-blue-600 {
-  color: #0B3B30 !important;
+  color: #6B2837 !important;
 }
 .bg-blue-600 {
-  background-color: #0B3B30 !important;
+  background-color: #6B2837 !important;
 }
 .bg-blue-500 {
-  background-color: #0B3B30 !important;
+  background-color: #6B2837 !important;
 }
 .bg-blue-50 {
-  background-color: #F8F9FA !important;
+  background-color: #F7F3EC !important;
 }
 .text-blue-500 {
-  color: #0B3B30 !important;
+  color: #6B2837 !important;
 }
 .hover\:bg-blue-50:hover {
-  background-color: #126854 !important;
+  background-color: #EEE7DD !important;
 }
 .hover\:bg-blue-600:hover {
-  background-color: #126854 !important;
+  background-color: #541E2A !important;
 }
 .hover\:bg-blue-700:hover {
-  background-color: #126854 !important;
+  background-color: #541E2A !important;
 }
 .border-blue-200 {
-  border-color: #E9ECEF !important;
+  border-color: #D8CEC1 !important;
 }
 .border-blue-300 {
-  border-color: #E9ECEF !important;
+  border-color: #D8CEC1 !important;
 }
 .border-blue-500 {
-  border-color: #0B3B30 !important;
+  border-color: #6B2837 !important;
 }
 .text-blue-700 {
-  color: #0B3B30 !important;
+  color: #6B2837 !important;
 }
 .text-blue-800 {
-  color: #0B3B30 !important;
+  color: #541E2A !important;
 }
 
+/* Operational Status Color Utility Overrides */
+/* Ready / available / completed: Forest #28634B */
+.bg-emerald-600, .bg-green-600 {
+  background-color: #28634B !important;
+}
+.text-emerald-600, .text-emerald-700, .text-green-600, .text-green-700 {
+  color: #28634B !important;
+}
+.border-emerald-200, .border-green-200 {
+  border-color: #C3DED0 !important;
+}
+.bg-emerald-50, .bg-green-50 {
+  background-color: #EAF3EE !important;
+}
+
+/* Pending / preparing / attention: Ochre #946000 */
+.bg-amber-600, .bg-yellow-600 {
+  background-color: #946000 !important;
+}
+.text-amber-600, .text-amber-700, .text-yellow-600, .text-yellow-700, .text-amber-800 {
+  color: #946000 !important;
+}
+.border-amber-200, .border-yellow-200 {
+  border-color: #EDD7AD !important;
+}
+.bg-amber-50, .bg-yellow-50 {
+  background-color: #FDF5E7 !important;
+}
+
+/* Cancelled / failed / urgent: Red #B33432 */
+.bg-red-600, .bg-red-500 {
+  background-color: #B33432 !important;
+}
+.text-red-600, .text-red-700 {
+  color: #B33432 !important;
+}
+.border-red-200 {
+  border-color: #E9B6B7 !important;
+}
+.bg-red-50 {
+  background-color: #FAEAEC !important;
+}
+
+/* Informational / assigned: Blue #315F85 */
+.bg-sky-600, .bg-indigo-600 {
+  background-color: #315F85 !important;
+}
+.text-sky-600, .text-sky-700, .text-indigo-600, .text-indigo-700 {
+  color: #315F85 !important;
+}
+.border-sky-200, .border-indigo-200 {
+  border-color: #B8D2E6 !important;
+}
+.bg-sky-50, .bg-indigo-50 {
+  background-color: #EDF4F9 !important;
+}

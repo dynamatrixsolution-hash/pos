@@ -1,0 +1,50 @@
+{
+  "baseline": "6078e686f84a2e5389bccb27bb4bc2a997b004d9",
+  "state": "uncommitted recovery working tree after checkpoint (includes rehearsal continuation)",
+  "algorithm": "SHA-256 raw file bytes; aggregate SHA-256(JSON.stringify(sorted path/hash object))",
+  "aggregate": "a905147991a2f7a9fcdba90e0d333fdd0d1d0a9f92d30fd99a6d191f68c71bea",
+  "files": {
+    ".dockerignore": "9263d65c26fd6e1f1b6c161aa61fa49fe770e5134a7618c3974e12f446fdbeac",
+    ".github/workflows/restro-checks.yml": "e859f5b3e67209bc74cb6a0bf944541753d9abd25ba1fc642c0c1789223a7a15",
+    "backend/src/app/api/v1/settings/backup/route.ts": "4bbe236e255f39a981791586fa081337923749739a47b6e4bcc9f890ff21f19b",
+    "backend/src/lib/backup-format.ts": "7c0445d5c883f3c9b5d895e45366382ecc9fe3fd0739047a976dea912b8aff5f",
+    "backend/src/lib/backup-service.ts": "dd8926efb8f156ca4673b1d1a84cd3ff38bcff57b07fd9fdf56c352202ff7aae",
+    "compose.restro-restore.yml": "65aa3ea7cd0f19c0f2e2640ef8363446cb32ba47e4cfce50d60e02318fd16cca",
+    "frontend/src/app/dashboard/settings/backup/page.tsx": "bb5904c8ed3eed07758d19239660f2144587cb79a531611d009e3e36f3e6bd02",
+    "frontend/src/app/dashboard/settings/page.tsx": "1548356a43e551a2a1246d2062ad2e8854d0fe1a96ddaf8a4aa3c483765012d9",
+    "scripts/database-verification.mjs": "f4f94f74e91c81c9f1b00aa798d6d732441d488886d5f8dda4f867ef9370d17b",
+    "scripts/recover-restro-backup.ts": "6062d95329a74d6bd9831bfc3a0657e2af5dd75c371eac8ab906b769bfca4fd2",
+    "scripts/rehearse-recovery.ts": "9059a4c1dd16674e5797dc618ffa5a0a9163d1c86b8786ca366cdfd93ef6dc1c",
+    "scripts/restro-env.mjs": "5faf2e30d0d80c7dce507f3e46e8c1611673ba27f73681e700bcf8180efd72db",
+    "scripts/restro-restore-env.mjs": "74a6676a7e261814c46fcf53c247eb881a1267c28825c8157bdd3d46c06a1c25",
+    "scripts/run-recovery-tests.mjs": "c33916e9fd01eab4006440c691a658837edda40e81ea3ba081b06beca726868c",
+    "tests/database-verification.test.ts": "d7a82f7562b9a51eef6ca909604afd0d1ad68937b23c917f47e6b799ce27fd31",
+    "tests/recovery-format.test.ts": "c365c7d2b826407847c01cb535a2655a3089ac2b1a976637744ca66040734bb4",
+    "tests/recovery.integration.test.ts": "6393cc28f59604b29d0f0dfcbd09e1a82e2bd433e9f8b331d3e855467b58050d"
+  },
+  "postgresReport": "scratch/recovery-results-67376572-b727-4547-bfce-0a70f5e31985.json",
+  "postgres": {
+    "executed": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "commercePostgres": {
+    "executed": 14,
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  "unit": {
+    "executed": 30,
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0
+  },
+  "rehearsal": {
+    "checks": 41,
+    "passedPerRun": 41,
+    "cleanConsecutiveRuns": 5,
+    "reportsDir": "scratch/rehearsal-results-*.json (ignored)"
+  }
+}

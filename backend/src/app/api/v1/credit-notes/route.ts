@@ -146,7 +146,7 @@ export async function POST(request: Request) {
         });
 
         if (customer) {
-          const newCustomerBalance = Math.max(0, customer.balance - total);
+          const newCustomerBalance = Math.max(0, Number(customer.balance) - total);
 
           await tx.customer.update({
             where: { id: customer.id },

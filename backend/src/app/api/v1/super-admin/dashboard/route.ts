@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const baseRevenue = paymentsSum._sum.amount || 0;
+    const baseRevenue = paymentsSum._sum.amount ? Number(paymentsSum._sum.amount) : 0;
     const totalRevenue = baseRevenue + 24850.0; // Baseline SaaS sales
     const monthlyRevenue = (baseRevenue * 0.15) + 3890.0; // Baseline monthly recurring SaaS revenue
 

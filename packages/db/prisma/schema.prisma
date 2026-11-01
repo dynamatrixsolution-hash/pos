@@ -11,75 +11,123 @@ generator client {
 }
 
 model Business {
-  id               String            @id @default(uuid())
-  name             String
-  slug             String            @unique
-  logo             String?
-  phone            String?
-  email            String?
-  address          String?
-  currency         String            @default("USD")
-  taxConfig        Json?             // { taxName: "VAT", rate: 15 }
-  settings         Json?             // Custom metadata settings
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  deletedAt        DateTime?
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  logo      String?
+  phone     String?
+  email     String?
+  address   String?
+  currency  String    @default("USD")
+  taxConfig Json? // { taxName: "VAT", rate: 15 }
+  settings  Json? // Custom metadata settings
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  subscription     Subscription?
-  branches         Branch[]
-  users            User[]
-  categories       Category[]
-  subcategories    Subcategory[]
-  brands           Brand[]
-  units            Unit[]
-  products         Product[]
-  customers        Customer[]
-  suppliers        Supplier[]
-  sales            Sale[]
-  purchases        Purchase[]
-  payments         Payment[]
-  saleReturns      SaleReturn[]
-  purchaseReturns  PurchaseReturn[]
-  expenseCategories ExpenseCategory[]
-  expenses         Expense[]
-  incomeCategories  IncomeCategory[]
-  incomes           Income[]
-  stockTransfers   StockTransfer[]
-  auditLogs        AuditLog[]
-  notifications    Notification[]
-  openingStocks    OpeningStock[]
-  fiscalYears       FiscalYear[]
-  fiscalYearSequences FiscalYearInvoiceSequence[]
-  creditNotes       CreditNote[]
-  debitNotes        DebitNote[]
-  cbmsSyncQueues    CbmsSyncQueue[]
+  subscription           Subscription?
+  branches               Branch[]
+  users                  User[]
+  categories             Category[]
+  subcategories          Subcategory[]
+  brands                 Brand[]
+  units                  Unit[]
+  products               Product[]
+  customers              Customer[]
+  suppliers              Supplier[]
+  sales                  Sale[]
+  purchases              Purchase[]
+  payments               Payment[]
+  saleReturns            SaleReturn[]
+  purchaseReturns        PurchaseReturn[]
+  expenseCategories      ExpenseCategory[]
+  expenses               Expense[]
+  incomeCategories       IncomeCategory[]
+  incomes                Income[]
+  stockTransfers         StockTransfer[]
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  openingStocks          OpeningStock[]
+  fiscalYears            FiscalYear[]
+  fiscalYearSequences    FiscalYearInvoiceSequence[]
+  creditNotes            CreditNote[]
+  debitNotes             DebitNote[]
+  cbmsSyncQueues         CbmsSyncQueue[]
+  branchMemberships      UserBranchMembership[]
+  auditEvents            AuditEvent[]
+  paymentAllocations     PaymentAllocation[]
+  paymentReversals       PaymentReversal[]
+  refunds                Refund[]
+  stockMovements         StockMovement[]
+  outboxEvents           OutboxEvent[]
+  floors                 Floor[]
+  restaurantTables       RestaurantTable[]
+  tableSessions          TableSession[]
+  menus                  Menu[]
+  menuSections           MenuSection[]
+  menuItems              MenuItem[]
+  modifierGroups         ModifierGroup[]
+  modifierOptions        ModifierOption[]
+  menuItemModifierGroups MenuItemModifierGroup[]
+  restaurantOrders       RestaurantOrder[]
+  orderRounds            OrderRound[]
+  orderLines             OrderLine[]
+  kitchenStations        KitchenStation[]
+  stationRoutes          StationRoute[]
+  kitchenTickets         KitchenTicket[]
+  kitchenTicketLines     KitchenTicketLine[]
+  recipeVersions         RecipeVersion[]
+  recipeIngredients      RecipeIngredient[]
+  consumptionPostings    ConsumptionPosting[]
+  roomTypes              RoomType[]
+  rooms                  Room[]
+  reservations           Reservation[]
+  reservationGuests      ReservationGuest[]
+  stays                  Stay[]
+  roomAllocations        RoomAllocation[]
+  housekeepingTasks          HousekeepingTask[]
+  maintenanceTickets         MaintenanceTicket[]
+  guestFolios                GuestFolio[]
+  roomNightCharges           RoomNightCharge[]
+  folioEntries               FolioEntry[]
+  folioSettlementAllocations FolioSettlementAllocation[]
+  qrLocations                QrLocation[]
+  guestAccessGrants          GuestAccessGrant[]
+  guestSessions              GuestSession[]
+  serviceRequests            ServiceRequest[]
+  propertyFeatureFlags       PropertyFeatureFlag[]
+  printJobs                  PrintJob[]
+  offlineSyncBatches         OfflineSyncBatch[]
+  pilotDailyReconciliations  PilotDailyReconciliation[]
 }
 
 model Subscription {
-  id           String    @id @default(uuid())
-  businessId   String    @unique
-  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  plan         String    @default("FREE") // FREE, BASIC, PREMIUM, ENTERPRISE
-  status       String    @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
-  startDate    DateTime  @default(now())
-  endDate      DateTime
-  userLimit    Int       @default(3)
-  branchLimit  Int       @default(1)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String   @id @default(uuid())
+  businessId  String   @unique
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan        String   @default("FREE") // FREE, BASIC, PREMIUM, ENTERPRISE
+  status      String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  userLimit   Int      @default(3)
+  branchLimit Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, id])
 }
 
 model Branch {
-  id         String     @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
   phone      String?
   address    String?
-  isMain     Boolean    @default(false)
-  isActive   Boolean    @default(true)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  isMain     Boolean   @default(false)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   users                User[]
@@ -89,75 +137,144 @@ model Branch {
   purchases            Purchase[]
   expenses             Expense[]
   incomes              Income[]
-  stockTransfersSource StockTransfer[] @relation("SourceBranch")
-  stockTransfersTarget StockTransfer[] @relation("TargetBranch")
+  stockTransfersSource StockTransfer[]             @relation("SourceBranch")
+  stockTransfersTarget StockTransfer[]             @relation("TargetBranch")
   customers            Customer[]
   openingStocks        OpeningStock[]
   payments             Payment[]
   fiscalYearSequences  FiscalYearInvoiceSequence[]
   creditNotes          CreditNote[]
   debitNotes           DebitNote[]
+  userMemberships      UserBranchMembership[]
+  auditEvents          AuditEvent[]
+  refunds              Refund[]
+  stockMovements       StockMovement[]
+  floors               Floor[]
+  restaurantTables     RestaurantTable[]
+  tableSessions        TableSession[]
+  menus                Menu[]
+  restaurantOrders     RestaurantOrder[]
+  kitchenStations      KitchenStation[]
+  kitchenTickets       KitchenTicket[]
+  consumptionPostings  ConsumptionPosting[]
+  roomTypes            RoomType[]
+  rooms                Room[]
+  reservations         Reservation[]
+  stays                Stay[]
+  roomAllocations      RoomAllocation[]
+  housekeepingTasks          HousekeepingTask[]
+  maintenanceTickets         MaintenanceTicket[]
+  guestFolios                GuestFolio[]
+  roomNightCharges           RoomNightCharge[]
+  folioEntries               FolioEntry[]
+  folioSettlementAllocations FolioSettlementAllocation[]
+  qrLocations                QrLocation[]
+  guestAccessGrants          GuestAccessGrant[]
+  guestSessions              GuestSession[]
+  serviceRequests            ServiceRequest[]
+  propertyFeatureFlags       PropertyFeatureFlag[]
+  printJobs                  PrintJob[]
+  offlineSyncBatches         OfflineSyncBatch[]
+  pilotDailyReconciliations  PilotDailyReconciliation[]
+
+  @@unique([businessId, id])
 }
 
 model User {
-  id           String     @id @default(uuid())
-  businessId   String
-  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branchId     String?
-  branch       Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  name         String
-  email        String     @unique
-  passwordHash String
-  role         String     @default("CASHIER") // SUPER_ADMIN, OWNER, MANAGER, CASHIER, ACCOUNTANT, STOREKEEPER, SALESPERSON, DELIVERY
-  phone        String?
-  isActive     Boolean    @default(true)
+  id              String    @id @default(uuid())
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId        String?
+  branch          Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name            String
+  email           String    @unique
+  passwordHash    String
+  role            String    @default("CASHIER") // SUPER_ADMIN, OWNER, MANAGER, CASHIER, ACCOUNTANT, STOREKEEPER, SALESPERSON, DELIVERY
+  phone           String?
+  isActive        Boolean   @default(true)
   allowedDeviceId String?
   deviceName      String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  deletedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
-  sales                 Sale[]
-  purchases             Purchase[]
-  expenses              Expense[]
-  incomes               Income[]
-  auditLogs             AuditLog[]
-  enteredOpeningStocks  OpeningStock[]  @relation("EnteredBy")
-  approvedOpeningStocks OpeningStock[]  @relation("ApprovedBy")
-  requestedTransfers    StockTransfer[] @relation("RequestedTransfers")
-  approvedTransfers     StockTransfer[] @relation("ApprovedTransfers")
-  receivedTransfers     StockTransfer[] @relation("ReceivedTransfers")
-  payments              Payment[]
-  firstPrintedSales     Sale[]          @relation("FirstPrintedBy")
-  lastPrintedSales      Sale[]          @relation("LastPrintedBy")
-  cancelledSales        Sale[]          @relation("CancelledSales")
-  creditNotes           CreditNote[]
-  debitNotes            DebitNote[]
+  sales                   Sale[]
+  purchases               Purchase[]
+  expenses                Expense[]
+  incomes                 Income[]
+  auditLogs               AuditLog[]
+  enteredOpeningStocks    OpeningStock[]         @relation("EnteredBy")
+  approvedOpeningStocks   OpeningStock[]         @relation("ApprovedBy")
+  requestedTransfers      StockTransfer[]        @relation("RequestedTransfers")
+  approvedTransfers       StockTransfer[]        @relation("ApprovedTransfers")
+  receivedTransfers       StockTransfer[]        @relation("ReceivedTransfers")
+  payments                Payment[]
+  firstPrintedSales       Sale[]                 @relation("FirstPrintedBy")
+  lastPrintedSales        Sale[]                 @relation("LastPrintedBy")
+  cancelledSales          Sale[]                 @relation("CancelledSales")
+  creditNotes             CreditNote[]
+  debitNotes              DebitNote[]
+  branchMemberships       UserBranchMembership[]
+  auditEvents             AuditEvent[]
+  paymentAllocations      PaymentAllocation[]
+  paymentReversals        PaymentReversal[]
+  refunds                 Refund[]
+  stockMovements          StockMovement[]
+  openedTableSessions     TableSession[]         @relation("SessionOpenedBy")
+  closedTableSessions     TableSession[]         @relation("SessionClosedBy")
+  createdRestaurantOrders RestaurantOrder[]      @relation("OrderCreatedBy")
+  submittedOrderRounds    OrderRound[]           @relation("RoundSubmittedBy")
+  postedConsumptions          ConsumptionPosting[]   @relation("ConsumptionPostedBy")
+  createdReservations         Reservation[]          @relation("ReservationCreatedBy")
+  checkedInStays              Stay[]                 @relation("StayCheckedInBy")
+  checkedOutStays             Stay[]                 @relation("StayCheckedOutBy")
+  reportedMaintenanceTickets MaintenanceTicket[]    @relation("MaintenanceReportedBy")
+  assignedMaintenanceTickets MaintenanceTicket[]    @relation("MaintenanceAssignedTo")
+  resolvedMaintenanceTickets MaintenanceTicket[]    @relation("MaintenanceResolvedBy")
+  assignedHousekeepingTasks   HousekeepingTask[]          @relation("HousekeepingAssignedTo")
+  completedHousekeepingTasks  HousekeepingTask[]          @relation("HousekeepingCompletedBy")
+  postedRoomNightCharges      RoomNightCharge[]           @relation("RoomNightChargePostedBy")
+  postedFolioEntries          FolioEntry[]                @relation("FolioEntryPostedBy")
+  allocatedFolioSettlements   FolioSettlementAllocation[] @relation("FolioSettlementAllocatedBy")
+  createdQrLocations          QrLocation[]                @relation("QrLocationCreatedBy")
+  revokedGuestAccessGrants    GuestAccessGrant[]          @relation("GuestAccessGrantRevokedBy")
+  acknowledgedServiceRequests ServiceRequest[]            @relation("ServiceRequestAcknowledgedBy")
+  resolvedServiceRequests     ServiceRequest[]            @relation("ServiceRequestResolvedBy")
+  updatedFeatureFlags         PropertyFeatureFlag[]       @relation("FeatureFlagUpdatedBy")
+  syncedOfflineBatches        OfflineSyncBatch[]          @relation("OfflineBatchSyncedBy")
+  reconciledPilotAudits       PilotDailyReconciliation[]  @relation("PilotReconciledBy")
+
+  @@unique([businessId, id])
 }
 
 model Category {
-  id         String     @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
   products      Product[]
+  stationRoutes StationRoute[]
   subcategories Subcategory[]
+
+  @@unique([businessId, id])
 }
 
 model Brand {
-  id         String     @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  products   Product[]
+  products Product[]
+
+  @@unique([businessId, id])
 }
 
 model Subcategory {
@@ -171,47 +288,51 @@ model Subcategory {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  products   Product[]
+  products Product[]
+
+  @@unique([businessId, id])
 }
 
 model Unit {
-  id         String     @id @default(uuid())
+  id         String    @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  products   Product[]
+  products Product[]
+
+  @@unique([businessId, id])
 }
 
 model Product {
-  id             String         @id @default(uuid())
+  id             String       @id @default(uuid())
   businessId     String
-  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   categoryId     String?
-  category       Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category       Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   subcategoryId  String?
-  subcategory    Subcategory?   @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  subcategory    Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   brandId        String?
-  brand          Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brand          Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
   unitId         String?
-  unit           Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  unit           Unit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
   name           String
   sku            String?
   barcode        String?
   description    String?
-  costPrice      Float          @default(0)
-  sellingPrice   Float          @default(0)
-  wholesalePrice Float          @default(0)
-  alertQuantity  Int            @default(5)
+  costPrice      Decimal      @default(0) @db.Decimal(12, 2)
+  sellingPrice   Decimal      @default(0) @db.Decimal(12, 2)
+  wholesalePrice Decimal      @default(0) @db.Decimal(12, 2)
+  alertQuantity  Int          @default(5)
   image          String?
-  batchTracking  Boolean        @default(false)
-  expiryTracking Boolean        @default(false)
-  isVatItem      Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  batchTracking  Boolean      @default(false)
+  expiryTracking Boolean      @default(false)
+  isVatItem      Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
 
   productStocks       ProductStock[]
@@ -222,6 +343,12 @@ model Product {
   openingStocks       OpeningStock[]
   creditNoteItems     CreditNoteItem[]
   debitNoteItems      DebitNoteItem[]
+  stockMovements      StockMovement[]
+  menuItems           MenuItem[]
+  recipeIngredients   RecipeIngredient[]
+  consumptionPostings ConsumptionPosting[]
+
+  @@unique([businessId, id])
 }
 
 model ProductStock {
@@ -238,207 +365,219 @@ model ProductStock {
 }
 
 model Batch {
-  id          String    @id @default(uuid())
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  branchId    String
-  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  batchNumber String
-  quantity    Float     @default(0)
-  costPrice   Float?
-  sellingPrice Float?
-  expiryDate  DateTime?
+  id                String    @id @default(uuid())
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branchId          String
+  branch            Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  batchNumber       String
+  quantity          Float     @default(0)
+  costPrice         Decimal?  @db.Decimal(12, 2)
+  sellingPrice      Decimal?  @db.Decimal(12, 2)
+  expiryDate        DateTime?
   manufacturingDate DateTime?
   rackNumber        String?
   supplierId        String?
   supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 }
 
 model Customer {
-  id           String           @id @default(uuid())
+  id           String    @id @default(uuid())
   businessId   String
-  business     Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branchId     String?
-  branch       Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   name         String
   email        String?
   phone        String?
   address      String?
-  customerType String           @default("RETAIL") // RETAIL, WHOLESALE
-  creditLimit  Float            @default(0)
-  balance      Float            @default(0) // Debt owed by customer to us
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  customerType String    @default("RETAIL") // RETAIL, WHOLESALE
+  creditLimit  Decimal   @default(0) @db.Decimal(12, 2)
+  balance      Decimal   @default(0) @db.Decimal(12, 2) // Debt owed by customer to us
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  sales        Sale[]
-  ledgers      CustomerLedger[]
-  payments     Payment[]
+  sales    Sale[]
+  ledgers  CustomerLedger[]
+  payments Payment[]
+  refunds  Refund[]
+
+  @@unique([businessId, id])
 }
 
 model CustomerLedger {
   id          String   @id @default(uuid())
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  type        String   // SALE, PAYMENT, RETURN, ADJUSTMENT
+  type        String // SALE, PAYMENT, RETURN, ADJUSTMENT
   reference   String?
-  debit       Float    @default(0) // Amount customer owes us (increases balance)
-  credit      Float    @default(0) // Amount customer pays us (decreases balance)
-  balance     Float    @default(0) // Running balance
+  debit       Decimal  @default(0) @db.Decimal(12, 2) // Amount customer owes us (increases balance)
+  credit      Decimal  @default(0) @db.Decimal(12, 2) // Amount customer pays us (decreases balance)
+  balance     Decimal  @default(0) @db.Decimal(12, 2) // Running balance
   description String?
   createdAt   DateTime @default(now())
 }
 
 model Supplier {
-  id          String           @id @default(uuid())
+  id          String    @id @default(uuid())
   businessId  String
-  business    Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name        String
   contactName String?
   email       String?
   phone       String?
   address     String?
-  balance     Float            @default(0) // Debt we owe to supplier
-  isImported  Boolean          @default(false)
+  balance     Decimal   @default(0) @db.Decimal(12, 2) // Debt we owe to supplier
+  isImported  Boolean   @default(false)
   notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  purchases   Purchase[]
-  ledgers     SupplierLedger[]
+  purchases     Purchase[]
+  ledgers       SupplierLedger[]
   openingStocks OpeningStock[]
-  batches     Batch[]
-  payments    Payment[]
+  batches       Batch[]
+  payments      Payment[]
+
+  @@unique([businessId, id])
 }
 
 model SupplierLedger {
   id          String   @id @default(uuid())
   supplierId  String
   supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  type        String   // PURCHASE, PAYMENT, RETURN, ADJUSTMENT
+  type        String // PURCHASE, PAYMENT, RETURN, ADJUSTMENT
   reference   String?
-  debit       Float    @default(0) // What we paid supplier (decreases balance)
-  credit      Float    @default(0) // What we purchased from supplier (increases balance)
-  balance     Float    @default(0) // Running balance we owe
+  debit       Decimal  @default(0) @db.Decimal(12, 2) // What we paid supplier (decreases balance)
+  credit      Decimal  @default(0) @db.Decimal(12, 2) // What we purchased from supplier (increases balance)
+  balance     Decimal  @default(0) @db.Decimal(12, 2) // Running balance we owe
   description String?
   createdAt   DateTime @default(now())
 }
 
 model Sale {
-  id            String       @id @default(uuid())
+  id            String    @id @default(uuid())
   businessId    String
-  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branchId      String
-  branch        Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   customerId    String?
-  customer      Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   userId        String
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoiceNumber String       @unique
-  status        String       @default("COMPLETED") // COMPLETED, DRAFT, ON_HOLD, RETURNED
-  subtotal      Float        @default(0)
-  discount      Float        @default(0)
-  tax           Float        @default(0)
-  total         Float        @default(0)
-  paidAmount    Float        @default(0)
-  paymentStatus String       @default("PAID") // PAID, PARTIAL, UNPAID
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceNumber String    @unique
+  status        String    @default("COMPLETED") // COMPLETED, DRAFT, ON_HOLD, RETURNED
+  subtotal      Decimal   @default(0) @db.Decimal(12, 2)
+  discount      Decimal   @default(0) @db.Decimal(12, 2)
+  tax           Decimal   @default(0) @db.Decimal(12, 2)
+  total         Decimal   @default(0) @db.Decimal(12, 2)
+  paidAmount    Decimal   @default(0) @db.Decimal(12, 2)
+  paymentStatus String    @default("PAID") // PAID, PARTIAL, UNPAID
   notes         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  saleItems         SaleItem[]
-  payments          Payment[]
-  saleReturns       SaleReturn[]
-  fiscalYearId      String?
-  fiscalYear        FiscalYear?  @relation(fields: [fiscalYearId], references: [id], onDelete: SetNull)
-  isPrinted         Boolean      @default(false)
-  printCount        Int          @default(0)
-  firstPrintedAt    DateTime?
-  firstPrintedById  String?
-  firstPrintedBy    User?        @relation("FirstPrintedBy", fields: [firstPrintedById], references: [id], onDelete: SetNull)
-  lastPrintedAt     DateTime?
-  lastPrintedById   String?
-  lastPrintedBy     User?        @relation("LastPrintedBy", fields: [lastPrintedById], references: [id], onDelete: SetNull)
-  isActive          Boolean      @default(true) // Is active (true) or cancelled/corrected (false)
-  syncWithIrd       String       @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
-  vatRefundAmount   Float        @default(0)
-  transactionId     String?
+  saleItems          SaleItem[]
+  payments           Payment[]
+  saleReturns        SaleReturn[]
+  paymentAllocations PaymentAllocation[]
+  refunds            Refund[]
+  fiscalYearId       String?
+  fiscalYear         FiscalYear?         @relation(fields: [fiscalYearId], references: [id], onDelete: SetNull)
+  isPrinted          Boolean             @default(false)
+  printCount         Int                 @default(0)
+  firstPrintedAt     DateTime?
+  firstPrintedById   String?
+  firstPrintedBy     User?               @relation("FirstPrintedBy", fields: [firstPrintedById], references: [id], onDelete: SetNull)
+  lastPrintedAt      DateTime?
+  lastPrintedById    String?
+  lastPrintedBy      User?               @relation("LastPrintedBy", fields: [lastPrintedById], references: [id], onDelete: SetNull)
+  isActive           Boolean             @default(true) // Is active (true) or cancelled/corrected (false)
+  syncWithIrd        String              @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  vatRefundAmount    Decimal             @default(0) @db.Decimal(12, 2)
+  transactionId      String?
   correctedInvoiceId String?
   cancellationReason String?
-  cancelledById     String?
-  cancelledBy       User?        @relation("CancelledSales", fields: [cancelledById], references: [id], onDelete: SetNull)
-  cancelledAt       DateTime?
-  cbmsRequestId     String?
-  cbmsResponseId    String?
-  cbmsSyncTime      DateTime?
-  cbmsError         String?
-  cbmsRetryCount    Int          @default(0)
-  creditNotes       CreditNote[]
-  debitNotes        DebitNote[]
-  cbmsSyncQueues    CbmsSyncQueue[]
+  cancelledById      String?
+  cancelledBy        User?               @relation("CancelledSales", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancelledAt        DateTime?
+  cbmsRequestId      String?
+  cbmsResponseId     String?
+  cbmsSyncTime       DateTime?
+  cbmsError          String?
+  cbmsRetryCount     Int                 @default(0)
+  creditNotes        CreditNote[]
+  debitNotes         DebitNote[]
+  cbmsSyncQueues     CbmsSyncQueue[]
+
+  @@unique([businessId, id])
 }
 
 model SaleItem {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   saleId      String
-  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   batchNumber String?
-  quantity    Float    @default(1)
-  costPrice   Float    @default(0)
-  price       Float    @default(0) // Selling price per unit after discount
-  discount    Float    @default(0) // Unit-level discount
-  tax         Float    @default(0) // Unit-level tax
-  total       Float    @default(0) // quantity * price
+  quantity    Float   @default(1)
+  costPrice   Decimal @default(0) @db.Decimal(12, 2)
+  price       Decimal @default(0) @db.Decimal(12, 2) // Selling price per unit after discount
+  discount    Decimal @default(0) @db.Decimal(12, 2) // Unit-level discount
+  tax         Decimal @default(0) @db.Decimal(12, 2) // Unit-level tax
+  total       Decimal @default(0) @db.Decimal(12, 2) // quantity * price
 }
 
 model Purchase {
-  id             String     @id @default(uuid())
+  id             String    @id @default(uuid())
   businessId     String
-  business       Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branchId       String
-  branch         Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch         Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   supplierId     String
-  supplier       Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier       Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   userId         String
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purchaseNumber String     @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchaseNumber String    @unique
   invoiceNumber  String?
-  status         String     @default("RECEIVED") // ORDERED, RECEIVED, CANCELLED
-  subtotal       Float      @default(0)
-  discount       Float      @default(0)
-  tax            Float      @default(0)
-  total          Float      @default(0)
-  paidAmount     Float      @default(0)
-  paymentStatus  String     @default("PAID") // PAID, PARTIAL, UNPAID
+  status         String    @default("RECEIVED") // ORDERED, RECEIVED, CANCELLED
+  subtotal       Decimal   @default(0) @db.Decimal(12, 2)
+  discount       Decimal   @default(0) @db.Decimal(12, 2)
+  tax            Decimal   @default(0) @db.Decimal(12, 2)
+  total          Decimal   @default(0) @db.Decimal(12, 2)
+  paidAmount     Decimal   @default(0) @db.Decimal(12, 2)
+  paymentStatus  String    @default("PAID") // PAID, PARTIAL, UNPAID
   notes          String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  purchaseItems   PurchaseItem[]
-  payments        Payment[]
-  purchaseReturns PurchaseReturn[]
+  purchaseItems      PurchaseItem[]
+  payments           Payment[]
+  purchaseReturns    PurchaseReturn[]
+  paymentAllocations PaymentAllocation[]
+
+  @@unique([businessId, id])
 }
 
 model PurchaseItem {
-  id          String    @id @default(uuid())
-  purchaseId  String
-  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  batchNumber String?
-  expiryDate  DateTime?
+  id                String    @id @default(uuid())
+  purchaseId        String
+  purchase          Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber       String?
+  expiryDate        DateTime?
   manufacturingDate DateTime?
-  quantity    Float     @default(1)
-  price       Float     @default(0) // Buying price per unit
-  total       Float     @default(0)
+  quantity          Float     @default(1)
+  price             Decimal   @default(0) @db.Decimal(12, 2) // Buying price per unit
+  total             Decimal   @default(0) @db.Decimal(12, 2)
 }
 
 model Payment {
@@ -455,16 +594,22 @@ model Payment {
   supplier      Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   branchId      String?
   branch        Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  userId        String?   // receivedBy or sentBy
+  userId        String? // receivedBy or sentBy
   user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  amount        Float
+  amount        Decimal   @db.Decimal(12, 2)
   source        String    @default("LEGACY_UNVERIFIED")
   method        String    @default("CASH") // CASH, CARD, QR, BANK_TRANSFER, CREDIT
-  reference     String?   // Reference number
-  receiptNumber String?   // Receipt or voucher number
-  remarks       String?   // Notes/remarks
+  reference     String? // Reference number
+  receiptNumber String? // Receipt or voucher number
+  remarks       String? // Notes/remarks
   type          String    @default("RECEIVED") // RECEIVED or SENT
   createdAt     DateTime  @default(now())
+
+  allocations PaymentAllocation[]
+  reversal    PaymentReversal?
+  refunds     Refund[]
+
+  @@unique([businessId, id])
 }
 
 // Responses commit atomically with business effects. Do not purge while clients may retry.
@@ -478,6 +623,7 @@ model RequestResult {
   createdAt   DateTime @default(now())
 
   @@unique([businessId, operation, key])
+  @@unique([businessId, id])
 }
 
 model SaleReturn {
@@ -487,10 +633,12 @@ model SaleReturn {
   saleId       String
   sale         Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
   returnNumber String           @unique
-  refundAmount Float            @default(0)
+  refundAmount Decimal          @default(0) @db.Decimal(12, 2)
   notes        String?
   createdAt    DateTime         @default(now())
   items        SaleReturnItem[]
+
+  @@unique([businessId, id])
 }
 
 model SaleReturnItem {
@@ -499,8 +647,8 @@ model SaleReturnItem {
   saleReturn   SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
   productId    String
   quantity     Float
-  price        Float
-  total        Float
+  price        Decimal    @db.Decimal(12, 2)
+  total        Decimal    @db.Decimal(12, 2)
 }
 
 model PurchaseReturn {
@@ -510,10 +658,12 @@ model PurchaseReturn {
   purchaseId   String
   purchase     Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   returnNumber String               @unique
-  refundAmount Float                @default(0)
+  refundAmount Decimal              @default(0) @db.Decimal(12, 2)
   notes        String?
   createdAt    DateTime             @default(now())
   items        PurchaseReturnItem[]
+
+  @@unique([businessId, id])
 }
 
 model PurchaseReturnItem {
@@ -522,8 +672,8 @@ model PurchaseReturnItem {
   purchaseReturn   PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
   productId        String
   quantity         Float
-  price            Float
-  total            Float
+  price            Decimal        @db.Decimal(12, 2)
+  total            Decimal        @db.Decimal(12, 2)
 }
 
 model ExpenseCategory {
@@ -535,7 +685,9 @@ model ExpenseCategory {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  expenses   Expense[]
+  expenses Expense[]
+
+  @@unique([businessId, id])
 }
 
 model Expense {
@@ -548,12 +700,14 @@ model Expense {
   category    ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   userId      String
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount      Float
-  reference   String?         // Voucher code or receipt number
+  amount      Decimal         @db.Decimal(12, 2)
+  reference   String? // Voucher code or receipt number
   description String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   deletedAt   DateTime?
+
+  @@unique([businessId, id])
 }
 
 model IncomeCategory {
@@ -565,25 +719,29 @@ model IncomeCategory {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  incomes    Income[]
+  incomes Income[]
+
+  @@unique([businessId, id])
 }
 
 model Income {
-  id          String          @id @default(uuid())
+  id          String         @id @default(uuid())
   businessId  String
-  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branchId    String
-  branch      Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch      Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
   categoryId  String
-  category    IncomeCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    IncomeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount      Float
-  reference   String?         // Voucher code or receipt number
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Decimal        @db.Decimal(12, 2)
+  reference   String? // Voucher code or receipt number
   description String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   deletedAt   DateTime?
+
+  @@unique([businessId, id])
 }
 
 model StockTransfer {
@@ -606,6 +764,8 @@ model StockTransfer {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   items          StockTransferItem[]
+
+  @@unique([businessId, id])
 }
 
 model StockTransferItem {
@@ -618,22 +778,24 @@ model StockTransferItem {
 }
 
 model AuditLog {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   businessId  String
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId      String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   role        String?
   branchId    String?
   warehouseId String?
-  action      String    // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
-  module      String    // PRODUCT, SALE, PURCHASE, USER, etc.
+  action      String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  module      String // PRODUCT, SALE, PURCHASE, USER, etc.
   details     String?
   oldValue    Json?
   newValue    Json?
   deviceInfo  String?
   ipAddress   String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([businessId, id])
 }
 
 model Notification {
@@ -645,29 +807,31 @@ model Notification {
   type       String   @default("STOCK") // STOCK, PAYMENT, SYSTEM, INFO
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
+
+  @@unique([businessId, id])
 }
 
 model OpeningStock {
-  appliedAt         DateTime?
-  id                String    @id @default(uuid())
-  businessId        String
-  business          Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branchId          String
-  branch            Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  warehouseId       String?
-  productId         String
-  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+  appliedAt   DateTime?
+  id          String    @id @default(uuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  warehouseId String?
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   // Stock Information
-  quantity          Float     @default(0)
-  unitType          String    // pcs, box, strip, tablet, bottle, kg, gram, liter, ml
-  
+  quantity Float  @default(0)
+  unitType String // pcs, box, strip, tablet, bottle, kg, gram, liter, ml
+
   // Pricing
-  purchaseRate      Float     @default(0)
-  sellingPrice      Float     @default(0)
-  mrp               Float     @default(0)
-  totalValue        Float     @default(0) // Quantity * purchaseRate
-  
+  purchaseRate Decimal @default(0) @db.Decimal(12, 2)
+  sellingPrice Decimal @default(0) @db.Decimal(12, 2)
+  mrp          Decimal @default(0) @db.Decimal(12, 2)
+  totalValue   Decimal @default(0) @db.Decimal(12, 2) // Quantity * purchaseRate
+
   // Batch Information
   batchNumber       String?
   expiryDate        DateTime?
@@ -675,65 +839,69 @@ model OpeningStock {
   rackNumber        String?
   supplierId        String?
   supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  
+
   // Audit Information
-  openingDate       DateTime  @default(now())
-  remarks           String?
-  enteredById       String
-  enteredBy         User      @relation("EnteredBy", fields: [enteredById], references: [id], onDelete: Cascade)
-  approvedById      String?
-  approvedBy        User?     @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
-  approvalStatus    String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  openingDate    DateTime @default(now())
+  remarks        String?
+  enteredById    String
+  enteredBy      User     @relation("EnteredBy", fields: [enteredById], references: [id], onDelete: Cascade)
+  approvedById   String?
+  approvedBy     User?    @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvalStatus String   @default("PENDING") // PENDING, APPROVED, REJECTED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, id])
 }
 
 model BusinessRegistrationRequest {
-  id                String   @id @default(uuid())
-  trackingCode      String   @unique
-  businessName      String
-  slug              String
-  businessType      String   @default("RETAIL")
-  currency          String   @default("USD")
-  taxNumber         String?
-  phone             String?
-  email             String
-  address           String?
-  logo              String?
+  id           String  @id @default(uuid())
+  trackingCode String  @unique
+  businessName String
+  slug         String
+  businessType String  @default("RETAIL")
+  currency     String  @default("USD")
+  taxNumber    String?
+  phone        String?
+  email        String
+  address      String?
+  logo         String?
 
-  plan              String   @default("STARTER")
-  billingCycle      String   @default("MONTHLY")
-  durationMonths    Int      @default(12)
-  selectedModules   Json?
-  customLimits      Json?
+  plan            String @default("STARTER")
+  billingCycle    String @default("MONTHLY")
+  durationMonths  Int    @default(12)
+  selectedModules Json?
+  customLimits    Json?
 
-  ownerName         String
-  ownerEmail        String
-  ownerPhone        String?
-  passwordHash      String
+  ownerName    String
+  ownerEmail   String
+  ownerPhone   String?
+  passwordHash String
 
-  status            String   @default("PENDING") // PENDING, APPROVED, REJECTED, CHANGES_REQUESTED
+  status            String  @default("PENDING") // PENDING, APPROVED, REJECTED, CHANGES_REQUESTED
   rejectionReason   String?
   adminNotes        String?
   createdBusinessId String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FiscalYear {
-  id         String     @id @default(uuid())
+  id         String                      @id @default(uuid())
   businessId String
-  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name       String     // e.g. "2080/81"
+  business   Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String // e.g. "2080/81"
   startDate  DateTime
   endDate    DateTime
-  isActive   Boolean    @default(false)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  isActive   Boolean                     @default(false)
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
   sales      Sale[]
   sequences  FiscalYearInvoiceSequence[]
+
+  @@unique([businessId, id])
 }
 
 model FiscalYearInvoiceSequence {
@@ -749,31 +917,34 @@ model FiscalYearInvoiceSequence {
   updatedAt    DateTime   @updatedAt
 
   @@unique([businessId, branchId, fiscalYearId])
+  @@unique([businessId, id])
 }
 
 model CreditNote {
-  id            String           @id @default(uuid())
-  businessId    String
-  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branchId      String
-  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  noteNumber    String           @unique
-  saleId        String
-  sale          Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  reason        String
-  subtotal      Float            @default(0)
-  discount      Float            @default(0)
-  tax           Float            @default(0)
-  total         Float            @default(0)
-  createdById   String
-  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  syncWithIrd   String           @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
-  cbmsSyncTime  DateTime?
-  cbmsError     String?
-  items         CreditNoteItem[]
+  id             String           @id @default(uuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  noteNumber     String           @unique
+  saleId         String
+  sale           Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  reason         String
+  subtotal       Decimal          @default(0) @db.Decimal(12, 2)
+  discount       Decimal          @default(0) @db.Decimal(12, 2)
+  tax            Decimal          @default(0) @db.Decimal(12, 2)
+  total          Decimal          @default(0) @db.Decimal(12, 2)
+  createdById    String
+  createdBy      User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  syncWithIrd    String           @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  cbmsSyncTime   DateTime?
+  cbmsError      String?
+  items          CreditNoteItem[]
   cbmsSyncQueues CbmsSyncQueue[]
+
+  @@unique([businessId, id])
 }
 
 model CreditNoteItem {
@@ -783,33 +954,35 @@ model CreditNoteItem {
   productId    String
   product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity     Float
-  price        Float
-  total        Float
+  price        Decimal    @db.Decimal(12, 2)
+  total        Decimal    @db.Decimal(12, 2)
 }
 
 model DebitNote {
-  id            String           @id @default(uuid())
-  businessId    String
-  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branchId      String
-  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  noteNumber    String           @unique
-  saleId        String
-  sale          Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  reason        String
-  subtotal      Float            @default(0)
-  discount      Float            @default(0)
-  tax           Float            @default(0)
-  total         Float            @default(0)
-  createdById   String
-  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  syncWithIrd   String           @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
-  cbmsSyncTime  DateTime?
-  cbmsError     String?
-  items         DebitNoteItem[]
+  id             String          @id @default(uuid())
+  businessId     String
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  noteNumber     String          @unique
+  saleId         String
+  sale           Sale            @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  reason         String
+  subtotal       Decimal         @default(0) @db.Decimal(12, 2)
+  discount       Decimal         @default(0) @db.Decimal(12, 2)
+  tax            Decimal         @default(0) @db.Decimal(12, 2)
+  total          Decimal         @default(0) @db.Decimal(12, 2)
+  createdById    String
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  syncWithIrd    String          @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  cbmsSyncTime   DateTime?
+  cbmsError      String?
+  items          DebitNoteItem[]
   cbmsSyncQueues CbmsSyncQueue[]
+
+  @@unique([businessId, id])
 }
 
 model DebitNoteItem {
@@ -819,28 +992,1354 @@ model DebitNoteItem {
   productId   String
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity    Float
-  price       Float
-  total       Float
+  price       Decimal   @db.Decimal(12, 2)
+  total       Decimal   @db.Decimal(12, 2)
 }
 
 model CbmsSyncQueue {
-  id             String      @id @default(uuid())
-  businessId     String
-  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  saleId         String?
-  sale           Sale?       @relation(fields: [saleId], references: [id], onDelete: SetNull)
-  creditNoteId   String?
-  creditNote     CreditNote? @relation(fields: [creditNoteId], references: [id], onDelete: SetNull)
-  debitNoteId    String?
-  debitNote      DebitNote?  @relation(fields: [debitNoteId], references: [id], onDelete: SetNull)
-  action         String      // INVOICE_SUBMIT, INVOICE_CANCEL, CREDIT_NOTE_SUBMIT, DEBIT_NOTE_SUBMIT
-  syncStatus     String      @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
-  attemptCount   Int         @default(0)
-  lastAttempt    DateTime?
-  nextRetry      DateTime?
-  requestPayload Json?
+  id              String      @id @default(uuid())
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleId          String?
+  sale            Sale?       @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  creditNoteId    String?
+  creditNote      CreditNote? @relation(fields: [creditNoteId], references: [id], onDelete: SetNull)
+  debitNoteId     String?
+  debitNote       DebitNote?  @relation(fields: [debitNoteId], references: [id], onDelete: SetNull)
+  action          String // INVOICE_SUBMIT, INVOICE_CANCEL, CREDIT_NOTE_SUBMIT, DEBIT_NOTE_SUBMIT
+  syncStatus      String      @default("PENDING") // PENDING, SYNCED, FAILED, RETRYING, REJECTED
+  attemptCount    Int         @default(0)
+  lastAttempt     DateTime?
+  nextRetry       DateTime?
+  requestPayload  Json?
   responsePayload Json?
-  errorMessage   String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  errorMessage    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([businessId, id])
+}
+
+model UserBranchMembership {
+  id         String   @id @default(uuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId   String
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  role       String? // Branch-specific role override (e.g., CASHIER, MANAGER). If null, defaults to user.role
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, branchId])
+  @@unique([businessId, id])
+  @@index([businessId, userId])
+  @@index([businessId, branchId])
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String?
+  branch        Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action        String // Operation name: CHECKOUT, PAYMENT_RECEIVED, STOCK_TRANSFER, USER_UPDATED, etc.
+  entity        String // Aggregate root: Sale, Payment, StockTransfer, User, Branch, etc.
+  entityId      String?
+  entityVersion Int?     @default(1)
+  oldValue      Json? // Sanitized before-state (secrets redacted)
+  newValue      Json? // Sanitized after-state (secrets redacted)
+  metadata      Json? // Additional context: requestId, stayId, clientIp, device
+  reason        String? // Operational justification or cancellation explanation
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, entity, entityId])
+  @@index([businessId, createdAt])
+  @@index([businessId, userId])
+}
+
+model PaymentAllocation {
+  id            String    @id @default(uuid())
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  paymentId     String
+  payment       Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  saleId        String?
+  sale          Sale?     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  purchaseId    String?
+  purchase      Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  amount        Decimal   @db.Decimal(12, 2)
+  allocatedAt   DateTime  @default(now())
+  allocatedById String?
+  allocatedBy   User?     @relation(fields: [allocatedById], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, id])
+  @@index([businessId, paymentId])
+  @@index([businessId, saleId])
+  @@index([businessId, purchaseId])
+}
+
+model PaymentReversal {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  paymentId    String   @unique
+  payment      Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  reason       String
+  reversedById String?
+  reversedBy   User?    @relation(fields: [reversedById], references: [id], onDelete: SetNull)
+  reversedAt   DateTime @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, paymentId])
+}
+
+model Refund {
+  id          String    @id @default(uuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  saleId      String?
+  sale        Sale?     @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  paymentId   String?
+  payment     Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  amount      Decimal   @db.Decimal(12, 2)
+  method      String    @default("CASH")
+  reason      String
+  reference   String?
+  status      String    @default("COMPLETED")
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, branchId])
+  @@index([businessId, saleId])
+  @@index([businessId, paymentId])
+  @@index([businessId, customerId])
+}
+
+model StockMovement {
+  id                  String               @id @default(uuid())
+  businessId          String
+  business            Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId            String
+  branch              Branch               @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber         String?
+  quantity            Decimal              @db.Decimal(12, 4)
+  unit                String               @default("pcs")
+  sourceType          String
+  sourceId            String
+  eventKey            String?
+  actorId             String?
+  actor               User?                @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  notes               String?
+  createdAt           DateTime             @default(now())
+  consumptionPostings ConsumptionPosting[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, eventKey])
+  @@index([businessId, branchId, productId, createdAt])
+  @@index([businessId, productId, batchNumber])
+  @@index([businessId, sourceType, sourceId])
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       Json
+  headers       Json?
+  status        String    @default("PENDING")
+  retryCount    Int       @default(0)
+  lastError     String?
+  scheduledAt   DateTime  @default(now())
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([businessId, id])
+  @@index([status, scheduledAt])
+  @@index([businessId, aggregateType, aggregateId])
+}
+
+// ==============================================================================
+// PHASE 3: RESTAURANT STAFF MVP MODELS
+// ==============================================================================
+
+model Floor {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name         String
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tables RestaurantTable[]
+  rooms  Room[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, name])
+  @@index([businessId, branchId, displayOrder])
+}
+
+model RestaurantTable {
+  id               String   @id @default(uuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId         String
+  branch           Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  floorId          String
+  floor            Floor    @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  tableNumber      String
+  capacity         Int      @default(4)
+  status           String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, BILLED
+  currentSessionId String? // Scalar logical ID without @relation to preserve DAG acyclicity
+  shape            String   @default("RECTANGLE") // RECTANGLE, ROUND, SQUARE
+  posX             Int      @default(0)
+  posY             Int      @default(0)
+  width            Int      @default(1)
+  height           Int      @default(1)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tableSessions    TableSession[]
+  restaurantOrders RestaurantOrder[]
+  qrLocations      QrLocation[]
+  serviceRequests  ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, tableNumber])
+  @@index([businessId, branchId, floorId])
+  @@index([businessId, status])
+}
+
+model TableSession {
+  id            String          @id @default(uuid())
+  businessId    String
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  sessionNumber String
+  guestCount    Int             @default(1)
+  status        String          @default("ACTIVE") // ACTIVE, BILLED, COMPLETED, CANCELLED
+  openedAt      DateTime        @default(now())
+  closedAt      DateTime?
+  openedById    String?
+  openedBy      User?           @relation("SessionOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedById    String?
+  closedBy      User?           @relation("SessionClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  version       Int             @default(1) // Optimistic Concurrency Control
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  restaurantOrders  RestaurantOrder[]
+  guestAccessGrants GuestAccessGrant[]
+  guestSessions     GuestSession[]
+  serviceRequests   ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, sessionNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, tableId, status])
+}
+
+model Menu {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String?
+  branch        Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  availableFrom String?
+  availableTo   String?
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sections MenuSection[]
+
+  @@unique([businessId, id])
+  @@index([businessId, isActive, displayOrder])
+  @@index([businessId, branchId])
+}
+
+model MenuSection {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  menuId       String
+  menu         Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items MenuItem[]
+
+  @@unique([businessId, id])
+  @@index([businessId, menuId, displayOrder])
+}
+
+model MenuItem {
+  id              String      @id @default(uuid())
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sectionId       String
+  section         MenuSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name            String
+  description     String?
+  basePrice       Decimal     @db.Decimal(12, 2)
+  taxRate         Decimal     @default(0) @db.Decimal(5, 2)
+  imageUrl        String?
+  isAvailable     Boolean     @default(true)
+  isKitchenItem   Boolean     @default(true)
+  prepTimeMinutes Int?
+  displayOrder    Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  modifierGroups MenuItemModifierGroup[]
+  orderLines     OrderLine[]
+  stationRoutes  StationRoute[]
+  recipeVersions RecipeVersion[]
+
+  @@unique([businessId, id])
+  @@index([businessId, sectionId, displayOrder])
+  @@index([businessId, isAvailable])
+  @@index([businessId, productId])
+}
+
+model ModifierGroup {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String
+  displayName   String?
+  minSelections Int      @default(0)
+  maxSelections Int      @default(1)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  options       ModifierOption[]
+  menuItemLinks MenuItemModifierGroup[]
+
+  @@unique([businessId, id])
+  @@index([businessId, isActive])
+}
+
+model ModifierOption {
+  id              String        @id @default(uuid())
+  businessId      String
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  modifierGroupId String
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  name            String
+  priceDelta      Decimal       @default(0) @db.Decimal(12, 2)
+  isAvailable     Boolean       @default(true)
+  displayOrder    Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, modifierGroupId, displayOrder])
+}
+
+model MenuItemModifierGroup {
+  id                    String        @id @default(uuid())
+  businessId            String
+  business              Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  menuItemId            String
+  menuItem              MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifierGroupId       String
+  modifierGroup         ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  displayOrder          Int           @default(0)
+  overrideMinSelections Int?
+  overrideMaxSelections Int?
+  createdAt             DateTime      @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, menuItemId, modifierGroupId])
+  @@index([businessId, menuItemId])
+  @@index([businessId, modifierGroupId])
+}
+
+model RestaurantOrder {
+  id             String           @id @default(uuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tableSessionId String?
+  tableSession   TableSession?    @relation(fields: [tableSessionId], references: [id], onDelete: SetNull)
+  tableId        String?
+  table          RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  orderNumber    String
+  orderType      String           @default("DINE_IN") // DINE_IN, TAKEAWAY, BAR_WALK_IN
+
+  // Independent 3D Status Dimensions
+  acceptanceStatus  String @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  fulfillmentStatus String @default("QUEUED") // QUEUED, PREPARING, READY, SERVED, CANCELLED
+  settlementStatus  String @default("UNPAID") // UNPAID, PARTIAL, PAID, REFUNDED
+
+  // Aggregated Monies (Decimal 12, 2)
+  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  discountTotal Decimal @default(0) @db.Decimal(12, 2)
+  taxTotal      Decimal @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal @default(0) @db.Decimal(12, 2)
+  paidAmount    Decimal @default(0) @db.Decimal(12, 2)
+
+  version     Int      @default(1) // Optimistic Concurrency Control
+  createdById String?
+  createdBy   User?    @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rounds         OrderRound[]
+  orderLines     OrderLine[]
+  kitchenTickets KitchenTicket[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, orderNumber])
+  @@index([businessId, branchId, settlementStatus])
+  @@index([businessId, tableSessionId])
+  @@index([businessId, tableId])
+  @@index([businessId, acceptanceStatus])
+  @@index([businessId, fulfillmentStatus])
+}
+
+model OrderRound {
+  id            String          @id @default(uuid())
+  businessId    String
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId       String
+  order         RestaurantOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  roundNumber   Int             @default(1)
+  status        String          @default("SUBMITTED") // PENDING, SUBMITTED, PREPARING, COMPLETED, CANCELLED
+  submittedAt   DateTime        @default(now())
+  submittedById String?
+  submittedBy   User?           @relation("RoundSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  lines          OrderLine[]
+  kitchenTickets KitchenTicket[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, orderId, roundNumber])
+  @@index([businessId, orderId, roundNumber])
+}
+
+model OrderLine {
+  id         String          @id @default(uuid())
+  businessId String
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      RestaurantOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  roundId    String
+  round      OrderRound      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  menuItemId String?
+  menuItem   MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  // Immutable Snapshots
+  itemName         String
+  basePrice        Decimal @db.Decimal(12, 2)
+  quantity         Int     @default(1)
+  appliedModifiers Json // Snapshot array: [{ modifierGroupId, groupName, optionId, optionName, priceDelta }]
+  unitPrice        Decimal @db.Decimal(12, 2)
+  taxRate          Decimal @default(0) @db.Decimal(5, 2)
+  taxAmount        Decimal @default(0) @db.Decimal(12, 2)
+  subtotal         Decimal @db.Decimal(12, 2)
+  total            Decimal @db.Decimal(12, 2)
+  notes            String?
+
+  // Independent 3D Line Statuses
+  acceptanceStatus  String @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  fulfillmentStatus String @default("QUEUED") // QUEUED, PREPARING, READY, SERVED, CANCELLED
+  settlementStatus  String @default("UNPAID") // UNPAID, PARTIAL, PAID, REFUNDED
+
+  // Audit & Cancellation Provenance
+  rejectionReason String?
+  voidReason      String?
+  auditEventId    String?
+
+  version   Int      @default(1) // Optimistic Concurrency Control
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketLines KitchenTicketLine[]
+
+  @@unique([businessId, id])
+  @@index([businessId, orderId, roundId])
+  @@index([businessId, fulfillmentStatus])
+  @@index([businessId, settlementStatus])
+  @@index([businessId, menuItemId])
+}
+
+// ==========================================
+// Phase 4: Production Kitchen, Recipes & KDS
+// ==========================================
+
+model KitchenStation {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name         String
+  code         String // e.g. "HOT", "COLD", "BAR", "GRILL"
+  printerIp    String?
+  printerPort  Int?     @default(9100)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  routes    StationRoute[]
+  tickets   KitchenTicket[]
+  printJobs PrintJob[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, code])
+  @@index([businessId, branchId, isActive])
+}
+
+model StationRoute {
+  id         String         @id @default(uuid())
+  businessId String
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  stationId  String
+  station    KitchenStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  menuItemId String?
+  menuItem   MenuItem?      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   Category?      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  priority   Int            @default(0)
+  createdAt  DateTime       @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, stationId])
+  @@index([businessId, menuItemId])
+  @@index([businessId, categoryId])
+}
+
+model KitchenTicket {
+  id             String          @id @default(uuid())
+  businessId     String
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stationId      String
+  station        KitchenStation  @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          RestaurantOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  roundId        String
+  round          OrderRound      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  ticketNumber   String
+  status         String          @default("QUEUED") // QUEUED, PREPARING, READY, SERVED, CANCELLED
+  revisionNumber Int             @default(1)
+  notes          String?
+  printedAt      DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  lines     KitchenTicketLine[]
+  printJobs PrintJob[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, roundId, stationId])
+  @@index([businessId, branchId, status])
+  @@index([businessId, stationId, status])
+  @@index([businessId, orderId])
+}
+
+model KitchenTicketLine {
+  id                String        @id @default(uuid())
+  businessId        String
+  business          Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  ticketId          String
+  ticket            KitchenTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  orderLineId       String
+  orderLine         OrderLine     @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  itemName          String
+  quantity          Int           @default(1)
+  modifiersSnapshot Json // [{ groupName, optionName }]
+  dietaryAlerts     Json? // ["GLUTEN_FREE", "NO_NUTS", "VEGAN"]
+  notes             String?
+  status            String        @default("QUEUED") // QUEUED, PREPARING, READY, CANCELLED
+  isWaste           Boolean       @default(false)
+  wasteReason       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  consumptionPostings ConsumptionPosting[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, ticketId, orderLineId])
+  @@index([businessId, ticketId, status])
+  @@index([businessId, orderLineId])
+}
+
+model RecipeVersion {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  menuItemId    String
+  menuItem      MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  versionNumber Int      @default(1)
+  yieldQuantity Decimal  @default(1) @db.Decimal(12, 4)
+  yieldUnit     String   @default("PORTION")
+  isActive      Boolean  @default(true)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ingredients         RecipeIngredient[]
+  consumptionPostings ConsumptionPosting[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, menuItemId, versionNumber])
+  @@index([businessId, menuItemId, isActive])
+}
+
+model RecipeIngredient {
+  id              String        @id @default(uuid())
+  businessId      String
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  recipeVersionId String
+  recipeVersion   RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  productId       String // Raw inventory Product
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity        Decimal       @db.Decimal(12, 4)
+  unit            String
+  wastagePercent  Decimal       @default(0) @db.Decimal(5, 2)
+  createdAt       DateTime      @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, recipeVersionId, productId])
+  @@index([businessId, recipeVersionId])
+  @@index([businessId, productId])
+}
+
+model ConsumptionPosting {
+  id              String            @id @default(uuid())
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId        String
+  branch          Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  ticketLineId    String
+  ticketLine      KitchenTicketLine @relation(fields: [ticketLineId], references: [id], onDelete: Cascade)
+  recipeVersionId String?
+  recipeVersion   RecipeVersion?    @relation(fields: [recipeVersionId], references: [id], onDelete: SetNull)
+  productId       String
+  product         Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity        Decimal           @db.Decimal(12, 4)
+  unit            String
+  stockMovementId String?
+  stockMovement   StockMovement?    @relation(fields: [stockMovementId], references: [id], onDelete: SetNull)
+  isWaste         Boolean           @default(false)
+  reason          String?
+  postedAt        DateTime          @default(now())
+  postedById      String?
+  postedBy        User?             @relation("ConsumptionPostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, id])
+  @@index([businessId, ticketLineId])
+  @@index([businessId, branchId, productId])
+  @@index([businessId, stockMovementId])
+}
+
+// ==============================================================================
+// PHASE 5: HOTEL INVENTORY, ROOMS & GUEST STAYS
+// ==============================================================================
+
+model RoomType {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId     String
+  branch       Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name         String
+  code         String
+  description  String?
+  baseRate     Decimal  @default(0) @db.Decimal(12, 2)
+  maxOccupancy Int      @default(2)
+  amenities    Json?    // ["WIFI", "AC", "MINIBAR", "BALCONY", "OCEAN_VIEW"]
+  images       Json?    // ["url1", "url2"]
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rooms        Room[]
+  reservations Reservation[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, code])
+  @@index([businessId, branchId, isActive])
+}
+
+model Room {
+  id            String   @id @default(uuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  roomTypeId    String
+  roomType      RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  floorId       String?
+  floor         Floor?   @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  roomNumber    String
+  capacity      Int      @default(2)
+  status        String   @default("VACANT_CLEAN") // VACANT_CLEAN, VACANT_DIRTY, OCCUPIED_CLEAN, OCCUPIED_DIRTY, OUT_OF_SERVICE, MAINTENANCE
+  currentStayId String?  // Scalar logical ID without @relation to preserve DAG acyclicity
+  keyCardAlias  String?
+  features      Json?    // ["CONNECTING", "ACCESSIBLE"]
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  reservations       Reservation[]
+  stays              Stay[]
+  allocations        RoomAllocation[]
+  housekeepingTasks  HousekeepingTask[]
+  maintenanceTickets MaintenanceTicket[]
+  roomNightCharges   RoomNightCharge[]
+  qrLocations        QrLocation[]
+  serviceRequests    ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, roomNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, roomTypeId])
+  @@index([businessId, floorId])
+}
+
+model Reservation {
+  id                String   @id @default(uuid())
+  businessId        String
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId          String
+  branch            Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  reservationNumber String
+  guestName         String
+  guestEmail        String?
+  guestPhone        String?
+  roomTypeId        String
+  roomType          RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  roomId            String?
+  room              Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  checkInDate       DateTime
+  checkOutDate      DateTime
+  status            String   @default("CONFIRMED") // CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED, NO_SHOW
+  adults            Int      @default(1)
+  children          Int      @default(0)
+  ratePlan          String?  @default("STANDARD") // STANDARD, BED_AND_BREAKFAST, NON_REFUNDABLE
+  nightlyRate       Decimal  @default(0) @db.Decimal(12, 2)
+  totalAmount       Decimal  @default(0) @db.Decimal(12, 2)
+  depositAmount     Decimal  @default(0) @db.Decimal(12, 2)
+  specialRequests   String?
+  notes             String?
+  version           Int      @default(1)
+  createdById       String?
+  createdBy         User?    @relation("ReservationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  guests      ReservationGuest[]
+  stays       Stay[]
+  allocations RoomAllocation[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, reservationNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, roomTypeId])
+  @@index([businessId, roomId])
+  @@index([businessId, checkInDate, checkOutDate])
+}
+
+model ReservationGuest {
+  id            String      @id @default(uuid())
+  businessId    String
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  name          String
+  email         String?
+  phone         String?
+  idType        String?     // PASSPORT, CITIZENSHIP, DRIVING_LICENSE, NATIONAL_ID, OTHER
+  idNumber      String?
+  isPrimary     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, reservationId])
+}
+
+model Stay {
+  id               String       @id @default(uuid())
+  businessId       String
+  business         Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId         String
+  branch           Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stayNumber       String
+  reservationId    String?
+  reservation      Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  roomId           String
+  room             Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  guestName        String
+  guestEmail       String?
+  guestPhone       String?
+  guestIdType      String?     // PASSPORT, CITIZENSHIP, DRIVING_LICENSE, NATIONAL_ID, OTHER
+  guestIdNumber    String?
+  checkInTime      DateTime     @default(now())
+  checkOutTime     DateTime?
+  expectedCheckOut DateTime
+  status           String       @default("ACTIVE") // ACTIVE, COMPLETED, EXTENDED, TRANSFERRED
+  ratePerNight     Decimal      @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal      @default(0) @db.Decimal(12, 2)
+  paidAmount       Decimal      @default(0) @db.Decimal(12, 2)
+  version          Int          @default(1)
+  checkedInById    String?
+  checkedInBy      User?        @relation("StayCheckedInBy", fields: [checkedInById], references: [id], onDelete: SetNull)
+  checkedOutById   String?
+  checkedOutBy     User?        @relation("StayCheckedOutBy", fields: [checkedOutById], references: [id], onDelete: SetNull)
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  allocations                RoomAllocation[]
+  housekeepingTasks          HousekeepingTask[]
+  folios                     GuestFolio[]
+  roomNightCharges           RoomNightCharge[]
+  folioEntries               FolioEntry[]
+  folioSettlementAllocations FolioSettlementAllocation[]
+  guestAccessGrants          GuestAccessGrant[]
+  guestSessions              GuestSession[]
+  serviceRequests            ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, stayNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, roomId, status])
+  @@index([businessId, reservationId])
+}
+
+model MaintenanceTicket {
+  id              String    @id @default(uuid())
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId        String
+  branch          Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  roomId          String
+  room            Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  ticketNumber    String
+  title           String
+  description     String?
+  status          String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CANCELLED
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  startDate       DateTime  @default(now())
+  endDate         DateTime?
+  reportedById    String?
+  reportedBy      User?     @relation("MaintenanceReportedBy", fields: [reportedById], references: [id], onDelete: SetNull)
+  assignedToId    String?
+  assignedTo      User?     @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  resolvedById    String?
+  resolvedBy      User?     @relation("MaintenanceResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  allocations RoomAllocation[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, ticketNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, roomId, status])
+  @@index([businessId, assignedToId])
+}
+
+model RoomAllocation {
+  id                  String             @id @default(uuid())
+  businessId          String
+  business            Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId            String
+  branch              Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  roomId              String
+  room                Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  reservationId       String?
+  reservation         Reservation?       @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  stayId              String?
+  stay                Stay?              @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  maintenanceTicketId String?
+  maintenanceTicket   MaintenanceTicket? @relation(fields: [maintenanceTicketId], references: [id], onDelete: Cascade)
+  startDate           DateTime
+  endDate             DateTime
+  isBlocking          Boolean            @default(true)
+  status              String             @default("CONFIRMED") // CONFIRMED, CHECKED_IN, MAINTENANCE, COMPLETED, CANCELLED
+  notes               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, roomId, startDate, endDate])
+  @@index([businessId, branchId, status])
+  @@index([businessId, reservationId])
+  @@index([businessId, stayId])
+  @@index([businessId, maintenanceTicketId])
+}
+
+model HousekeepingTask {
+  id            String    @id @default(uuid())
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  roomId        String
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  stayId        String?
+  stay          Stay?     @relation(fields: [stayId], references: [id], onDelete: SetNull)
+  taskType      String    @default("DAILY_CLEANING") // CHECK_OUT_CLEANING, DAILY_CLEANING, DEEP_CLEANING, INSPECTION, TURNDOWN
+  status        String    @default("DIRTY") // DIRTY, IN_PROGRESS, CLEAN, INSPECTED
+  priority      String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  assignedToId  String?
+  assignedTo    User?     @relation("HousekeepingAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  scheduledDate DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  completedById String?
+  completedBy   User?     @relation("HousekeepingCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([businessId, id])
+  @@index([businessId, branchId, status])
+  @@index([businessId, roomId, status])
+  @@index([businessId, assignedToId])
+}
+
+
+// ==============================================================================
+// PHASE 6: GUEST FOLIOS & CROSS-MODULE COMBINED SETTLEMENT
+// ==============================================================================
+
+model GuestFolio {
+  id            String    @id @default(uuid())
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stayId        String
+  stay          Stay      @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  folioNumber   String
+  windowName    String    @default("PRIMARY") // PRIMARY, COMPANY, PERSONAL, INCIDENTALS
+  guestName     String
+  status        String    @default("OPEN") // OPEN, SETTLING, CLOSED, VOID
+  chargesTotal  Decimal   @default(0) @db.Decimal(12, 2)
+  creditsTotal  Decimal   @default(0) @db.Decimal(12, 2)
+  paymentsTotal Decimal   @default(0) @db.Decimal(12, 2)
+  balance       Decimal   @default(0) @db.Decimal(12, 2)
+  lockedAt      DateTime?
+  closedAt      DateTime?
+  notes         String?
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  roomNightCharges RoomNightCharge[]
+  entries          FolioEntry[]
+  settlements      FolioSettlementAllocation[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, folioNumber])
+  @@unique([businessId, stayId, windowName])
+  @@index([businessId, stayId, status])
+  @@index([businessId, branchId, status])
+}
+
+model RoomNightCharge {
+  id          String     @id @default(uuid())
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stayId      String
+  stay        Stay       @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  folioId     String
+  folio       GuestFolio @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  chargeDate  DateTime
+  ratePlan    String?    @default("STANDARD")
+  baseRate    Decimal    @default(0) @db.Decimal(12, 2)
+  taxAmount   Decimal    @default(0) @db.Decimal(12, 2)
+  totalAmount Decimal    @default(0) @db.Decimal(12, 2)
+  status      String     @default("POSTED") // POSTED, REVERSED
+  postedById  String?
+  postedBy    User?      @relation("RoomNightChargePostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+  postedAt    DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, stayId, chargeDate])
+  @@index([businessId, folioId])
+  @@index([businessId, branchId, chargeDate])
+}
+
+model FolioEntry {
+  id                      String     @id @default(uuid())
+  businessId              String
+  business                Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId                String
+  branch                  Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  folioId                 String
+  folio                   GuestFolio @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  stayId                  String
+  stay                    Stay       @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  entryNumber             String
+  sourceType              String     // ROOM_NIGHT, RESTAURANT_ORDER, MINIBAR, LAUNDRY, SPA, DEPOSIT, ADJUSTMENT, REFUND
+  sourceId                String
+  postingKind             String     // CHARGE, RECEIVABLE_TRANSFER, CREDIT_ADJUSTMENT, DEPOSIT_APPLICATION, REVERSAL
+  category                String     @default("OTHER") // ROOM, DINING, MINIBAR, LAUNDRY, SPA, DEPOSIT, OTHER
+  description             String
+  amount                  Decimal    @default(0) @db.Decimal(12, 2)
+  taxAmount               Decimal    @default(0) @db.Decimal(12, 2)
+  totalAmount             Decimal    @default(0) @db.Decimal(12, 2)
+  direction               String     @default("DEBIT") // DEBIT (adds to balance), CREDIT (reduces balance)
+  isRevenueRecognizedHere Boolean    @default(true)    // false for RECEIVABLE_TRANSFER from RestaurantOrder
+  reversedEntryId         String?                      // Scalar logical ID to avoid self-referencing cycle in DR DAG
+  metadata                Json?
+  postedById              String?
+  postedBy                User?      @relation("FolioEntryPostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+  postedAt                DateTime   @default(now())
+  createdAt               DateTime   @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, sourceType, sourceId, postingKind])
+  @@index([businessId, folioId, postedAt])
+  @@index([businessId, stayId, category])
+  @@index([businessId, sourceType, sourceId])
+}
+
+model FolioSettlementAllocation {
+  id            String     @id @default(uuid())
+  businessId    String
+  business      Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  folioId       String
+  folio         GuestFolio @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  stayId        String
+  stay          Stay       @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  paymentId     String?    // Optional scalar reference to Payment ledger entry
+  paymentMethod String     @default("CASH") // CASH, CARD, QR, BANK_TRANSFER, DEPOSIT
+  amount        Decimal    @default(0) @db.Decimal(12, 2)
+  reference     String?
+  status        String     @default("APPLIED") // APPLIED, REVERSED, REFUNDED
+  notes         String?
+  allocatedById String?
+  allocatedBy   User?      @relation("FolioSettlementAllocatedBy", fields: [allocatedById], references: [id], onDelete: SetNull)
+  allocatedAt   DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, folioId])
+  @@index([businessId, stayId])
+}
+
+// ==============================================================================
+// PHASE 7: GUEST SELF-SERVICE PORTAL & LOCATION QR SYSTEM
+// ==============================================================================
+
+model QrLocation {
+  id            String           @id @default(uuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  publicCode    String           @unique
+  locationType  String           // ROOM, TABLE
+  roomId        String?
+  room          Room?            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tableId       String?
+  table         RestaurantTable? @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  label         String
+  isActive      Boolean          @default(true)
+  rotationCount Int              @default(1)
+  metadata      Json?
+  createdById   String?
+  createdBy     User?            @relation("QrLocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  grants          GuestAccessGrant[]
+  sessions        GuestSession[]
+  serviceRequests ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, roomId])
+  @@unique([businessId, tableId])
+  @@index([businessId, branchId, locationType, isActive])
+}
+
+model GuestAccessGrant {
+  id               String        @id @default(uuid())
+  businessId       String
+  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId         String
+  branch           Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  qrLocationId     String
+  qrLocation       QrLocation    @relation(fields: [qrLocationId], references: [id], onDelete: Cascade)
+  grantType        String        // STAY_VERIFIED, TABLE_OPEN
+  stayId           String?
+  stay             Stay?         @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  tableSessionId   String?
+  tableSession     TableSession? @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  grantCodeHash    String        @unique
+  scopes           Json          // ["MENU_BROWSE", "ORDER_INITIATE", "SERVICE_REQUEST", "BILL_VIEW", "CHECKOUT_REQUEST"]
+  guestDisplayName String?
+  status           String        @default("ACTIVE") // ACTIVE, REVOKED, EXPIRED
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedReason    String?
+  revokedById      String?
+  revokedBy        User?         @relation("GuestAccessGrantRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  sessions        GuestSession[]
+  serviceRequests ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@index([businessId, stayId, status])
+  @@index([businessId, tableSessionId, status])
+  @@index([businessId, qrLocationId, status])
+}
+
+model GuestSession {
+  id                String           @id @default(uuid())
+  businessId        String
+  business          Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId          String
+  branch            Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  qrLocationId      String
+  qrLocation        QrLocation       @relation(fields: [qrLocationId], references: [id], onDelete: Cascade)
+  grantId           String
+  grant             GuestAccessGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  stayId            String?
+  stay              Stay?            @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  tableSessionId    String?
+  tableSession      TableSession?    @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  sessionTokenHash  String           @unique
+  deviceFingerprint String?
+  status            String           @default("ACTIVE") // ACTIVE, REVOKED, EXPIRED
+  expiresAt         DateTime
+  lastActiveAt      DateTime         @default(now())
+  revokedAt         DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  serviceRequests ServiceRequest[]
+
+  @@unique([businessId, id])
+  @@index([businessId, stayId, status])
+  @@index([businessId, tableSessionId, status])
+  @@index([businessId, grantId, status])
+}
+
+model ServiceRequest {
+  id               String            @id @default(uuid())
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId         String
+  branch           Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  qrLocationId     String
+  qrLocation       QrLocation        @relation(fields: [qrLocationId], references: [id], onDelete: Cascade)
+  grantId          String?
+  grant            GuestAccessGrant? @relation(fields: [grantId], references: [id], onDelete: SetNull)
+  guestSessionId   String?
+  guestSession     GuestSession?     @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  stayId           String?
+  stay             Stay?             @relation(fields: [stayId], references: [id], onDelete: SetNull)
+  tableSessionId   String?
+  tableSession     TableSession?     @relation(fields: [tableSessionId], references: [id], onDelete: SetNull)
+  roomId           String?
+  room             Room?             @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  tableId          String?
+  table            RestaurantTable?  @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  requestNumber    String
+  requestType      String            // WAITER_CALL, WATER_REFILL, BILL_REQUEST, EXTRA_TOWELS, HOUSEKEEPING, ROOM_AMENITIES, CHECKOUT_REQUEST, OTHER
+  category         String            @default("RESTAURANT") // RESTAURANT, HOUSEKEEPING, FRONT_DESK, CONCIERGE
+  priority         String            @default("NORMAL") // NORMAL, HIGH, URGENT
+  status           String            @default("OPEN") // OPEN, ACKNOWLEDGED, IN_PROGRESS, COMPLETED, CANCELLED
+  notes            String?
+  idempotencyKey   String?
+  requestedAt      DateTime          @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+  acknowledgedBy   User?             @relation("ServiceRequestAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  resolvedAt       DateTime?
+  resolvedById     String?
+  resolvedBy       User?             @relation("ServiceRequestResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNotes  String?
+  version          Int               @default(1)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, requestNumber])
+  @@index([businessId, branchId, status, requestedAt])
+  @@index([businessId, qrLocationId, requestType, requestedAt])
+  @@index([businessId, stayId, status])
+  @@index([businessId, tableSessionId, status])
+}
+
+
+// ==========================================
+// Phase 8: Operational Readiness, Hardware Rehearsals & Pilot Rollout
+// ==========================================
+
+model PropertyFeatureFlag {
+  id                      String   @id @default(uuid())
+  businessId              String
+  business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId                String
+  branch                  Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  hotelEnabled            Boolean  @default(true)
+  restaurantEnabled       Boolean  @default(true)
+  kdsEnabled              Boolean  @default(true)
+  guestQrEnabled          Boolean  @default(true)
+  folioBridgeEnabled      Boolean  @default(true)
+  offlineDraftSyncEnabled Boolean  @default(true)
+  printerFailoverEnabled  Boolean  @default(true)
+  pilotMode               Boolean  @default(false)
+  metadata                Json?
+  updatedById             String?
+  updatedBy               User?    @relation("FeatureFlagUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  version                 Int      @default(1)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId])
+  @@index([businessId, branchId])
+}
+
+model PrintJob {
+  id                String          @id @default(uuid())
+  businessId        String
+  business          Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId          String
+  branch            Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stationId         String?
+  station           KitchenStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  ticketId          String?
+  ticket            KitchenTicket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  jobNumber         String
+  jobType           String          // KOT_58MM, RECEIPT_80MM, FOLIO_INVOICE, CASH_DRAWER_PULSE, TEST_PAGE
+  printerWidthMm    Int             @default(80)
+  targetPrinterIp   String?
+  targetPrinterPort Int             @default(9100)
+  fallbackStationId String?         // Scalar station ID to preserve DAG acyclicity
+  routedStationId   String?         // Scalar station ID that actually printed after failover
+  cashDrawerPulse   Boolean         @default(false)
+  escPosPayload     String
+  status            String          @default("QUEUED") // QUEUED, PRINTED, FAILED, REDIRECTED_TO_BACKUP, CANCELLED
+  attempts          Int             @default(0)
+  lastError         String?
+  idempotencyKey    String?
+  printedAt         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, jobNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, stationId, status])
+}
+
+model OfflineSyncBatch {
+  id              String   @id @default(uuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId        String
+  branch          Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  terminalId      String
+  batchKey        String
+  operationsCount Int      @default(1)
+  appliedCount    Int      @default(0)
+  status          String   @default("COMPLETED") // COMPLETED, PARTIAL, CONFLICT
+  payload         Json?
+  results         Json?
+  syncedById      String?
+  syncedBy        User?    @relation("OfflineBatchSyncedBy", fields: [syncedById], references: [id], onDelete: SetNull)
+  syncedAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, batchKey])
+  @@index([businessId, branchId, syncedAt])
+}
+
+model PilotDailyReconciliation {
+  id                    String   @id @default(uuid())
+  businessId            String
+  business              Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId              String
+  branch                Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  businessDate          DateTime
+  expectedCashTotal     Decimal  @default(0) @db.Decimal(12, 2)
+  declaredCashTotal     Decimal  @default(0) @db.Decimal(12, 2)
+  cashVariance          Decimal  @default(0) @db.Decimal(12, 2)
+  retailSalesTotal      Decimal  @default(0) @db.Decimal(12, 2)
+  restaurantOrdersTotal Decimal  @default(0) @db.Decimal(12, 2)
+  folioSettlementsTotal Decimal  @default(0) @db.Decimal(12, 2)
+  status                String   @default("BALANCED") // BALANCED, DISCREPANCY_FLAGGED, APPROVED
+  notes                 String?
+  reconciledById        String?
+  reconciledBy          User?    @relation("PilotReconciledBy", fields: [reconciledById], references: [id], onDelete: SetNull)
+  reconciledAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, businessDate])
+  @@index([businessId, branchId, status])
 }

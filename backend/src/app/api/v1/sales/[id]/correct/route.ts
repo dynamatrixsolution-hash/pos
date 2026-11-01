@@ -114,9 +114,9 @@ export async function POST(
         });
 
         if (customer) {
-          const unpaidAmt = originalSale.total - originalSale.paidAmount;
+          const unpaidAmt = Number(originalSale.total) - Number(originalSale.paidAmount);
           if (unpaidAmt > 0) {
-            const newCustomerBalance = Math.max(0, customer.balance - unpaidAmt);
+            const newCustomerBalance = Math.max(0, Number(customer.balance) - unpaidAmt);
 
             await tx.customer.update({
               where: { id: customer.id },
@@ -192,7 +192,7 @@ export async function POST(
 
         const customer = payload.customerId ? await tx.customer.findFirst({ where: { id: payload.customerId } }) : null;
         const isWholesale = customer?.customerType === "WHOLESALE";
-        const basePrice = isWholesale ? product.wholesalePrice : product.sellingPrice;
+        const basePrice = Number(isWholesale ? product.wholesalePrice : product.sellingPrice);
 
         const itemQty = item.quantity;
         const itemPrice = basePrice;
@@ -314,11 +314,13 @@ export async function POST(
           const unpaidAmt = finalTotal - settlement.paidAmount;
 
           if (unpaidAmt > 0) {
-            if (customer.balance + unpaidAmt > customer.creditLimit) {
-              throw new Error(`Transaction violates customer credit limit. Limit: $${customer.creditLimit}, Current balance: $${customer.balance}, Added charge: $${unpaidAmt}`);
+            const customerBalanceNum = Number(customer.balance);
+            const customerCreditLimitNum = Number(customer.creditLimit);
+            if (customerBalanceNum + unpaidAmt > customerCreditLimitNum) {
+              throw new Error(`Transaction violates customer credit limit. Limit: $${customerCreditLimitNum}, Current balance: $${customerBalanceNum}, Added charge: $${unpaidAmt}`);
             }
 
-            const newCustomerBalance = customer.balance + unpaidAmt;
+            const newCustomerBalance = customerBalanceNum + unpaidAmt;
 
             await tx.customer.update({
               where: { id: customer.id },

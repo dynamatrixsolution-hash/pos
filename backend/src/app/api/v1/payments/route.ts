@@ -277,34 +277,40 @@ export async function POST(request: Request) {
         if (!sale) throw new CommerceError("Invoice access denied", 403);
         if (customerId && customerId !== sale.customerId) throw new CommerceError("Customer does not match invoice");
         customerId = sale.customerId;
-        if (data.amount > sale.total - sale.paidAmount + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
-        const paidAmount = money(sale.paidAmount + data.amount);
-        await tx.sale.update({ where: { id: sale.id }, data: { paidAmount, paymentStatus: settlementStatus(sale.total, paidAmount) } });
+        const saleTotalNum = Number(sale.total);
+        const salePaidAmountNum = Number(sale.paidAmount);
+        if (data.amount > saleTotalNum - salePaidAmountNum + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
+        const paidAmount = money(salePaidAmountNum + data.amount);
+        await tx.sale.update({ where: { id: sale.id }, data: { paidAmount, paymentStatus: settlementStatus(saleTotalNum, paidAmount) } });
       }
       if (data.purchaseId) {
         const purchase = await tx.purchase.findFirst({ where: { id: data.purchaseId, businessId: context.businessId, branchId, deletedAt: null, status: "RECEIVED" } });
         if (!purchase) throw new CommerceError("Invoice access denied", 403);
         if (supplierId && supplierId !== purchase.supplierId) throw new CommerceError("Supplier does not match invoice");
         supplierId = purchase.supplierId;
-        if (data.amount > purchase.total - purchase.paidAmount + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
-        const paidAmount = money(purchase.paidAmount + data.amount);
-        await tx.purchase.update({ where: { id: purchase.id }, data: { paidAmount, paymentStatus: settlementStatus(purchase.total, paidAmount) } });
+        const purchaseTotalNum = Number(purchase.total);
+        const purchasePaidAmountNum = Number(purchase.paidAmount);
+        if (data.amount > purchaseTotalNum - purchasePaidAmountNum + 0.005) throw new CommerceError("Payment exceeds invoice outstanding balance");
+        const paidAmount = money(purchasePaidAmountNum + data.amount);
+        await tx.purchase.update({ where: { id: purchase.id }, data: { paidAmount, paymentStatus: settlementStatus(purchaseTotalNum, paidAmount) } });
       }
       if (!customerId && !supplierId && !data.saleId && !data.purchaseId) throw new CommerceError("A payment target is required");
       const receiptNumber = data.receiptNumber || `${data.type === "RECEIVED" ? "REC" : "VOU"}-${randomUUID()}`;
       if (customerId) {
         const customer = await tx.customer.findFirst({ where: { id: customerId, businessId: context.businessId, deletedAt: null } });
         if (!customer || (customer.branchId && customer.branchId !== branchId)) throw new CommerceError("Customer access denied", 403);
-        if (data.amount > customer.balance + 0.005) throw new CommerceError("Payment exceeds customer outstanding balance");
-        const balance = money(customer.balance - data.amount);
+        const customerBalanceNum = Number(customer.balance);
+        if (data.amount > customerBalanceNum + 0.005) throw new CommerceError("Payment exceeds customer outstanding balance");
+        const balance = money(customerBalanceNum - data.amount);
         await tx.customer.update({ where: { id: customer.id }, data: { balance } });
         await tx.customerLedger.create({ data: { customerId, type: "PAYMENT", reference: receiptNumber, credit: data.amount, balance, description: data.remarks } });
       }
       if (supplierId) {
         const supplier = await tx.supplier.findFirst({ where: { id: supplierId, businessId: context.businessId, deletedAt: null } });
         if (!supplier) throw new CommerceError("Supplier access denied", 403);
-        if (data.amount > supplier.balance + 0.005) throw new CommerceError("Payment exceeds supplier outstanding balance");
-        const balance = money(supplier.balance - data.amount);
+        const supplierBalanceNum = Number(supplier.balance);
+        if (data.amount > supplierBalanceNum + 0.005) throw new CommerceError("Payment exceeds supplier outstanding balance");
+        const balance = money(supplierBalanceNum - data.amount);
         await tx.supplier.update({ where: { id: supplier.id }, data: { balance } });
         await tx.supplierLedger.create({ data: { supplierId, type: "PAYMENT", reference: receiptNumber, debit: data.amount, balance, description: data.remarks } });
       }

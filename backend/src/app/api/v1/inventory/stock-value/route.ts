@@ -53,10 +53,12 @@ export async function GET(request: Request) {
     let totalSellingValue = 0;
 
     products.forEach((p) => {
+      const costPriceNum = Number(p.costPrice);
+      const sellingPriceNum = Number(p.sellingPrice);
       const quantity = p.productStocks.reduce((sum, s) => sum + s.quantity, 0);
-      const costValue = quantity * p.costPrice;
-      const sellingValue = quantity * p.sellingPrice;
-      const margin = p.sellingPrice - p.costPrice;
+      const costValue = quantity * costPriceNum;
+      const sellingValue = quantity * sellingPriceNum;
+      const margin = sellingPriceNum - costPriceNum;
       const marginValue = quantity * margin;
 
       totalStockValue += quantity;
@@ -77,11 +79,11 @@ export async function GET(request: Request) {
         sellingValue,
         margin,
         marginValue,
-        marginPercent: p.costPrice > 0 ? ((margin / p.costPrice) * 100).toFixed(2) : "0",
+        marginPercent: costPriceNum > 0 ? ((margin / costPriceNum) * 100).toFixed(2) : "0",
         stocks: p.productStocks.map((s) => ({
           branch: s.branch.name,
           quantity: s.quantity,
-          value: s.quantity * p.costPrice,
+          value: s.quantity * costPriceNum,
         })),
       });
 
@@ -114,8 +116,8 @@ export async function GET(request: Request) {
           };
         }
         valueByBranch[s.branchId].quantity += s.quantity;
-        valueByBranch[s.branchId].costValue += s.quantity * p.costPrice;
-        valueByBranch[s.branchId].sellingValue += s.quantity * p.sellingPrice;
+        valueByBranch[s.branchId].costValue += s.quantity * costPriceNum;
+        valueByBranch[s.branchId].sellingValue += s.quantity * sellingPriceNum;
         valueByBranch[s.branchId].marginValue += s.quantity * margin;
       });
     });

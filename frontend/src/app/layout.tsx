@@ -12,8 +12,11 @@ const sansFont = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Prayassh – Enterprise POS & Business Management System",
-  description: "Prayassh is a modern, scalable, multi-branch POS and business management platform optimized for speed, accuracy, and double-entry financial reporting.",
+  title: "RestroInn – Hotel & Restaurant Management System",
+  description: "RestroInn is a modern, scalable hotel, restaurant, and POS management platform optimized for dining, hospitality, speed, accuracy, and double-entry reporting.",
+  icons: {
+    icon: "/logo-icon.jpg",
+  },
 };
 
 export default function RootLayout({

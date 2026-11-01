@@ -74,7 +74,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalSales = salesAggregate._sum.total || 0;
+    const totalSales = salesAggregate._sum.total ? Number(salesAggregate._sum.total) : 0;
 
     // 2. Total Purchases (current month)
     const purchasesAggregate = await db.purchase.aggregate({
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalPurchases = purchasesAggregate._sum.total || 0;
+    const totalPurchases = purchasesAggregate._sum.total ? Number(purchasesAggregate._sum.total) : 0;
 
     // 3. Total Expenses (current month)
     const expensesAggregate = await db.expense.aggregate({
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalExpenses = expensesAggregate._sum.amount || 0;
+    const totalExpenses = expensesAggregate._sum.amount ? Number(expensesAggregate._sum.amount) : 0;
 
     // 3b. Total Income (current month)
     const incomeAggregate = await db.income.aggregate({
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalIncome = incomeAggregate._sum.amount || 0;
+    const totalIncome = incomeAggregate._sum.amount ? Number(incomeAggregate._sum.amount) : 0;
 
     // 4. Calculate Net Profit: Sales Revenue - Cost of Goods Sold (COGS) - Expenses + Income
     // Fetch all completed sales items for this month to calculate COGS
@@ -138,7 +138,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const costOfGoodsSold = saleItems.reduce((sum: number, item: any) => sum + item.quantity * item.costPrice, 0);
+    const costOfGoodsSold = saleItems.reduce((sum: number, item: any) => sum + item.quantity * Number(item.costPrice), 0);
     const grossProfit = totalSales - costOfGoodsSold;
     const netProfit = grossProfit + totalIncome - totalExpenses;
 

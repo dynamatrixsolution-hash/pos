@@ -1,5 +1,45 @@
 # Isolated restro environment
 
+## Recovery working tree
+
+Hardening is preserved in local commit `6078e686f84a2e5389bccb27bb4bc2a997b004d9` on `restro`. Subsequent tenant-recovery changes and executed evidence are in [RECOVERY_STATUS.md](RECOVERY_STATUS.md). No production restore is authorized or provided by these commands.
+
+Reuse the existing `.env.restro.local`; **do not rerun init**. Never display or commit its contents. From the repository root:
+
+```powershell
+node scripts/restro-env.mjs db
+node scripts/restro-env.mjs recovery-config
+node scripts/restro-env.mjs recovery-test
+```
+
+`recovery-config` appends only missing BACKUP_ENCRYPTION_KEY (random 32-byte hex) and absolute BACKUP_DIRECTORY (ignored `scratch/restro-backups`). It does not rotate an existing key or alter database credentials. Protect both archive storage and a separate copy of the key; these local settings do not establish offsite recovery. Existing application environments without explicit key/storage configuration return 503 for backup creation/listing.
+
+For a **synthetic tenant** already created in the isolated target, operator commands are:
+
+```powershell
+node scripts/restro-env.mjs recovery create <businessId>
+node scripts/restro-env.mjs recovery restore <businessId> <backup-uuid.pbackup>
+```
+
+Replace angle-bracket placeholders with actual synthetic IDs/filenames. The restore command accepts only an authenticated same-schema archive and an absent tenant. An existing tenant returns a conflict and is never deleted. There is deliberately no delete/reset/overwrite preparation command. For rehearsal use the synthetic integration suite, which removes only its own generated records and proves rollback/round-trip preservation. Do not manually delete development tenants to make a restore fit.
+
+Only loopback `127.0.0.1:55439/restro_test`, user `restro_dev`, is accepted, with DATABASE_URL/DIRECT_URL/TEST_DATABASE_URL agreement. No other environment/database fallback is allowed. The dedicated suite fails for a missing target or anything other than eight actual passes with zero skips; ordinary unit-test discovery is insufficient. The CLI prints only safe metadata/status, never decrypted rows or keys. Legacy plaintext JSON backups are incomplete and unsupported.
+
+### Separate restore target and rehearsal
+
+Recovery is rehearsed against a **different** PostgreSQL instance so the restro development database is never a restore destination. It uses its own container, volume (`prayassh-restro-restore_restro_restore_data`), role, credentials and loopback port 55440, defined in `compose.restro-restore.yml` and configured by ignored `.env.restro-restore.local`. Never print or commit that file; do not rerun `init` (it refuses to overwrite). From the repository root:
+
+```powershell
+node scripts/restro-restore-env.mjs init      # once; creates ignored credentials
+node scripts/restro-restore-env.mjs db        # starts the disposable target
+node scripts/restro-restore-env.mjs migrate   # applies tracked migrations to the target only
+node scripts/restro-restore-env.mjs rehearse  # synthetic backup -> restore -> reconcile -> negative cases
+```
+
+`rehearse` reads from the restro source, restores into the disposable target, and inserts/deletes only its own generated synthetic IDs in the source (it asserts the source returns to its exact prior content). It writes `scratch/rehearsal-results-*.json` (ignored). The launcher refuses any target other than `127.0.0.1:55440/restro_restore`, any query override, and the source port. Never use production credentials or import a production dump. The target is disposable: stop it with `docker compose -p prayassh-restro-restore -f compose.restro-restore.yml down` (omit `-v` unless you intend to delete only this synthetic target's volume).
+
+No new migration is needed. Do not apply baseline CREATE to an existing installation or reset the existing volume. Same-schema tenant logical recovery does not recover roles, migrations, platform onboarding, uploaded files or external fiscal/provider state. Keep operational recovery and existing-installation adoption blocked until separately reviewed and rehearsed.
+
 Verification update, 2026-10-31: see [HARDENING_STATUS.md](HARDENING_STATUS.md). Docker is available again; the existing isolated volume and environment were reused without reset. Both regressions and the complete 14-case suite passed, as did ten independent-connection race rounds. This completes the current verification milestone, not the remaining implementation/release gates. Do not substitute another target.
 
 All hardening work is on `restro`, baseline `565fad3c9d5f70b2c46e1daea0c7dfdb58b19943`. No push, merge or deployment is part of this milestone. The original uncommitted audit and plan are preserved.

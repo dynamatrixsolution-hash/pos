@@ -301,7 +301,7 @@ export default function BusinessOnboardingWizard({
               </div>
               <div>
                 <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                  {mode === "SUPER_ADMIN" ? "Provision New SaaS Tenant" : "Create your DynaPOS Workspace"}
+                  {mode === "SUPER_ADMIN" ? "Provision New SaaS Tenant" : "Create your RestroInn Workspace"}
                 </h1>
                 <p className="text-xs text-slate-500 font-medium">
                   {mode === "SUPER_ADMIN"
@@ -428,7 +428,7 @@ export default function BusinessOnboardingWizard({
                       className="w-full pl-3 pr-16 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                     />
                     <span className="absolute right-3 top-3 text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                      .dynapos.com
+                      .restroinn.com
                     </span>
                   </div>
                 </div>
@@ -874,7 +874,7 @@ export default function BusinessOnboardingWizard({
                 <div>
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Business Identity</span>
                   <p className="text-sm font-bold text-slate-900 mt-0.5">{formData.businessName}</p>
-                  <p className="text-xs text-blue-600 font-mono mt-0.5">{formData.slug}.dynapos.com</p>
+                  <p className="text-xs text-blue-600 font-mono mt-0.5">{formData.slug}.restroinn.com</p>
                   <p className="text-[10px] text-slate-500 mt-1">Type: {formData.businessType} | Currency: {formData.currency}</p>
                 </div>
 
@@ -981,7 +981,7 @@ export default function BusinessOnboardingWizard({
                   {formData.businessName || "Your Store Name"}
                 </h4>
                 <p className="text-[11px] text-blue-400 font-mono mt-0.5 truncate">
-                  {formData.slug || "workspace-slug"}.dynapos.com
+                  {formData.slug || "workspace-slug"}.restroinn.com
                 </p>
               </div>
 

@@ -28,6 +28,12 @@ import {
   Ticket,
   FileText,
   Terminal,
+  UtensilsCrossed,
+  BedDouble,
+  Calendar,
+  KeyRound,
+  Sparkles,
+  QrCode,
 } from "lucide-react";
 
 export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
@@ -38,6 +44,7 @@ export interface NavItem {
   icon: React.ElementType;
   roles: Role[];
   feature?: string;
+  permission?: string;
   children?: NavItem[];
 }
 
@@ -56,6 +63,85 @@ export const navigationConfig: NavItem[] = [
     href: "/dashboard",
     icon: LayoutDashboard,
     roles: ["SUPER_ADMIN", "OWNER", "MANAGER"],
+  },
+
+  // Restaurant Dining - Available to Cashier, Manager, Owner
+  {
+    title: "Restaurant",
+    icon: UtensilsCrossed,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    children: [
+      {
+        title: "Tables and Floors",
+        href: "/dashboard/restaurant/tables",
+        icon: Store,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Restaurant POS",
+        href: "/dashboard/restaurant/pos",
+        icon: ShoppingCart,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Kitchen Display (KDS)",
+        href: "/dashboard/restaurant/kds",
+        icon: Terminal,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+    ],
+  },
+
+  // Hotel & Stays - Available to Cashier, Manager, Owner
+  {
+    title: "Hotel & Stays",
+    icon: BedDouble,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    children: [
+      {
+        title: "Room Rack & Tape Chart",
+        href: "/dashboard/hotel/rooms",
+        icon: BedDouble,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Reservations",
+        href: "/dashboard/hotel/reservations",
+        icon: Calendar,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "In-House Stays",
+        href: "/dashboard/hotel/stays",
+        icon: KeyRound,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Guest Folios & Billing",
+        href: "/dashboard/hotel/folios",
+        icon: Receipt,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Housekeeping & Maintenance",
+        href: "/dashboard/hotel/housekeeping",
+        icon: Sparkles,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Guest QR & Service Desk",
+        href: "/dashboard/hotel/qr-portal",
+        icon: QrCode,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+      },
+      {
+        title: "Pilot & Hardware Ops",
+        href: "/dashboard/hotel/pilot-ops",
+        icon: ShieldCheck,
+        roles: ["OWNER", "MANAGER", "CASHIER"],
+        permission: "pos:Access",
+      },
+    ],
   },
 
   // POS Billing - Available to Cashier, Manager, Owner

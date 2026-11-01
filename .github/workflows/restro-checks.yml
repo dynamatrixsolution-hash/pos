@@ -35,4 +35,5 @@ jobs:
       - run: node node_modules/prisma/build/index.js migrate deploy --schema packages/db/prisma/schema.prisma
       - run: npm test
       - run: node scripts/run-db-tests.mjs
+      - run: node scripts/run-recovery-tests.mjs
       - run: npm run typecheck

@@ -341,7 +341,7 @@ function StatusContent() {
                 <div className="bg-emerald-500 text-white p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg shadow-emerald-500/20">
                   <div>
                     <h3 className="text-base font-black flex items-center gap-2">
-                      <Sparkles className="h-5 w-5" /> Your DynaPOS Workspace is Ready!
+                      <Sparkles className="h-5 w-5" /> Your RestroInn Workspace is Ready!
                     </h3>
                     <p className="text-xs text-emerald-100 mt-1">
                       Your business tenant has been fully provisioned. You can now sign in using your administrator email and password.
@@ -401,7 +401,7 @@ function StatusContent() {
 
                 <div>
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Workspace Subdomain</span>
-                  <p className="font-mono text-blue-600 font-bold mt-0.5">{requestData.slug}.dynapos.com</p>
+                  <p className="font-mono text-blue-600 font-bold mt-0.5">{requestData.slug}.restroinn.com</p>
                 </div>
 
                 <div>

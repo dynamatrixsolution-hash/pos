@@ -25,6 +25,53 @@ export async function GET(request: Request) {
     const branches = await db.branch.findMany({ where: branchWhere, select: { id: true } });
     const branchIds = branches.map((b) => b.id);
 
+    // 1. Authoritative append-only StockMovement table query
+    const authoritativeMovements = await db.stockMovement.findMany({
+      where: {
+        businessId: context.businessId,
+        branchId: { in: branchIds },
+        createdAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) },
+        ...(type === "STOCK_OUT" ? { quantity: { lt: 0 } } : type === "STOCK_IN" ? { quantity: { gt: 0 } } : {}),
+      },
+      include: {
+        product: { select: { name: true, sku: true } },
+        branch: { select: { name: true } },
+        actor: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    if (authoritativeMovements.length > 0) {
+      const movements = authoritativeMovements.map((m) => {
+        const isOut = Number(m.quantity) < 0;
+        return {
+          id: m.id,
+          type: isOut ? "STOCK_OUT" : "STOCK_IN",
+          date: m.createdAt,
+          reference: m.sourceId,
+          from: isOut ? m.branch.name : (m.notes || m.sourceType),
+          to: isOut ? (m.notes || m.sourceType) : m.branch.name,
+          items: [{ name: m.product.name, sku: m.product.sku, qty: Math.abs(Number(m.quantity)) }],
+          user: m.actor?.name || "System",
+          batchNumber: m.batchNumber,
+          signedQuantity: m.quantity.toString(),
+          sourceType: m.sourceType,
+          total: 0,
+        };
+      });
+
+      return NextResponse.json({
+        movements,
+        summary: {
+          totalIn: authoritativeMovements.filter((m) => Number(m.quantity) > 0).length,
+          totalOut: authoritativeMovements.filter((m) => Number(m.quantity) < 0).length,
+          totalTransfers: authoritativeMovements.filter((m) => m.sourceType.includes("TRANSFER")).length,
+        },
+      });
+    }
+
+    // Fallback for historical data prior to StockMovement ledger
     // Get sales (Stock Out)
     let stockOut: any[] = [];
     if (!type || type === "STOCK_OUT") {
@@ -82,17 +129,17 @@ export async function GET(request: Request) {
       });
     }
 
-     const movements = [
+    const movements = [
       ...stockIn.map((p) => ({
         id: p.id,
         type: "STOCK_IN",
         date: p.createdAt,
         reference: p.purchaseNumber,
-        from: p.supplier?.name || "Purchase",
+        from: (p as any).supplier?.name || "Purchase",
         to: p.branch.name,
         items: p.purchaseItems.map((i: any) => ({ name: i.product.name, sku: i.product.sku, qty: i.quantity })),
         user: p.user.name,
-        total: p.total,
+        total: Number(p.total),
       })),
       ...stockOut.map((s) => ({
         id: s.id,
@@ -100,10 +147,10 @@ export async function GET(request: Request) {
         date: s.createdAt,
         reference: s.invoiceNumber,
         from: s.branch.name,
-        to: s.customer?.name || "Sale",
+        to: (s as any).customer?.name || "Sale",
         items: s.saleItems.map((i: any) => ({ name: i.product.name, sku: i.product.sku, qty: i.quantity })),
         user: s.user.name,
-        total: s.total,
+        total: Number(s.total),
       })),
       ...transfers.map((t) => ({
         id: t.id,

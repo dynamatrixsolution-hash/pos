@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalSales = salesAggregate._sum.total || 0;
+    const totalSales = salesAggregate._sum.total ? Number(salesAggregate._sum.total) : 0;
     const totalSalesCount = salesAggregate._count.id || 0;
     const totalSalesTax = salesAggregate._sum.tax || 0;
     const totalSalesDiscount = salesAggregate._sum.discount || 0;
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalPurchases = purchasesAggregate._sum.total || 0;
+    const totalPurchases = purchasesAggregate._sum.total ? Number(purchasesAggregate._sum.total) : 0;
     const totalPurchasesCount = purchasesAggregate._count.id || 0;
 
     // 3. Expenses Aggregates
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalExpenses = expensesAggregate._sum.amount || 0;
+    const totalExpenses = expensesAggregate._sum.amount ? Number(expensesAggregate._sum.amount) : 0;
     const totalExpensesCount = expensesAggregate._count.id || 0;
 
     // 3b. Income Aggregates
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const totalIncome = incomeAggregate._sum.amount || 0;
+    const totalIncome = incomeAggregate._sum.amount ? Number(incomeAggregate._sum.amount) : 0;
     const totalIncomeCount = incomeAggregate._count.id || 0;
 
     // Expenses by Category
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const costOfGoodsSold = saleItems.reduce((sum, item) => sum + item.quantity * item.costPrice, 0);
+    const costOfGoodsSold = saleItems.reduce((sum, item) => sum + item.quantity * Number(item.costPrice), 0);
     const grossProfit = totalSales - costOfGoodsSold;
     const netProfit = grossProfit + totalIncome - totalExpenses;
 

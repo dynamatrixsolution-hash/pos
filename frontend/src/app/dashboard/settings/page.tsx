@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useSession } from "next-auth/react";
-import { toast } from "@/components/toast";
 import { useSettings } from "@/components/settings-provider";
 import {
   Settings as SettingsIcon,
@@ -124,8 +123,6 @@ export default function SettingsPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState("");
   const [successMsg, setSuccessMsg] = React.useState("");
-  const [restoreSuccess, setRestoreSuccess] = React.useState("");
-  const [restoreError, setRestoreError] = React.useState("");
 
   // AD/BS Converter Preview state
   const [convertAdDate, setConvertAdDate] = React.useState("");
@@ -362,51 +359,7 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
-  // Trigger Backup File Download
-  const handleBackupDownload = async () => {
-    try {
-      window.open("/api/v1/settings/backup", "_blank");
-    } catch (err) {
-      toast.error("Failed to download backup");
-    }
-  };
-
-  // Handle Restore Backup File Upload
-  const handleRestoreUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setRestoreError("");
-    setRestoreSuccess("");
-
-    if (!confirm("Restoring a backup file will overwrite all active business records. Are you sure you want to proceed?")) {
-      e.target.value = "";
-      return;
-    }
-
-    try {
-      const fileText = await file.text();
-      const backupJson = JSON.parse(fileText);
-
-      const res = await fetch("/api/v1/settings/backup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(backupJson),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setRestoreSuccess("Database backup restored successfully!");
-        loadSettings();
-      } else {
-        setRestoreError(data.error || "Failed to restore database backup.");
-      }
-    } catch (err) {
-      setRestoreError("Failed to parse the backup file. Verify it is a valid JSON export.");
-    } finally {
-      e.target.value = "";
-    }
-  };
+  const handleBackupDownload = () => { window.location.assign("/dashboard/settings/backup"); };
 
   if (isLoading) {
     return (
@@ -573,7 +526,7 @@ export default function SettingsPage() {
                     <button type="button" onClick={() => setActiveTab("taxation")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Manage VAT</button>
                     <button type="button" onClick={() => setActiveTab("pos")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Configure Invoices</button>
                     <button type="button" onClick={() => setActiveTab("subscription")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Subscription Plan</button>
-                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Download Backup</button>
+                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Backup & Recovery</button>
                   </div>
                 </div>
               </div>
@@ -1584,17 +1537,17 @@ export default function SettingsPage() {
                   <div className="border border-border/60 rounded-xl p-4 space-y-3.5 bg-secondary/15">
                     <div className="flex items-center gap-2">
                       <Database className="h-5 w-5 text-primary" />
-                      <h4 className="text-xs font-bold">Manual Backup export</h4>
+                      <h4 className="text-xs font-bold">Encrypted tenant snapshots</h4>
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Download a complete snapshot of categories, products, inventory stock counts, customer records, invoices, and payment histories for offline archiving.
+                      Create an encrypted snapshot on configured server storage. Recovery requires an isolated operator procedure.
                     </p>
                     <button
                       type="button"
                       onClick={handleBackupDownload}
                       className="w-full py-2 px-3 bg-primary text-primary-foreground font-black text-xs rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/95 transition-all uppercase tracking-wider text-center"
                     >
-                      Export Database Backup file (.json)
+                      Manage encrypted snapshots
                     </button>
                   </div>
 
@@ -1602,37 +1555,11 @@ export default function SettingsPage() {
                   <div className="border border-border/60 rounded-xl p-4 space-y-3.5 bg-secondary/15">
                     <div className="flex items-center gap-2">
                       <History className="h-5 w-5 text-primary" />
-                      <h4 className="text-xs font-bold">Restore Snapshot Database</h4>
+                      <h4 className="text-xs font-bold">Recovery safeguards</h4>
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Select a previously downloaded JSON file to restore settings, inventory catalog, customers, and sales transactions records completely.
+                      Live overwrite restore is disabled. Incomplete legacy JSON exports cannot be restored. An operator must recover an authenticated snapshot into an absent tenant in an isolated database.
                     </p>
-                    <div>
-                      <input
-                        type="file"
-                        accept=".json"
-                        onChange={handleRestoreUpload}
-                        className="hidden"
-                        id="restore-database-input"
-                      />
-                      <label
-                        htmlFor="restore-database-input"
-                        className="flex items-center justify-center gap-1.5 w-full py-2 px-3 border border-border bg-background hover:bg-secondary rounded-xl text-xs font-bold cursor-pointer transition-colors uppercase tracking-wider"
-                      >
-                        <Upload className="h-4 w-4" />
-                        Choose restore file (.json)
-                      </label>
-                    </div>
-                    {restoreSuccess && (
-                      <div className="text-[10px] text-primary font-bold bg-primary/10 border border-primary/20 p-2 rounded-lg leading-tight">
-                        {restoreSuccess}
-                      </div>
-                    )}
-                    {restoreError && (
-                      <div className="text-[10px] text-destructive font-bold bg-destructive/10 border border-destructive/20 p-2 rounded-lg leading-tight">
-                        {restoreError}
-                      </div>
-                    )}
                   </div>
                 </div>
 

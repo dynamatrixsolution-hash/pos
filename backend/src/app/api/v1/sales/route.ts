@@ -2,9 +2,11 @@ import { CommerceError, money, reconcilePayment, requireStaff } from "@/lib/comm
 import { commerceTransaction, resolveBranch, checkBranch } from "@/lib/commerce-transaction";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@dynapos/db";
 import { getSessionContext, authErrorResponse, getBusinessLimits } from "@/lib/api-helper";
 import { z } from "zod";
 import { CbmsService } from "@/lib/cbms-service";
+import { enqueueOutboxEvent } from "@/lib/services/outbox-service";
 
 const normalizePaymentMethod = (val: any) => {
   if (!val) return "CASH";
@@ -262,7 +264,7 @@ export async function POST(request: Request) {
 
         const customer = resolvedCustomerId ? await tx.customer.findFirst({ where: { id: resolvedCustomerId } }) : null;
         const isWholesale = customer?.customerType === "WHOLESALE";
-        const basePrice = isWholesale ? product.wholesalePrice : product.sellingPrice;
+        const basePrice = Number(isWholesale ? product.wholesalePrice : product.sellingPrice);
 
         const itemQty = item.quantity;
         const itemPrice = basePrice;
@@ -389,6 +391,24 @@ export async function POST(request: Request) {
         },
       });
 
+      // 5b. Record append-only StockMovement for each deducted item
+      for (const item of payload.items) {
+        await tx.stockMovement.create({
+          data: {
+            businessId: context.businessId,
+            branchId: effectiveBranchId,
+            productId: item.productId,
+            batchNumber: item.batchNumber || null,
+            quantity: new Prisma.Decimal(-item.quantity),
+            sourceType: "SALE",
+            sourceId: sale.id,
+            eventKey: `SALE:${sale.id}:${item.productId}`,
+            actorId: context.userId,
+            notes: `POS checkout invoice ${invoiceNumber}`,
+          },
+        });
+      }
+
       // 6. Create Ledger and Balance entries for Customers if transaction is credit
       if (resolvedCustomerId) {
         const customer = await tx.customer.findFirst({
@@ -399,11 +419,13 @@ export async function POST(request: Request) {
           const unpaidAmt = finalTotal - settlement.paidAmount;
 
           if (unpaidAmt > 0) {
-            if (customer.balance + unpaidAmt > customer.creditLimit) {
-              throw new Error(`Transaction violates customer credit limit. Limit: Rs. ${customer.creditLimit}, Current balance: Rs. ${customer.balance}, Added charge: Rs. ${unpaidAmt}`);
+            const customerBalanceNum = Number(customer.balance);
+            const customerCreditLimitNum = Number(customer.creditLimit);
+            if (customerBalanceNum + unpaidAmt > customerCreditLimitNum) {
+              throw new Error(`Transaction violates customer credit limit. Limit: Rs. ${customerCreditLimitNum}, Current balance: Rs. ${customerBalanceNum}, Added charge: Rs. ${unpaidAmt}`);
             }
 
-            const newCustomerBalance = customer.balance + unpaidAmt;
+            const newCustomerBalance = customerBalanceNum + unpaidAmt;
 
             await tx.customer.update({
               where: { id: customer.id },
@@ -427,13 +449,38 @@ export async function POST(request: Request) {
 
       // CREDIT is a receivable, never a collected payment.
       for (const payment of settlement.payments) {
-        await tx.payment.create({ data: {
+        const createdPayment = await tx.payment.create({ data: {
           businessId: context.businessId, branchId: effectiveBranchId, userId: context.userId,
           customerId: resolvedCustomerId,
           saleId: sale.id, amount: payment.amount, method: payment.method,
           source: "STAFF_RECORDED", type: "RECEIVED", reference: payload.paymentReference || null,
         } });
+
+        // Record explicit PaymentAllocation linking receipt to this invoice
+        await tx.paymentAllocation.create({
+          data: {
+            businessId: context.businessId,
+            paymentId: createdPayment.id,
+            saleId: sale.id,
+            amount: new Prisma.Decimal(payment.amount),
+            allocatedById: context.userId,
+          },
+        });
       }
+
+      // 7. Enqueue Transactional Outbox Event
+      await enqueueOutboxEvent(tx, {
+        businessId: context.businessId,
+        aggregateType: "Sale",
+        aggregateId: sale.id,
+        eventType: "SALE_CREATED",
+        payload: {
+          invoiceNumber,
+          total: finalTotal.toString(),
+          paidAmount: settlement.paidAmount.toString(),
+          itemsCount: saleItemsData.length,
+        },
+      });
 
       // 8. Write Audit Logs
       await tx.auditLog.create({

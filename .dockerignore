@@ -13,6 +13,8 @@ tsconfig.tsbuildinfo
 .env.production
 .env.development
 *.log
+scratch/
+*.pbackup
 
 # Databases & Prisma local sqlite files
 *.db

@@ -1,5 +1,9 @@
 # Restro hardening review status
 
+Local checkpoint preserved on `restro`: **`6078e686f84a2e5389bccb27bb4bc2a997b004d9`**. All 250 final tested file hashes matched the manifest before committing, including the strengthened assertions used by the final 14-test run. The working tree was clean after the checkpoint; the uncommitted-state descriptions below are historical. Subsequent recovery work and its separate verification/remaining blockers are recorded in [RECOVERY_STATUS.md](RECOVERY_STATUS.md). The original audit remains the baseline audit.
+
+**Recovery update (2026-10-31, uncommitted after the checkpoint):** the unsafe baseline restore is disabled, backups are complete encrypted authenticated per-tenant snapshots bound to schema and migration identity, and tenant recovery into an absent tenant was rehearsed against a separate disposable PostgreSQL instance with synthetic data (41/41 checks, 5 clean runs; source database unchanged; unrelated tenant untouched; corrupt/incompatible/unsafe inputs refused without writes). The 14-case hardening suite was **rerun and still passes 14/14**; the race rounds were not rerun. This is **not** disaster recovery and not release approval: cluster-level backup/PITR, off-host storage, key custody, retention and measured RPO/RTO remain release blockers. A nondeterministic archive manifest ordering found by the rehearsal was fixed and has regression test R8. Details and limits: [RECOVERY_STATUS.md](RECOVERY_STATUS.md).
+
 ## Completed verification checkpoint — 2026-10-31
 
 **The current verification milestone passed. This is not production-release approval.** Both previously failing regressions passed first, the full expanded PostgreSQL suite passed **14/14 with zero skips**, and ten independent-connection race rounds passed. Application implementation gaps and release blockers remain below. Earlier blocked/failing runs are retained as historical evidence, not mixed into these pass counts.

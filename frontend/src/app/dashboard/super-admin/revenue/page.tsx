@@ -455,9 +455,9 @@ export default function RevenuePaymentsPage() {
             <div className="border border-slate-150 p-6 rounded-2xl space-y-6 text-xs text-slate-650 bg-slate-50">
               <div className="flex justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800">Prayassh Systems Inc.</h3>
+                  <h3 className="text-sm font-black text-slate-800">RestroInn Systems Inc.</h3>
                   <p className="mt-1 text-slate-400">100 SaaS HQ Road</p>
-                  <p className="text-slate-400">billing@prayassh.com</p>
+                  <p className="text-slate-400">billing@restroinn.com</p>
                 </div>
                 <div className="text-right">
                   <h2 className="text-sm font-black text-blue-600">INVOICE</h2>
@@ -500,7 +500,7 @@ export default function RevenuePaymentsPage() {
               </div>
 
               <div className="text-center border-t border-slate-150 pt-4 text-[9px] text-slate-400 font-medium">
-                Thank you for choosing Prayassh POS & ERP Platform!
+                Thank you for choosing RestroInn Hotel & Restaurant Platform!
               </div>
             </div>
 
