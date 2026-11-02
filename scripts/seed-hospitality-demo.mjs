@@ -581,6 +581,163 @@ async function main() {
     },
   });
 
+  // 10. Active Dining Session, Multi-Station Order & Live KDS Tickets on Table T-02
+  const existingTicket = await db.kitchenTicket.findFirst({
+    where: { businessId, branchId },
+  });
+  if (!existingTicket) {
+    let sess = await db.tableSession.findFirst({
+      where: { businessId, branchId, tableId: tables["T-02"].id, status: "ACTIVE" },
+    });
+    if (!sess) {
+      sess = await db.tableSession.create({
+        data: {
+          businessId,
+          branchId,
+          tableId: tables["T-02"].id,
+          sessionNumber: `SESS-DEMO-${Date.now()}`,
+          guestCount: 4,
+          status: "ACTIVE",
+          openedById: userId,
+        },
+      });
+    }
+    await db.restaurantTable.update({
+      where: { id: tables["T-02"].id },
+      data: { status: "OCCUPIED", currentSessionId: sess.id },
+    });
+
+    const momoItem = await db.menuItem.findFirst({
+      where: { businessId, name: "Himalayan Jhol Momo" },
+    });
+    const thaliItem = await db.menuItem.findFirst({
+      where: { businessId, name: "Royal Thakali Mutton Thali" },
+    });
+
+    if (momoItem && thaliItem) {
+      await db.restaurantOrder.deleteMany({
+        where: { businessId, branchId, orderNumber: "RO-DEMO-T02" },
+      });
+      const demoOrder = await db.restaurantOrder.create({
+        data: {
+          businessId,
+          branchId,
+          tableId: tables["T-02"].id,
+          tableSessionId: sess.id,
+          orderNumber: "RO-DEMO-T02",
+          orderType: "DINE_IN",
+          acceptanceStatus: "ACCEPTED",
+          fulfillmentStatus: "PREPARING",
+          settlementStatus: "UNPAID",
+          subtotal: 3260,
+          taxTotal: 423.8,
+          totalAmount: 3683.8,
+          createdById: userId,
+        },
+      });
+
+      const demoRound = await db.orderRound.create({
+        data: {
+          businessId,
+          orderId: demoOrder.id,
+          roundNumber: 1,
+          status: "SUBMITTED",
+          submittedById: userId,
+        },
+      });
+
+      const line1 = await db.orderLine.create({
+        data: {
+          businessId,
+          orderId: demoOrder.id,
+          roundId: demoRound.id,
+          menuItemId: momoItem.id,
+          itemName: momoItem.name,
+          basePrice: 480,
+          unitPrice: 480,
+          quantity: 2,
+          appliedModifiers: [],
+          subtotal: 960,
+          taxRate: 13,
+          taxAmount: 124.8,
+          total: 1084.8,
+          acceptanceStatus: "ACCEPTED",
+          fulfillmentStatus: "PREPARING",
+        },
+      });
+
+      const line2 = await db.orderLine.create({
+        data: {
+          businessId,
+          orderId: demoOrder.id,
+          roundId: demoRound.id,
+          menuItemId: thaliItem.id,
+          itemName: thaliItem.name,
+          basePrice: 1150,
+          unitPrice: 1150,
+          quantity: 2,
+          appliedModifiers: [],
+          subtotal: 2300,
+          taxRate: 13,
+          taxAmount: 299,
+          total: 2599,
+          acceptanceStatus: "ACCEPTED",
+          fulfillmentStatus: "QUEUED",
+          notes: "Extra ghee on buckwheat greens, no nuts",
+        },
+      });
+
+      const kTicket1 = await db.kitchenTicket.create({
+        data: {
+          businessId,
+          branchId,
+          stationId: stations["HOT"].id,
+          orderId: demoOrder.id,
+          roundId: demoRound.id,
+          ticketNumber: "KOT-DEMO-HOT-01",
+          status: "PREPARING",
+        },
+      });
+      await db.kitchenTicketLine.create({
+        data: {
+          businessId,
+          ticketId: kTicket1.id,
+          orderLineId: line1.id,
+          itemName: line1.itemName,
+          quantity: 2,
+          modifiersSnapshot: [],
+          dietaryAlerts: [],
+          status: "PREPARING",
+        },
+      });
+
+      const kTicket2 = await db.kitchenTicket.create({
+        data: {
+          businessId,
+          branchId,
+          stationId: stations["GRILL"].id,
+          orderId: demoOrder.id,
+          roundId: demoRound.id,
+          ticketNumber: "KOT-DEMO-GRL-01",
+          status: "QUEUED",
+        },
+      });
+      await db.kitchenTicketLine.create({
+        data: {
+          businessId,
+          ticketId: kTicket2.id,
+          orderLineId: line2.id,
+          itemName: line2.itemName,
+          quantity: 2,
+          modifiersSnapshot: [],
+          notes: "Extra ghee on buckwheat greens, no nuts",
+          dietaryAlerts: ["NO_NUTS"],
+          status: "QUEUED",
+        },
+      });
+    }
+  }
+
   console.log("Hospitality demo seed completed! Public QR Codes:");
   console.log("  - Room 101 QR Portal: /guest/qr/QRL-RM-DEMO101 (Guest: Sharma, Phone Last 4: 8899)");
   console.log("  - Table T-01 QR Portal: /guest/qr/QRL-TB-DEMOT01");

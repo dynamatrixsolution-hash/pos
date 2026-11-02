@@ -51,15 +51,15 @@ export default function StockValueClient() {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Cost Value</div>
           <div className="text-2xl font-black">{currencySymbol}{summary.totalCostValue.toFixed(2)}</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Selling Value</div>
           <div className="text-2xl font-black text-primary">{currencySymbol}{summary.totalSellingValue.toFixed(2)}</div>
         </div>
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-5">
+        <div className="bg-primary/10 border border-primary/20 rounded-md p-5">
           <div className="text-primary text-xs font-bold uppercase tracking-wider mb-1">Profit Margin</div>
           <div className="text-2xl font-black text-primary flex items-center gap-2">
             {summary.profitMargin.toFixed(2)}%
@@ -69,7 +69,7 @@ export default function StockValueClient() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-card border border-border rounded-2xl p-0 overflow-hidden">
+      <div className="bg-card border border-border rounded-lg p-0 overflow-hidden">
         <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab("products")}

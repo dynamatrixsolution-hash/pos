@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -87,13 +89,13 @@ export default function InventoryClient() {
   const openAdjustModal = (product: InventoryItem) => {
     setSelectedProduct(product);
     reset({ type: "STOCK_IN", quantity: 1, notes: "" });
-    setSubmitError("");
+    setSubmitError('');
     setIsModalOpen(true);
   };
 
   const onSubmitAdjust = async (data: any) => {
     if (!branchId) {
-      setSubmitError("No active branch selected.");
+      Notify.failure("No active branch selected."); setSubmitError("No active branch selected.");
       return;
     }
 
@@ -117,9 +119,7 @@ export default function InventoryClient() {
 
       setIsModalOpen(false);
       fetchData();
-    } catch (err: any) {
-      setSubmitError(err.message);
-    }
+    } catch (err: any) { Notify.failure(err.message); }
   };
 
   return (
@@ -131,17 +131,17 @@ export default function InventoryClient() {
         <>
           {/* Metrics Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-card border border-border rounded-xl p-5 flex flex-col justify-center relative overflow-hidden">
+            <div className="bg-card border border-border rounded-md p-5 flex flex-col justify-center relative overflow-hidden">
               <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Valuation</div>
               <div className="text-2xl font-black">{currencySymbol}{metrics.totalValuation.toFixed(2)}</div>
               <Store className="absolute right-4 bottom-4 h-12 w-12 text-primary/10" />
             </div>
-            <div className="bg-card border border-border rounded-xl p-5 flex flex-col justify-center relative overflow-hidden">
+            <div className="bg-card border border-border rounded-md p-5 flex flex-col justify-center relative overflow-hidden">
               <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Products</div>
               <div className="text-2xl font-black">{metrics.totalItems}</div>
               <Box className="absolute right-4 bottom-4 h-12 w-12 text-primary/10" />
             </div>
-            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5 flex flex-col justify-center relative overflow-hidden">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5 flex flex-col justify-center relative overflow-hidden">
               <div className="text-destructive font-bold text-xs uppercase tracking-wider mb-1">Low Stock Alerts</div>
               <div className="text-2xl font-black text-destructive">{metrics.lowStockCount} Items</div>
               <AlertTriangle className="absolute right-4 bottom-4 h-12 w-12 text-destructive/20" />
@@ -149,7 +149,7 @@ export default function InventoryClient() {
           </div>
 
           {/* Main List */}
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between">
               <div className="relative max-w-md w-full">
@@ -243,7 +243,7 @@ export default function InventoryClient() {
       {/* Adjust Modal */}
       {isModalOpen && selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-card rounded-2xl w-full max-w-md p-6 shadow-2xl border border-border">
+          <div className="bg-card rounded-lg w-full max-w-md p-6 shadow-sm border border-border">
             <h3 className="text-xl font-bold mb-1">Adjust Inventory</h3>
             <p className="text-xs text-muted-foreground mb-4">
               Manually correct stock levels for <strong className="text-foreground">{selectedProduct.name}</strong>.
@@ -254,7 +254,7 @@ export default function InventoryClient() {
               <span>{selectedProduct.totalQuantity} {selectedProduct.unitName}</span>
             </div>
 
-            {submitError && <div className="p-3 mb-4 text-sm bg-destructive/10 text-destructive rounded-lg font-medium border border-destructive/20">{submitError}</div>}
+            
 
             <form onSubmit={handleSubmit(onSubmitAdjust)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -304,7 +304,7 @@ export default function InventoryClient() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? "Processing..." : "Confirm Adjustment"}
                 </button>

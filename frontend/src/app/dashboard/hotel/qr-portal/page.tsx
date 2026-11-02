@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
@@ -15,7 +17,6 @@ import {
   Copy,
   BedDouble,
   Store,
-  Sparkles,
   AlertCircle,
   Clock,
   Plus,
@@ -151,7 +152,7 @@ function DeterministicQrMatrixSvg({
       width={size}
       height={size}
       viewBox={`0 0 ${gridSize + 4} ${gridSize + 4}`}
-      className="bg-white rounded-xl border border-[#E6DEC8] p-2 shadow-inner mx-auto"
+      className="bg-[#FFFCF7] rounded-md border border-[#E6DEC8] p-2 shadow-inner mx-auto"
       aria-label={`QR Code for ${code}`}
     >
       <rect width={gridSize + 4} height={gridSize + 4} fill="#FFFFFF" />
@@ -212,7 +213,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
 
       const srParams = new URLSearchParams();
       if (categoryFilter !== "ALL") srParams.set("category", categoryFilter);
@@ -253,9 +254,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
           setSelectedTableId(loadedTables[0].id);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Unable to load Guest Service Desk & QR Locations");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Unable to load Guest Service Desk & QR Locations"); } finally {
       setLoading(false);
     }
   }, [categoryFilter, statusFilter, selectedRoomId, selectedTableId]);
@@ -288,7 +287,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
   ) => {
     try {
       setActionLoadingId(requestId);
-      setError(null);
+      setError('');
 
       const res = await fetch(`/api/v1/hotel/service-requests/${encodeURIComponent(requestId)}`, {
         method: "PATCH",
@@ -310,9 +309,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
       }
 
       showToast(`Service request updated to ${nextStatus.replace(/_/g, " ")}`);
-    } catch (err: any) {
-      setError(err.message || "Error updating service request");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error updating service request"); } finally {
       setActionLoadingId(null);
     }
   };
@@ -322,7 +319,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
     e.preventDefault();
     try {
       setCreatingQr(true);
-      setError(null);
+      setError('');
 
       const payload =
         newLocationType === "ROOM"
@@ -358,9 +355,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
       showToast(
         `Generated permanent QR plaque: ${data.qrLocation?.label || data.qrLocation?.publicCode}`
       );
-    } catch (err: any) {
-      setError(err.message || "Unable to create QR location");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Unable to create QR location"); } finally {
       setCreatingQr(false);
     }
   };
@@ -369,7 +364,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
   const handleRotateQrPlaque = async (loc: QrLocationRecord) => {
     try {
       setActionLoadingId(loc.id);
-      setError(null);
+      setError('');
 
       const res = await fetch("/api/v1/hotel/qr-locations", {
         method: "POST",
@@ -395,9 +390,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
       showToast(
         `Rotated QR plaque for ${loc.label} to ${data.qrLocation?.publicCode} (prior tokens revoked)`
       );
-    } catch (err: any) {
-      setError(err.message || "Error rotating QR plaque");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error rotating QR plaque"); } finally {
       setActionLoadingId(null);
     }
   };
@@ -425,7 +418,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
   return (
     <div className="min-h-screen bg-[#FAF6F0] text-[#1E1B18] p-6 space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6B2837]">
             <QrCode className="w-4 h-4 text-[#A77B38]" />
@@ -444,7 +437,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
           <button
             type="button"
             onClick={() => setActiveTab("SERVICE_QUEUE")}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-xs font-bold transition ${
               activeTab === "SERVICE_QUEUE"
                 ? "bg-[#6B2837] text-white shadow"
                 : "bg-[#FAF6F0] text-[#4A433E] border border-[#E2D9C8]"
@@ -457,7 +450,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
           <button
             type="button"
             onClick={() => setActiveTab("QR_PLAQUES")}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-xs font-bold transition ${
               activeTab === "QR_PLAQUES"
                 ? "bg-[#6B2837] text-white shadow"
                 : "bg-[#FAF6F0] text-[#4A433E] border border-[#E2D9C8]"
@@ -471,7 +464,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
             type="button"
             onClick={loadAllData}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-[#E2D9C8] text-xs font-bold text-[#6B2837] hover:bg-[#FAF6F0] transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] hover:bg-[#FAF6F0] transition"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -481,7 +474,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
 
       {/* Feedback Toast / Error */}
       {toastMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium flex items-center justify-between">
+        <div className="p-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
             <span>{toastMessage}</span>
@@ -493,7 +486,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 text-sm font-medium flex items-center justify-between">
+        <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-900 text-sm font-medium flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-700" />
             <span>{error}</span>
@@ -511,7 +504,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
         <div className="space-y-6">
           {/* KPI Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm">
+            <div className="bg-[#FFFCF7] rounded-lg p-4 border border-[#E6DEC8] shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-[#6E655F]">
                 Open Requests
               </p>
@@ -521,7 +514,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
               <p className="text-xs text-[#8C827A] mt-0.5">Awaiting staff acknowledgment</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm">
+            <div className="bg-[#FFFCF7] rounded-lg p-4 border border-[#E6DEC8] shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-[#6E655F]">
                 Acknowledged / In Progress
               </p>
@@ -531,7 +524,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
               <p className="text-xs text-[#8C827A] mt-0.5">Currently being fulfilled</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm">
+            <div className="bg-[#FFFCF7] rounded-lg p-4 border border-[#E6DEC8] shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-[#6E655F]">
                 High / Urgent Priority
               </p>
@@ -541,7 +534,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
               <p className="text-xs text-[#8C827A] mt-0.5">Includes Express Checkout alerts</p>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm">
+            <div className="bg-[#FFFCF7] rounded-lg p-4 border border-[#E6DEC8] shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wider text-[#6E655F]">
                 Completed Requests
               </p>
@@ -553,7 +546,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
           </div>
 
           {/* Filter Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="bg-[#FFFCF7] rounded-lg p-4 border border-[#E6DEC8] shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-[#6E655F] mr-1">Department:</span>
               {(
@@ -563,7 +556,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   key={cat}
                   type="button"
                   onClick={() => setCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${
                     categoryFilter === cat
                       ? "bg-[#6B2837] text-white"
                       : "bg-[#FAF6F0] text-[#4A433E] border border-[#E2D9C8]"
@@ -582,7 +575,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                     key={st}
                     type="button"
                     onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition ${
                       statusFilter === st
                         ? "bg-[#1E1B18] text-white"
                         : "bg-[#FAF6F0] text-[#4A433E] border border-[#E2D9C8]"
@@ -597,7 +590,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
 
           {/* Service Requests Queue List */}
           {serviceRequests.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-[#E6DEC8]">
+            <div className="bg-[#FFFCF7] rounded-lg p-12 text-center border border-[#E6DEC8]">
               <Bell className="w-10 h-10 text-[#A77B38] mx-auto mb-3" />
               <h3 className="text-base font-bold text-[#1E1B18]">
                 No Guest Service Requests Matching Filter
@@ -621,7 +614,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                 return (
                   <div
                     key={req.id}
-                    className="bg-white rounded-2xl p-5 border border-[#E6DEC8] shadow-sm flex flex-col justify-between gap-4"
+                    className="bg-[#FFFCF7] rounded-lg p-5 border border-[#E6DEC8] shadow-sm flex flex-col justify-between gap-4"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-2">
@@ -670,7 +663,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                           {req.requestType.replace(/_/g, " ")}
                         </h3>
                         {req.notes && (
-                          <p className="text-xs text-[#4A433E] bg-[#FAF6F0] p-2.5 rounded-xl border border-[#E6DEC8] mt-1.5">
+                          <p className="text-xs text-[#4A433E] bg-[#FAF6F0] p-2.5 rounded-md border border-[#E6DEC8] mt-1.5">
                             Guest Note: &ldquo;{req.notes}&rdquo;
                           </p>
                         )}
@@ -697,7 +690,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                             type="button"
                             disabled={busy}
                             onClick={() => handleUpdateRequestStatus(req.id, "ACKNOWLEDGED")}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FAF6F0] hover:bg-[#F0EAE0] text-[#6B2837] border border-[#6B2837]/30 text-xs font-bold transition"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#FAF6F0] hover:bg-[#F0EAE0] text-[#6B2837] border border-[#6B2837]/30 text-xs font-bold transition"
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
                             Acknowledge
@@ -709,7 +702,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                             type="button"
                             disabled={busy}
                             onClick={() => handleUpdateRequestStatus(req.id, "IN_PROGRESS")}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#A77B38] hover:bg-[#8E672D] text-white text-xs font-bold transition"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#A77B38] hover:bg-[#8E672D] text-white text-xs font-bold transition"
                           >
                             <Play className="w-3.5 h-3.5" />
                             Start Progress
@@ -720,7 +713,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                           type="button"
                           disabled={busy}
                           onClick={() => handleUpdateRequestStatus(req.id, "COMPLETED")}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-sm transition"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Mark Completed
@@ -741,9 +734,9 @@ export default function StaffQrPortalAndServiceDeskPage() {
       {activeTab === "QR_PLAQUES" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: QR Plaque Generator Form */}
-          <div className="bg-white rounded-2xl p-5 border border-[#E6DEC8] shadow-sm space-y-4 h-fit">
+          <div className="bg-[#FFFCF7] rounded-lg p-5 border border-[#E6DEC8] shadow-sm space-y-4 h-fit">
             <div className="flex items-center gap-2.5 border-b border-[#F0EAE0] pb-3">
-              <div className="w-9 h-9 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
+              <div className="w-9 h-9 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                 <Plus className="w-5 h-5" />
               </div>
               <div>
@@ -765,7 +758,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   <button
                     type="button"
                     onClick={() => setNewLocationType("ROOM")}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                    className={`py-2.5 px-3 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
                       newLocationType === "ROOM"
                         ? "bg-[#6B2837] text-white border-[#6B2837]"
                         : "bg-[#FAF6F0] text-[#4A433E] border-[#E2D9C8]"
@@ -777,7 +770,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   <button
                     type="button"
                     onClick={() => setNewLocationType("TABLE")}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
+                    className={`py-2.5 px-3 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 border transition ${
                       newLocationType === "TABLE"
                         ? "bg-[#6B2837] text-white border-[#6B2837]"
                         : "bg-[#FAF6F0] text-[#4A433E] border-[#E2D9C8]"
@@ -797,7 +790,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   <select
                     value={selectedRoomId}
                     onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-semibold"
+                    className="w-full px-3 py-2.5 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-semibold"
                   >
                     {rooms.length === 0 && <option value="">No rooms configured</option>}
                     {rooms.map((rm) => (
@@ -815,7 +808,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   <select
                     value={selectedTableId}
                     onChange={(e) => setSelectedTableId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-semibold"
+                    className="w-full px-3 py-2.5 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-semibold"
                   >
                     {tables.length === 0 && <option value="">No tables configured</option>}
                     {tables.map((tb) => (
@@ -838,7 +831,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   placeholder={
                     newLocationType === "ROOM" ? "e.g., Suite 302 Bedside" : "e.g., Patio Table T4"
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
+                  className="w-full px-3 py-2 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
                 />
               </div>
 
@@ -849,13 +842,13 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   (newLocationType === "ROOM" && !selectedRoomId) ||
                   (newLocationType === "TABLE" && !selectedTableId)
                 }
-                className="w-full py-2.5 rounded-xl bg-[#6B2837] hover:bg-[#561F2B] text-white font-bold text-xs shadow transition disabled:opacity-50"
+                className="w-full py-2.5 rounded-md bg-[#6B2837] hover:bg-[#561F2B] text-white font-bold text-xs shadow transition disabled:opacity-50"
               >
                 {creatingQr ? "Generating QR Plaque..." : "Create / View Location QR Plaque"}
               </button>
             </form>
 
-            <div className="p-3.5 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] space-y-1.5 text-xs text-[#4A433E]">
+            <div className="p-3.5 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] space-y-1.5 text-xs text-[#4A433E]">
               <p className="font-bold text-[#6B2837] flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5" />
                 Zero-Secret Privacy Guarantee
@@ -871,7 +864,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
           {/* Right 2 Columns: Existing QR Locations Grid */}
           <div className="lg:col-span-2 space-y-4">
             {qrLocations.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center border border-[#E6DEC8]">
+              <div className="bg-[#FFFCF7] rounded-lg p-10 text-center border border-[#E6DEC8]">
                 <QrCode className="w-10 h-10 text-[#A77B38] mx-auto mb-2" />
                 <h3 className="text-base font-bold text-[#1E1B18]">
                   No Physical QR Plaques Generated Yet
@@ -890,7 +883,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                   return (
                     <div
                       key={loc.id}
-                      className="bg-white rounded-2xl p-5 border border-[#E6DEC8] shadow-sm flex flex-col justify-between gap-4"
+                      className="bg-[#FFFCF7] rounded-lg p-5 border border-[#E6DEC8] shadow-sm flex flex-col justify-between gap-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -913,7 +906,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                           <Link
                             href={portalHref}
                             target="_blank"
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#561F2B] transition"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#6B2837] text-white text-xs font-bold hover:bg-[#561F2B] transition"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             Open Portal
@@ -922,7 +915,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                           <button
                             type="button"
                             onClick={() => handleCopyPortalUrl(loc.publicCode)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#1E1B18]"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#1E1B18]"
                             title="Copy Guest Portal Link"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -934,7 +927,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                           <button
                             type="button"
                             onClick={() => setPreviewPlaque(loc)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837]"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837]"
                           >
                             <Printer className="w-3.5 h-3.5" />
                             Print Card
@@ -944,7 +937,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
                             type="button"
                             disabled={rotating}
                             onClick={() => handleRotateQrPlaque(loc)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900 hover:bg-amber-100 transition"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900 hover:bg-amber-100 transition"
                             title="Rotate physical QR code and revoke existing tokens"
                           >
                             <RotateCcw className={`w-3.5 h-3.5 ${rotating ? "animate-spin" : ""}`} />
@@ -966,10 +959,10 @@ export default function StaffQrPortalAndServiceDeskPage() {
          ===================================================================== */}
       {previewPlaque && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E6DEC8] space-y-5">
-            <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-3">
+          <div className="bg-[#FFFCF7] rounded-lg max-w-md w-full p-6 border border-[#D8CEC1] space-y-5">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#A77B38]" />
+                <QrCode className="w-4 h-4 text-[#A77B38]" />
                 <h3 className="text-sm font-extrabold text-[#1E1B18]">
                   Printable Hospitality QR Plaque
                 </h3>
@@ -984,7 +977,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
             </div>
 
             {/* Print Card Frame */}
-            <div className="rounded-2xl bg-[#FAF6F0] border-2 border-[#A77B38] p-6 text-center space-y-4 shadow-inner">
+            <div className="rounded-lg bg-[#FAF6F0] border-2 border-[#A77B38] p-6 text-center space-y-4 shadow-inner">
               <p className="text-[11px] font-bold uppercase tracking-widest text-[#A77B38]">
                 {previewPlaque.locationType === "ROOM"
                   ? "In-Room Digital Concierge & Dining"
@@ -1016,7 +1009,7 @@ export default function StaffQrPortalAndServiceDeskPage() {
               <Link
                 href={`/guest/qr/${previewPlaque.publicCode}`}
                 target="_blank"
-                className="px-4 py-2.5 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] inline-flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] inline-flex items-center gap-1.5"
               >
                 <ExternalLink className="w-4 h-4" />
                 Test Guest View
@@ -1026,14 +1019,14 @@ export default function StaffQrPortalAndServiceDeskPage() {
                 <button
                   type="button"
                   onClick={() => setPreviewPlaque(null)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#6E655F]"
+                  className="px-4 py-2.5 rounded-md text-xs font-semibold text-[#6E655F]"
                 >
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-5 py-2.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold shadow inline-flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-md bg-[#6B2837] text-white text-xs font-bold shadow inline-flex items-center gap-1.5"
                 >
                   <Printer className="w-4 h-4" />
                   Print Plaque

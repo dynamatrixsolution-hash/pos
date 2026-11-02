@@ -61,39 +61,17 @@ export function ModifierModal({
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
   const [notes, setNotes] = useState("");
 
-  if (!isOpen || !item) return null;
-
-  // Flatten modifier groups
+  // Flatten modifier groups (must be called before any conditional return to satisfy Rules of Hooks)
   const groups: ModifierGroupItem[] = useMemo(() => {
+    if (!item) return [];
     return (item.modifierGroups || []).map((mg) => mg.modifierGroup);
   }, [item]);
 
-  // Handle option toggle
-  const toggleOption = (group: ModifierGroupItem, option: ModifierOptionItem) => {
-    setSelectedOptions((prev) => {
-      const current = prev[group.id] || [];
-      const isSelected = current.includes(option.id);
-
-      if (group.maxSelections === 1) {
-        // Single select (radio behavior)
-        return {
-          ...prev,
-          [group.id]: isSelected ? (group.minSelections === 0 ? [] : [option.id]) : [option.id],
-        };
-      } else {
-        // Multi select (checkbox behavior)
-        if (isSelected) {
-          return { ...prev, [group.id]: current.filter((id) => id !== option.id) };
-        } else {
-          if (current.length >= group.maxSelections) return prev; // Limit reached
-          return { ...prev, [group.id]: [...current, option.id] };
-        }
-      }
-    });
-  };
-
   // Calculate pricing deltas
   const { unitPriceStr, totalStr, isValid } = useMemo(() => {
+    if (!item) {
+      return { unitPriceStr: "0.00", totalStr: "0.00", isValid: false };
+    }
     let baseCents = toCents(item.basePrice);
     let deltaCents = 0;
     let valid = true;
@@ -120,6 +98,32 @@ export function ModifierModal({
       isValid: valid,
     };
   }, [item, groups, selectedOptions, quantity]);
+
+  if (!isOpen || !item) return null;
+
+  // Handle option toggle
+  const toggleOption = (group: ModifierGroupItem, option: ModifierOptionItem) => {
+    setSelectedOptions((prev) => {
+      const current = prev[group.id] || [];
+      const isSelected = current.includes(option.id);
+
+      if (group.maxSelections === 1) {
+        // Single select (radio behavior)
+        return {
+          ...prev,
+          [group.id]: isSelected ? (group.minSelections === 0 ? [] : [option.id]) : [option.id],
+        };
+      } else {
+        // Multi select (checkbox behavior)
+        if (isSelected) {
+          return { ...prev, [group.id]: current.filter((id) => id !== option.id) };
+        } else {
+          if (current.length >= group.maxSelections) return prev; // Limit reached
+          return { ...prev, [group.id]: [...current, option.id] };
+        }
+      }
+    });
+  };
 
   const handleConfirm = () => {
     if (!isValid) return;

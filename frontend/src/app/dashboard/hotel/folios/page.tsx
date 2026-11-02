@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   formatNPR,
@@ -28,7 +30,6 @@ import {
   Split,
   X,
   FileText,
-  Sparkles,
 } from "lucide-react";
 
 type FolioWindowName = "PRIMARY" | "COMPANY" | "PERSONAL" | "INCIDENTALS" | string;
@@ -229,7 +230,7 @@ export default function GuestFoliosBillingPage() {
   const loadStays = useCallback(async () => {
     try {
       setLoadingStays(true);
-      setError(null);
+      setError('');
       const res = await fetch("/api/v1/hotel/stays");
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -246,9 +247,7 @@ export default function GuestFoliosBillingPage() {
           ) || loadedStays[0];
         setSelectedStayId(activeInHouse.id);
       }
-    } catch (err: any) {
-      setError(err.message || "Unable to fetch hotel stays");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Unable to fetch hotel stays"); } finally {
       setLoadingStays(false);
     }
   }, [selectedStayId]);
@@ -263,7 +262,7 @@ export default function GuestFoliosBillingPage() {
       if (!stayId) return;
       try {
         setLoadingFolios(true);
-        setError(null);
+        setError('');
         const res = await fetch(`/api/v1/hotel/folios?stayId=${encodeURIComponent(stayId)}`);
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -287,9 +286,7 @@ export default function GuestFoliosBillingPage() {
         } else {
           setActiveFolioId("");
         }
-      } catch (err: any) {
-        setError(err.message || "Error loading guest folios");
-      } finally {
+      } catch (err: any) { Notify.failure(err.message || "Error loading guest folios"); } finally {
         setLoadingFolios(false);
       }
     },
@@ -558,9 +555,7 @@ export default function GuestFoliosBillingPage() {
       const newId = data.folio?.id;
       await loadFoliosForStay(selectedStayId, newId);
       showToast(`Created ${windowName} folio window`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -585,9 +580,7 @@ export default function GuestFoliosBillingPage() {
       setNewWindowNotes("");
       await loadFoliosForStay(selectedStayId, data.folio?.id);
       showToast(`Opened ${newWindowName.toUpperCase()} folio window`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -610,9 +603,7 @@ export default function GuestFoliosBillingPage() {
           ? `Folio window ${activeFolio.windowName} locked for checkout (SETTLING)`
           : `Folio window ${activeFolio.windowName} unlocked (OPEN)`
       );
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -621,7 +612,7 @@ export default function GuestFoliosBillingPage() {
     e.preventDefault();
     try {
       setActionLoading(true);
-      setError(null);
+      setError('');
       const res = await fetch("/api/v1/hotel/night-audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -640,9 +631,7 @@ export default function GuestFoliosBillingPage() {
       const postedCount =
         data.postedCount ?? data.result?.postedCount ?? data.chargesPosted ?? "all eligible";
       showToast(`Night Audit completed for ${auditDate} (${postedCount} room night charges posted)`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -664,7 +653,7 @@ export default function GuestFoliosBillingPage() {
     if (!activeFolio || !selectedStayId) return;
     try {
       setActionLoading(true);
-      setError(null);
+      setError('');
       const payload =
         chargeMode === "ROOM_NIGHT"
           ? {
@@ -701,9 +690,7 @@ export default function GuestFoliosBillingPage() {
           ? `Posted room night charge (${roomChargeDate}) to ${activeFolio.windowName}`
           : `Posted ${incidentalCategory} charge to ${activeFolio.windowName}`
       );
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -732,7 +719,7 @@ export default function GuestFoliosBillingPage() {
     if (!activeFolio || !selectedStayId || !selectedOrderId) return;
     try {
       setActionLoading(true);
-      setError(null);
+      setError('');
       const res = await fetch(
         `/api/v1/hotel/folios/${encodeURIComponent(activeFolio.id)}/charge-order`,
         {
@@ -750,9 +737,7 @@ export default function GuestFoliosBillingPage() {
       await loadFoliosForStay(selectedStayId, activeFolio.id);
       await loadStays();
       showToast("Restaurant order transferred to guest folio as Dining Receivable (Zero Duplicate Revenue)");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -761,7 +746,7 @@ export default function GuestFoliosBillingPage() {
     if (!activeFolio || !targetFolioId || targetFolioId === activeFolio.id) return;
     try {
       setTransferringEntryId(entryId);
-      setError(null);
+      setError('');
       const res = await fetch(
         `/api/v1/hotel/folios/${encodeURIComponent(activeFolio.id)}/entries/${encodeURIComponent(
           entryId
@@ -777,9 +762,7 @@ export default function GuestFoliosBillingPage() {
       const targetWindow = folios.find((f) => f.id === targetFolioId)?.windowName || "target window";
       await loadFoliosForStay(selectedStayId, activeFolio.id);
       showToast(`Transferred ledger line to ${targetWindow} window`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setTransferringEntryId(null);
     }
   };
@@ -796,7 +779,7 @@ export default function GuestFoliosBillingPage() {
     if (!activeFolio || !reverseTargetEntry) return;
     try {
       setActionLoading(true);
-      setError(null);
+      setError('');
       const res = await fetch(
         `/api/v1/hotel/folios/${encodeURIComponent(activeFolio.id)}/entries/${encodeURIComponent(
           reverseTargetEntry.id
@@ -816,9 +799,7 @@ export default function GuestFoliosBillingPage() {
       await loadFoliosForStay(selectedStayId, activeFolio.id);
       await loadStays();
       showToast("Posted append-only credit adjustment to folio ledger");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -883,7 +864,7 @@ export default function GuestFoliosBillingPage() {
     if (!activeFolio) return;
     try {
       setActionLoading(true);
-      setError(null);
+      setError('');
       const validTenders = tenders
         .filter((t) => toCents(t.amount) > 0)
         .map((t) => ({
@@ -911,9 +892,7 @@ export default function GuestFoliosBillingPage() {
       await loadFoliosForStay(selectedStayId, activeFolio.id);
       await loadStays();
       showToast(`Settled ${activeFolio.windowName} folio (${formatNPR(fromCents(totalTenderAllocatedCents))})`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setActionLoading(false);
     }
   };
@@ -999,7 +978,7 @@ export default function GuestFoliosBillingPage() {
 
       {/* Toast Notification & Error Banner */}
       {toastMessage && (
-        <div className="rounded-xl border border-[#C3DED0] bg-[#EBF4F0] px-4 py-3 text-xs font-bold text-[#28634B] flex items-center justify-between shadow-xs">
+        <div className="rounded-md border border-[#C3DED0] bg-[#EBF4F0] px-4 py-3 text-xs font-bold text-[#28634B] flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{toastMessage}</span>
@@ -1015,7 +994,7 @@ export default function GuestFoliosBillingPage() {
       )}
 
       {error && (
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] px-4 py-3 text-xs font-bold text-[#B33432] flex items-center justify-between shadow-xs">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] px-4 py-3 text-xs font-bold text-[#B33432] flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
@@ -1031,7 +1010,7 @@ export default function GuestFoliosBillingPage() {
       )}
 
       {/* Accounting & Revenue Invariant Banner / KPI Strip */}
-      <div className="rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-4 shadow-xs space-y-3">
+      <div className="rounded-md border border-[#D8CEC1] bg-[#FFFCF7] p-4 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D8CEC1]/60 pb-2.5">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-[#28634B]" />
@@ -1120,7 +1099,7 @@ export default function GuestFoliosBillingPage() {
       </div>
 
       {/* Split-Folio Window Tabs & Active Folio Controls */}
-      <div className="rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-4 shadow-xs space-y-4">
+      <div className="rounded-md border border-[#D8CEC1] bg-[#FFFCF7] p-4 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-[#D8CEC1] pb-3">
           {/* Split-Folio Window Tabs */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1329,7 +1308,7 @@ export default function GuestFoliosBillingPage() {
       </div>
 
       {/* Chronological Itemized Folio Ledger Table */}
-      <div className="rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-xs overflow-hidden">
+      <div className="rounded-md border border-[#D8CEC1] bg-[#FFFCF7] shadow-xs overflow-hidden">
         <div className="p-4 border-b border-[#D8CEC1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-[#1F1A17]">
@@ -1520,7 +1499,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isNightAuditOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
                 <Moon className="h-5 w-5 text-[#946000]" />
@@ -1597,7 +1576,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isNewWindowOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
                 <Split className="h-5 w-5 text-[#6B2837]" />
@@ -1670,7 +1649,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isChargeOrderOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-lg w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
                 <UtensilsCrossed className="h-5 w-5 text-[#946000]" />
@@ -1748,10 +1727,10 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isPostChargeOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#6B2837]" />
+                <Receipt className="h-5 w-5 text-[#6B2837]" />
                 <h3 className="text-base font-bold text-[#1F1A17]">
                   Post Charge to {activeFolio?.windowName} Folio
                 </h3>
@@ -1910,7 +1889,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {reverseTargetEntry && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-5 w-5 text-[#B33432]" />
@@ -1988,7 +1967,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isSettleOpen && activeFolio && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-xl w-full p-5 shadow-xl space-y-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-xl w-full p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-[#28634B]" />
@@ -2006,7 +1985,7 @@ export default function GuestFoliosBillingPage() {
             </div>
 
             {/* Real-time Balance Summary */}
-            <div className="grid grid-cols-3 gap-3 rounded-xl bg-[#F7F3EC] border border-[#D8CEC1] p-3 text-xs">
+            <div className="grid grid-cols-3 gap-3 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] p-3 text-xs">
               <div>
                 <span className="text-[10px] font-bold uppercase text-[#6E6259] block">
                   Folio Balance Due
@@ -2148,7 +2127,7 @@ export default function GuestFoliosBillingPage() {
       {/* ================================================================= */}
       {isInvoiceOpen && activeFolio && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-5 my-8">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-3xl w-full p-6 shadow-sm space-y-5 my-8">
             {/* Controls Header (Hidden during print) */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8CEC1] pb-4 print:hidden">
               <div className="flex items-center gap-2">
@@ -2205,7 +2184,7 @@ export default function GuestFoliosBillingPage() {
 
             {/* Printable Invoice Sheet */}
             <div
-              className={`mx-auto bg-white text-black border border-[#D8CEC1] rounded-xl p-6 shadow-xs ${
+              className={`mx-auto bg-[#FFFCF7] text-black border border-[#D8CEC1] rounded-md p-6 shadow-xs ${
                 invoiceFormat === "THERMAL_80MM" ? "max-w-[320px] font-mono text-[11px]" : "w-full text-xs"
               }`}
             >

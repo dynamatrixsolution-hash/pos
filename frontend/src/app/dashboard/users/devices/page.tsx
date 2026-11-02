@@ -97,7 +97,7 @@ export default function DeviceControlPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Card */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-[#E5E7EB] p-6 rounded-3xl shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FFFCF7] border border-[#E5E7EB] p-6 rounded-lg shadow-xs">
         <div>
           <h1 className="text-2xl font-black text-[#0F172A] flex items-center gap-2">
             <Laptop className="h-6 w-6 text-[#2563EB]" /> Device Control
@@ -109,7 +109,7 @@ export default function DeviceControlPage() {
       </div>
 
       {/* 2. Explanatory Banner */}
-      <div className="flex items-start gap-3 bg-[#38BDF8]/10 border border-[#38BDF8]/20 p-4 rounded-2xl text-xs text-[#0F172A] leading-relaxed">
+      <div className="flex items-start gap-3 bg-[#38BDF8]/10 border border-[#38BDF8]/20 p-4 rounded-lg text-xs text-[#0F172A] leading-relaxed">
         <HelpCircle className="h-5 w-5 text-[#2563EB] shrink-0 mt-0.5" />
         <div>
           <span className="font-bold text-[#2563EB]">RestroInn Hardware Locking:</span> To prevent employees from accessing their cashier registers from unauthorized remote devices, Prayassh automatically locks each cashier account to the browser device of their first login. To transfer an employee to a different physical register, release their lock below.
@@ -117,9 +117,9 @@ export default function DeviceControlPage() {
       </div>
 
       {/* 3. Filter and Table container */}
-      <div className="bg-white border border-[#E5E7EB] rounded-3xl p-5 space-y-4 shadow-xs">
+      <div className="bg-[#FFFCF7] border border-[#E5E7EB] rounded-lg p-5 space-y-4 shadow-xs">
         {/* Search */}
-        <div className="relative max-w-md flex items-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 h-11 shadow-xs">
+        <div className="relative max-w-md flex items-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-md px-3.5 h-11 shadow-xs">
           <Search className="h-4.5 w-4.5 text-[#64748B]" />
           <input
             type="text"
@@ -198,7 +198,7 @@ export default function DeviceControlPage() {
                           <button
                             disabled={!isOwnerOrAdmin || isMutating === u.id}
                             onClick={() => handleReleaseDevice(u.id, u.name)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-[10px] font-bold cursor-pointer disabled:opacity-50 transition-all shadow-xs"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-md text-[10px] font-bold cursor-pointer disabled:opacity-50 transition-all shadow-xs"
                           >
                             <Unlock className="h-3 w-3" />
                             <span>Release Lock</span>

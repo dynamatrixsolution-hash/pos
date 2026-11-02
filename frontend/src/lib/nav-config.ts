@@ -34,6 +34,8 @@ import {
   KeyRound,
   Sparkles,
   QrCode,
+  Clock,
+  Rocket,
 } from "lucide-react";
 
 export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
@@ -434,32 +436,26 @@ export const navigationConfig: NavItem[] = [
 
   // Business Management
   {
-    title: "Business Management",
+    title: "Businesses",
     icon: Building,
     roles: ["SUPER_ADMIN"],
     children: [
       {
         title: "All Businesses",
-        href: "/dashboard/super-admin/businesses?tab=all",
+        href: "/dashboard/super-admin/businesses",
         icon: Store,
         roles: ["SUPER_ADMIN"],
       },
       {
-        title: "Approval Center",
-        href: "/dashboard/super-admin/requests",
+        title: "Pending Approvals",
+        href: "/dashboard/super-admin/businesses/pending",
         icon: ShieldCheck,
         roles: ["SUPER_ADMIN"],
       },
       {
-        title: "Add Business",
-        href: "/dashboard/super-admin/businesses?tab=add",
-        icon: Building,
-        roles: ["SUPER_ADMIN"],
-      },
-      {
-        title: "Suspended Businesses",
-        href: "/dashboard/super-admin/businesses?tab=suspended",
-        icon: AlertTriangle,
+        title: "Expiring Subscriptions",
+        href: "/dashboard/super-admin/businesses/expiring",
+        icon: Clock,
         roles: ["SUPER_ADMIN"],
       },
     ],
@@ -467,32 +463,20 @@ export const navigationConfig: NavItem[] = [
 
   // Subscription Management
   {
-    title: "Subscription Management",
+    title: "Subscriptions & Plans",
     icon: CreditCard,
     roles: ["SUPER_ADMIN"],
     children: [
       {
-        title: "Plans",
-        href: "/dashboard/super-admin/subscriptions?tab=plans",
+        title: "All Subscriptions",
+        href: "/dashboard/super-admin/subscriptions",
+        icon: CreditCard,
+        roles: ["SUPER_ADMIN"],
+      },
+      {
+        title: "Plans & Pricing",
+        href: "/dashboard/super-admin/subscriptions/plans",
         icon: Layers,
-        roles: ["SUPER_ADMIN"],
-      },
-      {
-        title: "Feature Toggles",
-        href: "/dashboard/super-admin/subscriptions?tab=toggles",
-        icon: Shield,
-        roles: ["SUPER_ADMIN"],
-      },
-      {
-        title: "Plan Limits",
-        href: "/dashboard/super-admin/subscriptions?tab=limits",
-        icon: Laptop,
-        roles: ["SUPER_ADMIN"],
-      },
-      {
-        title: "Currency Management",
-        href: "/dashboard/super-admin/subscriptions?tab=currency",
-        icon: Receipt,
         roles: ["SUPER_ADMIN"],
       },
     ],

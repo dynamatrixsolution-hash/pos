@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Loader2, Layers, Tag, Ruler, AlertTriangle, Info } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
@@ -65,7 +67,7 @@ export default function CategoriesClient() {
 
   const fetchData = async () => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
       const res = await fetch(`/api/v1/${activeTab}`);
       if (!res.ok) throw new Error("Failed to fetch data");
@@ -81,9 +83,7 @@ export default function CategoriesClient() {
         }
       }
       else setUnits(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setLoading(false);
     }
   };
@@ -93,7 +93,7 @@ export default function CategoriesClient() {
     setFormName(name || "");
     setFormCategoryId(categoryId || (categories.length > 0 ? categories[0].id : ""));
     setIsModalOpen(true);
-    setError("");
+    setError('');
   };
 
   const closeModal = () => {
@@ -106,11 +106,11 @@ export default function CategoriesClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      setError("Name is required");
+      Notify.failure("Name is required"); setError("Name is required");
       return;
     }
     if (activeTab === "subcategories" && !formCategoryId) {
-      setError("Parent Category is required");
+      Notify.failure("Parent Category is required"); setError("Parent Category is required");
       return;
     }
 
@@ -120,7 +120,7 @@ export default function CategoriesClient() {
         (c) => c.name.toLowerCase().trim() === formName.toLowerCase().trim() && c.id !== editingId
       );
       if (isDup) {
-        setError("A category with this name already exists.");
+        Notify.failure("A category with this name already exists."); setError("A category with this name already exists.");
         return;
       }
     } else if (activeTab === "subcategories") {
@@ -131,7 +131,7 @@ export default function CategoriesClient() {
           sc.id !== editingId
       );
       if (isDup) {
-        setError("A subcategory with this name already exists under the selected parent category.");
+        Notify.failure("A subcategory with this name already exists under the selected parent category."); setError("A subcategory with this name already exists under the selected parent category.");
         return;
       }
     } else if (activeTab === "units") {
@@ -139,13 +139,13 @@ export default function CategoriesClient() {
         (u) => u.name.toLowerCase().trim() === formName.toLowerCase().trim() && u.id !== editingId
       );
       if (isDup) {
-        setError("A measurement unit with this name already exists.");
+        Notify.failure("A measurement unit with this name already exists."); setError("A measurement unit with this name already exists.");
         return;
       }
     }
 
     setSubmitting(true);
-    setError("");
+    setError('');
 
     try {
       const url = editingId 
@@ -172,9 +172,7 @@ export default function CategoriesClient() {
 
       await fetchData();
       closeModal();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    } catch (err: any) { Notify.failure(err.message); } finally {
       setSubmitting(false);
     }
   };
@@ -252,7 +250,7 @@ export default function CategoriesClient() {
       </div>
 
       {/* Data Table */}
-      <div className="glass-card rounded-2xl overflow-hidden border border-border/50">
+      <div className="glass-card rounded-lg overflow-hidden border border-border/50">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-secondary/10 border-b border-border/60 text-xs uppercase text-secondary font-bold tracking-wider">
@@ -343,12 +341,12 @@ export default function CategoriesClient() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="glass-card rounded-2xl w-full max-w-md p-6 shadow-2xl border border-border/50 animate-in zoom-in-95 duration-200">
+          <div className="glass-card rounded-lg w-full max-w-md p-6 shadow-sm border border-border/50 animate-in zoom-in-95 duration-200">
             <h3 className="text-xl font-bold mb-4">
               {editingId ? "Edit" : "Add"} {getTabLabel()}
             </h3>
             
-            {error && <div className="p-3 mb-4 text-sm bg-destructive/10 text-destructive rounded-lg font-medium border border-destructive/20">{error}</div>}
+            
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {activeTab === "subcategories" && (
@@ -386,7 +384,7 @@ export default function CategoriesClient() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center"
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center"
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                 </button>
@@ -399,9 +397,9 @@ export default function CategoriesClient() {
       {/* Custom Alert/Confirm Popup Modal */}
       {alertModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                 alertModal.type === "error"
                   ? "bg-destructive/10 text-destructive"
                   : alertModal.type === "confirm"
@@ -430,7 +428,7 @@ export default function CategoriesClient() {
                     type="button"
                     disabled={alertModalLoading}
                     onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                    className="flex-1 py-2.5 border border-border text-xs rounded-xl hover:bg-secondary font-bold transition-all cursor-pointer text-slate-700 dark:text-slate-350 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 border border-border text-xs rounded-md hover:bg-secondary font-bold transition-all cursor-pointer text-[#292320] dark:text-slate-350 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
@@ -451,7 +449,7 @@ export default function CategoriesClient() {
                         setAlertModal((prev) => ({ ...prev, open: false }));
                       }
                     }}
-                    className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                   >
                     {alertModalLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -464,7 +462,7 @@ export default function CategoriesClient() {
                 <button
                   type="button"
                   onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                  className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                 >
                   OK
                 </button>

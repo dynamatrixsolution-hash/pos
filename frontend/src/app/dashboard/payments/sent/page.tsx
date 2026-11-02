@@ -1,4 +1,6 @@
 "use client";
+
+import { Notify } from "@/lib/notify";
 import { postCommerce } from "@/lib/idempotent-request";
 
 import * as React from "react";
@@ -202,8 +204,8 @@ export default function PaymentSentPage() {
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addSupplierId) return alert("Please select a supplier");
-    if (!addAmount || parseFloat(addAmount) <= 0) return alert("Please enter a valid amount");
+    if (!addSupplierId) return Notify.warning("Please select a supplier");
+    if (!addAmount || parseFloat(addAmount) <= 0) return Notify.warning("Please enter a valid amount");
 
     setIsSubmitLoading(true);
     try {
@@ -238,7 +240,7 @@ export default function PaymentSentPage() {
       setIsAddModalOpen(false);
       resetAddForm();
     } catch (err: any) {
-      alert(err.message || "An error occurred");
+      Notify.failure(err.message || "An error occurred");
     } finally {
       setIsSubmitLoading(false);
     }
@@ -264,7 +266,7 @@ export default function PaymentSentPage() {
       fetchPayments();
       setIsEditModalOpen(false);
     } catch (err: any) {
-      alert(err.message || "An error occurred");
+      Notify.failure(err.message || "An error occurred");
     } finally {
       setIsSubmitLoading(false);
     }
@@ -285,7 +287,7 @@ export default function PaymentSentPage() {
         throw new Error(err.error || "Failed to reverse payment");
       }
 
-      alert("Payment voucher reversed successfully.");
+      Notify.success("Payment voucher reversed successfully.");
       fetchPayments();
       // Reload suppliers balance
       const supRes = await fetch("/api/v1/suppliers");
@@ -294,7 +296,7 @@ export default function PaymentSentPage() {
         setSuppliers(data.suppliers || data);
       }
     } catch (err: any) {
-      alert(err.message || "Reversal failed");
+      Notify.failure(err.message || "Reversal failed");
     }
   };
 
@@ -310,7 +312,7 @@ export default function PaymentSentPage() {
   };
 
   const exportExcel = () => {
-    if (payments.length === 0) return alert("No data to export");
+    if (payments.length === 0) return Notify.warning("No data to export");
     const exportData = payments.map((p) => ({
       "Voucher Number": p.receiptNumber,
       Supplier: p.supplier?.name || "N/A",
@@ -331,7 +333,7 @@ export default function PaymentSentPage() {
   };
 
   const exportPDF = () => {
-    if (payments.length === 0) return alert("No data to export");
+    if (payments.length === 0) return Notify.warning("No data to export");
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
@@ -424,9 +426,9 @@ export default function PaymentSentPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header controls */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm print:hidden">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm print:hidden">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black text-[#292320] dark:text-white flex items-center gap-2">
             <CreditCard className="h-6 w-6 text-red-500" /> Payment Sent (Suppliers / Expenses)
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -441,7 +443,7 @@ export default function PaymentSentPage() {
                 resetAddForm();
                 setIsAddModalOpen(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-500/20 cursor-pointer w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-xs font-bold transition-all shadow-sm shadow-red-500/20 cursor-pointer w-full sm:w-auto"
             >
               <PlusCircle className="h-4.5 w-4.5" />
               <span>Add Payment</span>
@@ -450,7 +452,7 @@ export default function PaymentSentPage() {
 
           <button
             onClick={exportExcel}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all cursor-pointer w-full sm:w-auto"
             title="Export to Excel"
           >
             <Download className="h-4 w-4" />
@@ -458,7 +460,7 @@ export default function PaymentSentPage() {
           </button>
           <button
             onClick={exportPDF}
-            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all cursor-pointer w-full sm:w-auto"
             title="Export to PDF"
           >
             <FileText className="h-4 w-4" />
@@ -468,9 +470,9 @@ export default function PaymentSentPage() {
       </div>
 
       {/* 2. Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-5 shadow-sm print:hidden">
         {/* Search */}
-        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 w-full col-span-1 lg:col-span-1">
+        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1] dark:border-slate-800 rounded-md px-3 h-10 w-full col-span-1 lg:col-span-1">
           <Search className="h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -482,7 +484,7 @@ export default function PaymentSentPage() {
         </div>
 
         {/* Branch Context */}
-        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 w-full">
+        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1] dark:border-slate-800 rounded-md px-3 h-10 w-full">
           <Store className="h-4 w-4 text-red-500 shrink-0" />
           <select
             value={selectedBranch}
@@ -502,7 +504,7 @@ export default function PaymentSentPage() {
         </div>
 
         {/* Supplier select */}
-        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 w-full">
+        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1] dark:border-slate-800 rounded-md px-3 h-10 w-full">
           <Users className="h-4 w-4 text-red-500 shrink-0" />
           <select
             value={selectedSupplier}
@@ -522,7 +524,7 @@ export default function PaymentSentPage() {
         </div>
 
         {/* Payment Method */}
-        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 w-full">
+        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1] dark:border-slate-800 rounded-md px-3 h-10 w-full">
           <CreditCard className="h-4 w-4 text-red-500 shrink-0" />
           <select
             value={selectedMethod}
@@ -542,7 +544,7 @@ export default function PaymentSentPage() {
         </div>
 
         {/* Date presets */}
-        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-3 h-10 w-full">
+        <div className="relative flex items-center bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1] dark:border-slate-800 rounded-md px-3 h-10 w-full">
           <Calendar className="h-4 w-4 text-red-500 shrink-0" />
           <select
             value={datePreset}
@@ -561,7 +563,7 @@ export default function PaymentSentPage() {
 
         {/* Custom date range inputs */}
         {datePreset === "custom" && (
-          <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-3 bg-[#F9FAFB] dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800 rounded-xl p-3 text-xs w-full mt-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex items-center gap-3 bg-[#F9FAFB] dark:bg-slate-900/50 border border-[#D8CEC1]/50 dark:border-slate-800 rounded-md p-3 text-xs w-full mt-1">
             <span className="text-muted-foreground font-semibold">Start Date:</span>
             <input
               type="date"
@@ -570,7 +572,7 @@ export default function PaymentSentPage() {
                 setStartDate(e.target.value);
                 setPage(1);
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none text-foreground font-semibold"
+              className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-1.5 focus:outline-none text-foreground font-semibold"
             />
             <span className="text-muted-foreground font-semibold">End Date:</span>
             <input
@@ -580,14 +582,14 @@ export default function PaymentSentPage() {
                 setEndDate(e.target.value);
                 setPage(1);
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none text-foreground font-semibold"
+              className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-1.5 focus:outline-none text-foreground font-semibold"
             />
           </div>
         )}
       </div>
 
       {/* 3. Data Listing */}
-      <div className="bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="h-80 flex flex-col items-center justify-center space-y-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
@@ -603,7 +605,7 @@ export default function PaymentSentPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800/80 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1]/60 dark:border-slate-800/80 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-3 px-4">Voucher No</th>
                   <th className="py-3 px-3">Supplier</th>
                   <th className="py-3 px-3">Purchase Number</th>
@@ -618,41 +620,41 @@ export default function PaymentSentPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {payments.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/20 transition-colors">
+                  <tr key={p.id} className="hover:bg-[#F7F3EC] dark:hover:bg-slate-850/20 transition-colors">
                     <td className="py-3.5 px-4 font-extrabold text-slate-850 dark:text-slate-100 whitespace-nowrap">
                       {p.receiptNumber}
                     </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700 dark:text-slate-200">
+                    <td className="py-3.5 px-3 font-semibold text-[#292320] dark:text-slate-200">
                       {p.supplier?.name || <span className="text-slate-400">Expense Disburse</span>}
                     </td>
-                    <td className="py-3.5 px-3 font-mono text-slate-500">
+                    <td className="py-3.5 px-3 font-mono text-[#71675E]">
                       {p.purchase?.purchaseNumber || <span className="text-slate-350">—</span>}
                     </td>
                     <td className="py-3.5 px-3 font-bold text-red-500 text-right whitespace-nowrap">
                       {currencySymbol}{p.amount.toFixed(2)}
                     </td>
                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-350 border border-slate-200/40 dark:border-slate-800">
+                      <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-[#EEE7DD] dark:bg-slate-850 text-[#71675E] dark:text-slate-350 border border-[#D8CEC1]/40 dark:border-slate-800">
                         {p.method}
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-slate-550 font-medium max-w-[140px] truncate" title={p.reference || ""}>
                       {p.reference || <span className="text-slate-300">—</span>}
                     </td>
-                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 font-semibold">
+                    <td className="py-3.5 px-3 text-[#71675E] dark:text-slate-400 font-semibold">
                       {p.branch?.name || "N/A"}
                     </td>
                     <td className="py-3.5 px-3 text-slate-550 dark:text-slate-400 font-medium">
                       {p.user?.name || "N/A"}
                     </td>
-                    <td className="py-3.5 px-3 text-slate-450 dark:text-slate-500 whitespace-nowrap font-medium">
+                    <td className="py-3.5 px-3 text-slate-450 dark:text-[#71675E] whitespace-nowrap font-medium">
                       {new Date(p.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex justify-end gap-1.5">
                         <button
                           onClick={() => handlePrintReceipt(p)}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
+                          className="p-1 hover:bg-[#EEE7DD] dark:hover:bg-slate-800 rounded text-[#71675E] hover:text-red-500 transition-colors cursor-pointer"
                           title="Print Voucher"
                         >
                           <Printer className="h-3.5 w-3.5" />
@@ -666,7 +668,7 @@ export default function PaymentSentPage() {
                                 setEditReference(p.reference || "");
                                 setIsEditModalOpen(true);
                               }}
-                              className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                              className="p-1 hover:bg-[#EEE7DD] dark:hover:bg-slate-800 rounded text-[#71675E] hover:text-[#292320] dark:hover:text-slate-200 transition-colors cursor-pointer"
                               title="Edit Details"
                             >
                               <Edit2 className="h-3.5 w-3.5" />
@@ -691,7 +693,7 @@ export default function PaymentSentPage() {
 
         {/* 4. Pagination */}
         {!isLoading && totalPages > 1 && (
-          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-150 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30">
+          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-150 dark:border-slate-800/80 bg-[#F7F3EC] dark:bg-slate-900/30">
             <span className="text-xs text-muted-foreground font-semibold">
               Showing {(page - 1) * limit + 1} - {Math.min(page * limit, totalItems)} of {totalItems} payment vouchers
             </span>
@@ -699,7 +701,7 @@ export default function PaymentSentPage() {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-950 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
+                className="px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold bg-[#FFFCF7] dark:bg-slate-950 hover:bg-[#F7F3EC] disabled:opacity-50 transition-all cursor-pointer"
               >
                 Previous
               </button>
@@ -709,7 +711,7 @@ export default function PaymentSentPage() {
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-950 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
+                className="px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold bg-[#FFFCF7] dark:bg-slate-950 hover:bg-[#F7F3EC] disabled:opacity-50 transition-all cursor-pointer"
               >
                 Next
               </button>
@@ -721,17 +723,17 @@ export default function PaymentSentPage() {
       {/* 5. Add Standalone Payment Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-md shadow-sm relative">
             <button
               onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-800 cursor-pointer"
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-[#292320] cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
             <form onSubmit={handleAddPayment} className="space-y-4 text-left">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white">Record Outgoing Payment</h3>
+                <h3 className="text-base font-black text-[#292320] dark:text-white">Record Outgoing Payment</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Log payments made to suppliers or other standalone disbursements. Ledger statements update dynamically.
                 </p>
@@ -747,7 +749,7 @@ export default function PaymentSentPage() {
                     required
                     value={addSupplierId}
                     onChange={(e) => setAddSupplierId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   >
                     <option value="">Select Supplier</option>
                     {suppliers.map((s) => (
@@ -770,7 +772,7 @@ export default function PaymentSentPage() {
                     placeholder="0.00"
                     value={addAmount}
                     onChange={(e) => setAddAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   />
                 </div>
 
@@ -783,7 +785,7 @@ export default function PaymentSentPage() {
                     <select
                       value={addMethod}
                       onChange={(e) => setAddMethod(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                      className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                     >
                       <option value="CASH">CASH</option>
                       <option value="CARD">CARD</option>
@@ -799,7 +801,7 @@ export default function PaymentSentPage() {
                     <select
                       value={addBranchId}
                       onChange={(e) => setAddBranchId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                      className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                     >
                       <option value="">Select Branch</option>
                       {branches.map((b) => (
@@ -822,7 +824,7 @@ export default function PaymentSentPage() {
                       placeholder="Autogenerated"
                       value={addVoucherNumber}
                       onChange={(e) => setAddVoucherNumber(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                      className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                     />
                   </div>
 
@@ -835,7 +837,7 @@ export default function PaymentSentPage() {
                       placeholder="e.g. check_0099"
                       value={addReference}
                       onChange={(e) => setAddReference(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                      className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                     />
                   </div>
                 </div>
@@ -849,7 +851,7 @@ export default function PaymentSentPage() {
                     type="date"
                     value={addDate}
                     onChange={(e) => setAddDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   />
                 </div>
 
@@ -862,23 +864,23 @@ export default function PaymentSentPage() {
                     placeholder="e.g. Settled outstanding restock invoices"
                     value={addRemarks}
                     onChange={(e) => setAddRemarks(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-slate-500 cursor-pointer"
+                  className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-md hover:bg-[#EEE7DD] dark:hover:bg-slate-800 font-bold text-[#71675E] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitLoading}
-                  className="px-5 py-2 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-650 disabled:opacity-50 cursor-pointer shadow-md shadow-red-500/25"
+                  className="px-5 py-2 bg-red-500 text-white text-xs font-bold rounded-md hover:bg-red-650 disabled:opacity-50 cursor-pointer shadow-sm shadow-red-500/25"
                 >
                   {isSubmitLoading ? "Saving..." : "Save Voucher"}
                 </button>
@@ -891,17 +893,17 @@ export default function PaymentSentPage() {
       {/* 6. Edit Payment Remarks Modal */}
       {isEditModalOpen && selectedPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-sm relative">
             <button
               onClick={() => setIsEditModalOpen(false)}
-              className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-800 cursor-pointer"
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-150 dark:hover:bg-slate-800 text-slate-400 hover:text-[#292320] cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
 
             <form onSubmit={handleEditPayment} className="space-y-4 text-left">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white">Edit Voucher Details</h3>
+                <h3 className="text-base font-black text-[#292320] dark:text-white">Edit Voucher Details</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Update remarks and references for debit voucher {selectedPayment.receiptNumber}.
                 </p>
@@ -916,7 +918,7 @@ export default function PaymentSentPage() {
                     type="text"
                     value={editReference}
                     onChange={(e) => setEditReference(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   />
                 </div>
 
@@ -928,23 +930,23 @@ export default function PaymentSentPage() {
                     type="text"
                     value={editRemarks}
                     onChange={(e) => setEditRemarks(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
+                    className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold text-foreground focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-slate-500 cursor-pointer"
+                  className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-md hover:bg-[#EEE7DD] dark:hover:bg-slate-800 font-bold text-[#71675E] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitLoading}
-                  className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-xl hover:bg-[#1D4ED8] disabled:opacity-50 cursor-pointer shadow-md shadow-[#2563EB]/25"
+                  className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-md hover:bg-[#1D4ED8] disabled:opacity-50 cursor-pointer shadow-sm shadow-[#2563EB]/25"
                 >
                   {isSubmitLoading ? "Saving..." : "Update"}
                 </button>

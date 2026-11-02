@@ -2,6 +2,13 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Ensure BigInt can be serialized to JSON across all API routes
+if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this);
+  };
+}
+
 export interface SessionContext {
   userId: string;
   businessId: string;
@@ -28,10 +35,24 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   }
   if (!["OWNER", "SUPER_ADMIN"].includes(userExists.role) && !userExists.branchId) return null;
 
+  let resolvedBranchId = userExists.branchId;
+  if (!resolvedBranchId) {
+    const defaultBranch = await db.branch.findFirst({
+      where: {
+        businessId: userExists.businessId,
+        isActive: true,
+        deletedAt: null,
+      },
+      orderBy: [{ isMain: "desc" }, { createdAt: "asc" }],
+      select: { id: true },
+    });
+    resolvedBranchId = defaultBranch?.id ?? null;
+  }
+
   return {
     userId: sessionUser.id as string,
     businessId: sessionUser.businessId as string,
-    branchId: userExists.branchId,
+    branchId: resolvedBranchId,
     role: userExists.role,
   };
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useEffect, useState } from "react";
 
 interface FiscalYear {
@@ -63,7 +65,7 @@ export default function ComplianceReportsPage() {
 
   const handleExport = (format: "excel" | "xml" | "pdf" | "print") => {
     if (data.length === 0) {
-      alert("No data available to export");
+      Notify.warning("No data available to export");
       return;
     }
 
@@ -92,7 +94,7 @@ export default function ComplianceReportsPage() {
     <div className="p-6 bg-slate-900 text-slate-100 min-h-screen font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Block */}
-        <div className="relative p-6 rounded-2xl bg-gradient-to-r from-teal-700 via-emerald-700 to-indigo-800 shadow-xl overflow-hidden">
+        <div className="relative p-6 rounded-lg bg-gradient-to-r from-teal-700 via-emerald-700 to-indigo-800 shadow-sm overflow-hidden">
           <div className="relative z-10 space-y-2">
             <span className="px-3 py-1 bg-emerald-900/50 backdrop-blur border border-emerald-400/30 text-emerald-300 rounded-full text-xs font-semibold uppercase tracking-wider">
               IRD Verification Books
@@ -105,7 +107,7 @@ export default function ComplianceReportsPage() {
         </div>
 
         {/* Filter Controls Panel */}
-        <div className="bg-slate-950 border border-slate-800 p-6 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+        <div className="bg-slate-950 border border-slate-800 p-6 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div className="space-y-1">
             <label className="text-xs text-slate-400 font-medium">Select Compliance Book</label>
             <select
@@ -167,7 +169,7 @@ export default function ComplianceReportsPage() {
             <button
               onClick={handleFetchReport}
               disabled={loading}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg transition-all duration-300 flex items-center space-x-2"
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-sm transition-all duration-300 flex items-center space-x-2"
             >
               {loading ? "Compiling..." : "Generate Compliance Book"}
             </button>
@@ -205,7 +207,7 @@ export default function ComplianceReportsPage() {
 
         {/* Report Viewer Table Card */}
         {data.length > 0 ? (
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
@@ -244,7 +246,7 @@ export default function ComplianceReportsPage() {
           </div>
         ) : (
           !loading && (
-            <div className="py-20 text-center text-slate-500 bg-slate-950 border border-slate-900 rounded-2xl">
+            <div className="py-20 text-center text-[#71675E] bg-slate-950 border border-slate-900 rounded-lg">
               No report generated yet. Choose dates and click "Generate Compliance Book" to inspect logs.
             </div>
           )

@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Search, Plus, UserPlus, Shield, MapPin, Mail, Phone } from "lucide-react";
@@ -84,10 +86,10 @@ export default function UsersClient() {
   }, [fetchData]);
 
   const onSubmit = async (data: UserInputs) => {
-    setSubmitError("");
+    setSubmitError('');
 
     if (!editingUser && !data.password) {
-      setSubmitError("Password is required for new employee account");
+      Notify.failure("Password is required for new employee account"); setSubmitError("Password is required for new employee account");
       return;
     }
     
@@ -118,14 +120,12 @@ export default function UsersClient() {
       reset();
       fetchData();
       toast.success(`User ${editingUser ? "updated" : "created"} successfully!`);
-    } catch (err: any) {
-      setSubmitError(err.message);
-    }
+    } catch (err: any) { Notify.failure(err.message); }
   };
 
   const handleEditClick = (user: UserItem) => {
     setEditingUser(user);
-    setSubmitError("");
+    setSubmitError('');
     setValue("name", user.name);
     setValue("email", user.email);
     setValue("role", user.role as any);
@@ -174,7 +174,7 @@ export default function UsersClient() {
   return (
     <div className="space-y-4">
       {/* Search & Actions */}
-      <div className="bg-card border border-border p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+      <div className="bg-card border border-border p-5 rounded-lg flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
         <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-muted-foreground" />
           <input
@@ -191,10 +191,10 @@ export default function UsersClient() {
             onClick={() => {
               setEditingUser(null);
               reset();
-              setSubmitError("");
+              setSubmitError('');
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider whitespace-nowrap"
           >
             <UserPlus className="h-4.5 w-4.5" />
             Invite Employee
@@ -203,7 +203,7 @@ export default function UsersClient() {
       </div>
 
       {/* Main List */}
-      <div className="bg-card border border-border rounded-2xl p-5">
+      <div className="bg-card border border-border rounded-lg p-5">
         {loading ? (
           <div className="py-12 text-center text-xs text-muted-foreground">Loading user directory...</div>
         ) : users.length === 0 ? (
@@ -289,7 +289,7 @@ export default function UsersClient() {
       {/* Invite Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-card rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-border my-8">
+          <div className="bg-card rounded-lg w-full max-w-lg p-6 shadow-sm border border-border my-8">
             <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary"/> 
               {editingUser ? "Edit Employee Profile" : "Add New Employee"}
@@ -300,7 +300,7 @@ export default function UsersClient() {
                 : "Create a new user account. They will use their email and password to log in."}
             </p>
 
-            {submitError && <div className="p-3 mb-4 text-xs bg-destructive/10 text-destructive rounded-lg font-bold border border-destructive/20">{submitError}</div>}
+            
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -390,7 +390,7 @@ export default function UsersClient() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {isSubmitting ? (editingUser ? "Saving..." : "Creating...") : editingUser ? "Save Changes" : "Create User Account"}
                 </button>

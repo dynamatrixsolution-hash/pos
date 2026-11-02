@@ -172,39 +172,39 @@ export default function DashboardPage() {
         {/* Header Skeleton */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
           <div>
-            <div className="h-8 w-48 bg-slate-200 rounded-md mb-2"></div>
-            <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
+            <div className="h-8 w-48 bg-[#EEE7DD] rounded-md mb-2"></div>
+            <div className="h-4 w-32 bg-[#EEE7DD] rounded-md"></div>
           </div>
           <div className="flex gap-2">
-            <div className="h-10 w-40 bg-slate-200 rounded-xl"></div>
-            <div className="h-10 w-10 bg-slate-200 rounded-xl"></div>
+            <div className="h-10 w-40 bg-[#EEE7DD] rounded-md"></div>
+            <div className="h-10 w-10 bg-[#EEE7DD] rounded-md"></div>
           </div>
         </div>
 
         {/* 5 Metric Cards Skeleton */}
         <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="bg-slate-200 border border-slate-100 p-5 rounded-2xl h-[130px]"></div>
+            <div key={i} className="bg-[#EEE7DD] border border-[#D8CEC1] p-5 rounded-lg h-[130px]"></div>
           ))}
         </div>
 
         {/* Mobile Metric Cards Skeleton */}
         <div className="md:hidden grid grid-cols-2 gap-3">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-slate-200 rounded-2xl h-[100px]"></div>
+            <div key={i} className="bg-[#EEE7DD] rounded-lg h-[100px]"></div>
           ))}
         </div>
 
         {/* Charts and Lists Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-slate-200 rounded-3xl h-[400px]"></div>
-          <div className="bg-slate-200 rounded-3xl h-[400px]"></div>
+          <div className="lg:col-span-2 bg-[#EEE7DD] rounded-lg h-[400px]"></div>
+          <div className="bg-[#EEE7DD] rounded-lg h-[400px]"></div>
         </div>
 
         {/* Bottom Section Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-slate-200 rounded-3xl h-[300px]"></div>
+            <div key={i} className="bg-[#EEE7DD] rounded-lg h-[300px]"></div>
           ))}
         </div>
       </div>
@@ -235,10 +235,10 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex justify-between w-full sm:w-auto items-start sm:items-center">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+            <h1 className="text-2xl font-black text-[#292320] flex items-center gap-2">
               Welcome back, {session?.user?.name?.split(" ")[0] || "Admin"}! 👋
             </h1>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
+            <p className="text-xs text-[#71675E] mt-1 font-medium">
               Here's what's happening with your business today.
             </p>
           </div>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="sm:hidden flex items-center justify-center p-2.5 bg-[#0B3B30] text-white hover:bg-[#126854] rounded-lg transition-all shadow-sm ml-4 shrink-0"
+            className="sm:hidden flex items-center justify-center p-2.5 bg-[#6B2837] text-white hover:bg-[#541E2A] rounded-lg transition-all shadow-sm ml-4 shrink-0"
           >
             <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
           </button>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           <select
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="flex items-center px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 outline-none cursor-pointer"
+            className="flex items-center px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#71675E] outline-none cursor-pointer"
           >
             <option value="today">Today</option>
             <option value="week">This Week</option>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0B3B30] text-white hover:bg-[#126854] rounded-lg text-xs font-bold transition-all shadow-sm"
+            className="flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#6B2837] text-white hover:bg-[#541E2A] rounded-lg text-xs font-bold transition-all shadow-sm"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             Sync Real-time Data
@@ -277,13 +277,13 @@ export default function DashboardPage() {
 
       {/* Mobile Only: Today's Summary & Quick Actions */}
       <div className="md:hidden space-y-4">
-        <div className="bg-[#0B3B30] text-white p-5 rounded-2xl flex flex-col gap-4">
+        <div className="bg-[#6B2837] text-white p-5 rounded-lg flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <div>
               <div className="text-[10px] font-bold text-white/70 uppercase">Today's Summary</div>
               <div className="text-xs font-medium text-white/90">24 August 2024</div>
             </div>
-            <div className="px-2 py-1 bg-white/10 rounded text-[10px] font-bold flex items-center">
+            <div className="px-2 py-1 bg-[#FFFCF7]/10 rounded text-[10px] font-bold flex items-center">
               Today <ChevronDown className="w-3 h-3 ml-1" />
             </div>
           </div>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
         </div>
 
         <div>
-          <h3 className="text-sm font-bold mb-3 text-slate-800 px-1">Quick Actions</h3>
+          <h3 className="text-sm font-bold mb-3 text-[#292320] px-1">Quick Actions</h3>
           <div className="grid grid-cols-4 gap-3">
             {[
               { label: "New Sale", icon: Plus, href: "/dashboard/pos" },
@@ -319,9 +319,9 @@ export default function DashboardPage() {
               { label: "Cash In/Out", icon: DollarSign, href: "/dashboard/sales" },
               { label: "More", icon: MoreHorizontal, href: "#" },
             ].map((action, i) => (
-              <Link key={i} href={action.href} className="flex flex-col items-center gap-1.5 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm shadow-slate-100/50 hover:border-[#126854]/30 transition-colors">
-                <action.icon className="w-5 h-5 text-[#0B3B30]" />
-                <span className="text-[9px] font-bold text-slate-600 text-center leading-tight">{action.label}</span>
+              <Link key={i} href={action.href} className="flex flex-col items-center gap-1.5 p-3 bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] shadow-none hover:border-[#126854]/30 transition-colors">
+                <action.icon className="w-5 h-5 text-[#6B2837]" />
+                <span className="text-[9px] font-bold text-[#71675E] text-center leading-tight">{action.label}</span>
               </Link>
             ))}
           </div>
@@ -332,15 +332,15 @@ export default function DashboardPage() {
       {metrics && (
         <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Card 1: Total Sales */}
-          <Link href="/dashboard/sales" className="bg-white border border-slate-100 hover:border-emerald-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
+          <Link href="/dashboard/sales" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-emerald-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Total Sales</p>
-                  <h3 className="text-lg font-black text-slate-800">
+                  <p className="text-[11px] font-bold text-[#71675E]">Total Sales</p>
+                  <h3 className="text-lg font-black text-[#292320]">
                     {currencySymbol}{metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
@@ -349,7 +349,7 @@ export default function DashboardPage() {
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
                 <span className="text-emerald-500 mr-1">↑ 8.4%</span>
-                <span className="text-slate-400">vs last month</span>
+                <span className="text-[#71675E]">vs last month</span>
               </div>
               <div className="w-12 h-6">
                 {mounted && (
@@ -362,15 +362,15 @@ export default function DashboardPage() {
           </Link>
 
           {/* Card 2: COGS */}
-          <Link href="/dashboard/products" className="bg-white border border-slate-100 hover:border-orange-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
+          <Link href="/dashboard/products" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-orange-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-50 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-md bg-orange-50 text-orange-50 flex items-center justify-center">
                   <Boxes className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">COGS (Stock Cost)</p>
-                  <h3 className="text-lg font-black text-slate-800">
+                  <p className="text-[11px] font-bold text-[#71675E]">COGS (Stock Cost)</p>
+                  <h3 className="text-lg font-black text-[#292320]">
                     {currencySymbol}{metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
@@ -379,7 +379,7 @@ export default function DashboardPage() {
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
                 <span className="text-red-500 mr-1">↓ 2.1%</span>
-                <span className="text-slate-400">inventory value sold</span>
+                <span className="text-[#71675E]">inventory value sold</span>
               </div>
               <div className="w-12 h-6">
                 {mounted && (
@@ -392,15 +392,15 @@ export default function DashboardPage() {
           </Link>
 
           {/* Card 3: Other Income */}
-          <Link href="/dashboard/payments" className="bg-white border border-slate-100 hover:border-blue-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
+          <Link href="/dashboard/payments" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-blue-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-50 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-md bg-blue-50 text-blue-50 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Other Income</p>
-                  <h3 className="text-lg font-black text-slate-800">
+                  <p className="text-[11px] font-bold text-[#71675E]">Other Income</p>
+                  <h3 className="text-lg font-black text-[#292320]">
                     {currencySymbol}{metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
@@ -408,8 +408,8 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded mr-1">0.0%</span>
-                <span className="text-slate-400">additional monthly inflow</span>
+                <span className="text-[#71675E] bg-[#EEE7DD] px-1 py-0.5 rounded mr-1">0.0%</span>
+                <span className="text-[#71675E]">additional monthly inflow</span>
               </div>
               <div className="w-12 h-6">
                 {mounted && (
@@ -422,15 +422,15 @@ export default function DashboardPage() {
           </Link>
 
           {/* Card 4: Expenses */}
-          <Link href="/dashboard/expenses" className="bg-white border border-slate-100 hover:border-rose-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
+          <Link href="/dashboard/expenses" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-rose-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-50 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-md bg-rose-50 text-rose-50 flex items-center justify-center">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Expenses</p>
-                  <h3 className="text-lg font-black text-slate-800">
+                  <p className="text-[11px] font-bold text-[#71675E]">Expenses</p>
+                  <h3 className="text-lg font-black text-[#292320]">
                     {currencySymbol}{metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
@@ -438,8 +438,8 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
-                <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded mr-1">0.0%</span>
-                <span className="text-slate-400">outbound payments</span>
+                <span className="text-[#71675E] bg-[#EEE7DD] px-1 py-0.5 rounded mr-1">0.0%</span>
+                <span className="text-[#71675E]">outbound payments</span>
               </div>
               <div className="w-12 h-6">
                 {mounted && (
@@ -452,15 +452,15 @@ export default function DashboardPage() {
           </Link>
 
           {/* Card 5: Net Profit */}
-          <Link href="/dashboard/reports" className="bg-white border border-slate-100 hover:border-red-500/20 hover:shadow-md transition-all p-5 rounded-2xl flex flex-col justify-between shadow-sm cursor-pointer">
+          <Link href="/dashboard/reports" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-red-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-red-50 text-red-50 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-md bg-red-50 text-red-50 flex items-center justify-center">
                   <DollarSign className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500">Net Profit</p>
-                  <h3 className={`text-lg font-black ${metrics.netProfit < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                  <p className="text-[11px] font-bold text-[#71675E]">Net Profit</p>
+                  <h3 className={`text-lg font-black ${metrics.netProfit < 0 ? 'text-red-600' : 'text-[#292320]'}`}>
                     {currencySymbol}{metrics.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </h3>
                 </div>
@@ -469,7 +469,7 @@ export default function DashboardPage() {
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center text-[10px] font-bold">
                 <span className="text-red-500 mr-1">↓ 12.0%</span>
-                <span className="text-slate-400 truncate">margin {((metrics.netProfit / metrics.totalSales) * 100 || 0).toFixed(1)}%</span>
+                <span className="text-[#71675E] truncate">margin {((metrics.netProfit / metrics.totalSales) * 100 || 0).toFixed(1)}%</span>
               </div>
               <div className="w-12 h-6">
                 {mounted && (
@@ -486,8 +486,8 @@ export default function DashboardPage() {
       {/* Row 1: Charts & Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Sales Overview Chart (2/3) */}
-        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col">
-          <h2 className="text-sm font-extrabold text-slate-800 mb-6">Sales Overview</h2>
+        <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col">
+          <h2 className="text-sm font-extrabold text-[#292320] mb-6">Sales Overview</h2>
           <div className="h-72 w-full flex-1">
             {mounted && chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={288} minWidth={1} minHeight={1}>
@@ -509,36 +509,36 @@ export default function DashboardPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">Loading chart data...</div>
+              <div className="h-full flex items-center justify-center text-xs text-[#71675E]">Loading chart data...</div>
             )}
           </div>
         </div>
 
         {/* Top Selling Products (1/3) */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-extrabold text-slate-800">Top Selling Products</h2>
-            <Link href="/dashboard/products" className="text-[10px] font-bold text-[#126854] hover:underline">View All</Link>
+            <h2 className="text-sm font-extrabold text-[#292320]">Top Selling Products</h2>
+            <Link href="/dashboard/products" className="text-[10px] font-bold text-[#6B2837] hover:underline">View All</Link>
           </div>
           
           <div className="flex-1 space-y-4">
             {topProducts.length === 0 ? (
-              <div className="text-center text-slate-400 text-xs py-8">No products sold yet</div>
+              <div className="text-center text-[#71675E] text-xs py-8">No products sold yet</div>
             ) : (
               topProducts.slice(0,5).map((p, i) => (
                 <div key={p.id} className="flex items-center justify-between group">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-[#126854]/5 transition-colors">
+                    <div className="w-10 h-10 rounded-lg bg-[#F7F3EC] border border-[#D8CEC1] flex items-center justify-center text-[#71675E] group-hover:bg-[#541E2A]/5 transition-colors">
                       <Package className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-slate-800">{p.name}</div>
-                      <div className="text-[9px] text-slate-400 font-semibold">{p.sku}</div>
+                      <div className="text-xs font-bold text-[#292320]">{p.name}</div>
+                      <div className="text-[9px] text-[#71675E] font-semibold">{p.sku}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs font-black text-slate-800">{currencySymbol}{p.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
-                    <div className="text-[9px] text-slate-400 font-medium">{p.quantitySold} units</div>
+                    <div className="text-xs font-black text-[#292320]">{currencySymbol}{p.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+                    <div className="text-[9px] text-[#71675E] font-medium">{p.quantitySold} units</div>
                   </div>
                 </div>
               ))
@@ -550,16 +550,16 @@ export default function DashboardPage() {
       {/* Row 2: Recent Orders & Donut & Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Recent Orders (1/3) */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-extrabold text-slate-800">Recent Orders</h2>
-            <Link href="/dashboard/sales" className="text-[10px] font-bold text-slate-500 flex items-center">
+            <h2 className="text-sm font-extrabold text-[#292320]">Recent Orders</h2>
+            <Link href="/dashboard/sales" className="text-[10px] font-bold text-[#71675E] flex items-center">
               View All Orders <ChevronDown className="w-3 h-3 ml-1" />
             </Link>
           </div>
           
           <div className="space-y-4">
-            <div className="flex text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-2">
+            <div className="flex text-[10px] font-bold text-[#71675E] border-b border-[#D8CEC1] pb-2">
               <div className="flex-1">Order ID / Customer</div>
               <div className="w-20 text-right">Amount</div>
               <div className="w-24 text-right">Status</div>
@@ -567,10 +567,10 @@ export default function DashboardPage() {
             {transactions.slice(0,5).map((tx) => (
               <div key={tx.id} className="flex items-center text-xs py-1">
                 <div className="flex-1">
-                  <div className="font-bold text-slate-800">{tx.customerName || "Walk-in Customer"}</div>
-                  <div className="text-[9px] text-slate-400">{tx.invoiceNumber}</div>
+                  <div className="font-bold text-[#292320]">{tx.customerName || "Walk-in Customer"}</div>
+                  <div className="text-[9px] text-[#71675E]">{tx.invoiceNumber}</div>
                 </div>
-                <div className="w-20 text-right font-black text-slate-800">
+                <div className="w-20 text-right font-black text-[#292320]">
                   {currencySymbol}{tx.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                 </div>
                 <div className="w-24 flex justify-end">
@@ -586,8 +586,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Sales by Category (1/3) */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-sm font-extrabold text-slate-800 mb-4">Sales by Category</h2>
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
+          <h2 className="text-sm font-extrabold text-[#292320] mb-4">Sales by Category</h2>
           <div className="flex items-center h-48">
             <div className="w-1/2 h-full relative">
               {mounted && categoryData.length > 0 ? (
@@ -611,12 +611,12 @@ export default function DashboardPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-xs text-slate-400">No data</div>
+                <div className="flex items-center justify-center h-full text-xs text-[#71675E]">No data</div>
               )}
               {categoryData.length > 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-black text-slate-800">{currencySymbol}{metrics?.totalSales ? (metrics.totalSales/1000).toFixed(1)+'k' : '0'}</span>
-                  <span className="text-[8px] text-slate-400 font-bold">Total Sales</span>
+                  <span className="text-xs font-black text-[#292320]">{currencySymbol}{metrics?.totalSales ? (metrics.totalSales/1000).toFixed(1)+'k' : '0'}</span>
+                  <span className="text-[8px] text-[#71675E] font-bold">Total Sales</span>
                 </div>
               )}
             </div>
@@ -625,30 +625,30 @@ export default function DashboardPage() {
                 <div key={cat.name} className="flex items-center justify-between text-[10px]">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                    <span className="font-semibold text-slate-600 truncate max-w-[60px]" title={cat.name}>{cat.name}</span>
+                    <span className="font-semibold text-[#71675E] truncate max-w-[60px]" title={cat.name}>{cat.name}</span>
                   </div>
-                  <span className="font-bold text-slate-400 ml-1">{cat.value}%</span>
+                  <span className="font-bold text-[#71675E] ml-1">{cat.value}%</span>
                 </div>
               )) : (
-                <div className="text-xs text-slate-400 text-center">No categories found</div>
+                <div className="text-xs text-[#71675E] text-center">No categories found</div>
               )}
             </div>
           </div>
         </div>
 
         {/* Business Analytics (1/3) */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-sm font-extrabold text-slate-800 mb-6">Business Analytics</h2>
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
+          <h2 className="text-sm font-extrabold text-[#292320] mb-6">Business Analytics</h2>
           <div className="space-y-5">
             {businessAnalytics.map((item, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-[#126854]">
+                  <div className="w-8 h-8 rounded-lg bg-[#F7F3EC] flex items-center justify-center text-[#6B2837]">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-slate-500">{item.label}</div>
-                    <div className="text-xs font-black text-slate-800">{item.value}</div>
+                    <div className="text-[10px] font-bold text-[#71675E]">{item.label}</div>
+                    <div className="text-xs font-black text-[#292320]">{item.value}</div>
                   </div>
                 </div>
                 <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold">
@@ -662,10 +662,10 @@ export default function DashboardPage() {
       {/* Row 3: Out of Stock & TodayStats widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Out of Stock Products (2/3 width) */}
-        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <h2 className="text-sm font-extrabold text-[#292320] flex items-center gap-2">
                 <AlertTriangle className="h-4.5 w-4.5 text-red-500" />
                 Out of Stock Products
               </h2>
@@ -675,13 +675,13 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
               {outOfStock.length === 0 ? (
-                <div className="text-center text-slate-400 text-xs py-8 font-medium">All products are fully in stock! 🎉</div>
+                <div className="text-center text-[#71675E] text-xs py-8 font-medium">All products are fully in stock! 🎉</div>
               ) : (
                 outOfStock.map((p) => (
-                  <div key={p.id} className="flex justify-between items-center bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 hover:bg-red-50/10 transition-colors">
+                  <div key={p.id} className="flex justify-between items-center bg-[#F7F3EC] p-2.5 rounded-md border border-[#D8CEC1] hover:bg-red-50/10 transition-colors">
                     <div>
-                      <span className="text-xs font-bold text-slate-800 block">{p.name}</span>
-                      <span className="text-[9px] font-medium text-slate-400">SKU: {p.sku || "N/A"} | Min Stock: {p.alertQuantity}</span>
+                      <span className="text-xs font-bold text-[#292320] block">{p.name}</span>
+                      <span className="text-[9px] font-medium text-[#71675E]">SKU: {p.sku || "N/A"} | Min Stock: {p.alertQuantity}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-extrabold text-red-500 bg-red-50 dark:bg-red-950/20 px-2.5 py-1 rounded-lg border border-red-100 dark:border-transparent">0 Stock</span>
@@ -694,44 +694,44 @@ export default function DashboardPage() {
         </div>
 
         {/* Today's Sales & Daily Statistics (1/3 width) */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <h2 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            <h2 className="text-sm font-extrabold text-[#292320] mb-4 flex items-center gap-2">
               <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
               Today's Sales & Daily Stats
             </h2>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
+              <div className="flex justify-between items-center p-3 bg-emerald-50/30 rounded-md border border-emerald-100/50">
                 <div>
-                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Today's Transactions</span>
-                  <span className="text-lg font-black text-slate-800">{todayStats?.transactionsCount ?? 0} Bills</span>
+                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Today's Transactions</span>
+                  <span className="text-lg font-black text-[#292320]">{todayStats?.transactionsCount ?? 0} Bills</span>
                 </div>
                 <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
                   <ShoppingCart className="h-4.5 w-4.5" />
                 </div>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-blue-50/30 rounded-xl border border-blue-100/50">
+              <div className="flex justify-between items-center p-3 bg-blue-50/30 rounded-md border border-blue-100/50">
                 <div>
-                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Today's Revenue</span>
-                  <span className="text-lg font-black text-slate-800">{currencySymbol}{(todayStats?.revenue ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Today's Revenue</span>
+                  <span className="text-lg font-black text-[#292320]">{currencySymbol}{(todayStats?.revenue ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
                   <DollarSign className="h-4.5 w-4.5" />
                 </div>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-slate-50/30 rounded-xl border border-slate-200/50">
+              <div className="flex justify-between items-center p-3 bg-[#F7F3EC]/30 rounded-md border border-[#D8CEC1]/50">
                 <div>
-                  <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Average Order Value</span>
-                  <span className="text-lg font-black text-slate-800">
+                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Average Order Value</span>
+                  <span className="text-lg font-black text-[#292320]">
                     {currencySymbol}
                     {todayStats?.transactionsCount
                       ? (todayStats.revenue / todayStats.transactionsCount).toLocaleString('en-IN', { maximumFractionDigits: 2 })
                       : "0.00"}
                   </span>
                 </div>
-                <div className="h-9 w-9 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+                <div className="h-9 w-9 rounded-lg bg-[#EEE7DD] text-[#71675E] flex items-center justify-center">
                   <TrendingUp className="h-4.5 w-4.5" />
                 </div>
               </div>

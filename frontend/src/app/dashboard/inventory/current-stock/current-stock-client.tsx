@@ -71,18 +71,18 @@ export default function CurrentStockClient() {
     <div className="space-y-6">
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Products</div>
           <div className="text-2xl font-black">{metrics.totalProducts}</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Stock Value</div>
           <div className="text-2xl font-black">{currencySymbol}{metrics.totalValue.toFixed(2)}</div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <div className="flex-1 flex gap-4">
             <div className="relative flex-1">

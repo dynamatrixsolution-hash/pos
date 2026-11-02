@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * Protected Component - Restricts access based on user role
  * Can be used to wrap pages or page sections
  */
 
-"use client";
 
 import { ReactNode } from "react";
 import { useUser } from "@/lib/client-auth";

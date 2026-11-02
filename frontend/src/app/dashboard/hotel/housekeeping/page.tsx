@@ -1,8 +1,9 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Sparkles,
   Wrench,
   Plus,
   CheckCircle2,
@@ -85,7 +86,7 @@ export default function HotelHousekeepingMaintenancePage() {
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
 
       const hkQuery =
         hkFilter !== "ALL" ? `?status=${encodeURIComponent(hkFilter)}` : "";
@@ -115,9 +116,7 @@ export default function HotelHousekeepingMaintenancePage() {
         const mtData = await mtRes.json();
         setTickets(mtData.tickets || []);
       }
-    } catch (err: any) {
-      setError(err.message || "Error loading housekeeping and maintenance data");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error loading housekeeping and maintenance data"); } finally {
       setLoading(false);
     }
   }, [hkFilter, newTaskRoomId, maintRoomId]);
@@ -141,7 +140,7 @@ export default function HotelHousekeepingMaintenancePage() {
       if (!res.ok) throw new Error(data.error || "Failed to update task status");
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoadingId(null);
     }
@@ -170,7 +169,7 @@ export default function HotelHousekeepingMaintenancePage() {
       setNewTaskNotes("");
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoadingId(null);
     }
@@ -204,7 +203,7 @@ export default function HotelHousekeepingMaintenancePage() {
       setMaintDescription("");
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoadingId(null);
     }
@@ -225,7 +224,7 @@ export default function HotelHousekeepingMaintenancePage() {
       if (!res.ok) throw new Error(data.error || "Failed to resolve maintenance ticket");
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoadingId(null);
     }
@@ -250,7 +249,6 @@ export default function HotelHousekeepingMaintenancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-sandstone pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#6B2837]" />
             <h1 className="text-xl font-bold text-espresso tracking-tight">
               Housekeeping & Maintenance
             </h1>
@@ -292,17 +290,16 @@ export default function HotelHousekeepingMaintenancePage() {
 
       {/* Main View Tabs */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="inline-flex rounded-xl border border-sandstone bg-porcelain p-1">
+        <div className="inline-flex rounded-md border border-sandstone bg-porcelain p-1">
           <button
             type="button"
             onClick={() => setActiveTab("HOUSEKEEPING")}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-4 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === "HOUSEKEEPING"
-                ? "bg-[#6B2837] text-[#FFFCF7] shadow-xs"
+                ? "bg-[#6B2837] text-[#FFFCF7]"
                 : "text-espresso hover:bg-stone"
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
             <span>Housekeeping Tasks ({tasks.length})</span>
           </button>
           <button
@@ -340,19 +337,19 @@ export default function HotelHousekeepingMaintenancePage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
           Loading tasks and maintenance blocks...
         </div>
       ) : activeTab === "HOUSEKEEPING" ? (
         /* Housekeeping Tasks Queue */
         tasks.length === 0 ? (
-          <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center space-y-2">
+          <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center space-y-2">
             <div className="text-sm font-bold text-espresso">No Housekeeping Tasks</div>
             <p className="text-xs text-warmgray">
               All rooms are clean and inspected, or no tasks match the current filter.
@@ -363,7 +360,7 @@ export default function HotelHousekeepingMaintenancePage() {
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="rounded-xl border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3"
+                className="rounded-md border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -439,7 +436,7 @@ export default function HotelHousekeepingMaintenancePage() {
         )
       ) : /* Maintenance Blocks List */
       tickets.length === 0 ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center space-y-2">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center space-y-2">
           <div className="text-sm font-bold text-espresso">No Maintenance Tickets</div>
           <p className="text-xs text-warmgray">
             No rooms are currently blocked for maintenance or repairs.
@@ -452,7 +449,7 @@ export default function HotelHousekeepingMaintenancePage() {
             return (
               <div
                 key={ticket.id}
-                className="rounded-xl border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3"
+                className="rounded-md border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -519,7 +516,7 @@ export default function HotelHousekeepingMaintenancePage() {
       {/* + Dispatch Cleaning Task Modal */}
       {showNewTaskModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">Dispatch Housekeeping Task</h3>
               <button
@@ -616,7 +613,7 @@ export default function HotelHousekeepingMaintenancePage() {
       {/* + Block Room for Maintenance Modal */}
       {showNewMaintModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <div className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-[#B33432]" />

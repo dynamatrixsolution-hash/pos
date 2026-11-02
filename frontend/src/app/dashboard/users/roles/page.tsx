@@ -60,7 +60,7 @@ export default function RolesPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
@@ -81,7 +81,7 @@ export default function RolesPage() {
             <button
               key={role}
               onClick={() => setSelectedRole(role)}
-              className={`text-left bg-card border rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 outline-none ${
+              className={`text-left bg-card border rounded-lg p-5 flex flex-col justify-between transition-all duration-200 outline-none ${
                 isSelected
                   ? "border-primary ring-1 ring-primary shadow-sm"
                   : "border-border hover:border-border/80"
@@ -111,7 +111,7 @@ export default function RolesPage() {
       </div>
 
       {/* 3. Detailed Actions view for Selected Role */}
-      <div className="bg-card border border-border rounded-2xl p-6">
+      <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-sm font-bold flex items-center gap-2 mb-4">
           <Shield className="h-4.5 w-4.5 text-primary" />
           Access Definition for: <span className="text-primary font-black uppercase">{selectedRole}</span>
@@ -142,7 +142,7 @@ export default function RolesPage() {
               {getPermissionsForRole(selectedRole).map((p) => (
                 <div
                   key={p.resource}
-                  className="flex items-center justify-between p-2.5 bg-secondary/50 rounded-xl border border-border/40 text-xs"
+                  className="flex items-center justify-between p-2.5 bg-secondary/50 rounded-md border border-border/40 text-xs"
                 >
                   <span className="font-bold text-foreground uppercase tracking-wider text-[10px]">
                     {p.resource}
@@ -165,7 +165,7 @@ export default function RolesPage() {
       </div>
 
       {/* 4. Complete Permissions Matrix Grid */}
-      <div className="bg-card border border-border rounded-2xl p-6">
+      <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-sm font-bold flex items-center gap-2 mb-4">
           <Store className="h-4.5 w-4.5 text-primary" />
           Full System RBAC Control Matrix
@@ -255,7 +255,7 @@ export default function RolesPage() {
       </div>
 
       {/* 5. Helpful tip */}
-      <div className="bg-secondary/40 border border-border p-4 rounded-xl flex items-center gap-3 text-xs text-muted-foreground print:hidden">
+      <div className="bg-secondary/40 border border-border p-4 rounded-md flex items-center gap-3 text-xs text-muted-foreground print:hidden">
         <HelpCircle className="h-5 w-5 text-primary flex-shrink-0" />
         <p>
           Role definitions and access policies are enforced cryptographically via the core RBAC middleware. If you need custom access structures, please contact system administration.

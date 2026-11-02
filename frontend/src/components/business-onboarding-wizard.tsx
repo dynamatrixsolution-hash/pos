@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Notify } from "@/lib/notify";
 import {
   Building,
   CheckCircle,
@@ -13,8 +14,7 @@ import {
   Store,
   Users,
   CreditCard,
-  Sparkles,
-  Globe,
+Globe,
   Coins,
   Lock,
   Mail,
@@ -191,7 +191,7 @@ export default function BusinessOnboardingWizard({
   };
 
   const validateStep = (step: number): boolean => {
-    setErrorMessage(null);
+    
     if (step === 1) {
       if (!formData.businessName.trim() || formData.businessName.length < 2) {
         setErrorMessage("Please enter a valid business name (at least 2 characters).");
@@ -202,20 +202,20 @@ export default function BusinessOnboardingWizard({
         return false;
       }
       if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
-        setErrorMessage("Please enter a valid business contact email.");
+        Notify.warning("Please enter a valid business contact email.");
         return false;
       }
     } else if (step === 3) {
       if (!formData.ownerName.trim() || formData.ownerName.length < 2) {
-        setErrorMessage("Please enter the administrator's full name.");
+        Notify.warning("Please enter the administrator's full name.");
         return false;
       }
       if (!formData.ownerEmail.trim() || !/\S+@\S+\.\S+/.test(formData.ownerEmail)) {
-        setErrorMessage("Please enter a valid administrator email address.");
+        Notify.warning("Please enter a valid administrator email address.");
         return false;
       }
       if (!formData.password || formData.password.length < 6) {
-        setErrorMessage("Password must be at least 6 characters long.");
+        Notify.warning("Password must be at least 6 characters long.");
         return false;
       }
     }
@@ -229,7 +229,7 @@ export default function BusinessOnboardingWizard({
   };
 
   const handlePrevStep = () => {
-    setErrorMessage(null);
+    
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
@@ -238,7 +238,7 @@ export default function BusinessOnboardingWizard({
     if (!validateStep(3)) return;
 
     setIsLoading(true);
-    setErrorMessage(null);
+    
 
     try {
       if (mode === "PUBLIC_USER") {
@@ -254,6 +254,8 @@ export default function BusinessOnboardingWizard({
           throw new Error(json.error ? `${json.error}${detailMsg ? `: ${detailMsg}` : ""}` : "Failed to submit registration request.");
         }
 
+        Notify.success("Workspace registration request submitted successfully!");
+        Notify.success("Workspace registration request submitted successfully!");
         router.push(`/auth/register/status?id=${json.request.id}&code=${json.request.trackingCode}`);
       } else {
         const res = await fetch("/api/v1/super-admin/businesses", {
@@ -274,7 +276,7 @@ export default function BusinessOnboardingWizard({
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred during submission.");
+      Notify.warning(err.message || "An error occurred during submission.");
     } finally {
       setIsLoading(false);
     }
@@ -292,18 +294,18 @@ export default function BusinessOnboardingWizard({
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* HEADER BAR */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+      <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-600">
+              <div className="h-9 w-9 rounded-md bg-[#6B2837]/10 flex items-center justify-center text-[#6B2837]">
                 <ShoppingBag className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-xl font-black text-[#292320] tracking-tight">
                   {mode === "SUPER_ADMIN" ? "Provision New SaaS Tenant" : "Create your RestroInn Workspace"}
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-[#71675E] font-medium">
                   {mode === "SUPER_ADMIN"
                     ? "Direct multi-step provisioning wizard with plan customization & module overrides."
                     : "Complete the multi-step onboarding to submit your business workspace for approval."}
@@ -313,9 +315,9 @@ export default function BusinessOnboardingWizard({
           </div>
 
           {mode === "PUBLIC_USER" && (
-            <div className="text-xs text-slate-500 font-medium">
+            <div className="text-xs text-[#71675E] font-medium">
               Already registered?{" "}
-              <Link href="/auth/login" className="text-blue-600 font-bold hover:underline">
+              <Link href="/auth/login" className="text-[#6B2837] font-bold hover:underline">
                 Sign In
               </Link>
             </div>
@@ -323,7 +325,7 @@ export default function BusinessOnboardingWizard({
         </div>
 
         {/* STEP PROGRESS INDICATOR BAR */}
-        <div className="mt-8 pt-6 border-t border-slate-100">
+        <div className="mt-8 pt-6 border-t border-[#D8CEC1]">
           <div className="grid grid-cols-4 gap-2 md:gap-4 relative">
             {[
               { num: 1, title: "Business Info", desc: "Identity & Type" },
@@ -340,21 +342,21 @@ export default function BusinessOnboardingWizard({
                   onClick={() => {
                     if (step.num < currentStep) setCurrentStep(step.num);
                   }}
-                  className={`flex flex-col md:flex-row items-center md:items-start gap-2 p-2.5 rounded-2xl transition-all cursor-pointer ${
+                  className={`flex flex-col md:flex-row items-center md:items-start gap-2 p-2.5 rounded-md transition-all cursor-pointer ${
                     isActive
-                      ? "bg-blue-50/70 border border-blue-200"
+                      ? "bg-[#FAF4ED] border border-[#6B2837]/30"
                       : isCompleted
-                      ? "bg-slate-50 hover:bg-slate-100/70"
+                      ? "bg-[#FAF6F0] hover:bg-[#EEE7DD]/70"
                       : "opacity-60 pointer-events-none"
                   }`}
                 >
                   <div
-                    className={`h-7 w-7 rounded-xl flex items-center justify-center text-xs font-bold transition-all flex-shrink-0 ${
+                    className={`h-7 w-7 rounded-md flex items-center justify-center text-xs font-bold transition-all flex-shrink-0 ${
                       isCompleted
                         ? "bg-emerald-500 text-white"
                         : isActive
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
-                        : "bg-slate-200 text-slate-500"
+                        ? "bg-[#6B2837] text-white shadow-xs shadow-blue-500/25"
+                        : "bg-[#EEE7DD] text-[#71675E]"
                     }`}
                   >
                     {isCompleted ? <Check className="h-4 w-4" /> : step.num}
@@ -363,12 +365,12 @@ export default function BusinessOnboardingWizard({
                   <div className="text-center md:text-left hidden sm:block">
                     <p
                       className={`text-xs font-bold leading-tight ${
-                        isActive ? "text-blue-700" : isCompleted ? "text-slate-800" : "text-slate-500"
+                        isActive ? "text-[#6B2837]" : isCompleted ? "text-[#292320]" : "text-[#71675E]"
                       }`}
                     >
                       {step.title}
                     </p>
-                    <p className="text-[10px] text-slate-400 font-medium">{step.desc}</p>
+                    <p className="text-[10px] text-[#71675E] font-medium">{step.desc}</p>
                   </div>
                 </div>
               );
@@ -377,33 +379,25 @@ export default function BusinessOnboardingWizard({
         </div>
       </div>
 
-      {/* ERROR ALERT */}
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl text-xs font-semibold flex items-center gap-3 animate-shake">
-          <AlertCircle className="h-4.5 w-4.5 flex-shrink-0 text-red-500" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
       {/* MAIN CONTENT 2-COLUMN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* LEFT / CENTER FORM COLUMN (2 COLS) */}
-        <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 sm:p-8 shadow-sm">
           {/* STEP 1: BUSINESS INFORMATION */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Building className="h-5 w-5 text-blue-600" /> Step 1: Business Identity & Details
+              <div className="border-b border-[#D8CEC1] pb-4">
+                <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
+                  <Building className="h-5 w-5 text-[#6B2837]" /> Step 1: Business Identity & Details
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[#71675E] mt-1">
                   Specify your company name, industry type, base workspace URL, and contact details.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Business / Store Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -411,12 +405,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.businessName}
                     onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                     placeholder="e.g. Apex Hypermarket Ltd."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-medium focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Workspace Subdomain Slug <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -425,22 +419,22 @@ export default function BusinessOnboardingWizard({
                       value={formData.slug}
                       onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
                       placeholder="apex-hypermarket"
-                      className="w-full pl-3 pr-16 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                      className="w-full pl-3 pr-16 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-mono font-medium focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                     />
-                    <span className="absolute right-3 top-3 text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <span className="absolute right-3 top-3 text-[9px] font-bold text-[#71675E] bg-[#EEE7DD] px-1.5 py-0.5 rounded">
                       .restroinn.com
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Base Currency <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-3.5 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-bold focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   >
                     <option value="NPR">NPR (Rs.) - Nepalese Rupee</option>
                     <option value="INR">INR (₹) - Indian Rupee</option>
@@ -453,7 +447,7 @@ export default function BusinessOnboardingWizard({
 
                 {/* BUSINESS TYPE SELECTION CARDS */}
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider block">
                     Business Industry Type
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -467,21 +461,21 @@ export default function BusinessOnboardingWizard({
                         key={item.id}
                         type="button"
                         onClick={() => setFormData({ ...formData, businessType: item.id })}
-                        className={`flex flex-col text-left p-3.5 border rounded-2xl transition-all cursor-pointer ${
+                        className={`flex flex-col text-left p-3.5 border rounded-md transition-all cursor-pointer ${
                           formData.businessType === item.id
-                            ? "border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20"
-                            : "border-slate-200 bg-slate-50/50 hover:bg-slate-100/70"
+                            ? "border-[#6B2837] bg-[#FAF4ED] ring-2 ring-[#6B2837]/20"
+                            : "border-[#D8CEC1] bg-[#FAF6F0] hover:bg-[#EEE7DD]/70"
                         }`}
                       >
-                        <span className="text-xs font-bold text-slate-900">{item.label}</span>
-                        <span className="text-[10px] text-slate-500 mt-1 font-medium">{item.desc}</span>
+                        <span className="text-xs font-bold text-[#292320]">{item.label}</span>
+                        <span className="text-[10px] text-[#71675E] mt-1 font-medium">{item.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Tax Registration No. (PAN/VAT/GST)
                   </label>
                   <input
@@ -489,12 +483,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.taxNumber}
                     onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
                     placeholder="e.g. VAT-984719283"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Contact Phone
                   </label>
                   <input
@@ -502,12 +496,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="+977 9800000000"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Business Email <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -515,12 +509,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.email}
                     onChange={(e) => handleEmailChange(e.target.value)}
                     placeholder="contact@apexstore.com"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Official Business Address
                   </label>
                   <input
@@ -528,7 +522,7 @@ export default function BusinessOnboardingWizard({
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="New Road, Kathmandu, Nepal"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
               </div>
@@ -538,18 +532,18 @@ export default function BusinessOnboardingWizard({
           {/* STEP 2: PLAN & MODULES SELECTION */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-blue-600" /> Step 2: Plan Selection & Module Configuration
+              <div className="border-b border-[#D8CEC1] pb-4">
+                <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-[#6B2837]" /> Step 2: Plan Selection & Module Configuration
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[#71675E] mt-1">
                   Select your subscription plan tier with pre-configured specs or customize resource limits & module toggles.
                 </p>
               </div>
 
               {/* PLAN SELECTION CARDS */}
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider block">
                   Select Subscription Plan Tier
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -591,24 +585,24 @@ export default function BusinessOnboardingWizard({
                       key={p.id}
                       type="button"
                       onClick={() => handlePlanSelect(p.id)}
-                      className={`relative flex flex-col justify-between p-4 border rounded-2xl text-left transition-all cursor-pointer ${
+                      className={`relative flex flex-col justify-between p-4 border rounded-md text-left transition-all cursor-pointer ${
                         formData.plan === p.id
-                          ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20 shadow-sm"
-                          : "border-slate-200 bg-slate-50/40 hover:bg-slate-100/60"
+                          ? "border-[#6B2837] bg-[#FAF4ED]/60 ring-2 ring-[#6B2837]/20 shadow-sm"
+                          : "border-[#D8CEC1] bg-[#FAF6F0]/40 hover:bg-[#EEE7DD]/60"
                       }`}
                     >
                       <div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="text-[9px] font-bold text-[#6B2837] bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
                             {p.badge}
                           </span>
-                          <span className="text-[10px] font-bold text-slate-400">{p.setup}</span>
+                          <span className="text-[10px] font-bold text-[#71675E]">{p.setup}</span>
                         </div>
-                        <h4 className="font-bold text-slate-900 text-sm mt-2">{p.title}</h4>
-                        <p className="text-xs font-black text-blue-700 mt-0.5">{p.price}</p>
+                        <h4 className="font-bold text-[#292320] text-sm mt-2">{p.title}</h4>
+                        <p className="text-xs font-black text-[#6B2837] mt-0.5">{p.price}</p>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-slate-200/60 text-[10px] text-slate-600 space-y-1">
+                      <div className="mt-3 pt-3 border-t border-[#D8CEC1]/60 text-[10px] text-[#71675E] space-y-1">
                         {p.specs.map((spec, i) => (
                           <p key={i} className="flex items-center gap-1.5">
                             <Check className="h-3 w-3 text-emerald-500 flex-shrink-0" /> {spec}
@@ -621,28 +615,28 @@ export default function BusinessOnboardingWizard({
               </div>
 
               {/* CUSTOM LIMITS TOGGLE & FINE-TUNING PANEL */}
-              <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-4">
+              <div className="bg-[#FAF6F0]/70 border border-[#D8CEC1] rounded-md p-4 space-y-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <Sliders className="h-4 w-4 text-blue-600" />
+                    <Sliders className="h-4 w-4 text-[#6B2837]" />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">Customize Resource Limits & Parameters</h4>
-                      <p className="text-[10px] text-slate-500">Fine-tune limits or feature access for this workspace</p>
+                      <h4 className="text-xs font-bold text-[#292320]">Customize Resource Limits & Parameters</h4>
+                      <p className="text-[10px] text-[#71675E]">Fine-tune limits or feature access for this workspace</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowCustomLimits(!showCustomLimits)}
-                    className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                    className="text-xs font-bold text-[#6B2837] hover:underline cursor-pointer"
                   >
                     {showCustomLimits ? "Hide Customization" : "Customize Limits"}
                   </button>
                 </div>
 
                 {showCustomLimits && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-200 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#D8CEC1] text-xs">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">User Limit</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">User Limit</label>
                       <input
                         type="number"
                         value={formData.customLimits.users || 1}
@@ -650,12 +644,12 @@ export default function BusinessOnboardingWizard({
                           ...formData,
                           customLimits: { ...formData.customLimits, users: parseInt(e.target.value) || 1 }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Branch Limit</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">Branch Limit</label>
                       <input
                         type="number"
                         value={formData.customLimits.branches || 1}
@@ -663,12 +657,12 @@ export default function BusinessOnboardingWizard({
                           ...formData,
                           customLimits: { ...formData.customLimits, branches: parseInt(e.target.value) || 1 }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Product Limit (0 = Unlimited)</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">Product Limit (0 = Unlimited)</label>
                       <input
                         type="number"
                         value={formData.customLimits.products}
@@ -676,12 +670,12 @@ export default function BusinessOnboardingWizard({
                           ...formData,
                           customLimits: { ...formData.customLimits, products: parseInt(e.target.value) || 0 }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Max Categories (0 = Unlimited)</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">Max Categories (0 = Unlimited)</label>
                       <input
                         type="number"
                         value={formData.customLimits.categories}
@@ -689,19 +683,19 @@ export default function BusinessOnboardingWizard({
                           ...formData,
                           customLimits: { ...formData.customLimits, categories: parseInt(e.target.value) || 0 }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Receipt Printing</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">Receipt Printing</label>
                       <select
                         value={formData.customLimits.printing ? "true" : "false"}
                         onChange={(e) => setFormData({
                           ...formData,
                           customLimits: { ...formData.customLimits, printing: e.target.value === "true" }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       >
                         <option value="true">Enabled (Yes)</option>
                         <option value="false">Disabled (No)</option>
@@ -709,14 +703,14 @@ export default function BusinessOnboardingWizard({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block">Reports Access</label>
+                      <label className="text-[10px] font-bold text-[#71675E] uppercase block">Reports Access</label>
                       <select
                         value={formData.customLimits.reportsType || "FULL"}
                         onChange={(e) => setFormData({
                           ...formData,
                           customLimits: { ...formData.customLimits, reportsType: e.target.value }
                         })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-bold focus:outline-none"
                       >
                         <option value="FULL">Full Analytics & Reports</option>
                         <option value="DAILY_ONLY">Daily Reports Only</option>
@@ -729,7 +723,7 @@ export default function BusinessOnboardingWizard({
               {/* MODULE TOGGLES GRID */}
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Enable System Modules ({activeModulesCount} Selected)
                   </label>
                 </div>
@@ -751,21 +745,21 @@ export default function BusinessOnboardingWizard({
                       <div
                         key={m.key}
                         onClick={() => handleModuleToggle(m.key)}
-                        className={`flex items-start gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
+                        className={`flex items-start gap-3 p-3 rounded-md border transition-all cursor-pointer ${
                           isChecked
-                            ? "bg-blue-50/40 border-blue-200"
-                            : "bg-slate-50/50 border-slate-200 hover:bg-slate-100/50"
+                            ? "bg-[#FAF4ED]/40 border-[#6B2837]/30"
+                            : "bg-[#FAF6F0] border-[#D8CEC1] hover:bg-[#EEE7DD]/50"
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => {}}
-                          className="mt-0.5 h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          className="mt-0.5 h-4 w-4 text-[#6B2837] rounded border-[#D8CEC1] focus:ring-blue-500"
                         />
                         <div>
-                          <p className="text-xs font-bold text-slate-800">{m.label}</p>
-                          <p className="text-[10px] text-slate-500 leading-tight mt-0.5">{m.desc}</p>
+                          <p className="text-xs font-bold text-[#292320]">{m.label}</p>
+                          <p className="text-[10px] text-[#71675E] leading-tight mt-0.5">{m.desc}</p>
                         </div>
                       </div>
                     );
@@ -778,18 +772,18 @@ export default function BusinessOnboardingWizard({
           {/* STEP 3: OWNER ADMINISTRATOR ACCOUNT */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-blue-600" /> Step 3: Owner Administrator Account
+              <div className="border-b border-[#D8CEC1] pb-4">
+                <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-[#6B2837]" /> Step 3: Owner Administrator Account
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[#71675E] mt-1">
                   Setup the master admin credentials to manage your business workspace.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -797,12 +791,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.ownerName}
                     onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
                     placeholder="Alex Owner"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-medium focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Administrator Email (Sign In Username) <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -810,12 +804,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.ownerEmail}
                     onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
                     placeholder="owner@company.com"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-medium focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Administrator Direct Phone
                   </label>
                   <input
@@ -823,12 +817,12 @@ export default function BusinessOnboardingWizard({
                     value={formData.ownerPhone}
                     onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })}
                     placeholder="+977 9800000000"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                    className="w-full px-4 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                   />
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -837,17 +831,17 @@ export default function BusinessOnboardingWizard({
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       placeholder="••••••••••••"
-                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+                      className="w-full pl-4 pr-10 py-2.5 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md text-xs font-medium focus:outline-none focus:bg-[#FFFCF7] focus:ring-2 focus:ring-[#6B2837]/20 focus:border-[#6B2837] transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                      className="absolute right-3 top-2.5 text-[#71675E] hover:text-[#71675E]"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-[#71675E] mt-1">
                     Must be at least 6 characters. This will be used to log into your workspace dashboard.
                   </p>
                 </div>
@@ -858,11 +852,11 @@ export default function BusinessOnboardingWizard({
           {/* STEP 4: REVIEW & FINALIZE */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-blue-600" /> Step 4: Review Registration Details
+              <div className="border-b border-[#D8CEC1] pb-4">
+                <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-[#6B2837]" /> Step 4: Review Registration Details
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[#71675E] mt-1">
                   {mode === "SUPER_ADMIN"
                     ? "Review configured workspace parameters before immediate tenant activation."
                     : "Review your submitted information before submitting for Super Admin approval."}
@@ -870,43 +864,43 @@ export default function BusinessOnboardingWizard({
               </div>
 
               {/* SUMMARY GRID */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200/60">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#FAF6F0]/80 p-5 rounded-md border border-[#D8CEC1]/60">
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Business Identity</span>
-                  <p className="text-sm font-bold text-slate-900 mt-0.5">{formData.businessName}</p>
-                  <p className="text-xs text-blue-600 font-mono mt-0.5">{formData.slug}.restroinn.com</p>
-                  <p className="text-[10px] text-slate-500 mt-1">Type: {formData.businessType} | Currency: {formData.currency}</p>
+                  <span className="text-[9px] font-bold text-[#71675E] uppercase tracking-wider block">Business Identity</span>
+                  <p className="text-sm font-bold text-[#292320] mt-0.5">{formData.businessName}</p>
+                  <p className="text-xs text-[#6B2837] font-mono mt-0.5">{formData.slug}.restroinn.com</p>
+                  <p className="text-[10px] text-[#71675E] mt-1">Type: {formData.businessType} | Currency: {formData.currency}</p>
                 </div>
 
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Subscription & Limits</span>
+                  <span className="text-[9px] font-bold text-[#71675E] uppercase tracking-wider block">Subscription & Limits</span>
                   <p className="text-sm font-bold text-emerald-600 mt-0.5">{formData.plan} Plan</p>
-                  <p className="text-xs text-slate-600 mt-0.5">
+                  <p className="text-xs text-[#71675E] mt-0.5">
                     {formData.customLimits.users} Users | {formData.customLimits.branches} Branch | {formData.customLimits.products === 0 ? "Unlimited" : formData.customLimits.products} Products
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-[#71675E] mt-1">
                     Printing: {formData.customLimits.printing ? "Yes" : "No"} | Reports: {formData.customLimits.reportsType === "DAILY_ONLY" ? "Daily Only" : "Full"}
                   </p>
                 </div>
 
-                <div className="sm:col-span-2 pt-3 border-t border-slate-200/60">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Administrator Account</span>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">{formData.ownerName} ({formData.ownerEmail})</p>
-                  {formData.ownerPhone && <p className="text-[10px] text-slate-500">Phone: {formData.ownerPhone}</p>}
+                <div className="sm:col-span-2 pt-3 border-t border-[#D8CEC1]/60">
+                  <span className="text-[9px] font-bold text-[#71675E] uppercase tracking-wider block">Administrator Account</span>
+                  <p className="text-xs font-bold text-[#292320] mt-0.5">{formData.ownerName} ({formData.ownerEmail})</p>
+                  {formData.ownerPhone && <p className="text-[10px] text-[#71675E]">Phone: {formData.ownerPhone}</p>}
                 </div>
               </div>
 
               {mode === "PUBLIC_USER" ? (
-                <div className="p-4 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-800 space-y-1">
+                <div className="p-4 bg-[#FAF4ED] border border-blue-100 rounded-md text-xs text-blue-800 space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-blue-600" /> Multi-Tenant Approval Policy
+                    Multi-Tenant Approval Policy
                   </p>
-                  <p className="text-[11px] text-blue-700 leading-relaxed">
+                  <p className="text-[11px] text-[#6B2837] leading-relaxed">
                     Upon submission, your request will be reviewed by our platform administration team. You will be provided a real-time status tracker link to follow approval progress.
                   </p>
                 </div>
               ) : (
-                <div className="p-4 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-xs text-emerald-800 space-y-1">
+                <div className="p-4 bg-emerald-50/70 border border-emerald-100 rounded-md text-xs text-emerald-800 space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
                     <ShieldCheck className="h-4 w-4 text-emerald-600" /> Super Admin Instant Provisioning
                   </p>
@@ -919,13 +913,13 @@ export default function BusinessOnboardingWizard({
           )}
 
           {/* STEP CONTROLS (NAV BUTTONS) */}
-          <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
+          <div className="mt-8 pt-6 border-t border-[#D8CEC1] flex justify-between items-center">
             {currentStep > 1 ? (
               <button
                 type="button"
                 onClick={handlePrevStep}
                 disabled={isLoading}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+                className="px-4 py-2.5 bg-[#EEE7DD] hover:bg-[#EEE7DD] text-[#292320] rounded-md text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
               >
                 <ArrowLeft className="h-4 w-4" /> Previous
               </button>
@@ -937,7 +931,7 @@ export default function BusinessOnboardingWizard({
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                className="px-6 py-2.5 bg-[#6B2837] hover:bg-blue-500 text-white rounded-md text-xs font-bold flex items-center gap-2 shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
               >
                 Continue <ArrowRight className="h-4 w-4" />
               </button>
@@ -946,7 +940,7 @@ export default function BusinessOnboardingWizard({
                 type="button"
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-xs font-black flex items-center gap-2 shadow-sm shadow-emerald-500/25 transition-all uppercase tracking-wider disabled:opacity-50 cursor-pointer"
               >
                 {isLoading
                   ? "Processing..."
@@ -961,54 +955,54 @@ export default function BusinessOnboardingWizard({
         {/* RIGHT SIDEBAR (SUMMARY CARD & INFO PANEL) */}
         <div className="space-y-4">
           {/* LIVE SUMMARY CARD */}
-          <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-blue-600/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="bg-[#FFFCF7] text-[#292320] border border-[#D8CEC1] rounded-lg p-5 shadow-xs relative">
+            <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-[#6B2837]/20 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+            <div className="flex justify-between items-center border-b border-[#D8CEC1] pb-4 mb-4">
               <div className="flex items-center gap-2">
-                <Store className="h-4.5 w-4.5 text-blue-400" />
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Live Preview</span>
+                <Store className="h-4.5 w-4.5 text-[#6B2837]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#71675E]">Live Preview</span>
               </div>
-              <span className="text-[9px] font-bold bg-blue-600/30 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
+              <span className="text-[9px] font-bold bg-[#6B2837]/30 text-[#6B2837] border border-blue-500/30 px-2 py-0.5 rounded-full">
                 Step {currentStep} of 4
               </span>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Business Workspace</span>
-                <h4 className="font-bold text-white text-base mt-0.5 truncate">
+                <span className="text-[9px] text-[#71675E] font-bold uppercase tracking-wider block">Business Workspace</span>
+                <h4 className="font-bold text-[#292320] text-base font-bold mt-0.5 truncate">
                   {formData.businessName || "Your Store Name"}
                 </h4>
-                <p className="text-[11px] text-blue-400 font-mono mt-0.5 truncate">
+                <p className="text-[11px] text-[#6B2837] font-mono mt-0.5 truncate">
                   {formData.slug || "workspace-slug"}.restroinn.com
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-                <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Selected Plan</span>
-                  <span className="text-xs font-bold text-emerald-400 mt-0.5 block">{formData.plan}</span>
-                  <span className="text-[9px] text-slate-400">{planPrices[formData.plan]?.monthly}</span>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#D8CEC1]">
+                <div className="bg-[#FAF6F0] p-2.5 rounded-md border border-[#D8CEC1]">
+                  <span className="text-[9px] text-[#71675E] font-bold uppercase block">Selected Plan</span>
+                  <span className="text-xs font-bold text-[#28634B] mt-0.5 block">{formData.plan}</span>
+                  <span className="text-[9px] text-[#71675E]">{planPrices[formData.plan]?.monthly}</span>
                 </div>
-                <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase block">Initial Setup</span>
+                <div className="bg-[#FAF6F0] p-2.5 rounded-md border border-[#D8CEC1]">
+                  <span className="text-[9px] text-[#71675E] font-bold uppercase block">Initial Setup</span>
                   <span className="text-[10px] font-bold text-white mt-0.5 block">{planPrices[formData.plan]?.setup}</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-800 text-[10px] space-y-1">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Configured Specs</span>
-                <p className="text-slate-300">• Users: <strong className="text-white">{formData.customLimits.users}</strong></p>
-                <p className="text-slate-300">• Branches: <strong className="text-white">{formData.customLimits.branches}</strong></p>
-                <p className="text-slate-300">• Products: <strong className="text-white">{formData.customLimits.products === 0 ? "Unlimited" : formData.customLimits.products}</strong></p>
-                <p className="text-slate-300">• Categories: <strong className="text-white">{formData.customLimits.categories === 0 ? "Unlimited" : formData.customLimits.categories}</strong></p>
-                <p className="text-slate-300">• Printing: <strong className="text-white">{formData.customLimits.printing ? "Enabled" : "Disabled"}</strong></p>
-                <p className="text-slate-300">• Reports: <strong className="text-white">{formData.customLimits.reportsType === "DAILY_ONLY" ? "Daily Reports Only" : "Full Analytics"}</strong></p>
+              <div className="pt-2 border-t border-[#D8CEC1] text-[10px] space-y-1">
+                <span className="text-[9px] text-[#71675E] font-bold uppercase tracking-wider block">Configured Specs</span>
+                <p className="text-[#71675E]">• Users: <strong className="text-white">{formData.customLimits.users}</strong></p>
+                <p className="text-[#71675E]">• Branches: <strong className="text-white">{formData.customLimits.branches}</strong></p>
+                <p className="text-[#71675E]">• Products: <strong className="text-white">{formData.customLimits.products === 0 ? "Unlimited" : formData.customLimits.products}</strong></p>
+                <p className="text-[#71675E]">• Categories: <strong className="text-white">{formData.customLimits.categories === 0 ? "Unlimited" : formData.customLimits.categories}</strong></p>
+                <p className="text-[#71675E]">• Printing: <strong className="text-white">{formData.customLimits.printing ? "Enabled" : "Disabled"}</strong></p>
+                <p className="text-[#71675E]">• Reports: <strong className="text-white">{formData.customLimits.reportsType === "DAILY_ONLY" ? "Daily Reports Only" : "Full Analytics"}</strong></p>
               </div>
 
-              <div className="pt-2 border-t border-slate-800">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-2">
+              <div className="pt-2 border-t border-[#D8CEC1]">
+                <span className="text-[9px] text-[#71675E] font-bold uppercase tracking-wider block mb-2">
                   Active Modules ({activeModulesCount})
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -1016,12 +1010,12 @@ export default function BusinessOnboardingWizard({
                     .filter(([_, active]) => active)
                     .slice(0, 6)
                     .map(([key]) => (
-                      <span key={key} className="text-[9px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-md">
+                      <span key={key} className="text-[9px] font-semibold bg-[#FAF6F0] text-[#71675E] border border-[#D8CEC1] px-2 py-0.5 rounded-md">
                         {key.replace(/([A-Z])/g, " $1").trim()}
                       </span>
                     ))}
                   {activeModulesCount > 6 && (
-                    <span className="text-[9px] font-semibold text-blue-400">+{activeModulesCount - 6} more</span>
+                    <span className="text-[9px] font-semibold text-[#6B2837]">+{activeModulesCount - 6} more</span>
                   )}
                 </div>
               </div>
@@ -1029,11 +1023,11 @@ export default function BusinessOnboardingWizard({
           </div>
 
           {/* SAAS BENEFITS CARD */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-5 space-y-3">
-            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-blue-600" /> Platform Infrastructure Benefits
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 space-y-3">
+            <h4 className="text-xs font-bold text-[#292320] flex items-center gap-1.5">
+              Platform Infrastructure Benefits
             </h4>
-            <div className="space-y-2 text-[11px] text-slate-600">
+            <div className="space-y-2 text-[11px] text-[#71675E]">
               <div className="flex items-start gap-2">
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
                 <span>Isolated tenant database data & audit logging</span>

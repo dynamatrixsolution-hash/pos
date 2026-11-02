@@ -205,26 +205,26 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Sales</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.sales.total.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invoices Billed</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.sales.count} bills</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Discounts Allowed</span>
                 <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.sales.discount.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">VAT Collected</span>
                 <h4 className="text-lg font-black text-[#2563EB] mt-1">{currencySymbol}{reportData.sales.tax.toFixed(2)}</h4>
               </div>
             </div>
 
             {/* Payment Methods Breakdown Chart */}
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-5">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-5">
               <h3 className="text-xs font-bold mb-3">Daily Sales by Payment Channel</h3>
               <div className="h-48 w-full flex items-center justify-center">
                 {reportData.sales.byPaymentMethod.length > 0 ? (
@@ -249,16 +249,16 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Purchase Restocks</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.purchases.total.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Purchase Orders Received</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.purchases.count} orders</h4>
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-6 rounded-2xl text-center text-xs text-muted-foreground">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-6 rounded-lg text-center text-xs text-muted-foreground">
               Review daily purchases against inbound vendor supply deliveries.
             </div>
           </div>
@@ -269,19 +269,19 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Cash Collections</span>
                 <h4 className="text-lg font-black text-[#10b981] mt-1">{currencySymbol}{totalCollections.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Voucher Count</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.sales.count} payments</h4>
               </div>
             </div>
-            <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
+            <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-900">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200 dark:border-slate-850">
+                  <tr className="bg-[#EEE7DD] dark:bg-slate-950 font-bold text-[9px] uppercase text-[#71675E] border-b border-[#D8CEC1] dark:border-slate-850">
                     <th className="py-2 px-3">Payment Method</th>
                     <th className="py-2 px-3 text-right">Collected Amount</th>
                   </tr>
@@ -290,7 +290,7 @@ export default function DailyReportsPage() {
                   {reportData.sales.byPaymentMethod.map((pm: any) => (
                     <tr key={pm.method}>
                       <td className="py-2.5 px-3 font-semibold">{pm.method}</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">
+                      <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">
                         {currencySymbol}{pm.amount.toFixed(2)}
                       </td>
                     </tr>
@@ -305,16 +305,16 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Disbursed Cash Payments</span>
                 <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.expenses.total.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Disbursements Count</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.expenses.count} vouchers</h4>
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-6 rounded-2xl text-center text-xs text-muted-foreground">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-6 rounded-lg text-center text-xs text-muted-foreground">
               Review debited business voucher values disbursed outward.
             </div>
           </div>
@@ -324,20 +324,20 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daily Store Expenses</span>
                 <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.expenses.total.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daily Voucher Count</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{reportData.expenses.count} expenses</h4>
               </div>
             </div>
             
-            <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-900">
+            <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-900">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-950 font-bold text-[9px] uppercase text-slate-500 border-b border-slate-200/60 dark:border-slate-800">
+                  <tr className="bg-[#EEE7DD] dark:bg-slate-950 font-bold text-[9px] uppercase text-[#71675E] border-b border-[#D8CEC1]/60 dark:border-slate-800">
                     <th className="py-2.5 px-3">Expense Category</th>
                     <th className="py-2.5 px-3 text-right">Disbursed Amount</th>
                   </tr>
@@ -367,22 +367,22 @@ export default function DailyReportsPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Sales Revenue</span>
                 <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.sales.total.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cost of Goods Sold (COGS)</span>
-                <h4 className="text-lg font-black text-slate-500 mt-1">{currencySymbol}{reportData.margins.costOfGoodsSold.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-[#71675E] mt-1">{currencySymbol}{reportData.margins.costOfGoodsSold.toFixed(2)}</h4>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net Profit Margin</span>
                 <h4 className={`text-lg font-black mt-1 ${reportData.margins.netProfit >= 0 ? "text-[#10b981]" : "text-red-500"}`}>
                   {currencySymbol}{reportData.margins.netProfit.toFixed(2)} ({profitMargin.toFixed(1)}%)
                 </h4>
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-6 rounded-2xl text-center text-xs text-muted-foreground">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-6 rounded-lg text-center text-xs text-muted-foreground">
               Net Profit is estimated as: Gross Revenue - Cost of Goods Sold (COGS) + Incomes - Expenses.
             </div>
           </div>
@@ -396,9 +396,9 @@ export default function DailyReportsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header controls */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm print:hidden">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm print:hidden">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black text-[#292320] dark:text-white flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-[#2563EB]" /> Daily Reports Portal
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -408,7 +408,7 @@ export default function DailyReportsPage() {
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           {/* Preset parameters */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
             <Calendar className="h-4 w-4 text-[#2563EB]" />
             <input
               type="date"
@@ -418,7 +418,7 @@ export default function DailyReportsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
             <Store className="h-4 w-4 text-[#2563EB]" />
             <select
               value={selectedBranch}
@@ -438,7 +438,7 @@ export default function DailyReportsPage() {
             <button
               onClick={exportExcel}
               disabled={isLoading || !reportData}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Excel</span>
@@ -446,7 +446,7 @@ export default function DailyReportsPage() {
             <button
               onClick={exportPDF}
               disabled={isLoading || !reportData}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>PDF</span>
@@ -462,15 +462,15 @@ export default function DailyReportsPage() {
       </div>
 
       {/* 2. Tabs Selector */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0 print:hidden">
+      <div className="flex items-center gap-2 border-b border-[#D8CEC1] dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0 print:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+            className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
               activeTab === tab.id
-                ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-                : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+                ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+                : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
             }`}
           >
             {tab.label}
@@ -479,7 +479,7 @@ export default function DailyReportsPage() {
       </div>
 
       {/* 3. Main Data Container */}
-      <div className="bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         {isLoading ? (
           <div className="h-64 flex flex-col items-center justify-center space-y-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#2563EB] border-t-transparent" />

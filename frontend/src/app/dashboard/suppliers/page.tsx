@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
@@ -91,7 +93,7 @@ export default function SuppliersPage() {
   }, [loadSuppliers]);
 
   const onSubmit = async (data: SupplierInputs) => {
-    setSubmitError(null);
+    setSubmitError('');
     try {
       const res = await fetch("/api/v1/suppliers", {
         method: "POST",
@@ -101,7 +103,7 @@ export default function SuppliersPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        setSubmitError(json.error || "Failed to create supplier profile");
+        Notify.failure(json.error || "Failed to create supplier profile"); setSubmitError(json.error || "Failed to create supplier profile");
         return;
       }
 
@@ -109,7 +111,7 @@ export default function SuppliersPage() {
       reset();
       loadSuppliers();
     } catch (err) {
-      setSubmitError("Connection failure.");
+      Notify.failure("Connection failure."); setSubmitError("Connection failure.");
     }
   };
 
@@ -132,7 +134,7 @@ export default function SuppliersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-2xl">
+      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">Supplier Ledger Directory</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -142,9 +144,9 @@ export default function SuppliersPage() {
         <button
           onClick={() => {
             setModalOpen(true);
-            setSubmitError(null);
+            setSubmitError('');
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider"
         >
           <Plus className="h-4.5 w-4.5" />
           Add Supplier
@@ -153,7 +155,7 @@ export default function SuppliersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Supplier Table List */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-5 space-y-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-muted-foreground" />
             <input
@@ -218,7 +220,7 @@ export default function SuppliersPage() {
         </div>
 
         {/* Right Side: Ledger Statement readout */}
-        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col justify-between min-h-[400px]">
+        <div className="bg-card border border-border rounded-lg p-5 flex flex-col justify-between min-h-[400px]">
           <div>
             <h2 className="text-sm font-bold border-b border-border pb-3 flex items-center gap-2">
               <Receipt className="h-4.5 w-4.5 text-primary" />
@@ -234,7 +236,7 @@ export default function SuppliersPage() {
               <div className="py-12 text-center text-xs text-muted-foreground">Compiling ledger balances...</div>
             ) : (
               <div className="space-y-4 mt-4">
-                <div className="bg-secondary/40 border border-border rounded-xl p-3 text-xs space-y-1">
+                <div className="bg-secondary/40 border border-border rounded-md p-3 text-xs space-y-1">
                   <div className="font-extrabold text-foreground">{selectedSupplier.name}</div>
                   <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
                     <span>Contact: {selectedSupplier.contactName || "None"}</span>
@@ -270,7 +272,7 @@ export default function SuppliersPage() {
       {/* Add Supplier Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-md space-y-4">
             <div>
               <h3 className="text-sm font-bold">Register Supplier Profile</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -388,7 +390,7 @@ export default function SuppliersPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>

@@ -34,8 +34,6 @@ export function SplitBillSheet({
   const [guestCount, setGuestCount] = useState(2);
   const [itemAssignments, setItemAssignments] = useState<Record<string, number>>({}); // lineId -> guestIndex (0-indexed)
 
-  if (!isOpen) return null;
-
   const totalCents = toCents(totalAmount);
 
   // Equal Split Calculations with remainder distribution
@@ -79,6 +77,8 @@ export function SplitBillSheet({
       amountStr: fromCents(s.amountCents),
     }));
   }, [orderLines, guestCount, itemAssignments]);
+
+  if (!isOpen) return null;
 
   const handlePay = () => {
     const splits = (splitMode === "EQUAL" ? equalSplits : itemizedSplits).map((s) => ({

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Example: Branch Management Component (Owner Only)
  * This component shows how to build owner-specific features
@@ -6,7 +8,6 @@
  * Access: OWNER role only
  */
 
-"use client";
 
 import React, { useState } from "react";
 import { useUser } from "@/lib/client-auth";

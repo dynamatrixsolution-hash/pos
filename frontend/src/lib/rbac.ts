@@ -123,6 +123,7 @@ export const accessibleResources = {
   ],
   SUPER_ADMIN: [
     "/dashboard",
+    "/dashboard/super-admin",
     "/dashboard/branches",
     "/dashboard/users",
     "/dashboard/reports",
@@ -144,6 +145,7 @@ export function hasPermission(role: Role, resource: string, action: string): boo
  * Check if a role can access a route
  */
 export function canAccessRoute(role: Role, path: string): boolean {
+  if (path === "/dashboard/unauthorized" || path.startsWith("/dashboard/unauthorized/")) return true;
   const accessible = accessibleResources[role];
   if (!accessible) return false;
 

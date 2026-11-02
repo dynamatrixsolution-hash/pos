@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -246,7 +248,7 @@ export default function ProductsPage() {
 
   const handleEdit = (product: ProductItem) => {
     setEditingId(product.id);
-    setSubmitError(null);
+    setSubmitError('');
     setValue("name", product.name);
     setValue("sku", product.sku || "");
     setValue("barcode", product.barcode || "");
@@ -265,7 +267,7 @@ export default function ProductsPage() {
   };
 
   const onSubmit = async (data: ProductInputs) => {
-    setSubmitError(null);
+    setSubmitError('');
     setIsSubmitting(true);
     try {
       if (editingId) {
@@ -291,7 +293,7 @@ export default function ProductsPage() {
 
         if (!res.ok) {
           const json = await res.json();
-          setSubmitError(json.error || "Failed to update product");
+          Notify.failure(json.error || "Failed to update product"); setSubmitError(json.error || "Failed to update product");
           return;
         }
       } else {
@@ -312,7 +314,7 @@ export default function ProductsPage() {
 
         if (!res.ok) {
           const json = await res.json();
-          setSubmitError(json.error || "Failed to create product");
+          Notify.failure(json.error || "Failed to create product"); setSubmitError(json.error || "Failed to create product");
           return;
         }
       }
@@ -322,7 +324,7 @@ export default function ProductsPage() {
       reset();
       loadData();
     } catch (err) {
-      setSubmitError("Failed to connect to API.");
+      Notify.failure("Failed to connect to API."); setSubmitError("Failed to connect to API.");
     } finally {
       setIsSubmitting(false);
     }
@@ -530,7 +532,7 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">Product Catalog</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -546,7 +548,7 @@ export default function ProductsPage() {
               setImportModalOpen(true);
             }}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
             Import Excel
@@ -554,7 +556,7 @@ export default function ProductsPage() {
           <button
             onClick={() => {
               setEditingId(null);
-              setSubmitError(null);
+              setSubmitError('');
               reset({
                 name: "",
                 sku: "",
@@ -573,7 +575,7 @@ export default function ProductsPage() {
               setModalOpen(true);
             }}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="h-4.5 w-4.5" />
             Add Product
@@ -583,7 +585,7 @@ export default function ProductsPage() {
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Main List Box */}
-        <div className={`bg-card border border-border rounded-2xl p-5 space-y-4 w-full order-2 lg:order-1 transition-all duration-300 ${
+        <div className={`bg-card border border-border rounded-lg p-5 space-y-4 w-full order-2 lg:order-1 transition-all duration-300 ${
           modalOpen ? "lg:w-2/3" : "lg:w-full"
         }`}>
         {/* Search & Filter Controls */}
@@ -772,7 +774,7 @@ export default function ProductsPage() {
             <div className="block md:hidden space-y-3">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs animate-pulse">
+                  <div key={i} className="bg-card border border-border/80 rounded-md p-4 space-y-3 shadow-xs animate-pulse">
                     <div className="flex justify-between items-start">
                       <div className="min-w-0 flex-1 pr-2 space-y-2">
                         <div className="h-4 bg-secondary dark:bg-slate-800 rounded w-2/3" />
@@ -807,7 +809,7 @@ export default function ProductsPage() {
                 ))
               ) : (
                 products.map((p) => (
-                  <div key={p.id} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs">
+                  <div key={p.id} className="bg-card border border-border/80 rounded-md p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-start">
                       <div className="min-w-0 flex-1 pr-2">
                         <h4 className="font-bold text-sm text-foreground truncate">{p.name}</h4>
@@ -849,7 +851,7 @@ export default function ProductsPage() {
                       <button
                         onClick={() => handleEdit(p)}
                         disabled={isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Edit className="h-3.5 w-3.5" />
                         Edit
@@ -873,7 +875,7 @@ export default function ProductsPage() {
 
         {/* Inline Form Panel for Add/Edit Product */}
         {modalOpen && (
-          <div className="w-full lg:w-1/3 bg-card border border-border rounded-2xl p-6 space-y-6 shadow-sm flex-shrink-0 order-1 lg:order-2 animate-in fade-in slide-in-from-top lg:slide-in-from-right-5 duration-200">
+          <div className="w-full lg:w-1/3 bg-card border border-border rounded-lg p-6 space-y-6 shadow-sm flex-shrink-0 order-1 lg:order-2 animate-in fade-in slide-in-from-top lg:slide-in-from-right-5 duration-200">
             <div className="flex justify-between items-start pb-3 border-b border-border/60">
               <div>
                 <h3 className="text-base font-bold text-foreground">
@@ -896,7 +898,7 @@ export default function ProductsPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 flex-1 mt-2">
               <fieldset disabled={isPending} className="space-y-5 flex-1 border-0 p-0 m-0">
               {/* SECTION 1: Basic Info */}
-              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-2xl">
+              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-lg">
                 <span className="text-[10px] font-black text-[#2563EB] uppercase tracking-wider block">
                   Primary Details
                 </span>
@@ -908,7 +910,7 @@ export default function ProductsPage() {
                   </label>
                   <div className="flex items-center gap-4 mt-1">
                     {imageValue ? (
-                      <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0 shadow-xs">
+                      <div className="relative w-16 h-16 rounded-md overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0 shadow-xs">
                         <img src={imageValue} alt="Preview" className="w-full h-full object-cover" />
                         <button
                           type="button"
@@ -920,7 +922,7 @@ export default function ProductsPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="w-16 h-16 rounded-xl border border-dashed border-border/80 bg-muted/20 flex items-center justify-center shrink-0">
+                      <div className="w-16 h-16 rounded-md border border-dashed border-border/80 bg-muted/20 flex items-center justify-center shrink-0">
                         <Boxes className="h-6 w-6 text-muted-foreground/40" />
                       </div>
                     )}
@@ -935,7 +937,7 @@ export default function ProductsPage() {
                       />
                       <label
                         htmlFor={isPending ? undefined : "product-image-upload"}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-xl text-[11px] font-bold transition-colors bg-background text-foreground ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-[11px] font-bold transition-colors bg-background text-foreground ${
                           isPending 
                             ? "opacity-50 cursor-not-allowed" 
                             : "hover:bg-secondary hover:text-secondary-foreground cursor-pointer"
@@ -958,7 +960,7 @@ export default function ProductsPage() {
                     type="text"
                     placeholder="e.g. Premium Coffee Beans"
                     {...register("name")}
-                    className={`w-full h-10 px-3.5 border rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
+                    className={`w-full h-10 px-3.5 border rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
                       errors.name ? "border-destructive focus:ring-destructive" : "border-border/80 focus:border-primary"
                     }`}
                   />
@@ -999,7 +1001,7 @@ export default function ProductsPage() {
               </div>
 
               {/* SECTION 2: Inventory Codes & Tracking */}
-              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-2xl">
+              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-lg">
                 <span className="text-[10px] font-black text-[#2563EB] uppercase tracking-wider block">
                   Codes & Tracking
                 </span>
@@ -1012,7 +1014,7 @@ export default function ProductsPage() {
                     type="text"
                     placeholder="e.g. BEA-COF-001"
                     {...register("sku")}
-                    className="w-full h-10 px-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                    className="w-full h-10 px-3.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                   />
                 </div>
 
@@ -1025,13 +1027,13 @@ export default function ProductsPage() {
                       type="text"
                       placeholder="e.g. 880123456789"
                       {...register("barcode")}
-                      className="flex-1 h-10 px-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      className="flex-1 h-10 px-3.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setScannerOpen(true)}
                       disabled={isPending}
-                      className="px-3.5 h-10 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl flex items-center justify-center cursor-pointer transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3.5 h-10 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-md flex items-center justify-center cursor-pointer transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Scan Barcode with Camera"
                     >
                       <Camera className="h-4.5 w-4.5 text-muted-foreground hover:text-foreground" />
@@ -1049,7 +1051,7 @@ export default function ProductsPage() {
                       <input
                         type="date"
                         {...register("mfgDate")}
-                        className="w-full h-10 px-3 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="w-full h-10 px-3 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1059,7 +1061,7 @@ export default function ProductsPage() {
                       <input
                         type="date"
                         {...register("expiryDate")}
-                        className="w-full h-10 px-3 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="w-full h-10 px-3 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                       />
                     </div>
                   </div>
@@ -1067,7 +1069,7 @@ export default function ProductsPage() {
               </div>
 
               {/* SECTION 3: Pricing & Stock Levels */}
-              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-2xl">
+              <div className="space-y-4 bg-secondary/5 border border-border/40 p-4 rounded-lg">
                 <span className="text-[10px] font-black text-[#2563EB] uppercase tracking-wider block">
                   Pricing & Stock
                 </span>
@@ -1082,7 +1084,7 @@ export default function ProductsPage() {
                       step="0.01"
                       placeholder="0.00"
                       {...register("costPrice", { valueAsNumber: true })}
-                      className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      className="w-full h-10 px-2.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     />
                   </div>
 
@@ -1095,7 +1097,7 @@ export default function ProductsPage() {
                       step="0.01"
                       placeholder="0.00"
                       {...register("sellingPrice", { valueAsNumber: true })}
-                      className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      className="w-full h-10 px-2.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     />
                   </div>
 
@@ -1107,7 +1109,7 @@ export default function ProductsPage() {
                         type="number"
                         placeholder="5"
                         {...register("alertQuantity", { valueAsNumber: true })}
-                        className="w-full h-10 px-2.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                        className="w-full h-10 px-2.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                       />
                     </div>
                   </div>
@@ -1139,14 +1141,14 @@ export default function ProductsPage() {
                       type="number"
                       placeholder="10"
                       {...register("initialStock", { valueAsNumber: true })}
-                      className="w-full h-10 px-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                      className="w-full h-10 px-3.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                     />
                   </div>
                 )}
               </div>
 
               {submitError && (
-                <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-xl font-semibold leading-tight animate-in fade-in duration-200">
+                <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-md font-semibold leading-tight animate-in fade-in duration-200">
                   {submitError}
                 </div>
               )}
@@ -1156,14 +1158,14 @@ export default function ProductsPage() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => setModalOpen(false)}
-                  className="h-10 px-5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs font-semibold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-10 px-5 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs font-semibold rounded-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-10 px-6 bg-primary text-primary-foreground text-xs font-black rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="h-10 px-6 bg-primary text-primary-foreground text-xs font-black rounded-md hover:bg-primary/90 shadow-sm shadow-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
@@ -1182,7 +1184,7 @@ export default function ProductsPage() {
 
       {adjustModalOpen && adjustProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-sm space-y-4 shadow-sm animate-in zoom-in-95 duration-200">
             <div>
               <h3 className="text-sm font-bold text-foreground">Stock Quantity Adjustment</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -1285,7 +1287,7 @@ export default function ProductsPage() {
                 type="button"
                 disabled={isAdjusting}
                 onClick={handleAdjustSubmit}
-                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isAdjusting ? (
                   <>
@@ -1314,7 +1316,7 @@ export default function ProductsPage() {
       {/* Excel Import Modal */}
       {importModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="glass-card rounded-2xl w-full max-w-xl p-6 shadow-2xl border border-border/60 animate-in zoom-in-95 duration-200 space-y-5">
+          <div className="glass-card rounded-lg w-full max-w-xl p-6 shadow-sm border border-border/60 animate-in zoom-in-95 duration-200 space-y-5">
             <div className="flex justify-between items-start border-b border-border/60 pb-3">
               <div>
                 <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -1329,26 +1331,26 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={isPending}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 hover:bg-[#EEE7DD] dark:hover:bg-slate-800 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="h-5 w-5 rotate-45" />
               </button>
             </div>
 
             {importError && (
-              <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-xl font-semibold border border-destructive/20">
+              <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-md font-semibold border border-destructive/20">
                 {importError}
               </div>
             )}
 
             {importSuccess && (
-              <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold border border-emerald-500/20">
+              <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-md font-bold border border-emerald-500/20">
                 {importSuccess}
               </div>
             )}
 
             {/* Template Action */}
-            <div className="flex justify-between items-center bg-secondary/20 p-3.5 rounded-xl border border-border/50 text-xs">
+            <div className="flex justify-between items-center bg-secondary/20 p-3.5 rounded-md border border-border/50 text-xs">
               <div>
                 <span className="font-bold text-foreground block">Need a starting template?</span>
                 <span className="text-[11px] text-muted-foreground">Download sample Excel file with correct columns</span>
@@ -1357,7 +1359,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={downloadSampleTemplate}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-slate-100 dark:hover:bg-slate-800 border border-border rounded-lg text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-[#EEE7DD] dark:hover:bg-slate-800 border border-border rounded-lg text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="h-3.5 w-3.5" />
                 Download Sample
@@ -1367,7 +1369,7 @@ export default function ProductsPage() {
             {/* File Upload Box */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground block">Select Excel / CSV File</label>
-              <div className="border-2 border-dashed border-border hover:border-primary/50 rounded-2xl p-6 text-center transition-colors bg-muted/10">
+              <div className="border-2 border-dashed border-border hover:border-primary/50 rounded-lg p-6 text-center transition-colors bg-muted/10">
                 <Upload className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
                 <input
                   type="file"
@@ -1379,7 +1381,7 @@ export default function ProductsPage() {
                 />
                 <label
                   htmlFor={isPending ? undefined : "excel-file-input"}
-                  className={`inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow-md transition-all ${
+                  className={`inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-md shadow-sm transition-all ${
                     isPending 
                       ? "opacity-50 cursor-not-allowed" 
                       : "hover:opacity-90 cursor-pointer"
@@ -1403,7 +1405,7 @@ export default function ProductsPage() {
                   </span>
                 </div>
 
-                <div className="max-h-40 overflow-y-auto border border-border/60 rounded-xl divide-y divide-border/40 text-xs bg-background">
+                <div className="max-h-40 overflow-y-auto border border-border/60 rounded-md divide-y divide-border/40 text-xs bg-background">
                   {importPreview.slice(0, 5).map((prod, idx) => (
                     <div key={idx} className="p-2.5 flex justify-between items-center">
                       <div>
@@ -1431,7 +1433,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setImportModalOpen(false)}
                 disabled={isPending}
-                className="px-4 py-2 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-md text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1439,7 +1441,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={handleBulkSubmit}
                 disabled={isPending || importPreview.length === 0}
-                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-md shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
               >
                 {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : `Import ${importPreview.length} Products`}
               </button>
@@ -1451,9 +1453,9 @@ export default function ProductsPage() {
       {/* Custom Alert/Confirm Popup Modal */}
       {alertModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                 alertModal.type === "error"
                   ? "bg-destructive/10 text-destructive"
                   : alertModal.type === "confirm"
@@ -1482,7 +1484,7 @@ export default function ProductsPage() {
                     type="button"
                     disabled={alertModalLoading}
                     onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                    className="flex-1 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs rounded-xl font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white text-xs rounded-md font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
@@ -1503,7 +1505,7 @@ export default function ProductsPage() {
                         setAlertModal((prev) => ({ ...prev, open: false }));
                       }
                     }}
-                    className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                   >
                     {alertModalLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1516,7 +1518,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                  className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                 >
                   OK
                 </button>

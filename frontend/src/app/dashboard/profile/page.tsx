@@ -132,7 +132,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* Page Header */}
-      <div className="bg-card border border-border p-5 rounded-2xl flex items-center gap-4">
+      <div className="bg-card border border-border p-5 rounded-lg flex items-center gap-4">
         <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-extrabold text-lg shadow-sm">
           {session?.user?.name ? session.user.name.slice(0, 2).toUpperCase() : "ME"}
         </div>
@@ -144,18 +144,18 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Status Feedback */}
           {successMsg && (
-            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900/40 p-3.5 rounded-xl font-semibold leading-tight animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900/40 p-3.5 rounded-md font-semibold leading-tight animate-in fade-in duration-200">
               <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
               {successMsg}
             </div>
           )}
 
           {errorMsg && (
-            <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 p-3.5 rounded-xl font-semibold leading-tight animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 p-3.5 rounded-md font-semibold leading-tight animate-in fade-in duration-200">
               <AlertCircle className="h-4.5 w-4.5 shrink-0" />
               {errorMsg}
             </div>
@@ -174,7 +174,7 @@ export default function ProfilePage() {
                   <input
                     type="text"
                     {...register("name")}
-                    className={`w-full h-10 pl-10 pr-3.5 border rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
+                    className={`w-full h-10 pl-10 pr-3.5 border rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
                       errors.name ? "border-destructive focus:ring-destructive" : "border-border/80 focus:border-primary"
                     }`}
                   />
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                     type="email"
                     value={userEmail}
                     disabled
-                    className="w-full h-10 pl-10 pr-3.5 border border-border/40 rounded-xl text-xs bg-muted/30 text-muted-foreground cursor-not-allowed focus:outline-none select-none"
+                    className="w-full h-10 pl-10 pr-3.5 border border-border/40 rounded-md text-xs bg-muted/30 text-muted-foreground cursor-not-allowed focus:outline-none select-none"
                   />
                 </div>
               </div>
@@ -212,7 +212,7 @@ export default function ProfilePage() {
                     type="text"
                     placeholder="e.g. +1-555-0199"
                     {...register("phone")}
-                    className="w-full h-10 pl-10 pr-3.5 border border-border/80 rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:border-primary"
+                    className="w-full h-10 pl-10 pr-3.5 border border-border/80 rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:border-primary"
                   />
                 </div>
               </div>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
                     type="text"
                     value={userRole}
                     disabled
-                    className="w-full h-10 pl-10 pr-3.5 border border-border/40 rounded-xl text-xs bg-muted/30 text-muted-foreground font-bold cursor-not-allowed focus:outline-none select-none"
+                    className="w-full h-10 pl-10 pr-3.5 border border-border/40 rounded-md text-xs bg-muted/30 text-muted-foreground font-bold cursor-not-allowed focus:outline-none select-none"
                   />
                 </div>
               </div>
@@ -253,7 +253,7 @@ export default function ProfilePage() {
                       type="password"
                       placeholder="••••••••"
                       {...register("password")}
-                      className={`w-full h-10 pl-10 pr-3.5 border rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
+                      className={`w-full h-10 pl-10 pr-3.5 border rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
                         errors.password ? "border-destructive focus:ring-destructive" : "border-border/80 focus:border-primary"
                       }`}
                     />
@@ -273,7 +273,7 @@ export default function ProfilePage() {
                       type="password"
                       placeholder="••••••••"
                       {...register("confirmPassword")}
-                      className={`w-full h-10 pl-10 pr-3.5 border rounded-xl text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
+                      className={`w-full h-10 pl-10 pr-3.5 border rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all ${
                         errors.confirmPassword ? "border-destructive focus:ring-destructive" : "border-border/80 focus:border-primary"
                       }`}
                     />
@@ -297,14 +297,14 @@ export default function ProfilePage() {
                 setSuccessMsg(null);
                 setErrorMsg(null);
               }}
-              className="h-10 px-5 border border-border text-xs font-semibold rounded-xl hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer"
+              className="h-10 px-5 border border-border text-xs font-semibold rounded-md hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer"
             >
               Reset Fields
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="h-10 px-6 bg-primary text-primary-foreground text-xs font-black rounded-xl hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="h-10 px-6 bg-primary text-primary-foreground text-xs font-black rounded-md hover:bg-primary/90 shadow-sm shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {saving ? (
                 <>

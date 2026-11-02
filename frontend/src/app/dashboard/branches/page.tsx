@@ -168,7 +168,7 @@ export default function BranchesPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-2xl font-black">Multi-Branch Outlets</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -184,7 +184,7 @@ export default function BranchesPage() {
               setAddress("");
               setShowAddForm(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-black shadow-md transition-all uppercase tracking-wider cursor-pointer border-none"
+            className="flex items-center gap-2 px-4 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-md text-xs font-black shadow-sm transition-all uppercase tracking-wider cursor-pointer border-none"
           >
             <Plus className="h-4.5 w-4.5" />
             Add New Branch
@@ -194,13 +194,13 @@ export default function BranchesPage() {
 
       {/* Alerts */}
       {errorMsg && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-xl flex items-start gap-2.5">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-md flex items-start gap-2.5">
           <AlertTriangle className="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
       {successMsg && (
-        <div className="bg-primary/10 border border-primary/20 text-primary text-xs p-4 rounded-xl flex items-start gap-2.5">
+        <div className="bg-primary/10 border border-primary/20 text-primary text-xs p-4 rounded-md flex items-start gap-2.5">
           <CheckCircle className="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
           <span>{successMsg}</span>
         </div>
@@ -208,7 +208,7 @@ export default function BranchesPage() {
 
       {/* Add/Edit Branch Dialog Form */}
       {showAddForm && (
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
           <h2 className="text-sm font-bold flex items-center gap-2 mb-4">
             <Store className="h-4.5 w-4.5 text-[#064E3B]" />
             {editBranchId ? "Edit Branch Outlet Details" : "Branch Outlet Setup Form"}
@@ -223,7 +223,7 @@ export default function BranchesPage() {
                 placeholder="e.g. Downtown Express Outlet"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
                 required
               />
             </div>
@@ -236,7 +236,7 @@ export default function BranchesPage() {
                 placeholder="e.g. +1 555-0199"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
               />
             </div>
             <div>
@@ -248,7 +248,7 @@ export default function BranchesPage() {
                 placeholder="e.g. 52 Main St, New York, NY"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
+                className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold placeholder:text-muted-foreground focus:ring-1 focus:ring-[#064E3B] outline-none"
               />
             </div>
             <div className="md:col-span-3 flex justify-end gap-2.5 mt-2">
@@ -261,14 +261,14 @@ export default function BranchesPage() {
                   setAddress("");
                   setEditBranchId(null);
                 }}
-                className="px-4 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl cursor-pointer"
+                className="px-4 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-xl text-xs font-black shadow-md transition-all uppercase tracking-wider cursor-pointer border-none"
+                className="px-5 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-md text-xs font-black shadow-sm transition-all uppercase tracking-wider cursor-pointer border-none"
               >
                 {isSubmitting ? "Saving..." : editBranchId ? "Update Location" : "Save Location"}
               </button>
@@ -293,7 +293,7 @@ export default function BranchesPage() {
             return (
               <div
                 key={branch.id}
-                className={`bg-card border rounded-2xl p-5 flex flex-col justify-between shadow-sm transition-all duration-200 ${
+                className={`bg-card border rounded-lg p-5 flex flex-col justify-between shadow-sm transition-all duration-200 ${
                   isCurrentContext
                     ? "border-primary ring-1 ring-primary"
                     : "border-border hover:border-border/80"
@@ -344,7 +344,7 @@ export default function BranchesPage() {
 
                 <div className="border-t border-border/50 pt-4 flex flex-col gap-2">
                   {isCurrentContext ? (
-                    <div className="flex items-center gap-1.5 text-xs text-primary font-bold w-full justify-center py-2 bg-primary/10 rounded-xl border border-primary/20">
+                    <div className="flex items-center gap-1.5 text-xs text-primary font-bold w-full justify-center py-2 bg-primary/10 rounded-md border border-primary/20">
                       <CheckCircle className="h-4 w-4" />
                       <span>Active Operation Desk</span>
                     </div>
@@ -352,9 +352,9 @@ export default function BranchesPage() {
                     <button
                       onClick={() => !isDisabled && handleBranchSwitch(branch.id)}
                       disabled={isDisabled}
-                      className={`w-full py-2 font-bold rounded-xl text-xs transition-colors cursor-pointer border-none ${
+                      className={`w-full py-2 font-bold rounded-md text-xs transition-colors cursor-pointer border-none ${
                         isDisabled
-                          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50"
+                          ? "bg-[#EEE7DD] text-[#71675E] border border-[#D8CEC1] cursor-not-allowed opacity-50"
                           : "bg-[#064E3B] hover:bg-[#053F30] text-white"
                       }`}
                     >
@@ -384,7 +384,7 @@ export default function BranchesPage() {
                           setShowAddForm(true);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                        className="py-1.5 px-3.5 bg-white hover:bg-slate-50 border border-black text-black rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                        className="py-1.5 px-3.5 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
                       >
                         <Edit2 className="h-3 w-3" />
                         Edit
@@ -399,8 +399,7 @@ export default function BranchesPage() {
       )}
 
       {/* Subscription limits tip */}
-      <div className="bg-secondary/40 border border-border p-4 rounded-xl flex items-center gap-3 text-xs text-muted-foreground print:hidden">
-        <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0" />
+      <div className="bg-secondary/40 border border-border p-4 rounded-md flex items-center gap-3 text-xs text-muted-foreground print:hidden">
         <p>
           Need to add more outlets? Branches are limited based on your active subscription plan package. Go to the{" "}
           <a href="/dashboard/subscriptions" className="text-primary hover:underline font-bold">

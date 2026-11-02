@@ -5,50 +5,70 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   Settings,
-  Mail,
-  Database,
-  Coins,
-  CheckCircle,
+  Sliders,
+  CreditCard,
+  Radio,
+  ShieldAlert,
+  Save,
+  CheckCircle2,
   AlertTriangle,
-  Building,
-  Key,
+  RotateCw,
+  Lock,
+  Mail,
+  Phone,
+  Clock,
+  Globe,
+  MessageSquare,
 } from "lucide-react";
-
-interface SMTPConfig {
-  host: string;
-  port: number;
-  user: string;
-  encryption: string;
-}
-
-interface BackupConfig {
-  enabled: boolean;
-  frequency: string;
-  retentionDays: number;
-  destination: string;
-}
-
-interface GeneralConfig {
-  name: string;
-  phone: string;
-  email: string;
-  address: string;
-  taxName: string;
-  defaultRate: number;
-}
 
 export default function PlatformSettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"general" | "smtp" | "backups">("general");
-  const [smtp, setSmtp] = useState<SMTPConfig | null>(null);
-  const [backups, setBackups] = useState<BackupConfig | null>(null);
-  const [general, setGeneral] = useState<GeneralConfig | null>(null);
+  const [activeTab, setActiveTab] = useState<"general" | "subscription" | "gateways" | "maintenance">("general");
   const [loading, setLoading] = useState(true);
+
+  // Settings State
+  const [generalConfig, setGeneralConfig] = useState({
+    platformName: "RestroInn Platform",
+    supportEmail: "support@restroinn.com",
+    emergencyPhone: "+977-1-4400000",
+    timeZone: "Asia/Kathmandu",
+    taxSystem: "NEPAL_IRD_VAT",
+    defaultCurrency: "NPR",
+  });
+
+  const [subDefaults, setSubDefaults] = useState({
+    trialDurationDays: 14,
+    gracePeriodDays: 7,
+    invoiceDueDays: 15,
+    defaultCurrency: "NPR",
+    autoReminderDaysBeforeDue: 3,
+  });
+
+  const [gatewaySettings, setGatewaySettings] = useState({
+    smsProvider: "SPARROW_SMS",
+    smsApiKey: "mock-sparrow-key-2026",
+    smsSenderId: "RestroInn",
+    emailProvider: "SMTP",
+    emailSender: "noreply@restroinn.com",
+    smtpHost: "smtp.mailgun.org",
+    smtpPort: 587,
+  });
+
+  const [maintenanceMode, setMaintenanceMode] = useState({
+    enabled: false,
+    message: "RestroInn is currently undergoing scheduled platform upgrades. We will be back online shortly.",
+    allowedIps: ["127.0.0.1", "::1"],
+  });
+
+  // Modal / Feedback state
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [pendingKey, setPendingKey] = useState<string>("");
+  const [pendingValue, setPendingValue] = useState<any>(null);
+  const [auditReason, setAuditReason] = useState("");
   const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [errMsg, setErrMsg] = useState("");
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -66,322 +86,553 @@ export default function PlatformSettingsPage() {
       const res = await fetch("/api/v1/super-admin/settings");
       if (res.ok) {
         const data = await res.json();
-        setSmtp(data.smtp);
-        setBackups(data.backups);
-        setGeneral(data.general);
+        if (data.settings.GENERAL_CONFIG) setGeneralConfig(data.settings.GENERAL_CONFIG);
+        if (data.settings.SUBSCRIPTION_DEFAULTS) setSubDefaults(data.settings.SUBSCRIPTION_DEFAULTS);
+        if (data.settings.GATEWAY_SETTINGS) setGatewaySettings(data.settings.GATEWAY_SETTINGS);
+        if (data.settings.MAINTENANCE_MODE) setMaintenanceMode(data.settings.MAINTENANCE_MODE);
       }
     } catch (err) {
-      console.error("Load platform settings error:", err);
+      console.error("Failed to load settings:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initiateSave = (key: string, value: any) => {
+    setPendingKey(key);
+    setPendingValue(value);
+    setAuditReason("");
+    setAuditModalOpen(true);
+  };
+
+  const confirmSave = async () => {
+    if (!auditReason.trim() || auditReason.trim().length < 5) {
+      alert("A valid administrative audit reason (min 5 characters) is required");
+      return;
+    }
+
     setSaving(true);
-    setErrMsg("");
-    setSuccessMsg("");
+    setFeedback(null);
     try {
       const res = await fetch("/api/v1/super-admin/settings", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smtp, backups, general }),
+        body: JSON.stringify({
+          key: pendingKey,
+          value: pendingValue,
+          reason: auditReason.trim(),
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save settings");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to update configuration");
 
-      setSuccessMsg("Platform settings saved successfully");
+      setAuditModalOpen(false);
+      setFeedback({ type: "success", text: "Settings saved and audit logged successfully" });
+      setTimeout(() => setFeedback(null), 4000);
       loadSettings();
-      setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {
-      setErrMsg(err.message);
+      setFeedback({ type: "error", text: err.message || "An error occurred" });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
-          <p className="text-xs text-muted-foreground">Syncing platform parameters...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 text-[#0F172A]">
-      {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/80 p-6 rounded-3xl">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#D8CEC1]">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Settings className="h-5.5 w-5.5 text-blue-600" /> Platform Settings
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage global SMTP mail configurations, default database automated backup triggers, and metadata.
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-wider font-semibold text-[#71675E]">Platform Administration</span>
+            <span className="text-[#D8CEC1]">•</span>
+            <span className="text-xs uppercase tracking-wider font-semibold text-[#6B2837]">Configuration</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#292320] mt-1">Platform Settings & Control</h1>
+          <p className="text-sm text-[#71675E] mt-0.5">
+            Configure global SaaS policies, subscription rules, Nepal SMS gateways, and platform maintenance mode.
           </p>
         </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={loadSettings}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#F7F3EC] transition-colors cursor-pointer"
+          >
+            <RotateCw className="w-3.5 h-3.5 text-[#71675E]" />
+            Reload
+          </button>
+        </div>
       </div>
 
-      {/* 2. Messages */}
-      {successMsg && (
-        <div className="p-3 bg-emerald-50 text-emerald-600 text-xs rounded-xl font-bold border border-emerald-100 flex items-center gap-2">
-          <CheckCircle className="h-4.5 w-4.5 flex-shrink-0" /> {successMsg}
+      {/* Feedback banner */}
+      {feedback && (
+        <div
+          className={`p-3.5 rounded-lg border text-xs flex items-center gap-2.5 ${
+            feedback.type === "success"
+              ? "bg-[#DEF7EC] border-[#BCF0DA] text-[#03543F]"
+              : "bg-[#FDE8E8] border-[#F8B4B4] text-[#9C3232]"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+          )}
+          <span>{feedback.text}</span>
         </div>
       )}
 
-      {errMsg && (
-        <div className="p-3 bg-red-50 text-red-650 text-xs rounded-xl font-bold border border-red-100 flex items-center gap-2">
-          <AlertTriangle className="h-4.5 w-4.5 flex-shrink-0" /> {errMsg}
+      {/* Maintenance Mode Alert Banner if active */}
+      {maintenanceMode.enabled && (
+        <div className="p-4 rounded-lg border border-[#F8B4B4] bg-[#FDE8E8] text-[#9C3232] flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-bold text-xs">MAINTENANCE MODE IS ACTIVELY ENGAGED</span>
+            <p className="text-xs mt-0.5 leading-relaxed">
+              Client businesses and customer portals are currently locked with the maintenance notice. Only authorized admin IPs can access services.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* 3. Tab selection */}
-      <div className="flex border-b border-slate-200 gap-6">
+      {/* Tabs */}
+      <div className="flex border-b border-[#D8CEC1] gap-6 text-xs font-semibold">
         <button
           onClick={() => setActiveTab("general")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "general" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === "general"
+              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
+              : "text-[#71675E] hover:text-[#292320]"
           }`}
         >
-          General Configuration
+          <Sliders className="w-3.5 h-3.5" />
+          General & Branding
         </button>
+
         <button
-          onClick={() => setActiveTab("smtp")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "smtp" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+          onClick={() => setActiveTab("subscription")}
+          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === "subscription"
+              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
+              : "text-[#71675E] hover:text-[#292320]"
           }`}
         >
-          SMTP Mail Gateway
+          <CreditCard className="w-3.5 h-3.5" />
+          Subscription Defaults & Billing
         </button>
+
         <button
-          onClick={() => setActiveTab("backups")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "backups" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+          onClick={() => setActiveTab("gateways")}
+          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === "gateways"
+              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
+              : "text-[#71675E] hover:text-[#292320]"
           }`}
         >
-          Automated Backups
+          <Radio className="w-3.5 h-3.5" />
+          Gateways & SMS
+        </button>
+
+        <button
+          onClick={() => setActiveTab("maintenance")}
+          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === "maintenance"
+              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
+              : "text-[#71675E] hover:text-[#292320]"
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" />
+          Platform Maintenance & Lockdown
         </button>
       </div>
 
-      {/* 4. SETTINGS FORM CONTAINER */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 max-w-xl mx-auto shadow-sm">
-        <form onSubmit={handleSaveSettings} className="space-y-6 text-xs font-semibold">
-          
-          {/* GENERAL TAB */}
-          {activeTab === "general" && general && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                <Building className="h-4.5 w-4.5 text-blue-600" /> Platform Details
+      {/* Tab 1: General & Branding */}
+      {activeTab === "general" && (
+        <div className="p-6 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] space-y-6">
+          <div>
+            <h2 className="text-sm font-bold text-[#292320]">Core Platform Identity</h2>
+            <p className="text-xs text-[#71675E] mt-0.5">
+              General SaaS brand properties displayed across client portals, fiscal invoices, and notifications.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl">
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Platform Name</label>
+              <input
+                type="text"
+                value={generalConfig.platformName}
+                onChange={(e) => setGeneralConfig({ ...generalConfig, platformName: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Support Contact Email</label>
+              <input
+                type="email"
+                value={generalConfig.supportEmail}
+                onChange={(e) => setGeneralConfig({ ...generalConfig, supportEmail: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Emergency Operations Hotline</label>
+              <input
+                type="text"
+                value={generalConfig.emergencyPhone}
+                onChange={(e) => setGeneralConfig({ ...generalConfig, emergencyPhone: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Default Platform Timezone</label>
+              <input
+                type="text"
+                value={generalConfig.timeZone}
+                onChange={(e) => setGeneralConfig({ ...generalConfig, timeZone: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Fiscal Tax Compliance Engine</label>
+              <select
+                value={generalConfig.taxSystem}
+                onChange={(e) => setGeneralConfig({ ...generalConfig, taxSystem: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              >
+                <option value="NEPAL_IRD_VAT">Nepal Inland Revenue Department (IRD 13% VAT)</option>
+                <option value="GENERAL_SALES_TAX">Standard Flat Sales Tax</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Base Currency</label>
+              <input
+                type="text"
+                value={generalConfig.defaultCurrency}
+                disabled
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#EEE7DD] text-[#71675E] cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#D8CEC1] flex justify-end">
+            <button
+              onClick={() => initiateSave("GENERAL_CONFIG", generalConfig)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md bg-[#6B2837] text-[#FFFCF7] hover:bg-[#521E2A] transition-colors cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save General Identity
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Subscription Defaults */}
+      {activeTab === "subscription" && (
+        <div className="p-6 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] space-y-6">
+          <div>
+            <h2 className="text-sm font-bold text-[#292320]">Subscription & Lifecycle Policies</h2>
+            <p className="text-xs text-[#71675E] mt-0.5">
+              Control trial durations, payment grace periods before suspension, and automated invoice renewal reminders.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl">
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Free Trial Duration (Days)</label>
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={subDefaults.trialDurationDays}
+                onChange={(e) => setSubDefaults({ ...subDefaults, trialDurationDays: Number(e.target.value) })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] tabular-nums focus:outline-none focus:border-[#6B2837]"
+              />
+              <p className="text-[11px] text-[#71675E] mt-0.5">Default days granted when a business registration is approved.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Overdue Grace Period (Days)</label>
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={subDefaults.gracePeriodDays}
+                onChange={(e) => setSubDefaults({ ...subDefaults, gracePeriodDays: Number(e.target.value) })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] tabular-nums focus:outline-none focus:border-[#6B2837]"
+              />
+              <p className="text-[11px] text-[#71675E] mt-0.5">Avoids abruptly blocking active hotel checkout or restaurant POS.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Invoice Payment Term (Days)</label>
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={subDefaults.invoiceDueDays}
+                onChange={(e) => setSubDefaults({ ...subDefaults, invoiceDueDays: Number(e.target.value) })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] tabular-nums focus:outline-none focus:border-[#6B2837]"
+              />
+              <p className="text-[11px] text-[#71675E] mt-0.5">Standard Net-D days before a platform subscription invoice is overdue.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">Renewal Reminder (Days Before Expiry)</label>
+              <input
+                type="number"
+                min={1}
+                max={14}
+                value={subDefaults.autoReminderDaysBeforeDue}
+                onChange={(e) => setSubDefaults({ ...subDefaults, autoReminderDaysBeforeDue: Number(e.target.value) })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] tabular-nums focus:outline-none focus:border-[#6B2837]"
+              />
+              <p className="text-[11px] text-[#71675E] mt-0.5">Triggers notification banner and email to tenant owner.</p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#D8CEC1] flex justify-end">
+            <button
+              onClick={() => initiateSave("SUBSCRIPTION_DEFAULTS", subDefaults)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md bg-[#6B2837] text-[#FFFCF7] hover:bg-[#521E2A] transition-colors cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save Subscription Rules
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Gateways & SMS */}
+      {activeTab === "gateways" && (
+        <div className="p-6 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] space-y-6">
+          <div>
+            <h2 className="text-sm font-bold text-[#292320]">Messaging & Notification Gateways</h2>
+            <p className="text-xs text-[#71675E] mt-0.5">
+              Connect Nepal Sparrow SMS API and platform transactional SMTP configurations.
+            </p>
+          </div>
+
+          <div className="space-y-4 max-w-3xl">
+            <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-3">
+              <h3 className="text-xs font-bold text-[#292320] flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#6B2837]" />
+                Sparrow SMS Gateway (Nepal)
               </h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Platform Name</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">Provider</label>
                   <input
                     type="text"
-                    value={general.name}
-                    onChange={(e) => setGeneral({ ...general, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
+                    value={gatewaySettings.smsProvider}
+                    disabled
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#EEE7DD] text-[#71675E]"
                   />
                 </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">Sender ID (Sender Mask)</label>
+                  <input
+                    type="text"
+                    value={gatewaySettings.smsSenderId}
+                    onChange={(e) => setGatewaySettings({ ...gatewaySettings, smsSenderId: e.target.value })}
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">Sparrow SMS Secret Token</label>
+                  <input
+                    type="password"
+                    value={gatewaySettings.smsApiKey}
+                    onChange={(e) => setGatewaySettings({ ...gatewaySettings, smsApiKey: e.target.value })}
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+              </div>
+            </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Contact Email</label>
+            <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-3">
+              <h3 className="text-xs font-bold text-[#292320] flex items-center gap-2">
+                <Mail className="w-4 h-4 text-[#6B2837]" />
+                Transactional SMTP Email Gateway
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">SMTP Host</label>
+                  <input
+                    type="text"
+                    value={gatewaySettings.smtpHost}
+                    onChange={(e) => setGatewaySettings({ ...gatewaySettings, smtpHost: e.target.value })}
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">Port</label>
+                  <input
+                    type="number"
+                    value={gatewaySettings.smtpPort}
+                    onChange={(e) => setGatewaySettings({ ...gatewaySettings, smtpPort: Number(e.target.value) })}
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] tabular-nums focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-semibold text-[#292320] mb-1">From Sender Address</label>
                   <input
                     type="email"
-                    value={general.email}
-                    onChange={(e) => setGeneral({ ...general, email: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Support Phone</label>
-                  <input
-                    type="text"
-                    value={general.phone}
-                    onChange={(e) => setGeneral({ ...general, phone: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">HQ address office</label>
-                  <input
-                    type="text"
-                    value={general.address}
-                    onChange={(e) => setGeneral({ ...general, address: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-4 grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Default Tax Name</label>
-                  <input
-                    type="text"
-                    value={general.taxName}
-                    onChange={(e) => setGeneral({ ...general, taxName: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Default Rate (%)</label>
-                  <input
-                    type="number"
-                    value={general.defaultRate}
-                    onChange={(e) => setGeneral({ ...general, defaultRate: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
+                    value={gatewaySettings.emailSender}
+                    onChange={(e) => setGatewaySettings({ ...gatewaySettings, emailSender: e.target.value })}
+                    className="w-full text-xs px-3 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837]"
                   />
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* SMTP TAB */}
-          {activeTab === "smtp" && smtp && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                <Mail className="h-4.5 w-4.5 text-blue-600" /> Outbound Mail Transfer Protocol
-              </h3>
+          <div className="pt-4 border-t border-[#D8CEC1] flex justify-end">
+            <button
+              onClick={() => initiateSave("GATEWAY_SETTINGS", gatewaySettings)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md bg-[#6B2837] text-[#FFFCF7] hover:bg-[#521E2A] transition-colors cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save Gateways
+            </button>
+          </div>
+        </div>
+      )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">SMTP Hostname</label>
-                  <input
-                    type="text"
-                    value={smtp.host}
-                    onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
+      {/* Tab 4: Platform Maintenance Mode & Lockdown */}
+      {activeTab === "maintenance" && (
+        <div className="p-6 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] space-y-6">
+          <div>
+            <h2 className="text-sm font-bold text-[#292320]">Maintenance Mode & Access Lockdown</h2>
+            <p className="text-xs text-[#71675E] mt-0.5">
+              Temporarily take client portals and public reservation engines offline during major database schema migrations or emergencies.
+            </p>
+          </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">SMTP Port</label>
-                  <input
-                    type="number"
-                    value={smtp.port}
-                    onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">SMTP User</label>
-                  <input
-                    type="text"
-                    value={smtp.user}
-                    onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">SMTP Password</label>
-                  <div className="relative">
-                    <Key className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="password"
-                      placeholder="••••••••••••••••"
-                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-1 w-1/2">
-                <label className="text-[10px] text-slate-450 uppercase">Encryption security</label>
-                <select
-                  value={smtp.encryption}
-                  onChange={(e) => setSmtp({ ...smtp, encryption: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none cursor-pointer"
-                >
-                  <option value="TLS">TLS Secure Connection</option>
-                  <option value="SSL">SSL Secure Connection</option>
-                  <option value="NONE">No Encryption Protocol</option>
-                </select>
+          <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between max-w-3xl">
+            <div>
+              <div className="text-xs font-bold text-[#292320]">Master Maintenance Mode Switch</div>
+              <div className="text-xs text-[#71675E] mt-0.5">
+                {maintenanceMode.enabled
+                  ? "Status: ACTIVE (Non-admin users cannot access workspace routes)"
+                  : "Status: DISABLED (All tenant operations normal)"}
               </div>
             </div>
-          )}
+            <button
+              onClick={() =>
+                setMaintenanceMode({
+                  ...maintenanceMode,
+                  enabled: !maintenanceMode.enabled,
+                })
+              }
+              className={`px-4 py-2 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+                maintenanceMode.enabled
+                  ? "bg-[#9C3232] text-[#FFFCF7] hover:bg-[#802424]"
+                  : "bg-[#03543F] text-[#FFFCF7] hover:bg-[#023E2E]"
+              }`}
+            >
+              {maintenanceMode.enabled ? "Disengage Maintenance Mode" : "Engage Maintenance Mode"}
+            </button>
+          </div>
 
-          {/* BACKUPS TAB */}
-          {activeTab === "backups" && backups && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                <Database className="h-4.5 w-4.5 text-blue-600" /> Database Backup Strategies
-              </h3>
-
-              <label className="flex justify-between items-center p-3 border border-slate-150 hover:bg-slate-50 rounded-xl cursor-pointer">
-                <div>
-                  <span className="text-xs font-bold text-slate-750">Database Automated Backups</span>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Toggle backup execution schedulers on/off.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={backups.enabled}
-                  onChange={(e) => setBackups({ ...backups, enabled: e.target.checked })}
-                  className="h-4.5 w-4.5 text-blue-600 rounded border-slate-300"
-                />
+          <div className="space-y-4 max-w-3xl">
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">
+                Maintenance Notice Message (Rendered on Tenant Screens)
               </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Backup frequency</label>
-                  <select
-                    value={backups.frequency}
-                    onChange={(e) => setBackups({ ...backups, frequency: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none cursor-pointer"
-                  >
-                    <option value="DAILY">Once every 24 hours</option>
-                    <option value="WEEKLY">Once every 7 days</option>
-                    <option value="HOURLY">Once every 1 hour (Enterprise)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] text-slate-450 uppercase">Retention logs (days)</label>
-                  <input
-                    type="number"
-                    value={backups.retentionDays}
-                    onChange={(e) => setBackups({ ...backups, retentionDays: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1 w-1/2">
-                <label className="text-[10px] text-slate-450 uppercase">Cloud storage destination</label>
-                <select
-                  value={backups.destination}
-                  onChange={(e) => setBackups({ ...backups, destination: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none cursor-pointer"
-                >
-                  <option value="AWS_S3_SECURE">Secure AWS S3 Bucket storage</option>
-                  <option value="GOOGLE_CLOUD">Google Cloud Storage Vault</option>
-                  <option value="LOCAL_FS">Platform Server Local Storage</option>
-                </select>
-              </div>
+              <textarea
+                rows={3}
+                value={maintenanceMode.message}
+                onChange={(e) => setMaintenanceMode({ ...maintenanceMode, message: e.target.value })}
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
             </div>
-          )}
 
-          {/* Form Submit */}
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md hover:-translate-y-0.5 transition-all uppercase tracking-wider disabled:opacity-50"
-          >
-            {saving ? "Saving settings..." : "Apply Configurations"}
-          </button>
-        </form>
-      </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#292320] mb-1">
+                Bypass IP Addresses (Comma-Separated)
+              </label>
+              <input
+                type="text"
+                value={maintenanceMode.allowedIps.join(", ")}
+                onChange={(e) =>
+                  setMaintenanceMode({
+                    ...maintenanceMode,
+                    allowedIps: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                  })
+                }
+                placeholder="127.0.0.1, ::1, 103.10.20.30"
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+              />
+              <p className="text-[11px] text-[#71675E] mt-0.5">
+                Requests originating from these IP addresses bypass the maintenance lockdown screen.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#D8CEC1] flex justify-end">
+            <button
+              onClick={() => initiateSave("MAINTENANCE_MODE", maintenanceMode)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md bg-[#6B2837] text-[#FFFCF7] hover:bg-[#521E2A] transition-colors cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save Maintenance State
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mandatory Audit Reason Dialog */}
+      {auditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] p-5 shadow-xl space-y-4">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-[#6B2837]" />
+              <h3 className="text-sm font-bold text-[#292320]">Administrative Confirmation Required</h3>
+            </div>
+            <p className="text-xs text-[#71675E]">
+              Modifying platform-level configurations directly impacts all client businesses on RestroInn. Please provide a clear audit trail rationale.
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#6B2837] mb-1">
+                Audit Reason (min 5 characters) *
+              </label>
+              <input
+                type="text"
+                value={auditReason}
+                onChange={(e) => setAuditReason(e.target.value)}
+                placeholder="e.g. Updating trial duration policy to 14 days for Q1"
+                className="w-full text-xs px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setAuditModalOpen(false)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#D8CEC1] text-[#71675E]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving || auditReason.trim().length < 5}
+                onClick={confirmSave}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[#6B2837] text-[#FFFCF7] hover:bg-[#521E2A] disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Apply & Log Audit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

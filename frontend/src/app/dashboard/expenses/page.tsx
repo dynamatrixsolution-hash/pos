@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
@@ -126,7 +128,7 @@ export default function ExpensesPage() {
   }, [currentBranchId, modalOpen, setValue]);
 
   const onSubmit = async (data: ExpenseInputs) => {
-    setSubmitError(null);
+    setSubmitError('');
     try {
       const endpoint = editingItem 
         ? (activeTab === "expenses" ? `/api/v1/expenses/${editingItem.id}` : `/api/v1/income/${editingItem.id}`)
@@ -141,7 +143,7 @@ export default function ExpensesPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        setSubmitError(json.error || `Failed to save ${activeTab === "expenses" ? "expense" : "income"}`);
+        Notify.failure(json.error || `Failed to save ${activeTab === "expenses" ? "expense" : "income"}`); setSubmitError(json.error || `Failed to save ${activeTab === "expenses" ? "expense" : "income"}`);
         return;
       }
 
@@ -155,13 +157,13 @@ export default function ExpensesPage() {
           : `Income ${editingItem ? "updated" : "recorded"} successfully!`
       );
     } catch (err) {
-      setSubmitError("Connection failure.");
+      Notify.failure("Connection failure."); setSubmitError("Connection failure.");
     }
   };
 
   const handleEditClick = (item: ExpenseItem) => {
     setEditingItem(item);
-    setSubmitError(null);
+    setSubmitError('');
     setValue("amount", item.amount);
     setValue("categoryId", item.categoryId);
     setValue("branchId", item.branchId);
@@ -249,7 +251,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">
             {activeTab === "expenses" ? "Business Expenses Log" : "Business Income Log"}
@@ -263,7 +265,7 @@ export default function ExpensesPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setCatModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 border border-border hover:bg-secondary rounded-xl text-xs font-semibold transition-colors"
+            className="flex items-center gap-2 px-3 py-2 border border-border hover:bg-secondary rounded-md text-xs font-semibold transition-colors"
           >
             <Tag className="h-4 w-4" />
             Add Category
@@ -272,10 +274,10 @@ export default function ExpensesPage() {
             onClick={() => {
               setEditingItem(null);
               reset();
-              setSubmitError(null);
+              setSubmitError('');
               setModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider"
           >
             <Plus className="h-4.5 w-4.5" />
             {activeTab === "expenses" ? "Record Expense" : "Record Income"}
@@ -287,19 +289,19 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {activeTab === "expenses" ? (
           <>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Expenses</span>
               <div className="text-2xl font-black text-destructive">
                 -{currencySymbol}{expenseSummary.total.toFixed(2)}
               </div>
             </div>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Today's Expenses</span>
               <div className="text-2xl font-black text-destructive">
                 -{currencySymbol}{expenseSummary.today.toFixed(2)}
               </div>
             </div>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">This Month's Expenses</span>
               <div className="text-2xl font-black text-destructive">
                 -{currencySymbol}{expenseSummary.thisMonth.toFixed(2)}
@@ -308,19 +310,19 @@ export default function ExpensesPage() {
           </>
         ) : (
           <>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Income</span>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500">
                 +{currencySymbol}{incomeSummary.total.toFixed(2)}
               </div>
             </div>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Today's Income</span>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500">
                 +{currencySymbol}{incomeSummary.today.toFixed(2)}
               </div>
             </div>
-            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-sm space-y-1 hover:shadow-md transition-shadow">
+            <div className="bg-card border border-border/80 rounded-lg p-5 shadow-sm space-y-1 hover:shadow-sm transition-shadow">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">This Month's Income</span>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-500">
                 +{currencySymbol}{incomeSummary.thisMonth.toFixed(2)}
@@ -331,7 +333,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Main List */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <h2 className="text-sm font-bold flex items-center gap-2 pb-1.5 border-b border-border/60">
           <Coins className="h-4.5 w-4.5 text-primary" />
           {activeTab === "expenses" ? "Outward Cash Flows" : "Incoming Cash Flows"}
@@ -411,7 +413,7 @@ export default function ExpensesPage() {
       {/* Record Expense/Income Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-md space-y-4">
             <div>
               <h3 className="text-sm font-bold">
                 {editingItem
@@ -542,7 +544,7 @@ export default function ExpensesPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>
@@ -562,7 +564,7 @@ export default function ExpensesPage() {
       {/* Add Category Modal */}
       {catModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-5 w-full max-w-sm space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 w-full max-w-sm space-y-4">
             <div>
               <h3 className="text-sm font-bold">
                 {activeTab === "expenses" ? "Add Expense Category" : "Add Income Category"}

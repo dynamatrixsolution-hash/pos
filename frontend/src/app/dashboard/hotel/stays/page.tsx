@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatNPR, parseMoney, subMoney } from "@/lib/currency";
@@ -76,7 +78,7 @@ export default function HotelStaysPage() {
   const loadStays = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
 
       const [staysRes, roomsRes] = await Promise.all([
         fetch("/api/v1/hotel/stays"),
@@ -95,9 +97,7 @@ export default function HotelStaysPage() {
 
       const data = await staysRes.json();
       setStays(data.stays || []);
-    } catch (err: any) {
-      setError(err.message || "Error loading stays");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error loading stays"); } finally {
       setLoading(false);
     }
   }, []);
@@ -144,7 +144,7 @@ export default function HotelStaysPage() {
       setTransferStay(null);
       await loadStays();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -179,7 +179,7 @@ export default function HotelStaysPage() {
       setExtendModalStay(null);
       await loadStays();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -216,7 +216,7 @@ export default function HotelStaysPage() {
       setCheckOutModalStay(null);
       await loadStays();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -280,18 +280,18 @@ export default function HotelStaysPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
           {error}
         </div>
       )}
 
       {/* Stays Cards / Table */}
       {loading ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
           Loading guest stays...
         </div>
       ) : filteredStays.length === 0 ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center space-y-2">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center space-y-2">
           <div className="text-sm font-bold text-espresso">No Matching Stays</div>
           <p className="text-xs text-warmgray">
             Check in a walk-in guest from the Room Rack or check in a confirmed reservation.
@@ -306,7 +306,7 @@ export default function HotelStaysPage() {
             return (
               <div
                 key={stay.id}
-                className="rounded-xl border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-4"
+                className="rounded-md border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -414,7 +414,7 @@ export default function HotelStaysPage() {
       {/* Transfer Room Modal */}
       {transferStay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">
                 Transfer Room — {transferStay.guestName} (Rm {transferStay.room?.roomNumber})
@@ -488,7 +488,7 @@ export default function HotelStaysPage() {
       {/* Extend Stay Modal */}
       {extendModalStay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">
                 Extend Stay — {extendModalStay.guestName}
@@ -565,7 +565,7 @@ export default function HotelStaysPage() {
       {/* Check-Out Modal */}
       {checkOutModalStay && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">
                 Check Out Room {checkOutModalStay.room?.roomNumber} — {checkOutModalStay.guestName}

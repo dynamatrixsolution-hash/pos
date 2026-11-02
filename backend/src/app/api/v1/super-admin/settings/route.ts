@@ -1,100 +1,120 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { logPlatformAudit } from "@/lib/platform-audit";
 
-export async function GET(request: Request) {
+// GET /api/v1/super-admin/settings
+export async function GET() {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
-    const platform = await db.business.findUnique({
-      where: { slug: "platform-admin" },
-      select: { settings: true, name: true, phone: true, email: true, address: true },
+    const records = await db.platformSetting.findMany({
+      orderBy: { key: "asc" },
     });
 
-    const settings = (platform?.settings as any) || {};
+    const settingsMap: Record<string, any> = {};
+    for (const r of records) {
+      settingsMap[r.key] = r.value;
+    }
 
-    const smtp = settings.smtp || {
-      host: "smtp.mailgun.org",
-      port: 587,
-      user: "postmaster@restroinn.com",
-      password: "••••••••••••••••",
-      encryption: "TLS",
+    // Default fallbacks if keys not found
+    const result = {
+      GENERAL_CONFIG: settingsMap.GENERAL_CONFIG || {
+        platformName: "RestroInn Platform",
+        supportEmail: "support@restroinn.com",
+        emergencyPhone: "+977-1-4400000",
+        timeZone: "Asia/Kathmandu",
+        taxSystem: "NEPAL_IRD_VAT",
+        defaultCurrency: "NPR",
+      },
+      SUBSCRIPTION_DEFAULTS: settingsMap.SUBSCRIPTION_DEFAULTS || {
+        trialDurationDays: 14,
+        gracePeriodDays: 7,
+        invoiceDueDays: 15,
+        defaultCurrency: "NPR",
+        autoReminderDaysBeforeDue: 3,
+      },
+      GATEWAY_SETTINGS: settingsMap.GATEWAY_SETTINGS || {
+        smsProvider: "SPARROW_SMS",
+        smsApiKey: "mock-sparrow-key-2026",
+        smsSenderId: "RestroInn",
+        emailProvider: "SMTP",
+        emailSender: "noreply@restroinn.com",
+        smtpHost: "smtp.mailgun.org",
+        smtpPort: 587,
+      },
+      MAINTENANCE_MODE: settingsMap.MAINTENANCE_MODE || {
+        enabled: false,
+        message: "RestroInn is currently undergoing scheduled platform upgrades. We will be back online shortly.",
+        allowedIps: ["127.0.0.1", "::1"],
+      },
     };
 
-    const backups = settings.backups || {
-      enabled: true,
-      frequency: "DAILY",
-      retentionDays: 30,
-      destination: "AWS_S3_SECURE",
-    };
-
-    const general = {
-      name: platform?.name || "RestroInn Hospitality Platform",
-      phone: platform?.phone || "+1-800-555-0100",
-      email: platform?.email || "admin@dynapos.com",
-      address: platform?.address || "DynaPOS Headquarters",
-      taxName: "VAT",
-      defaultRate: 10,
-    };
-
-    return NextResponse.json({ smtp, backups, general });
+    return NextResponse.json({ settings: result, rawRecords: records });
   } catch (error: any) {
     console.error("GET platform settings error:", error);
-    return NextResponse.json({ error: "Failed to compile platform settings" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to load platform settings" }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+// PUT /api/v1/super-admin/settings
+export async function PUT(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
     const body = await request.json();
-    const { smtp, backups, general } = body;
+    const { key, value, reason } = body;
 
-    const platform = await db.business.findUnique({
-      where: { slug: "platform-admin" },
-    });
-
-    if (!platform) {
-      return NextResponse.json({ error: "Platform administration details not found" }, { status: 404 });
+    if (!key || !value) {
+      return NextResponse.json({ error: "Setting key and value are required" }, { status: 400 });
+    }
+    if (!reason || reason.trim().length < 5) {
+      return NextResponse.json({ error: "A valid administrative audit reason (min 5 characters) is required" }, { status: 400 });
     }
 
-    const currentSettings = (platform.settings as any) || {};
-    const newSettings = {
-      ...currentSettings,
-      smtp: smtp || currentSettings.smtp,
-      backups: backups || currentSettings.backups,
+    const existing = await db.platformSetting.findUnique({
+      where: { key },
+    });
+
+    const categoryMap: Record<string, string> = {
+      MAINTENANCE_MODE: "MAINTENANCE",
+      SUBSCRIPTION_DEFAULTS: "SUBSCRIPTION",
+      GATEWAY_SETTINGS: "GATEWAYS",
+      GENERAL_CONFIG: "GENERAL",
     };
 
-    await db.business.update({
-      where: { id: platform.id },
-      data: {
-        name: general?.name || platform.name,
-        phone: general?.phone || platform.phone,
-        email: general?.email || platform.email,
-        address: general?.address || platform.address,
-        settings: newSettings,
+    const updated = await db.platformSetting.upsert({
+      where: { key },
+      create: {
+        key,
+        category: categoryMap[key] || "GENERAL",
+        value,
+        updatedById: context.userId,
+      },
+      update: {
+        value,
+        updatedById: context.userId,
       },
     });
 
-    await db.auditLog.create({
-      data: {
-        businessId: context.businessId,
-        userId: context.userId,
-        role: context.role,
-        action: "UPDATE_PLATFORM_SETTINGS",
-        module: "SUPER_ADMIN",
-        details: "Updated platform settings, SMTP configuration, or automated database backup schedules",
-      },
+    await logPlatformAudit({
+      actorId: context.userId,
+      actorRole: context.role,
+      action: `SETTING_UPDATED_${key}`,
+      targetType: "SYSTEM",
+      targetId: updated.id,
+      reason: reason.trim(),
+      beforeState: existing?.value || null,
+      afterState: value,
     });
 
-    return NextResponse.json({ message: "Platform configurations updated successfully" });
+    return NextResponse.json({ success: true, setting: updated });
   } catch (error: any) {
-    console.error("POST platform settings error:", error);
-    return NextResponse.json({ error: "Failed to update platform configurations" }, { status: 500 });
+    console.error("PUT platform settings error:", error);
+    return NextResponse.json({ error: error.message || "Failed to save platform setting" }, { status: 500 });
   }
 }

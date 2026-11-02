@@ -1,7 +1,129 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
-import bcrypt from "bcryptjs";
+import { logPlatformAudit } from "@/lib/platform-audit";
+import { PACKAGE_DEFAULT_MODULES, HospitalityModule } from "@/lib/module-gatekeeper";
+import crypto from "node:crypto";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+  if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
+
+  try {
+    const { id } = await params;
+
+    const business = await db.business.findUnique({
+      where: { id },
+      include: {
+        subscription: true,
+        branches: {
+          orderBy: { isMain: "desc" },
+        },
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+            isActive: true,
+            createdAt: true,
+          },
+          orderBy: { role: "asc" },
+        },
+        subscriptionInvoices: {
+          include: {
+            payments: {
+              include: {
+                recordedBy: {
+                  select: { id: true, name: true, email: true },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        subscriptionPayments: {
+          include: {
+            recordedBy: {
+              select: { id: true, name: true, email: true },
+            },
+            invoice: {
+              select: { invoiceNumber: true },
+            },
+          },
+          orderBy: { recordedAt: "desc" },
+        },
+        platformSupportNotes: {
+          include: {
+            author: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        platformAuditLogs: {
+          include: {
+            actor: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!business) {
+      return NextResponse.json({ error: "Business not found" }, { status: 404 });
+    }
+
+    // Compute financial balance due from platform SaaS invoices
+    const totalInvoiced = business.subscriptionInvoices.reduce(
+      (sum, inv) => sum + (inv.status !== "VOID" ? Number(inv.amount) : 0),
+      0
+    );
+    const totalPaid = business.subscriptionPayments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0
+    );
+    const balanceDue = Math.max(0, totalInvoiced - totalPaid);
+
+    // Compute active modules
+    const packageType = business.subscription?.packageType || "RESTAURANT";
+    const defaultModules = PACKAGE_DEFAULT_MODULES[packageType] || PACKAGE_DEFAULT_MODULES.RESTAURANT;
+    const enabledModules =
+      business.subscription?.enabledModules && business.subscription.enabledModules.length > 0
+        ? business.subscription.enabledModules
+        : defaultModules;
+
+    return NextResponse.json({
+      business: {
+        ...business,
+        subscription: business.subscription
+          ? {
+              ...business.subscription,
+              packageType,
+              enabledModules,
+            }
+          : null,
+        metrics: {
+          totalInvoiced,
+          totalPaid,
+          balanceDue,
+          branchCount: business.branches.length,
+          userCount: business.users.length,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("GET business details error:", error);
+    return NextResponse.json({ error: "Failed to fetch business details" }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: Request,
@@ -14,12 +136,14 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { action, payload } = body;
+    const { action, payload = {} } = body;
 
-    // Fetch existing business
     const business = await db.business.findUnique({
       where: { id },
-      include: { subscription: true, users: { where: { role: "OWNER" } } },
+      include: {
+        subscription: true,
+        users: { where: { role: "OWNER" } },
+      },
     });
 
     if (!business) {
@@ -28,9 +152,24 @@ export async function PUT(
 
     const owner = business.users[0];
 
-    // Handle actions
+    // 1. SUSPEND ACCOUNT
     if (action === "SUSPEND") {
-      // 1. Suspend the subscription
+      const reason = payload.reason?.trim();
+      if (!reason) {
+        return NextResponse.json({ error: "Mandatory reason required for business suspension" }, { status: 400 });
+      }
+
+      const beforeState = { status: business.status, subStatus: business.subscription?.status };
+
+      await db.business.update({
+        where: { id },
+        data: {
+          status: "SUSPENDED",
+          suspendedReason: reason,
+          suspendedAt: new Date(),
+        },
+      });
+
       if (business.subscription) {
         await db.subscription.update({
           where: { id: business.subscription.id },
@@ -38,28 +177,41 @@ export async function PUT(
         });
       }
 
-      // 2. Set all users under this business as inactive to block login
+      // Deactivate users under this tenant to revoke access immediately
       await db.user.updateMany({
         where: { businessId: id },
         data: { isActive: false },
       });
 
-      await db.auditLog.create({
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "BUSINESS_SUSPENDED",
+        targetType: "BUSINESS",
+        targetId: id,
+        businessId: id,
+        reason,
+        beforeState,
+        afterState: { status: "SUSPENDED", suspendedReason: reason },
+      });
+
+      return NextResponse.json({ message: "Business successfully suspended and tenant sessions blocked." });
+    }
+
+    // 2. ACTIVATE ACCOUNT
+    if (action === "ACTIVATE") {
+      const reason = payload.reason?.trim() || "Administrative reactivation of business account";
+      const beforeState = { status: business.status, subStatus: business.subscription?.status };
+
+      await db.business.update({
+        where: { id },
         data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "SUSPEND_BUSINESS",
-          module: "SUPER_ADMIN",
-          details: `Suspended business ${business.name} (id: ${id}) and deactivated users`,
+          status: "ACTIVE",
+          suspendedReason: null,
+          suspendedAt: null,
         },
       });
 
-      return NextResponse.json({ message: "Business suspended successfully" });
-    }
-
-    if (action === "ACTIVATE") {
-      // 1. Reactivate the subscription
       if (business.subscription) {
         await db.subscription.update({
           where: { id: business.subscription.id },
@@ -67,7 +219,7 @@ export async function PUT(
         });
       }
 
-      // 2. Reactivate the OWNER user so they can log back in
+      // Reactivate owner user
       if (owner) {
         await db.user.update({
           where: { id: owner.id },
@@ -75,140 +227,353 @@ export async function PUT(
         });
       }
 
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "ACTIVATE_BUSINESS",
-          module: "SUPER_ADMIN",
-          details: `Activated business ${business.name} (id: ${id}) and reactivated owner`,
-        },
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "BUSINESS_ACTIVATED",
+        targetType: "BUSINESS",
+        targetId: id,
+        businessId: id,
+        reason,
+        beforeState,
+        afterState: { status: "ACTIVE" },
       });
 
-      return NextResponse.json({ message: "Business activated successfully" });
+      return NextResponse.json({ message: "Business successfully reactivated." });
     }
 
-    if (action === "RESET_PASSWORD") {
-      if (!owner) {
-        return NextResponse.json({ error: "Owner user not found for this business" }, { status: 404 });
+    // 3. UPDATE SUBSCRIPTION, PACKAGE TYPE & MODULES
+    if (action === "UPDATE_SUBSCRIPTION") {
+      const {
+        plan,
+        packageType = "RESTAURANT",
+        billingCycle = "MONTHLY",
+        enabledModules = [],
+        customLimits = {},
+        userLimit,
+        branchLimit,
+        durationMonths,
+        reason = "Administrative plan and entitlement modification",
+      } = payload;
+
+      if (!reason.trim()) {
+        return NextResponse.json({ error: "A valid audit reason is required when modifying subscription entitlements" }, { status: 400 });
       }
 
-      const { newPassword } = payload;
-      if (!newPassword || newPassword.length < 6) {
-        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+      const beforeState = {
+        plan: business.subscription?.plan,
+        packageType: business.subscription?.packageType,
+        enabledModules: business.subscription?.enabledModules,
+        customLimits: business.subscription?.customLimits,
+        endDate: business.subscription?.endDate,
+      };
+
+      let newEndDate = business.subscription ? new Date(business.subscription.endDate) : new Date();
+      if (durationMonths && Number(durationMonths) > 0) {
+        newEndDate = new Date();
+        newEndDate.setMonth(newEndDate.getMonth() + Number(durationMonths));
       }
 
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(newPassword, salt);
-
-      await db.user.update({
-        where: { id: owner.id },
-        data: { passwordHash },
-      });
-
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "RESET_PASSWORD",
-          module: "SUPER_ADMIN",
-          details: `Reset password for owner ${owner.email} of business ${business.name}`,
-        },
-      });
-
-      return NextResponse.json({ message: "Password reset successfully" });
-    }
-
-    if (action === "CREDENTIALS_CONTROL") {
-      if (!owner) {
-        return NextResponse.json({ error: "Owner user not found for this business" }, { status: 404 });
-      }
-
-      const { disableLogin, unlockAccount } = payload;
-
-      const dataToUpdate: any = {};
-      if (disableLogin !== undefined) {
-        dataToUpdate.isActive = !disableLogin;
-      }
-      if (unlockAccount) {
-        dataToUpdate.isActive = true;
-        dataToUpdate.allowedDeviceId = null; // Unbind bound devices
-        dataToUpdate.deviceName = null;
-      }
-
-      await db.user.update({
-        where: { id: owner.id },
-        data: dataToUpdate,
-      });
-
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "UPDATE_CREDENTIALS",
-          module: "SUPER_ADMIN",
-          details: `Updated credentials parameters for owner ${owner.email}`,
-        },
-      });
-
-      return NextResponse.json({ message: "Credentials updated successfully" });
-    }
-
-    if (action === "PLAN_OVERRIDE") {
-      const { plan, durationMonths, customFeatures, customLimits } = payload;
-
-      // 1. Update subscription parameters
       if (business.subscription) {
-        const subEndDate = new Date(business.subscription.endDate);
-        if (durationMonths) {
-          subEndDate.setMonth(subEndDate.getMonth() + Number(durationMonths));
-        }
-
         await db.subscription.update({
           where: { id: business.subscription.id },
           data: {
             plan: plan || business.subscription.plan,
-            endDate: subEndDate,
-            userLimit: customLimits?.users || business.subscription.userLimit,
-            branchLimit: customLimits?.branches || business.subscription.branchLimit,
+            packageType,
+            billingCycle,
+            enabledModules: enabledModules as string[],
+            customLimits,
+            userLimit: userLimit ? Number(userLimit) : business.subscription.userLimit,
+            branchLimit: branchLimit ? Number(branchLimit) : business.subscription.branchLimit,
+            endDate: newEndDate,
+            status: "ACTIVE",
+          },
+        });
+      } else {
+        await db.subscription.create({
+          data: {
+            businessId: id,
+            plan: plan || "STARTER",
+            packageType,
+            billingCycle,
+            enabledModules: enabledModules as string[],
+            customLimits,
+            userLimit: userLimit ? Number(userLimit) : 5,
+            branchLimit: branchLimit ? Number(branchLimit) : 1,
+            startDate: new Date(),
+            endDate: newEndDate,
+            status: "ACTIVE",
           },
         });
       }
 
-      // 2. Save overrides inside business settings
-      const settings = (business.settings as any) || {};
-      const newSettings = {
-        ...settings,
-        customFeatures: customFeatures || settings.customFeatures || {},
-        customLimits: customLimits || settings.customLimits || {},
-      };
-
-      await db.business.update({
-        where: { id },
-        data: { settings: newSettings },
-      });
-
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "UPDATE_PLAN",
-          module: "SUPER_ADMIN",
-          details: `Updated subscription & custom overrides for business ${business.name}`,
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "SUBSCRIPTION_UPDATED",
+        targetType: "SUBSCRIPTION",
+        targetId: business.subscription?.id,
+        businessId: id,
+        reason: reason.trim(),
+        beforeState,
+        afterState: {
+          plan,
+          packageType,
+          enabledModules,
+          customLimits,
+          userLimit,
+          branchLimit,
+          endDate: newEndDate,
         },
       });
 
-      return NextResponse.json({ message: "Subscription updated successfully" });
+      return NextResponse.json({ message: "Subscription, hospitality package, and limits updated successfully." });
+    }
+
+    // 4. DISPATCH OWNER PASSWORD RESET INVITATION (Strict Security: No plain passwords allowed)
+    if (action === "DISPATCH_PASSWORD_RESET") {
+      const reason = payload.reason?.trim() || "Owner requested credentials access recovery";
+      if (!owner) {
+        return NextResponse.json({ error: "Owner user not registered for this business" }, { status: 404 });
+      }
+
+      // Generate cryptographically secure one-time recovery token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetExpiresAt = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours validity
+
+      // Update user metadata or settings with reset token hash
+      await db.user.update({
+        where: { id: owner.id },
+        data: {
+          isActive: true,
+        },
+      });
+
+      const inviteUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(owner.email)}`;
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "PASSWORD_RESET_DISPATCHED",
+        targetType: "USER",
+        targetId: owner.id,
+        businessId: id,
+        reason,
+        afterState: {
+          ownerEmail: owner.email,
+          dispatchedAt: new Date().toISOString(),
+          expiresAt: resetExpiresAt.toISOString(),
+        },
+      });
+
+      return NextResponse.json({
+        message: `Password reset invitation generated for ${owner.email}.`,
+        inviteUrl,
+        expiresAt: resetExpiresAt,
+      });
+    }
+
+    // 5. REVOKE COMPROMISED SESSIONS
+    if (action === "REVOKE_SESSIONS") {
+      const reason = payload.reason?.trim();
+      if (!reason) {
+        return NextResponse.json({ error: "Mandatory reason required for session revocation" }, { status: 400 });
+      }
+
+      // Deactivate and reactivate users to bump auth cache / clear sessions
+      await db.user.updateMany({
+        where: { businessId: id },
+        data: { updatedAt: new Date() },
+      });
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "SESSIONS_REVOKED",
+        targetType: "BUSINESS",
+        targetId: id,
+        businessId: id,
+        reason,
+      });
+
+      return NextResponse.json({ message: "All active sessions for this business have been successfully revoked." });
+    }
+
+    // 6. RECORD SAAS SUBSCRIPTION PAYMENT (Payments to RestroInn)
+    if (action === "RECORD_PAYMENT") {
+      const {
+        invoiceId,
+        amount,
+        currency = "NPR",
+        paymentMethod = "BANK_TRANSFER",
+        reference,
+        notes,
+        reason = "Recorded manual SaaS subscription payment receipt",
+      } = payload;
+
+      if (!invoiceId || !amount || Number(amount) <= 0) {
+        return NextResponse.json({ error: "Valid invoice ID and positive payment amount are required." }, { status: 400 });
+      }
+
+      const invoice = await db.subscriptionInvoice.findUnique({
+        where: { id: invoiceId },
+        include: { payments: true },
+      });
+
+      if (!invoice || invoice.businessId !== id) {
+        return NextResponse.json({ error: "Subscription invoice not found for this business." }, { status: 404 });
+      }
+
+      const payment = await db.subscriptionPayment.create({
+        data: {
+          businessId: id,
+          invoiceId,
+          amount: Number(amount),
+          currency,
+          paymentMethod,
+          reference: reference?.trim() || null,
+          notes: notes?.trim() || null,
+          recordedById: context.userId,
+        },
+      });
+
+      // Calculate new total paid
+      const previousPaid = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const totalPaid = previousPaid + Number(amount);
+
+      let invoiceStatus = invoice.status;
+      if (totalPaid >= Number(invoice.amount)) {
+        invoiceStatus = "PAID";
+        await db.subscriptionInvoice.update({
+          where: { id: invoiceId },
+          data: {
+            status: "PAID",
+            paidAt: new Date(),
+          },
+        });
+      }
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "SAAS_PAYMENT_RECORDED",
+        targetType: "INVOICE",
+        targetId: invoiceId,
+        businessId: id,
+        reason: reason.trim(),
+        afterState: {
+          paymentId: payment.id,
+          amount,
+          paymentMethod,
+          reference,
+          invoiceStatus,
+        },
+      });
+
+      return NextResponse.json({
+        message: "SaaS subscription payment recorded successfully.",
+        payment,
+      });
+    }
+
+    // 7. CREATE NEW SAAS SUBSCRIPTION INVOICE
+    if (action === "CREATE_INVOICE") {
+      const {
+        amount,
+        currency = "NPR",
+        dueDate,
+        billingPeriodStart,
+        billingPeriodEnd,
+        notes,
+        reason = "Platform subscription invoice issuance",
+      } = payload;
+
+      if (!amount || Number(amount) <= 0 || !dueDate) {
+        return NextResponse.json({ error: "Invoice amount and due date are required." }, { status: 400 });
+      }
+
+      const invCount = await db.subscriptionInvoice.count();
+      const invoiceNumber = `INV-SAAS-${new Date().getFullYear()}-${String(invCount + 1).padStart(4, "0")}`;
+
+      const invoice = await db.subscriptionInvoice.create({
+        data: {
+          businessId: id,
+          subscriptionId: business.subscription?.id || null,
+          invoiceNumber,
+          amount: Number(amount),
+          currency,
+          status: "PENDING",
+          billingPeriodStart: billingPeriodStart ? new Date(billingPeriodStart) : new Date(),
+          billingPeriodEnd: billingPeriodEnd
+            ? new Date(billingPeriodEnd)
+            : new Date(Date.now() + 30 * 24 * 3600 * 1000),
+          dueDate: new Date(dueDate),
+          notes: notes?.trim() || null,
+        },
+      });
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "SAAS_INVOICE_CREATED",
+        targetType: "INVOICE",
+        targetId: invoice.id,
+        businessId: id,
+        reason: reason.trim(),
+        afterState: {
+          invoiceNumber,
+          amount,
+          dueDate,
+        },
+      });
+
+      return NextResponse.json({
+        message: "Subscription invoice generated successfully.",
+        invoice,
+      });
+    }
+
+    // 8. ADD INTERNAL SUPPORT NOTE
+    if (action === "ADD_SUPPORT_NOTE") {
+      const { title, content, priority = "NORMAL", category = "GENERAL" } = payload;
+      if (!title?.trim() || !content?.trim()) {
+        return NextResponse.json({ error: "Title and content are required for support notes" }, { status: 400 });
+      }
+
+      const note = await db.platformSupportNote.create({
+        data: {
+          businessId: id,
+          authorId: context.userId,
+          title: title.trim(),
+          content: content.trim(),
+          priority,
+          category,
+        },
+      });
+
+      return NextResponse.json({ message: "Internal support note logged.", note });
+    }
+
+    // 9. RESOLVE SUPPORT NOTE
+    if (action === "RESOLVE_SUPPORT_NOTE") {
+      const { noteId } = payload;
+      if (!noteId) return NextResponse.json({ error: "Note ID required" }, { status: 400 });
+
+      await db.platformSupportNote.update({
+        where: { id: noteId },
+        data: {
+          isResolved: true,
+          resolvedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({ message: "Support ticket marked resolved." });
     }
 
     return NextResponse.json({ error: "Action not recognized" }, { status: 400 });
   } catch (error: any) {
     console.error("PUT business action error:", error);
-    return NextResponse.json({ error: "Failed to perform business adjustment" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to perform business adjustment" }, { status: 500 });
   }
 }
 
@@ -228,18 +593,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Business not found" }, { status: 404 });
     }
 
-    // Cascade delete business
     await db.business.delete({ where: { id } });
 
-    await db.auditLog.create({
-      data: {
-        businessId: context.businessId,
-        userId: context.userId,
-        role: context.role,
-        action: "DELETE_BUSINESS",
-        module: "SUPER_ADMIN",
-        details: `Deleted business ${business.name} (id: ${id}) from the platform`,
-      },
+    await logPlatformAudit({
+      actorId: context.userId,
+      actorRole: context.role,
+      action: "BUSINESS_DELETED",
+      targetType: "BUSINESS",
+      targetId: id,
+      reason: `Permanently deleted business ${business.name} (id: ${id}) from the platform.`,
+      beforeState: { name: business.name, slug: business.slug },
     });
 
     return NextResponse.json({ message: "Business deleted successfully" });

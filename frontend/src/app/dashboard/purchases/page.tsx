@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
@@ -159,26 +161,26 @@ export default function PurchasesPage() {
 
   const onSubmit = async (data: PurchaseInputs) => {
     if (!branchId) {
-      setSubmitError("No branch context selected.");
+      Notify.failure("No branch context selected."); setSubmitError("No branch context selected.");
       return;
     }
 
-    setSubmitError(null);
+    setSubmitError('');
 
     // Validate category and unit mappings in frontend
     for (let idx = 0; idx < data.items.length; idx++) {
       const it = data.items[idx];
       const prod = products.find((p) => p.id === it.productId);
       if (!prod) {
-        setSubmitError(`Row ${idx + 1}: Select a valid product.`);
+        Notify.failure(`Row ${idx + 1}: Select a valid product.`); setSubmitError(`Row ${idx + 1}: Select a valid product.`);
         return;
       }
       if (!prod.categoryId) {
-        setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no category assigned. Edit product to configure mapping.`);
+        Notify.failure(`Row ${idx + 1}: Product "${prod.name}" has no category assigned. Edit product to configure mapping.`); setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no category assigned. Edit product to configure mapping.`);
         return;
       }
       if (!prod.unitId) {
-        setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no unit assigned. Edit product to configure mapping.`);
+        Notify.failure(`Row ${idx + 1}: Product "${prod.name}" has no unit assigned. Edit product to configure mapping.`); setSubmitError(`Row ${idx + 1}: Product "${prod.name}" has no unit assigned. Edit product to configure mapping.`);
         return;
       }
     }
@@ -200,7 +202,7 @@ export default function PurchasesPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        setSubmitError(json.error || "Failed to save purchase");
+        Notify.failure(json.error || "Failed to save purchase"); setSubmitError(json.error || "Failed to save purchase");
         return;
       }
 
@@ -208,14 +210,14 @@ export default function PurchasesPage() {
       reset();
       loadData();
     } catch (err) {
-      setSubmitError("Connection failure.");
+      Notify.failure("Connection failure."); setSubmitError("Connection failure.");
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">Inbound Purchase Orders</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -225,9 +227,9 @@ export default function PurchasesPage() {
         <button
           onClick={() => {
             setModalOpen(true);
-            setSubmitError(null);
+            setSubmitError('');
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider cursor-pointer w-full sm:w-auto justify-center"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider cursor-pointer w-full sm:w-auto justify-center"
         >
           <Plus className="h-4.5 w-4.5" />
           Record Purchase
@@ -235,7 +237,7 @@ export default function PurchasesPage() {
       </div>
 
       {/* Main List */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-muted-foreground" />
@@ -330,7 +332,7 @@ export default function PurchasesPage() {
             <div className="block md:hidden space-y-3">
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs animate-pulse">
+                  <div key={i} className="bg-card border border-border/80 rounded-md p-4 space-y-3 shadow-xs animate-pulse">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1.5 flex-1 pr-2">
                         <div className="h-4 bg-secondary dark:bg-slate-800 rounded w-24" />
@@ -359,7 +361,7 @@ export default function PurchasesPage() {
                 ))
               ) : (
                 purchases.map((p) => (
-                  <div key={p.id} className="bg-card border border-border/80 rounded-xl p-4 space-y-3 shadow-xs">
+                  <div key={p.id} className="bg-card border border-border/80 rounded-md p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-bold text-sm text-amber-500">{p.purchaseNumber}</div>
@@ -409,7 +411,7 @@ export default function PurchasesPage() {
       {/* Record Purchase Modal Overlay */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-2xl space-y-4 my-8">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-2xl space-y-4 my-8">
             <div>
               <h3 className="text-base font-bold">Record Inbound Purchase Bill</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -541,7 +543,7 @@ export default function PurchasesPage() {
                             type="number"
                             placeholder="Qty"
                             {...register(`items.${index}.quantity` as const, { valueAsNumber: true })}
-                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-center focus:outline-none text-foreground"
+                            className="w-full px-2 py-2 border border-border rounded-md text-[11px] bg-background text-center focus:outline-none text-foreground"
                           />
                         </div>
 
@@ -552,7 +554,7 @@ export default function PurchasesPage() {
                             step="0.01"
                             placeholder="Cost"
                             {...register(`items.${index}.price` as const, { valueAsNumber: true })}
-                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-right focus:outline-none text-foreground"
+                            className="w-full px-2 py-2 border border-border rounded-md text-[11px] bg-background text-right focus:outline-none text-foreground"
                           />
                         </div>
 
@@ -562,7 +564,7 @@ export default function PurchasesPage() {
                             type="text"
                             placeholder="Batch (optional)"
                             {...register(`items.${index}.batchNumber` as const)}
-                            className="w-full px-2 py-2 border border-border rounded-xl text-[11px] bg-background text-center focus:outline-none text-foreground"
+                            className="w-full px-2 py-2 border border-border rounded-md text-[11px] bg-background text-center focus:outline-none text-foreground"
                           />
                         </div>
 
@@ -570,7 +572,7 @@ export default function PurchasesPage() {
                           <button
                             type="button"
                             onClick={() => remove(index)}
-                            className="text-muted-foreground hover:text-destructive p-2 hover:bg-secondary rounded-xl transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
+                            className="text-muted-foreground hover:text-destructive p-2 hover:bg-secondary rounded-md transition-colors cursor-pointer w-full sm:w-auto flex items-center justify-center border border-border/60 sm:border-0"
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="text-[10px] font-bold ml-1.5 sm:hidden">Delete Row</span>
@@ -581,7 +583,7 @@ export default function PurchasesPage() {
                       {/* Sub-row: Mfg. Date and Expiry Date */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider block">Mfg. Date (MFD)</label>
+                          <label className="text-[9px] font-bold text-[#71675E] dark:text-slate-455 uppercase tracking-wider block">Mfg. Date (MFD)</label>
                           {calendarMode === "BS" ? (
                             <NepaliDatePicker
                               value={items[index]?.manufacturingDate || ""}
@@ -591,13 +593,13 @@ export default function PurchasesPage() {
                             <input
                               type="date"
                               {...register(`items.${index}.manufacturingDate` as const)}
-                              className="w-full px-2.5 py-2 border border-border rounded-xl text-[11px] bg-background focus:outline-none text-foreground font-medium"
+                              className="w-full px-2.5 py-2 border border-border rounded-md text-[11px] bg-background focus:outline-none text-foreground font-medium"
                             />
                           )}
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-500 dark:text-slate-455 uppercase tracking-wider block">Expiry Date</label>
+                          <label className="text-[9px] font-bold text-[#71675E] dark:text-slate-455 uppercase tracking-wider block">Expiry Date</label>
                           {calendarMode === "BS" ? (
                             <NepaliDatePicker
                               value={items[index]?.expiryDate || ""}
@@ -607,7 +609,7 @@ export default function PurchasesPage() {
                             <input
                               type="date"
                               {...register(`items.${index}.expiryDate` as const)}
-                              className="w-full px-2.5 py-2 border border-border rounded-xl text-[11px] bg-background focus:outline-none text-foreground font-medium"
+                              className="w-full px-2.5 py-2 border border-border rounded-md text-[11px] bg-background focus:outline-none text-foreground font-medium"
                             />
                           )}
                         </div>
@@ -676,7 +678,7 @@ export default function PurchasesPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Activity,
   Search,
@@ -10,17 +11,25 @@ import {
   RefreshCw,
   Clock,
   Shield,
-  Laptop,
+  FileText,
+  Building,
 } from "lucide-react";
+import { Notify } from "@/lib/notify";
 
 interface AuditLogItem {
   id: string;
   action: string;
-  module: string;
-  details: string;
+  targetType: string;
+  targetId: string | null;
+  reason: string;
+  beforeState: any;
+  afterState: any;
   createdAt: string;
   user: string;
+  userName: string;
   role: string;
+  businessName: string;
+  businessId: string | null;
   ipAddress: string;
 }
 
@@ -33,6 +42,20 @@ export default function ActivityLogsPage() {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("ALL");
 
+  const loadLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/v1/super-admin/activity-logs");
+      if (!res.ok) throw new Error("Failed to load platform activity logs");
+      const data = await res.json();
+      setLogs(data.logs || []);
+    } catch (err: any) {
+      Notify.error(err.message || "Failed to load activity logs");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
@@ -41,197 +64,153 @@ export default function ActivityLogsPage() {
     } else if (status === "authenticated") {
       loadLogs();
     }
-  }, [status, session, router]);
-
-  const loadLogs = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/v1/super-admin/dashboard");
-      if (res.ok) {
-        const data = await res.json();
-        
-        // Mock audit data based on dashboard's logs
-        const recent = data.recentActivity || [];
-        const extendedLogs = [
-          ...recent,
-          {
-            id: "act-3",
-            action: "UPDATE_SUBSCRIPTION_CONFIG",
-            details: "Updated platform plan profiles and feature limits.",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1.2).toISOString(),
-            user: "superadmin@dynapos.com",
-            role: "SUPER_ADMIN",
-            ipAddress: "192.168.86.5",
-          },
-          {
-            id: "act-4",
-            action: "RESET_PASSWORD",
-            details: "Reset password for owner account 'owner@dynapos.com'.",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            user: "superadmin@dynapos.com",
-            role: "SUPER_ADMIN",
-            ipAddress: "192.168.86.4",
-          },
-          {
-            id: "act-5",
-            action: "UPDATE_PLATFORM_SETTINGS",
-            details: "Updated general SMTP credentials and tax configurations.",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3.5).toISOString(),
-            user: "superadmin@dynapos.com",
-            role: "SUPER_ADMIN",
-            ipAddress: "127.0.0.1",
-          },
-          {
-            id: "act-6",
-            action: "SUSPEND_BUSINESS",
-            details: "Suspended tenant account 'Alpha Retailers' due to licensing expiry.",
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-            user: "superadmin@dynapos.com",
-            role: "SUPER_ADMIN",
-            ipAddress: "192.168.86.5",
-          }
-        ];
-
-        setLogs(extendedLogs.map(l => ({
-          id: l.id,
-          action: l.action,
-          module: "SUPER_ADMIN",
-          details: l.details,
-          createdAt: l.createdAt,
-          user: l.user || "superadmin@dynapos.com",
-          role: l.role || "SUPER_ADMIN",
-          ipAddress: l.ipAddress || "192.168.86.4",
-        })));
-      }
-    } catch (err) {
-      console.error("Load audit logs error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [status, session, router, loadLogs]);
 
   const filteredLogs = logs.filter((log) => {
-    const matchesSearch = log.details.toLowerCase().includes(search.toLowerCase()) ||
-      log.user.toLowerCase().includes(search.toLowerCase());
-    
-    if (actionFilter === "ALL") return matchesSearch;
-    return matchesSearch && log.action === actionFilter;
+    const matchesSearch =
+      log.reason.toLowerCase().includes(search.toLowerCase()) ||
+      log.action.toLowerCase().includes(search.toLowerCase()) ||
+      log.businessName.toLowerCase().includes(search.toLowerCase()) ||
+      log.userName.toLowerCase().includes(search.toLowerCase());
+
+    const matchesAction = actionFilter === "ALL" || log.action === actionFilter;
+
+    return matchesSearch && matchesAction;
   });
 
-  if (loading) {
-    return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
-          <p className="text-xs text-muted-foreground">Aggregating platform audit trails...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 text-[#0F172A]">
-      {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/80 p-6 rounded-3xl">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Activity className="h-5.5 w-5.5 text-blue-600" /> Platform Activity Logs
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Audit trailing log indices capturing all platform administrator transactions, updates, and events.
-          </p>
-        </div>
-        <button
-          onClick={loadLogs}
-          className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-        >
-          <RefreshCw className="h-4 w-4" /> Sync Logs
-        </button>
-      </div>
-
-      {/* 2. Controls */}
-      <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 items-center">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-450" />
-          <input
-            type="text"
-            placeholder="Search details or administrators..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none"
-          />
-        </div>
-        <div className="flex gap-2 items-center w-full sm:w-auto shrink-0">
-          <Filter className="h-4 w-4 text-slate-450 hidden sm:inline" />
-          <select
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-bold bg-white focus:outline-none cursor-pointer"
-          >
-            <option value="ALL">All Actions</option>
-            <option value="CREATE_BUSINESS">Create Business</option>
-            <option value="SUSPEND_BUSINESS">Suspend Business</option>
-            <option value="ACTIVATE_BUSINESS">Activate Business</option>
-            <option value="RESET_PASSWORD">Password Reset</option>
-            <option value="UPDATE_PLATFORM_SETTINGS">Settings Update</option>
-          </select>
-        </div>
-      </div>
-
-      {/* 3. Log Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 overflow-hidden">
-        {filteredLogs.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-450">No logs found matching filter details.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-450 font-bold uppercase tracking-wider text-[9px]">
-                  <th className="py-3 px-2">Action</th>
-                  <th className="py-3 px-2">Audit Details</th>
-                  <th className="py-3 px-2">User Access</th>
-                  <th className="py-3 px-2 text-center">IP Origin</th>
-                  <th className="py-3 px-2 text-right">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3.5 px-2">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                        log.action.includes("CREATE")
-                          ? "bg-blue-50 text-blue-600"
-                          : log.action.includes("SUSPEND")
-                          ? "bg-red-50 text-red-500"
-                          : "bg-slate-150 text-slate-600"
-                      }`}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-2 font-semibold text-slate-700 leading-snug">{log.details}</td>
-                    <td className="py-3.5 px-2">
-                      <div className="font-bold text-slate-650 flex items-center gap-1">
-                        <Shield className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {log.user}
-                      </div>
-                      <span className="text-[9px] text-slate-450 ml-4.5 block uppercase tracking-wider">{log.role}</span>
-                    </td>
-                    <td className="py-3.5 px-2 text-center font-mono text-[10px] text-slate-400">
-                      <span className="flex items-center justify-center gap-1">
-                        <Laptop className="w-3.5 h-3.5 opacity-60" /> {log.ipAddress}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-2 text-right text-slate-450 font-medium">
-                      <span className="flex items-center justify-end gap-1.5 font-mono text-[10px]">
-                        <Clock className="w-3 h-3 opacity-60" />
-                        {new Date(log.createdAt).toLocaleString()}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="min-h-screen bg-[#F7F3EC] p-6 sm:p-8 text-[#292320]">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B2837] bg-[#6B2837]/10 px-2.5 py-0.5 rounded">
+                Platform Security
+              </span>
+              <span className="text-xs text-[#71675E]">• Audit Log Trail</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#292320] mt-1">Platform Administrative Audit Trail</h1>
+            <p className="text-xs text-[#71675E]">
+              Immutable record of sensitive platform actions, mandatory reasons, and before/after state diffs.
+            </p>
           </div>
-        )}
+
+          <button
+            onClick={loadLogs}
+            disabled={loading}
+            className="px-3.5 py-1.5 border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh Trail
+          </button>
+        </div>
+
+        {/* Filter bar */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] p-4 rounded-lg shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#71675E]" />
+            <input
+              type="text"
+              placeholder="Search by reason, action, business, or actor..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 w-full text-xs p-2 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Filter className="h-4 w-4 text-[#71675E]" />
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="text-xs p-2 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
+            >
+              <option value="ALL">All Administrative Actions</option>
+              <option value="BUSINESS_SUSPENDED">Business Suspended</option>
+              <option value="BUSINESS_ACTIVATED">Business Activated</option>
+              <option value="SUBSCRIPTION_UPDATED">Subscription Updated</option>
+              <option value="PASSWORD_RESET_DISPATCHED">Password Reset Dispatched</option>
+              <option value="SESSIONS_REVOKED">Sessions Revoked</option>
+              <option value="SAAS_PAYMENT_RECORDED">SaaS Payment Recorded</option>
+              <option value="RECOVERY_REHEARSAL_TESTED">Recovery Rehearsal Tested</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Audit Log Table */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
+          {loading ? (
+            <div className="space-y-3 py-6">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 bg-[#EEE7DD] animate-pulse rounded-md" />
+              ))}
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#71675E]">
+              No audit logs found matching the current filters.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#D8CEC1] text-[#71675E] font-bold uppercase tracking-wider text-[10px] pb-2">
+                    <th className="py-2.5 px-3">Timestamp</th>
+                    <th className="py-2.5 px-3">Actor</th>
+                    <th className="py-2.5 px-3">Action</th>
+                    <th className="py-2.5 px-3">Target Tenant</th>
+                    <th className="py-2.5 px-3">Mandatory Reason</th>
+                    <th className="py-2.5 px-3">State Diff</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EEE7DD]">
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
+                      <td className="py-3 px-3 tabular-nums text-[#71675E] whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-[#292320]">{log.userName}</div>
+                        <div className="text-[10px] text-[#71675E] font-mono">{log.role}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="font-mono text-[10px] bg-[#EEE7DD] text-[#71675E] px-2 py-0.5 rounded font-bold">
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        {log.businessId ? (
+                          <Link
+                            href={`/dashboard/super-admin/businesses/${log.businessId}`}
+                            className="font-medium text-[#292320] hover:text-[#6B2837] hover:underline"
+                          >
+                            {log.businessName}
+                          </Link>
+                        ) : (
+                          <span className="text-[#71675E]">{log.businessName}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-[#292320] max-w-sm font-medium">{log.reason}</td>
+                      <td className="py-3 px-3">
+                        {log.beforeState || log.afterState ? (
+                          <details className="cursor-pointer">
+                            <summary className="text-[10px] font-bold text-[#6B2837] hover:underline">
+                              Inspect Diff
+                            </summary>
+                            <pre className="p-2 bg-[#F7F3EC] rounded mt-1 overflow-x-auto max-w-xs text-[9px] font-mono border border-[#D8CEC1]">
+                              {JSON.stringify({ before: log.beforeState, after: log.afterState }, null, 2)}
+                            </pre>
+                          </details>
+                        ) : (
+                          <span className="text-[#71675E] text-[10px]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

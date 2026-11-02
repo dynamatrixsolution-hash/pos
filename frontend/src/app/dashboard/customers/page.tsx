@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
@@ -95,7 +97,7 @@ export default function CustomersPage() {
   }, [loadCustomers]);
 
   const onSubmit = async (data: CustomerInputs) => {
-    setSubmitError(null);
+    setSubmitError('');
     try {
       const res = await fetch("/api/v1/customers", {
         method: "POST",
@@ -105,7 +107,7 @@ export default function CustomersPage() {
 
       if (!res.ok) {
         const json = await res.json();
-        setSubmitError(json.error || "Failed to create customer profile");
+        Notify.failure(json.error || "Failed to create customer profile"); setSubmitError(json.error || "Failed to create customer profile");
         return;
       }
 
@@ -113,7 +115,7 @@ export default function CustomersPage() {
       reset();
       loadCustomers();
     } catch (err) {
-      setSubmitError("Connection failure.");
+      Notify.failure("Connection failure."); setSubmitError("Connection failure.");
     }
   };
 
@@ -135,13 +137,13 @@ export default function CustomersPage() {
 
   const handleReceivePaymentSubmit = async () => {
     if (receiveAmount <= 0) {
-      setReceiveError("Please enter a positive payment amount.");
+      Notify.failure("Please enter a positive payment amount."); setReceiveError("Please enter a positive payment amount.");
       return;
     }
     if (!selectedCustomer) return;
 
     setIsReceiving(true);
-    setReceiveError(null);
+    setReceiveError('');
 
     try {
       const res = await fetch("/api/v1/payments", {
@@ -159,7 +161,7 @@ export default function CustomersPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setReceiveError(data.error || "Failed to record payment.");
+        Notify.failure(data.error || "Failed to record payment."); setReceiveError(data.error || "Failed to record payment.");
         return;
       }
 
@@ -177,7 +179,7 @@ export default function CustomersPage() {
       // Reload statements
       viewLedger(selectedCustomer);
     } catch (e) {
-      setReceiveError("Network connection error.");
+      Notify.failure("Network connection error."); setReceiveError("Network connection error.");
     } finally {
       setIsReceiving(false);
     }
@@ -186,7 +188,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-2xl">
+      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">Customer Ledger Directory</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -196,9 +198,9 @@ export default function CustomersPage() {
         <button
           onClick={() => {
             setModalOpen(true);
-            setSubmitError(null);
+            setSubmitError('');
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider"
         >
           <Plus className="h-4.5 w-4.5" />
           Add Customer
@@ -207,7 +209,7 @@ export default function CustomersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2/3 Side: Customer Table List */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-5 space-y-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-muted-foreground" />
             <input
@@ -280,7 +282,7 @@ export default function CustomersPage() {
         </div>
 
         {/* Right 1/3 Side: Ledger Account Statement readout */}
-        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col justify-between min-h-[400px]">
+        <div className="bg-card border border-border rounded-lg p-5 flex flex-col justify-between min-h-[400px]">
           <div>
             <h2 className="text-sm font-bold border-b border-border pb-3 flex items-center gap-2">
               <Receipt className="h-4.5 w-4.5 text-primary" />
@@ -296,7 +298,7 @@ export default function CustomersPage() {
               <div className="py-12 text-center text-xs text-muted-foreground">Compiling ledger balances...</div>
             ) : (
               <div className="space-y-4 mt-4">
-                <div className="bg-secondary/40 border border-border rounded-xl p-3 text-xs space-y-1">
+                <div className="bg-secondary/40 border border-border rounded-md p-3 text-xs space-y-1">
                   <div className="font-extrabold text-foreground">{selectedCustomer.name}</div>
                   <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
                     <span>Credit Ceiling: {currencySymbol}{selectedCustomer.creditLimit.toFixed(2)}</span>
@@ -308,7 +310,7 @@ export default function CustomersPage() {
                       onClick={() => {
                         setReceiveAmount(selectedCustomer.balance);
                         setReceivePaymentOpen(true);
-                        setReceiveError(null);
+                        setReceiveError('');
                       }}
                       className="mt-2.5 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all shadow-xs cursor-pointer"
                     >
@@ -345,7 +347,7 @@ export default function CustomersPage() {
       {/* Add Customer Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-md space-y-4">
             <div>
               <h3 className="text-sm font-bold">Register Customer Profile</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -454,7 +456,7 @@ export default function CustomersPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  className="px-5 py-2 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 shadow-sm shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {isSubmitting ? (
                     <>
@@ -473,7 +475,7 @@ export default function CustomersPage() {
 
       {receivePaymentOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="bg-card border border-border rounded-md p-6 w-full max-w-sm space-y-4 shadow-sm">
             <div>
               <h3 className="text-sm font-bold">Receive Customer Payment</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -559,7 +561,7 @@ export default function CustomersPage() {
                 type="button"
                 disabled={isReceiving}
                 onClick={handleReceivePaymentSubmit}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isReceiving ? (
                   <>

@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import { formatNPR, parseMoney } from "@/lib/currency";
 import {
@@ -97,7 +99,7 @@ export default function HotelReservationsPage() {
   const loadReservations = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
       const statusQuery =
         statusFilter !== "ALL" ? `?status=${encodeURIComponent(statusFilter)}` : "";
 
@@ -129,9 +131,7 @@ export default function HotelReservationsPage() {
 
       const data = await resList.json();
       setReservations(data.reservations || []);
-    } catch (err: any) {
-      setError(err.message || "Error loading reservations");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error loading reservations"); } finally {
       setLoading(false);
     }
   }, [statusFilter, roomTypeId]);
@@ -152,7 +152,7 @@ export default function HotelReservationsPage() {
   const handleCreateReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomTypeId) {
-      alert("Please select a Room Type.");
+      Notify.warning("Please select a Room Type.");
       return;
     }
     try {
@@ -188,7 +188,7 @@ export default function HotelReservationsPage() {
       setSpecialRequests("");
       await loadReservations();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -210,7 +210,7 @@ export default function HotelReservationsPage() {
   const handleConfirmCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkInReservation || !selectedCheckInRoomId) {
-      alert("Please select a Vacant Clean room for check-in.");
+      Notify.warning("Please select a Vacant Clean room for check-in.");
       return;
     }
     try {
@@ -238,7 +238,7 @@ export default function HotelReservationsPage() {
       setCheckInIdNumber("");
       await loadReservations();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -260,7 +260,7 @@ export default function HotelReservationsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to cancel reservation");
       await loadReservations();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -345,13 +345,13 @@ export default function HotelReservationsPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
           {error}
         </div>
       )}
 
       {/* Reservations Table */}
-      <div className="rounded-xl border border-sandstone bg-porcelain shadow-xs overflow-hidden">
+      <div className="rounded-md border border-sandstone bg-porcelain shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-xs text-warmgray">Loading reservations...</div>
         ) : reservations.length === 0 ? (
@@ -458,7 +458,7 @@ export default function HotelReservationsPage() {
       {/* + New Reservation Modal */}
       {showNewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">Create New Reservation</h3>
               <button
@@ -675,7 +675,7 @@ export default function HotelReservationsPage() {
       {/* Check In Now Modal for Confirmed Reservation */}
       {checkInReservation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-[#6B2837]" />

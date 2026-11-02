@@ -72,15 +72,17 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
-  --font-sans: var(--font-sans);
-  --font-heading: var(--font-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
   /* RestroInn Semantic Color Tokens */
   --color-burgundy: #6B2837;
   --color-burgundy-hover: #541E2A;
   --color-ivory: #F7F3EC;
+  --color-warmivory: #F7F3EC;
   --color-porcelain: #FFFCF7;
   --color-stone: #EEE7DD;
+  --color-warmstone: #EEE7DD;
   --color-espresso: #292320;
   --color-warmgray: #71675E;
   --color-sandstone: #D8CEC1;
@@ -92,6 +94,18 @@
   --color-status-pending: #946000;
   --color-status-cancelled: #B33432;
   --color-status-info: #315F85;
+  --color-forest: #28634B;
+  --color-forest-bg: #EAF3EE;
+  --color-forest-border: #C3DED0;
+  --color-ochre: #946000;
+  --color-ochre-bg: #FDF5E7;
+  --color-ochre-border: #EDD7AD;
+  --color-red: #B33432;
+  --color-red-bg: #FAEAEC;
+  --color-red-border: #E9B6B7;
+  --color-blue: #315F85;
+  --color-blue-bg: #EDF4F9;
+  --color-blue-border: #B8D2E6;
 
   /* Brand semantic additions */
   --color-brand-burgundy: #6B2837;
@@ -427,3 +441,51 @@
 .bg-sky-50, .bg-indigo-50 {
   background-color: #EDF4F9 !important;
 }
+
+/* Reusable Global Status Graphic Classes */
+.status-graphic-container {
+  position: relative;
+  border-radius: 0.5rem;
+  border: 1px solid #D8CEC1;
+  background-color: #FFFCF7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.status-graphic-badge {
+  position: absolute;
+  top: -2.5rem;
+  right: -2rem;
+  background-color: #292320;
+  color: #FFFCF7;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid #71675E;
+  user-select: none;
+}
+
+.status-graphic-radar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.status-graphic-float {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  animation: bounce 3s infinite ease-in-out;
+}
+

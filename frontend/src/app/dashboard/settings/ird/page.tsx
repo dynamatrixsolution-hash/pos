@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useEffect, useState } from "react";
 
 interface CbmsMetrics {
@@ -80,9 +82,9 @@ export default function IrdCompliancePage() {
       });
       const data = await res.json();
       if (data.error) {
-        alert("Failed to sync: " + data.error);
+        Notify.failure("Failed to sync: " + data.error);
       } else {
-        alert("Synced successfully!");
+        Notify.success("Synced successfully!");
         fetchData();
       }
     } catch (e) {
@@ -95,7 +97,7 @@ export default function IrdCompliancePage() {
   const handleCreateFiscalYear = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fyName || !fyStart || !fyEnd) {
-      alert("Please fill all fiscal year fields");
+      Notify.warning("Please fill all fiscal year fields");
       return;
     }
     try {
@@ -112,9 +114,9 @@ export default function IrdCompliancePage() {
       });
       const data = await res.json();
       if (data.error) {
-        alert("Error creating fiscal year: " + data.error);
+        Notify.failure("Error creating fiscal year: " + data.error);
       } else {
-        alert("Fiscal Year created successfully!");
+        Notify.success("Fiscal Year created successfully!");
         setFyName("");
         setFyStart("");
         setFyEnd("");
@@ -132,7 +134,7 @@ export default function IrdCompliancePage() {
     <div className="p-6 bg-slate-900 text-slate-100 min-h-screen font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Block with Premium Sleek Gradient */}
-        <div className="relative p-6 rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 shadow-xl overflow-hidden">
+        <div className="relative p-6 rounded-lg bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 shadow-sm overflow-hidden">
           <div className="relative z-10 space-y-2">
             <span className="px-3 py-1 bg-blue-900/50 backdrop-blur border border-blue-400/30 text-blue-300 rounded-full text-xs font-semibold uppercase tracking-wider">
               Compliance Center
@@ -145,14 +147,14 @@ export default function IrdCompliancePage() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex space-x-2 border-b border-slate-800 p-1 bg-slate-950/40 rounded-xl max-w-md">
+        <div className="flex space-x-2 border-b border-slate-800 p-1 bg-slate-950/40 rounded-md max-w-md">
           {(["overview", "cbms", "fiscal"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 px-4 text-sm font-semibold rounded-lg transition-all duration-300 ${
                 activeTab === tab
-                  ? "bg-indigo-600 text-white shadow-lg"
+                  ? "bg-indigo-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-850"
               }`}
             >
@@ -169,7 +171,7 @@ export default function IrdCompliancePage() {
             {activeTab === "overview" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* System Diagnostics Checkbox list */}
-                <div className="lg:col-span-2 bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-6">
+                <div className="lg:col-span-2 bg-slate-950 border border-slate-800 p-6 rounded-lg space-y-6">
                   <h2 className="text-xl font-bold border-b border-slate-800 pb-3">IRD System Diagnostics Check</h2>
                   <div className="space-y-4">
                     <div className="flex items-start space-x-3">
@@ -211,22 +213,22 @@ export default function IrdCompliancePage() {
                 </div>
 
                 {/* CBMS Live Stats Widget */}
-                <div className="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-6">
+                <div className="bg-slate-950 border border-slate-800 p-6 rounded-lg space-y-6">
                   <h3 className="text-lg font-bold border-b border-slate-800 pb-3">CBMS Synchronization</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-900 p-4 rounded-xl text-center space-y-1">
+                    <div className="bg-slate-900 p-4 rounded-md text-center space-y-1">
                       <span className="text-xs text-slate-400">TOTAL INVOICES</span>
                       <p className="text-2xl font-black text-slate-200">{metrics?.total || 0}</p>
                     </div>
-                    <div className="bg-slate-900 p-4 rounded-xl text-center space-y-1">
+                    <div className="bg-slate-900 p-4 rounded-md text-center space-y-1">
                       <span className="text-xs text-slate-400 text-green-400 font-semibold">SYNCED</span>
                       <p className="text-2xl font-black text-green-450">{metrics?.synced || 0}</p>
                     </div>
-                    <div className="bg-slate-900 p-4 rounded-xl text-center space-y-1">
+                    <div className="bg-slate-900 p-4 rounded-md text-center space-y-1">
                       <span className="text-xs text-slate-400 text-yellow-400 font-semibold">PENDING</span>
                       <p className="text-2xl font-black text-yellow-450">{metrics?.pending || 0}</p>
                     </div>
-                    <div className="bg-slate-900 p-4 rounded-xl text-center space-y-1">
+                    <div className="bg-slate-900 p-4 rounded-md text-center space-y-1">
                       <span className="text-xs text-slate-400 text-red-400 font-semibold">FAILED</span>
                       <p className="text-2xl font-black text-red-450">{metrics?.failed || 0}</p>
                     </div>
@@ -248,7 +250,7 @@ export default function IrdCompliancePage() {
 
             {/* TAB: CBMS QUEUE TABLE */}
             {activeTab === "cbms" && (
-              <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+              <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
                   <h3 className="text-lg font-bold">CBMS Synchronization Queue Log</h3>
                   <button onClick={fetchData} className="px-4 py-1.5 bg-slate-850 hover:bg-slate-800 text-xs font-semibold rounded-lg transition-all duration-300">
@@ -317,7 +319,7 @@ export default function IrdCompliancePage() {
             {activeTab === "fiscal" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Form to Create New Fiscal Year */}
-                <div className="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <div className="bg-slate-950 border border-slate-800 p-6 rounded-lg space-y-4">
                   <h3 className="text-lg font-bold border-b border-slate-800 pb-3">Setup Fiscal Year</h3>
                   <form onSubmit={handleCreateFiscalYear} className="space-y-4 text-sm">
                     <div className="space-y-1">
@@ -366,7 +368,7 @@ export default function IrdCompliancePage() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-lg font-bold text-white shadow-lg transition-all duration-300"
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-lg font-bold text-white shadow-sm transition-all duration-300"
                     >
                       {submitting ? "Saving..." : "Create & Initialize"}
                     </button>
@@ -374,7 +376,7 @@ export default function IrdCompliancePage() {
                 </div>
 
                 {/* Fiscal Years List */}
-                <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+                <div className="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
                   <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h3 className="text-lg font-bold">Configured Fiscal Years</h3>
                   </div>

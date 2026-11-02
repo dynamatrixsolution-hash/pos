@@ -138,7 +138,7 @@ export default function ActivityLogPage() {
       case "LOGIN":
         return "bg-purple-500/10 text-purple-600 border-purple-500/20";
       case "LOGOUT":
-        return "bg-slate-500/10 text-slate-600 border-slate-500/20";
+        return "bg-slate-500/10 text-[#71675E] border-slate-500/20";
       case "APPROVE":
         return "bg-sky-500/10 text-sky-600 border-sky-500/20";
       default:
@@ -205,7 +205,7 @@ export default function ActivityLogPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-6 rounded-3xl shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-6 rounded-lg shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2 text-foreground">
             <Activity className="h-6 w-6 text-primary" />
@@ -218,7 +218,7 @@ export default function ActivityLogPage() {
         <div className="flex gap-2">
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary border border-border rounded-md text-xs font-semibold text-foreground transition-all cursor-pointer"
             title="Export to Excel"
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -226,7 +226,7 @@ export default function ActivityLogPage() {
           </button>
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary border border-border rounded-md text-xs font-semibold text-foreground transition-all cursor-pointer"
             title="Export to PDF"
           >
             <FileText className="h-4 w-4 text-red-500" />
@@ -236,7 +236,7 @@ export default function ActivityLogPage() {
       </div>
 
       {/* Advanced Filters Panel */}
-      <div className="bg-card border border-border p-6 rounded-3xl space-y-4 shadow-sm">
+      <div className="bg-card border border-border p-6 rounded-lg space-y-4 shadow-sm">
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
           <h2 className="text-sm font-bold flex items-center gap-2 text-foreground">
             <Filter className="h-4 w-4 text-primary" />
@@ -378,7 +378,7 @@ export default function ActivityLogPage() {
       )}
 
       {/* 2. Audit Trail Log list */}
-      <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
         {loading ? (
           <div className="py-12 text-center text-xs text-muted-foreground">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
@@ -496,7 +496,7 @@ export default function ActivityLogPage() {
       {/* JSON Details Viewer Modal */}
       {viewingLog && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-3xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col shadow-sm animate-in fade-in zoom-in-95 duration-150">
             <div className="p-6 border-b border-border/50 flex items-center justify-between">
               <div>
                 <h3 className="font-black text-foreground text-sm flex items-center gap-2">
@@ -507,7 +507,7 @@ export default function ActivityLogPage() {
               </div>
               <button
                 onClick={() => setViewingLog(null)}
-                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-xl transition-all font-semibold cursor-pointer"
+                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-md transition-all font-semibold cursor-pointer"
               >
                 Close
               </button>
@@ -539,7 +539,7 @@ export default function ActivityLogPage() {
 
               <div>
                 <span className="text-muted-foreground block font-bold text-[9px] uppercase mb-1">Details Summary</span>
-                <p className="p-3 bg-secondary/30 border border-border/50 rounded-xl text-foreground font-medium">
+                <p className="p-3 bg-secondary/30 border border-border/50 rounded-md text-foreground font-medium">
                   {viewingLog.details || "No details string logged."}
                 </p>
               </div>
@@ -548,7 +548,7 @@ export default function ActivityLogPage() {
                 {/* Old Value */}
                 <div className="space-y-1">
                   <span className="text-muted-foreground block font-bold text-[9px] uppercase">Old Value (JSON)</span>
-                  <pre className="p-3 bg-secondary/50 border border-border/50 rounded-xl overflow-x-auto font-mono text-[10px] text-foreground max-h-48 whitespace-pre">
+                  <pre className="p-3 bg-secondary/50 border border-border/50 rounded-md overflow-x-auto font-mono text-[10px] text-foreground max-h-48 whitespace-pre">
                     {parseJSON(viewingLog.oldValue)}
                   </pre>
                 </div>
@@ -556,7 +556,7 @@ export default function ActivityLogPage() {
                 {/* New Value */}
                 <div className="space-y-1">
                   <span className="text-muted-foreground block font-bold text-[9px] uppercase">New Value (JSON)</span>
-                  <pre className="p-3 bg-secondary/50 border border-border/50 rounded-xl overflow-x-auto font-mono text-[10px] text-foreground max-h-48 whitespace-pre">
+                  <pre className="p-3 bg-secondary/50 border border-border/50 rounded-md overflow-x-auto font-mono text-[10px] text-foreground max-h-48 whitespace-pre">
                     {parseJSON(viewingLog.newValue)}
                   </pre>
                 </div>

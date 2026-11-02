@@ -45,26 +45,26 @@ export default function DamageExpiryClient() {
     <div className="space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5">
           <div className="text-destructive text-xs font-bold uppercase tracking-wider mb-1">Expired</div>
           <div className="text-2xl font-black text-destructive">{summary.totalExpired}</div>
         </div>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-5">
           <div className="text-yellow-600 text-xs font-bold uppercase tracking-wider mb-1">Expiring Soon</div>
           <div className="text-2xl font-black text-yellow-600">{summary.totalExpiringSoon}</div>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-5">
           <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Damaged Items</div>
           <div className="text-2xl font-black text-blue-600">{summary.totalDamaged}</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Loss Value</div>
           <div className="text-2xl font-black">{currencySymbol}{summary.totalValue.toFixed(2)}</div>
         </div>
       </div>
 
       {/* Controls & List */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}

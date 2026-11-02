@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { logPlatformAudit } from "@/lib/platform-audit";
+import { PACKAGE_DEFAULT_MODULES } from "@/lib/module-gatekeeper";
 
 export async function GET(
   request: Request,
@@ -49,25 +51,24 @@ export async function POST(
     }
 
     if (action === "REJECT") {
+      const reason = rejectionReason || adminNotes || "Application did not meet onboarding compliance standards.";
       const updated = await db.businessRegistrationRequest.update({
         where: { id },
         data: {
           status: "REJECTED",
-          rejectionReason: rejectionReason || "The business registration request was rejected by platform administrator.",
-          adminNotes: adminNotes || null,
+          rejectionReason: reason,
+          adminNotes: adminNotes ? `${adminNotes} (Reviewed by Super Admin)` : `Rejected by Super Admin: ${reason}`,
         },
       });
 
-      // Audit Log
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "REJECT_BUSINESS_REQUEST",
-          module: "SUPER_ADMIN",
-          details: `Rejected registration request ${reqItem.trackingCode} for business ${reqItem.businessName}`,
-        },
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "REGISTRATION_REJECTED",
+        targetType: "BUSINESS",
+        targetId: id,
+        reason,
+        afterState: { trackingCode: reqItem.trackingCode, status: "REJECTED" },
       });
 
       return NextResponse.json({
@@ -77,24 +78,23 @@ export async function POST(
     }
 
     if (action === "REQUEST_CHANGES") {
+      const reason = adminNotes || "Please review and correct registration details.";
       const updated = await db.businessRegistrationRequest.update({
         where: { id },
         data: {
           status: "CHANGES_REQUESTED",
-          adminNotes: adminNotes || "Please review and update your submitted details.",
+          adminNotes: reason,
         },
       });
 
-      // Audit Log
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "REQUEST_CHANGES_BUSINESS_REQUEST",
-          module: "SUPER_ADMIN",
-          details: `Requested changes for registration request ${reqItem.trackingCode} for business ${reqItem.businessName}`,
-        },
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "REGISTRATION_CHANGES_REQUESTED",
+        targetType: "BUSINESS",
+        targetId: id,
+        reason,
+        afterState: { trackingCode: reqItem.trackingCode, status: "CHANGES_REQUESTED" },
       });
 
       return NextResponse.json({
@@ -108,7 +108,6 @@ export async function POST(
         return NextResponse.json({ error: "This request is already approved and provisioned." }, { status: 400 });
       }
 
-      // Check if user email or slug already taken in actual tables
       const existingUser = await db.user.findUnique({ where: { email: reqItem.ownerEmail } });
       if (existingUser) {
         return NextResponse.json({ error: `User with email ${reqItem.ownerEmail} already exists in system.` }, { status: 400 });
@@ -119,35 +118,41 @@ export async function POST(
         return NextResponse.json({ error: `Business with URL slug '${reqItem.slug}' already exists.` }, { status: 400 });
       }
 
-      // Final plan parameters
+      // Map business type to package type
+      let packageType = "RESTAURANT";
+      const bTypeUpper = (reqItem.businessType || "").toUpperCase();
+      if (bTypeUpper.includes("HOTEL") && (bTypeUpper.includes("REST") || bTypeUpper.includes("BOTH"))) {
+        packageType = "BOTH";
+      } else if (bTypeUpper.includes("HOTEL") || bTypeUpper.includes("STAY")) {
+        packageType = "HOTEL";
+      }
+
       const planToUse = overrides?.plan || reqItem.plan || "STARTER";
       const durationMonthsToUse = overrides?.durationMonths || reqItem.durationMonths || 12;
-      const modulesToUse = overrides?.selectedModules || reqItem.selectedModules || {};
+      const defaultModules = PACKAGE_DEFAULT_MODULES[packageType] || PACKAGE_DEFAULT_MODULES.RESTAURANT;
+      const modulesToUse = overrides?.enabledModules || (Array.isArray(reqItem.selectedModules) ? reqItem.selectedModules : defaultModules);
       const limitsToUse = overrides?.customLimits || reqItem.customLimits || {};
 
-      // Determine user and branch limits
-      const userLimit = limitsToUse.users || (planToUse === "ENTERPRISE" ? 10 : planToUse === "PROFESSIONAL" ? 5 : 1);
+      const userLimit = limitsToUse.users || (planToUse === "ENTERPRISE" ? 25 : planToUse === "PROFESSIONAL" ? 10 : 5);
       const branchLimit = limitsToUse.branches || (planToUse === "ENTERPRISE" ? 5 : planToUse === "PROFESSIONAL" ? 2 : 1);
 
-      // Perform transaction to provision tenant, subscription, branch, owner user
       const transaction = await db.$transaction(async (tx) => {
-        // 1. Create Business Tenant
+        // 1. Create Business
         const newBusiness = await tx.business.create({
           data: {
             name: reqItem.businessName,
             slug: reqItem.slug,
-            currency: reqItem.currency,
+            currency: reqItem.currency || "NPR",
             email: reqItem.email,
             phone: reqItem.phone,
             address: reqItem.address,
-            taxConfig: { taxName: reqItem.taxNumber ? "PAN/VAT" : "VAT", rate: 10, taxNumber: reqItem.taxNumber },
+            status: "ACTIVE",
+            taxConfig: { taxName: reqItem.taxNumber ? "PAN/VAT" : "VAT", rate: 13, taxNumber: reqItem.taxNumber },
             settings: {
               businessType: reqItem.businessType,
               currencySymbol: reqItem.currency === "NPR" ? "Rs. " : reqItem.currency === "INR" ? "₹" : "$",
               enableVat: true,
-              vatPercentage: 10,
-              customFeatures: modulesToUse,
-              customLimits: limitsToUse,
+              vatPercentage: 13,
             },
           },
         });
@@ -160,6 +165,10 @@ export async function POST(
           data: {
             businessId: newBusiness.id,
             plan: planToUse.toUpperCase(),
+            packageType,
+            billingCycle: reqItem.billingCycle || "MONTHLY",
+            enabledModules: modulesToUse,
+            customLimits: limitsToUse,
             status: "ACTIVE",
             startDate: new Date(),
             endDate: subEndDate,
@@ -192,7 +201,7 @@ export async function POST(
           },
         });
 
-        // 5. Update Registration Request Status
+        // 5. Update Registration Request
         const updatedReq = await tx.businessRegistrationRequest.update({
           where: { id },
           data: {
@@ -205,15 +214,19 @@ export async function POST(
         return { business: newBusiness, owner: newOwner, request: updatedReq };
       });
 
-      // Audit Log
-      await db.auditLog.create({
-        data: {
-          businessId: context.businessId,
-          userId: context.userId,
-          role: context.role,
-          action: "APPROVE_BUSINESS_REQUEST",
-          module: "SUPER_ADMIN",
-          details: `Approved registration request ${reqItem.trackingCode} and provisioned business tenant ${transaction.business.name} (ID: ${transaction.business.id})`,
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "REGISTRATION_APPROVED",
+        targetType: "BUSINESS",
+        targetId: transaction.business.id,
+        businessId: transaction.business.id,
+        reason: adminNotes || `Approved application ${reqItem.trackingCode} and provisioned workspace for ${reqItem.businessName}`,
+        afterState: {
+          businessId: transaction.business.id,
+          plan: planToUse,
+          packageType,
+          modules: modulesToUse,
         },
       });
 

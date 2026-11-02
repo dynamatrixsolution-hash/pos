@@ -8,100 +8,84 @@ export async function GET(request: Request) {
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
-    // 1. Fetch all payments across businesses (excluding platform-admin itself)
-    const payments = await db.payment.findMany({
-      where: {
-        business: { slug: { not: "platform-admin" } },
-      },
+    // Platform SaaS subscription invoices & payments (Strictly separate from tenant restaurant sales)
+    const invoices = await db.subscriptionInvoice.findMany({
       include: {
         business: {
-          select: { name: true, currency: true },
+          select: { id: true, name: true, slug: true, currency: true },
+        },
+        payments: {
+          include: {
+            recordedBy: {
+              select: { name: true, email: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
       take: 100,
     });
 
-    // Format transaction logs
+    const payments = await db.subscriptionPayment.findMany({
+      include: {
+        business: {
+          select: { id: true, name: true, slug: true, currency: true },
+        },
+        invoice: {
+          select: { invoiceNumber: true, billingPeriodStart: true, billingPeriodEnd: true },
+        },
+        recordedBy: {
+          select: { name: true, email: true },
+        },
+      },
+      orderBy: { recordedAt: "desc" },
+      take: 100,
+    });
+
+    // Summary calculations
+    const totalCollected = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalOutstanding = invoices
+      .filter((inv) => inv.status === "PENDING" || inv.status === "OVERDUE")
+      .reduce((sum, inv) => {
+        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+        return sum + Math.max(0, Number(inv.amount) - paid);
+      }, 0);
+
+    const overdueAmount = invoices
+      .filter((inv) => inv.status === "OVERDUE")
+      .reduce((sum, inv) => {
+        const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+        return sum + Math.max(0, Number(inv.amount) - paid);
+      }, 0);
+
     const transactionLogs = payments.map((p) => ({
       id: p.id,
-      businessName: p.business?.name || "Unknown Merchant",
-      plan: p.remarks && p.remarks.toLowerCase().includes("plan") ? p.remarks.split(" ").slice(-1)[0] : "BASIC",
+      businessName: p.business?.name || "Unknown Tenant",
+      invoiceNumber: p.invoice?.invoiceNumber || "N/A",
       amount: Number(p.amount),
-      currency: p.business?.currency || "NPR",
-      method: p.method,
-      transactionId: p.receiptNumber || p.id.split("-")[0].toUpperCase(),
-      date: p.createdAt.toISOString(),
-      status: p.type === "RECEIVED" ? "Paid" : "Refunded", // Map RECEIVED -> Paid
-    }));
-
-    // If empty, generate standard mock payments to populate logs realistically
-    if (transactionLogs.length === 0) {
-      transactionLogs.push(
-        {
-          id: "tx-1",
-          businessName: "DynaPOS Retail Demo",
-          plan: "ENTERPRISE",
-          amount: 1499.00,
-          currency: "NPR",
-          method: "CARD",
-          transactionId: "TXN89124",
-          date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-          status: "Paid",
-        },
-        {
-          id: "tx-2",
-          businessName: "Apex Retailers Ltd.",
-          plan: "PROFESSIONAL",
-          amount: 999.00,
-          currency: "NPR",
-          method: "BANK_TRANSFER",
-          transactionId: "TXN77103",
-          date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(), // 4 days ago
-          status: "Paid",
-        },
-        {
-          id: "tx-3",
-          businessName: "Metropolitan Supermarket",
-          plan: "BASIC",
-          amount: 499.00,
-          currency: "NPR",
-          method: "CARD",
-          transactionId: "TXN55092",
-          date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
-          status: "Failed",
-        },
-        {
-          id: "tx-4",
-          businessName: "Unity Pharmacy Network",
-          plan: "ENTERPRISE",
-          amount: 1499.00,
-          currency: "NPR",
-          method: "BANK_TRANSFER",
-          transactionId: "TXN99014",
-          date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-          status: "Paid",
-        }
-      );
-    }
-
-    // 2. Format invoices log matching transaction logs
-    const invoices = transactionLogs.map((tx, idx) => ({
-      invoiceNumber: `INV-2026-${1000 + idx}`,
-      businessName: tx.businessName,
-      plan: tx.plan,
-      amount: tx.amount,
-      currency: tx.currency,
-      date: tx.date,
-      status: tx.status === "Paid" ? "PAID" : tx.status === "Failed" ? "FAILED" : "PENDING",
+      currency: p.currency || "NPR",
+      method: p.paymentMethod,
+      reference: p.reference || "N/A",
+      recordedBy: p.recordedBy?.name || "System",
+      date: p.recordedAt.toISOString(),
+      status: "Settled",
     }));
 
     return NextResponse.json({
-      payments: transactionLogs,
+      revenueMetrics: {
+        totalCollected,
+        totalOutstanding,
+        overdueAmount,
+        currency: "NPR",
+        totalInvoicesCount: invoices.length,
+        totalPaymentsCount: payments.length,
+      },
       invoices,
+      transactionLogs,
+      payments: transactionLogs,
     });
   } catch (error: any) {
-    console.error("GET super-admin revenue error:", error);
-    return NextResponse.json({ error: "Failed to compile SaaS transactions ledger" }, { status: 500 });
+    console.error("Super Admin Revenue API Error:", error);
+    return NextResponse.json({ error: "Failed to fetch platform subscription revenue" }, { status: 500 });
   }
 }

@@ -396,7 +396,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-2xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-2xl font-black">System Preferences</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -407,7 +407,7 @@ export default function SettingsPage() {
 
       {/* Access Restriction Notice */}
       {!isAuthorized && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs p-4 rounded-xl flex items-start gap-2.5">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs p-4 rounded-md flex items-start gap-2.5">
           <Lock className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />
           <div>
             <span className="font-bold">Read-Only Mode:</span>
@@ -420,13 +420,13 @@ export default function SettingsPage() {
 
       {/* Save Alerts */}
       {errorMsg && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-xl flex items-start gap-2.5">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-md flex items-start gap-2.5">
           <AlertTriangle className="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
           <span>{errorMsg}</span>
         </div>
       )}
       {successMsg && (
-        <div className="bg-primary/10 border border-primary/20 text-primary text-xs p-4 rounded-xl flex items-start gap-2.5">
+        <div className="bg-primary/10 border border-primary/20 text-primary text-xs p-4 rounded-md flex items-start gap-2.5">
           <CheckCircle className="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
           <span>{successMsg}</span>
         </div>
@@ -435,16 +435,16 @@ export default function SettingsPage() {
       {/* Main Configurations Tabs Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Side: Sidebar Tabs Navigation */}
-        <div className="space-y-1 bg-card border border-border rounded-2xl p-3 h-fit">
+        <div className="space-y-1 bg-card border border-border rounded-lg p-3 h-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-md text-xs font-bold transition-all ${
                   activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/10"
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/10"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
@@ -456,7 +456,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Right Side: Tab Panel Form Content */}
-        <div className="lg:col-span-3 bg-card border border-border rounded-2xl p-6 shadow-sm">
+        <div className="lg:col-span-3 bg-card border border-border rounded-lg p-6 shadow-sm">
           <form onSubmit={handleSaveSettings} className="space-y-6">
             
             {/* T1. OVERVIEW */}
@@ -468,7 +468,7 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Summary Business Profile Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-2.5 bg-secondary/10">
+                  <div className="border border-border/60 rounded-md p-4 space-y-2.5 bg-secondary/10">
                     <h4 className="text-xs font-bold flex items-center gap-1.5 text-foreground">
                       <Store className="h-4 w-4 text-blue-500" /> Business Profile Summary
                     </h4>
@@ -481,7 +481,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Summary Tax settings Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-2.5 bg-secondary/10">
+                  <div className="border border-border/60 rounded-md p-4 space-y-2.5 bg-secondary/10">
                     <h4 className="text-xs font-bold flex items-center gap-1.5 text-foreground">
                       <Percent className="h-4 w-4 text-emerald-500" /> Taxation & Currency Config
                     </h4>
@@ -494,7 +494,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Summary Invoice settings Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-2.5 bg-secondary/10">
+                  <div className="border border-border/60 rounded-md p-4 space-y-2.5 bg-secondary/10">
                     <h4 className="text-xs font-bold flex items-center gap-1.5 text-foreground">
                       <FileText className="h-4 w-4 text-purple-500" /> POS Invoice & Prefixes
                     </h4>
@@ -507,7 +507,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Summary Printer settings Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-2.5 bg-secondary/10">
+                  <div className="border border-border/60 rounded-md p-4 space-y-2.5 bg-secondary/10">
                     <h4 className="text-xs font-bold flex items-center gap-1.5 text-foreground">
                       <Printer className="h-4 w-4 text-orange-500" /> Printer Configuration
                     </h4>
@@ -519,14 +519,14 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                 <div className="border border-border/60 rounded-xl p-4 space-y-3 mt-4">
+                 <div className="border border-border/60 rounded-md p-4 space-y-3 mt-4">
                   <h4 className="text-xs font-bold text-foreground">Quick Setup Actions</h4>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setActiveTab("profile")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Edit Profile</button>
-                    <button type="button" onClick={() => setActiveTab("taxation")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Manage VAT</button>
-                    <button type="button" onClick={() => setActiveTab("pos")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Configure Invoices</button>
-                    <button type="button" onClick={() => setActiveTab("subscription")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Subscription Plan</button>
-                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs select-none">Backup & Recovery</button>
+                    <button type="button" onClick={() => setActiveTab("profile")} className="px-3.5 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md transition-all cursor-pointer shadow-xs select-none">Edit Profile</button>
+                    <button type="button" onClick={() => setActiveTab("taxation")} className="px-3.5 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md transition-all cursor-pointer shadow-xs select-none">Manage VAT</button>
+                    <button type="button" onClick={() => setActiveTab("pos")} className="px-3.5 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md transition-all cursor-pointer shadow-xs select-none">Configure Invoices</button>
+                    <button type="button" onClick={() => setActiveTab("subscription")} className="px-3.5 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md transition-all cursor-pointer shadow-xs select-none">Subscription Plan</button>
+                    <button type="button" onClick={() => setActiveTab("backup")} className="px-3.5 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md transition-all cursor-pointer shadow-xs select-none">Backup & Recovery</button>
                   </div>
                 </div>
               </div>
@@ -547,7 +547,7 @@ export default function SettingsPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       required
                     />
                   </div>
@@ -560,7 +560,7 @@ export default function SettingsPage() {
                       value={businessType}
                       onChange={(e) => setBusinessType(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -572,7 +572,7 @@ export default function SettingsPage() {
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -584,7 +584,7 @@ export default function SettingsPage() {
                       value={registrationNumber}
                       onChange={(e) => setRegistrationNumber(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -596,7 +596,7 @@ export default function SettingsPage() {
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -607,12 +607,12 @@ export default function SettingsPage() {
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-2.5 mt-3">
+                <div className="border border-border/60 rounded-md p-4 space-y-2.5 mt-3">
                   <h4 className="text-xs font-bold text-foreground">Registered Outlets / Branches</h4>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto">
                     {branches.map((b) => (
@@ -637,7 +637,7 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Invoice logo card */}
-                  <div className="border border-border rounded-xl p-4 space-y-3">
+                  <div className="border border-border rounded-md p-4 space-y-3">
                     <h4 className="text-xs font-bold">Invoice Header Logo</h4>
                     {invoiceLogo ? (
                       <div className="relative border border-dashed border-border/80 rounded-lg p-2.5 h-36 flex items-center justify-center bg-secondary/10">
@@ -682,7 +682,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Receipt logo card */}
-                  <div className="border border-border rounded-xl p-4 space-y-3">
+                  <div className="border border-border rounded-md p-4 space-y-3">
                     <h4 className="text-xs font-bold">Receipt Header Logo</h4>
                     {receiptLogo ? (
                       <div className="relative border border-dashed border-border/80 rounded-lg p-2.5 h-36 flex items-center justify-center bg-secondary/10">
@@ -727,7 +727,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Payment QR card (Fonepay / UPI / eSewa / Bank QR) */}
-                  <div className="border border-border rounded-xl p-4 space-y-3">
+                  <div className="border border-border rounded-md p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold flex items-center gap-1.5">
                         <QrCode className="h-4 w-4 text-emerald-500" /> Payment QR Code
@@ -833,7 +833,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Live Thermal Receipt Preview Card */}
-                <div className="border border-border/70 rounded-2xl p-4 sm:p-5 bg-card space-y-3 mt-4">
+                <div className="border border-border/70 rounded-lg p-4 sm:p-5 bg-card space-y-3 mt-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
                     <div>
                       <h4 className="text-sm font-black flex items-center gap-1.5 text-foreground">
@@ -864,8 +864,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-100 dark:bg-slate-950/60 p-4 sm:p-6 rounded-xl flex justify-center overflow-x-auto">
-                    <div className="bg-white text-black p-2 sm:p-4 rounded shadow-md border border-slate-300 dark:border-slate-800">
+                  <div className="bg-[#EEE7DD] dark:bg-slate-950/60 p-4 sm:p-6 rounded-md flex justify-center overflow-x-auto">
+                    <div className="bg-[#FFFCF7] text-black p-2 sm:p-4 rounded shadow-sm border border-[#D8CEC1] dark:border-slate-800">
                       <ThermalReceipt
                         data={{
                           invoiceNumber: "POS-2049",
@@ -925,7 +925,7 @@ export default function SettingsPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -936,7 +936,7 @@ export default function SettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                 </div>
@@ -959,7 +959,7 @@ export default function SettingsPage() {
                       value={panNumber}
                       onChange={(e) => setPanNumber(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -971,7 +971,7 @@ export default function SettingsPage() {
                       value={vatNumber}
                       onChange={(e) => setVatNumber(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -981,7 +981,7 @@ export default function SettingsPage() {
                       value={taxStatus}
                       onChange={(e) => setTaxStatus(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="REGISTERED">REGISTERED (ACTIVE)</option>
                       <option value="NON_REGISTERED">UNREGISTERED / EXEMPT</option>
@@ -996,13 +996,13 @@ export default function SettingsPage() {
                       value={taxName}
                       onChange={(e) => setTaxName(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-4 mt-3 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-4 mt-3 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground">VAT & Pricing Scheme Config</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1031,7 +1031,7 @@ export default function SettingsPage() {
                           setTaxRate(parseFloat(e.target.value) || 0);
                         }}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
                   </div>
@@ -1073,7 +1073,7 @@ export default function SettingsPage() {
                         value={taxSlabsText}
                         onChange={(e) => setTaxSlabsText(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
                   </div>
@@ -1102,7 +1102,7 @@ export default function SettingsPage() {
                         }
                       }}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none focus:ring-1 focus:ring-primary"
                     >
                       {currencyList.map((cur) => (
                         <option key={cur.code} value={cur.code}>
@@ -1120,7 +1120,7 @@ export default function SettingsPage() {
                       value={currencySymbol}
                       onChange={(e) => setCurrencySymbol(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
@@ -1130,7 +1130,7 @@ export default function SettingsPage() {
                       value={decimalPrecision}
                       onChange={(e) => setDecimalPrecision(parseInt(e.target.value) || 2)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                     >
                       <option value="0">0 places (e.g. Rs 500)</option>
                       <option value="2">2 places (e.g. $5.25)</option>
@@ -1145,7 +1145,7 @@ export default function SettingsPage() {
                       value={datePreference}
                       onChange={(e) => setDatePreference(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                     >
                       <option value="AD">English Calendar (AD)</option>
                       <option value="BS">Nepali Calendar (BS)</option>
@@ -1153,7 +1153,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-3 mt-3 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-3 mt-3 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground">Fiscal Year Setup</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
@@ -1163,7 +1163,7 @@ export default function SettingsPage() {
                         value={fiscalYearStart}
                         onChange={(e) => setFiscalYearStart(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
 
@@ -1174,7 +1174,7 @@ export default function SettingsPage() {
                         value={fiscalYearEnd}
                         onChange={(e) => setFiscalYearEnd(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
                   </div>
@@ -1195,7 +1195,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* AD to BS date converter utility preview */}
-                <div className="border border-border/60 rounded-xl p-4 space-y-3 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-3 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Calendar className="h-4 w-4 text-primary" /> AD / BS Date Conversion Utility
                   </h4>
@@ -1206,7 +1206,7 @@ export default function SettingsPage() {
                         type="date"
                         value={convertAdDate}
                         onChange={(e) => setConvertAdDate(e.target.value)}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1216,7 +1216,7 @@ export default function SettingsPage() {
                         readOnly
                         placeholder="Conversion result..."
                         value={convertedBsDate}
-                        className="w-full bg-secondary border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none cursor-default"
+                        className="w-full bg-secondary border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none cursor-default"
                       />
                     </div>
                   </div>
@@ -1240,7 +1240,7 @@ export default function SettingsPage() {
                       value={salesPrefix}
                       onChange={(e) => setSalesPrefix(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                     />
                   </div>
 
@@ -1252,7 +1252,7 @@ export default function SettingsPage() {
                       value={purchasePrefix}
                       onChange={(e) => setPurchasePrefix(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                     />
                   </div>
 
@@ -1264,11 +1264,11 @@ export default function SettingsPage() {
                       value={returnPrefix}
                       onChange={(e) => setReturnPrefix(e.target.value)}
                       disabled={!isAuthorized || isSubmitting}
-                      className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                      className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 bg-secondary/20 border border-border/60 rounded-xl">
+                  <div className="flex items-center justify-between p-2.5 bg-secondary/20 border border-border/60 rounded-md">
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-foreground">Sequential Automatic Numbers</span>
                       <span className="text-[10px] text-muted-foreground">Generate sequential codes (e.g. SAL-00001)</span>
@@ -1283,7 +1283,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-4 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-4 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Printer className="h-4 w-4 text-primary" /> POS Billing Printer configuration
                   </h4>
@@ -1294,7 +1294,7 @@ export default function SettingsPage() {
                         value={printerType}
                         onChange={(e) => setPrinterType(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                       >
                         <option value="THERMAL">80mm / 58mm Thermal Receipt</option>
                         <option value="A4">A4 Full Sheet Invoice</option>
@@ -1307,7 +1307,7 @@ export default function SettingsPage() {
                         value={receiptWidth}
                         onChange={(e) => setReceiptWidth(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                       >
                         <option value="80mm">80mm Standard POS Thermal Roll (3 inch)</option>
                         <option value="58mm">58mm Compact Mobile Thermal Roll (2 inch)</option>
@@ -1321,7 +1321,7 @@ export default function SettingsPage() {
                         value={receiptTitle}
                         onChange={(e) => setReceiptTitle(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                       >
                         <option value="POS GST INVOICE">POS GST INVOICE</option>
                         <option value="TAX INVOICE">TAX INVOICE</option>
@@ -1377,7 +1377,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Silent Kiosk Printing Instruction Card */}
-                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2">
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                         <Printer className="h-4 w-4" /> 100% Silent Direct Printing (Zero Dialog Popups)
@@ -1412,7 +1412,7 @@ export default function SettingsPage() {
                         value={receiptHeader}
                         onChange={(e) => setReceiptHeader(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground outline-none"
                       />
                     </div>
                     <div className="space-y-1 col-span-1">
@@ -1423,13 +1423,13 @@ export default function SettingsPage() {
                         value={receiptFooter}
                         onChange={(e) => setReceiptFooter(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-4 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-4 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Barcode className="h-4 w-4 text-primary" /> Barcode & Label Generation Settings
                   </h4>
@@ -1440,7 +1440,7 @@ export default function SettingsPage() {
                         value={barcodeFormat}
                         onChange={(e) => setBarcodeFormat(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                       >
                         <option value="CODE128">CODE 128 (Variable length AlphaNumeric)</option>
                         <option value="EAN13">EAN 13 (Standard European 13-digit)</option>
@@ -1455,7 +1455,7 @@ export default function SettingsPage() {
                         value={barcodeLength}
                         onChange={(e) => setBarcodeLength(parseInt(e.target.value) || 12)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                       />
                     </div>
 
@@ -1467,7 +1467,7 @@ export default function SettingsPage() {
                         value={barcodePrefix}
                         onChange={(e) => setBarcodePrefix(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-semibold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-semibold outline-none"
                       />
                     </div>
 
@@ -1487,7 +1487,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="border border-border/60 rounded-xl p-4 space-y-4 bg-secondary/10">
+                <div className="border border-border/60 rounded-md p-4 space-y-4 bg-secondary/10">
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <User className="h-4 w-4 text-primary" /> Default POS customer & payment modes
                   </h4>
@@ -1512,7 +1512,7 @@ export default function SettingsPage() {
                         value={defaultPaymentMethod}
                         onChange={(e) => setDefaultPaymentMethod(e.target.value)}
                         disabled={!isAuthorized || isSubmitting}
-                        className="w-full bg-background border border-border px-3 py-2 rounded-xl text-xs text-foreground font-bold outline-none"
+                        className="w-full bg-background border border-border px-3 py-2 rounded-md text-xs text-foreground font-bold outline-none"
                       >
                         <option value="CASH">CASH Payment</option>
                         <option value="CARD">CARD Swipe Terminal</option>
@@ -1534,7 +1534,7 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Backup Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-3.5 bg-secondary/15">
+                  <div className="border border-border/60 rounded-md p-4 space-y-3.5 bg-secondary/15">
                     <div className="flex items-center gap-2">
                       <Database className="h-5 w-5 text-primary" />
                       <h4 className="text-xs font-bold">Encrypted tenant snapshots</h4>
@@ -1545,14 +1545,14 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={handleBackupDownload}
-                      className="w-full py-2 px-3 bg-primary text-primary-foreground font-black text-xs rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/95 transition-all uppercase tracking-wider text-center"
+                      className="w-full py-2 px-3 bg-primary text-primary-foreground font-black text-xs rounded-md shadow-sm shadow-primary/20 hover:bg-primary/95 transition-all uppercase tracking-wider text-center"
                     >
                       Manage encrypted snapshots
                     </button>
                   </div>
 
                   {/* Restore Card */}
-                  <div className="border border-border/60 rounded-xl p-4 space-y-3.5 bg-secondary/15">
+                  <div className="border border-border/60 rounded-md p-4 space-y-3.5 bg-secondary/15">
                     <div className="flex items-center gap-2">
                       <History className="h-5 w-5 text-primary" />
                       <h4 className="text-xs font-bold">Recovery safeguards</h4>
@@ -1564,7 +1564,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Audit trail activity log */}
-                <div className="border border-border/60 rounded-xl p-4 space-y-3">
+                <div className="border border-border/60 rounded-md p-4 space-y-3">
                   <h4 className="text-xs font-bold text-foreground">User Activity logs & Audit Trail</h4>
                   {auditLogs.length === 0 ? (
                     <div className="py-6 text-center text-xs text-muted-foreground">No recent activity logs found.</div>
@@ -1620,7 +1620,7 @@ export default function SettingsPage() {
                 {subscription ? (
                   <div className="space-y-6">
                     {/* Main subscription card */}
-                    <div className="border border-border/60 rounded-2xl p-6 relative overflow-hidden bg-gradient-to-br from-[#2563EB]/5 to-transparent">
+                    <div className="border border-border/60 rounded-lg p-6 relative overflow-hidden bg-gradient-to-br from-[#2563EB]/5 to-transparent">
                       <div className="absolute top-0 right-0 h-32 w-32 bg-[#2563EB]/5 rounded-full -mr-16 -mt-16 blur-xl" />
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                         <div className="space-y-1">
@@ -1652,7 +1652,7 @@ export default function SettingsPage() {
 
                       {/* Live countdown details */}
                       <div className="mt-6 pt-5 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl border border-border bg-secondary/10 flex items-center gap-3">
+                        <div className="p-4 rounded-md border border-border bg-secondary/10 flex items-center gap-3">
                           <Calendar className="h-5 w-5 text-primary shrink-0" />
                           <div>
                             <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Billing Cycle Status</div>
@@ -1662,7 +1662,7 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        <div className="p-4 rounded-xl border border-border bg-secondary/10 flex items-center gap-3">
+                        <div className="p-4 rounded-md border border-border bg-secondary/10 flex items-center gap-3">
                           <Info className="h-5 w-5 text-amber-500 shrink-0" />
                           <div>
                             <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Time Remaining</div>
@@ -1689,7 +1689,7 @@ export default function SettingsPage() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Branch usage */}
-                          <div className="border border-border/60 rounded-xl p-4 space-y-3">
+                          <div className="border border-border/60 rounded-md p-4 space-y-3">
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Branches</span>
                               <span className="font-black text-foreground">
@@ -1708,7 +1708,7 @@ export default function SettingsPage() {
                           </div>
 
                           {/* User usage */}
-                          <div className="border border-border/60 rounded-xl p-4 space-y-3">
+                          <div className="border border-border/60 rounded-md p-4 space-y-3">
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Employee Accounts</span>
                               <span className="font-black text-foreground">
@@ -1730,7 +1730,7 @@ export default function SettingsPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="py-12 border border-dashed border-border rounded-xl text-center text-muted-foreground space-y-2 bg-secondary/5">
+                  <div className="py-12 border border-dashed border-border rounded-md text-center text-muted-foreground space-y-2 bg-secondary/5">
                     <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto stroke-1" />
                     <p className="text-xs font-bold">No Subscription Found</p>
                     <p className="text-[10px]">Contact system admin to configure your billing subscription.</p>
@@ -1745,7 +1745,7 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-black shadow-lg shadow-primary/20 transition-all uppercase tracking-wider"
+                  className="px-6 py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-black shadow-sm shadow-primary/20 transition-all uppercase tracking-wider"
                 >
                   {isSubmitting ? "Applying updates..." : "Save changes"}
                 </button>

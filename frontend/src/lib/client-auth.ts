@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * Client-side Authorization Utilities
  * Hook and functions for checking user permissions on the client
  */
 
-"use client";
 
 import { useSession } from "next-auth/react";
 import { navigationConfig, NavItem } from "@/lib/nav-config";

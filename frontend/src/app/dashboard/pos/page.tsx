@@ -1415,13 +1415,13 @@ export default function POSPage() {
   };
 
   return (
-    <div className="w-full h-full p-2 sm:p-4 print:p-0 bg-[#F3F4F6] print:bg-white dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
+    <div className="w-full h-full p-2 sm:p-4 print:p-0 bg-[#F3F4F6] print:bg-[#FFFCF7] dark:bg-slate-950 overflow-hidden text-foreground flex flex-col font-sans select-none transition-all duration-300">
       
       {/* Dynamic workspace wrapper grid */}
       <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 overflow-hidden no-print">
         
         {/* LEFT SECTION (75% screen width): Product grids & Category catalog */}
-        <div className={`flex-1 lg:flex-[3] flex flex-col gap-4 bg-white dark:bg-[#0a0f24] rounded-2xl lg:rounded-[32px] p-3 lg:p-5 border border-slate-200/50 dark:border-slate-800/80 shadow-sm min-h-0 overflow-hidden ${
+        <div className={`flex-1 lg:flex-[3] flex flex-col gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] rounded-lg lg:rounded-[32px] p-3 lg:p-5 border border-[#D8CEC1]/50 dark:border-slate-800/80 shadow-sm min-h-0 overflow-hidden ${
           activeMobileTab === "catalog" ? "flex" : "hidden lg:flex"
         }`}>
           
@@ -1432,15 +1432,15 @@ export default function POSPage() {
               {/* Sidebar collapse button */}
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("toggle-pos-sidebar"))}
-                className="hidden lg:flex bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 items-center justify-center rounded-xl text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                className="hidden lg:flex bg-[#F9FAFB] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-11 h-11 items-center justify-center rounded-md text-[#71675E] dark:text-slate-350 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
                 title="Toggle Sidebar"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 dark:text-slate-400"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#71675E] dark:text-[#71675E]"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
               </button>
 
               {/* Modern High-Fidelity Search Wrapper matching the image */}
-              <div className="flex-1 min-w-0 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs h-11 px-2 sm:px-3.5">
-                <Search className="h-4.5 w-4.5 text-slate-400 shrink-0 mr-1.5 sm:mr-2.5" />
+              <div className="flex-1 min-w-0 flex items-center bg-[#F9FAFB] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-md shadow-xs h-11 px-2 sm:px-3.5">
+                <Search className="h-4.5 w-4.5 text-[#71675E] shrink-0 mr-1.5 sm:mr-2.5" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -1455,7 +1455,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setPosScannerOpen(true)}
-                    className="text-slate-400 hover:text-[#2563EB] cursor-pointer p-1 sm:p-1.5 transition-all"
+                    className="text-[#71675E] hover:text-[#2563EB] cursor-pointer p-1 sm:p-1.5 transition-all"
                     title="Scan Barcode with Camera (F9)"
                   >
                     <Barcode className="h-4.5 w-4.5" />
@@ -1477,16 +1477,16 @@ export default function POSPage() {
                 onClick={() => {
                   setViewMode((prev) => (prev === "grid" ? "compact" : prev === "compact" ? "list" : "grid"));
                 }}
-                className="bg-[#F9FAFB] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                className="bg-[#F9FAFB] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-md text-[#71675E] dark:text-slate-355 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
                 title={`Toggle View Mode (Current: ${viewMode})`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 dark:text-slate-400"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#71675E] dark:text-[#71675E]"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg>
               </button>
             </div>
 
             {/* Business Store Name adaptation */}
             <div className="flex items-center gap-2">
-              <div className="h-11 px-4 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 flex items-center text-xs font-extrabold text-slate-700 dark:text-slate-250 shadow-xs uppercase tracking-wider select-none">
+              <div className="h-11 px-4 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#FFFCF7] dark:bg-slate-900 flex items-center text-xs font-extrabold text-[#292320] dark:text-slate-250 shadow-xs uppercase tracking-wider select-none">
                 {businessName || "POS Billing"}
               </div>
 
@@ -1495,7 +1495,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => handlePrintReceipt(lastInvoice, true)}
-                  className="h-11 px-3.5 border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 rounded-xl flex items-center gap-1.5 text-xs font-black shadow-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-all active:scale-95"
+                  className="h-11 px-3.5 border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 rounded-md flex items-center gap-1.5 text-xs font-black shadow-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-all active:scale-95"
                   title="Print Last Bill Again (Copy of Original)"
                 >
                   <Printer className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -1509,17 +1509,17 @@ export default function POSPage() {
               {/* Header navbar toggle button */}
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("toggle-pos-navbar"))}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-md text-[#71675E] dark:text-slate-350 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
                 title="Toggle Top Navbar View"
               >
-                <Monitor className="h-4.5 w-4.5 text-slate-500 dark:text-slate-400" />
+                <Monitor className="h-4.5 w-4.5 text-[#71675E] dark:text-[#71675E]" />
               </button>
 
               {/* Help & Support Ticket Registration button */}
               <button
                 type="button"
                 onClick={() => setTicketModalOpen(true)}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-xl text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
+                className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-11 h-11 flex items-center justify-center rounded-md text-slate-650 dark:text-slate-350 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 shrink-0 shadow-xs cursor-pointer transition-all"
                 title="Contact Support / Register Ticket"
               >
                 <HelpCircle className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
@@ -1528,20 +1528,20 @@ export default function POSPage() {
           </div>
 
           {/* Row 2: Multi-Bill concurrent Tabs */}
-          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
+          <div className="flex items-center gap-2 border-b border-[#D8CEC1] dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
             {activeOrders.map((tab) => (
               <div
                 key={tab.id}
                 onClick={() => setCurrentOrderId(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all select-none border whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold cursor-pointer transition-all select-none border whitespace-nowrap ${
                   tab.id === currentOrderId
-                    ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-                    : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-650 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                    ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+                    : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-650 dark:text-[#71675E] border-[#D8CEC1] dark:border-slate-800"
                 }`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 <span>{tab.invoiceNumber}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${tab.id === currentOrderId ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${tab.id === currentOrderId ? "bg-[#FFFCF7]/20 text-white" : "bg-[#EEE7DD] dark:bg-slate-800 text-[#71675E]"}`}>
                   {tab.cart.length} items
                 </span>
                 {activeOrders.length > 1 && (
@@ -1556,7 +1556,7 @@ export default function POSPage() {
             ))}
             <button
               onClick={handleAddNewOrderTab}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
+              className="px-4 py-2 bg-[#FFFCF7] dark:bg-slate-900 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-[#71675E] dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Add New Billing Tab"
             >
               <Plus className="h-4 w-4" /> Add Tab
@@ -1564,7 +1564,7 @@ export default function POSPage() {
             <button
               type="button"
               onClick={() => setRecallModalOpen(true)}
-              className="px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
+              className="px-4 py-2 bg-[#FFFCF7] dark:bg-slate-900 hover:bg-slate-55 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-[#71675E] dark:text-slate-355 cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs whitespace-nowrap"
               title="Recall Suspended Bills (F4)"
             >
               <FileText className="h-4 w-4 text-emerald-500" /> Drafts ({heldBills.length})
@@ -1575,10 +1575,10 @@ export default function POSPage() {
           <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none shrink-0 pb-2">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all select-none cursor-pointer ${
+              className={`px-4 py-2 text-xs font-bold rounded-md transition-all select-none cursor-pointer ${
                 selectedCategory === "all"
                   ? "bg-[#2563EB] text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
+                  : "text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#EEE7DD]/60 dark:hover:bg-slate-800/40"
               }`}
             >
               Show All
@@ -1587,10 +1587,10 @@ export default function POSPage() {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer ${
                   selectedCategory === cat.id
                     ? "bg-[#2563EB] text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40"
+                    : "text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#EEE7DD]/60 dark:hover:bg-slate-800/40"
                 }`}
               >
                 {cat.name}
@@ -1601,15 +1601,15 @@ export default function POSPage() {
           {/* Product Layout Representation Grid/Compact/List */}
           <div className="flex-1 overflow-y-auto pr-1 min-h-0">
             {filteredProducts.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-slate-400">
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-[#71675E]">
                 <Package className="h-10 w-10 opacity-30 mb-2" />
                 No matching product inventory found.
               </div>
             ) : viewMode === "list" ? (
-              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 text-xs">
+              <div className="border border-[#D8CEC1] dark:border-slate-800 rounded-lg overflow-hidden bg-[#FFFCF7] dark:bg-slate-900 text-xs">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                    <tr className="bg-[#F7F3EC] dark:bg-slate-800 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                       <th className="py-2.5 px-4">Product Name</th>
                       <th className="py-2.5 px-3">SKU / Code</th>
                       <th className="py-2.5 px-3">Stock Level</th>
@@ -1629,12 +1629,12 @@ export default function POSPage() {
                         <tr
                           key={p.id}
                           onClick={() => addToCart(p)}
-                          className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                          className="border-b border-[#D8CEC1] dark:border-slate-800 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                         >
-                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
+                          <td className="py-3 px-4 font-semibold text-[#292320] dark:text-slate-200">
                             {p.name}
                           </td>
-                          <td className="py-3 px-3 text-slate-400 font-mono">{p.sku || p.barcode}</td>
+                          <td className="py-3 px-3 text-[#71675E] font-mono">{p.sku || p.barcode}</td>
                           <td className="py-3 px-3">
                             <span
                               className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
@@ -1652,7 +1652,7 @@ export default function POSPage() {
                             {currencySymbol}{p.sellingPrice.toFixed(2)}
                           </td>
                           {isPharmacy && (
-                            <td className="py-3 px-3 text-slate-400 font-medium">
+                            <td className="py-3 px-3 text-[#71675E] font-medium">
                               {batch ? (
                                 <span>
                                   {batch.batchNumber} (Exp:{" "}
@@ -1703,7 +1703,7 @@ export default function POSPage() {
                     <div
                       key={prod.id}
                       onClick={() => addToCart(prod)}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-2 flex flex-col justify-between hover:shadow-lg hover:border-[#2563EB]/25 hover:scale-[1.01] cursor-pointer relative group transition-all duration-300"
+                      className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-2 flex flex-col justify-between hover:shadow-sm hover:border-[#2563EB]/25 hover:scale-[1.01] cursor-pointer relative group transition-all duration-300"
                     >
                       {/* Pharmacy Info helpers badge */}
                       {isPharmacy && (
@@ -1713,7 +1713,7 @@ export default function POSPage() {
                               Expiring
                             </span>
                           )}
-                          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 text-[8px] rounded">
+                          <span className="px-1.5 py-0.5 bg-[#EEE7DD] dark:bg-slate-800 text-[#71675E] text-[8px] rounded">
                             {prod.sku.slice(0, 2)}-Rack
                           </span>
                         </div>
@@ -1734,7 +1734,7 @@ export default function POSPage() {
 
                       {/* Standard Image Representation exactly like image */}
                       {viewMode !== "compact" ? (
-                        <div className="w-full aspect-[4/3] bg-[#f3f4f6] dark:bg-slate-950 rounded-xl flex items-center justify-center overflow-hidden mb-2 select-none shrink-0 border border-slate-200/40 dark:border-slate-800/40 relative">
+                        <div className="w-full aspect-[4/3] bg-[#f3f4f6] dark:bg-slate-950 rounded-md flex items-center justify-center overflow-hidden mb-2 select-none shrink-0 border border-[#D8CEC1]/40 dark:border-slate-800/40 relative">
                           {stock <= 0 && (
                             <span className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 bg-red-500 text-white font-extrabold text-[7px] sm:text-[8px] uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs z-10 select-none">
                               OUT
@@ -1759,7 +1759,7 @@ export default function POSPage() {
 
                       {/* Product text details */}
                       <div className="space-y-1 text-left w-full mt-1.5">
-                        <h4 className={`font-extrabold text-slate-800 dark:text-slate-100 leading-tight line-clamp-2 tracking-tight ${
+                        <h4 className={`font-extrabold text-[#292320] dark:text-slate-100 leading-tight line-clamp-2 tracking-tight ${
                           viewMode === "compact" ? "text-[9px] sm:text-[10px]" : "text-[10px] sm:text-xs"
                         }`}>
                           {prod.name}
@@ -1793,7 +1793,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setVisibleCount((prev) => prev + 36)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold text-slate-650 dark:text-slate-350 cursor-pointer shadow-xs"
+                  className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 rounded-md text-xs font-bold text-slate-650 dark:text-slate-350 cursor-pointer shadow-xs"
                 >
                   Load More Inventory
                 </button>
@@ -1803,12 +1803,12 @@ export default function POSPage() {
         </div>
 
         {/* RIGHT SECTION (25% screen width): Billing checkout panel */}
-        <div className={`w-full lg:w-[400px] flex flex-col bg-white dark:bg-[#0a0f24] border border-slate-200/60 dark:border-slate-800 rounded-2xl lg:rounded-[32px] p-3 lg:p-5 min-h-0 overflow-hidden shadow-xs shrink-0 no-print ${
+        <div className={`w-full lg:w-[400px] flex flex-col bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg lg:rounded-[32px] p-3 lg:p-5 min-h-0 overflow-hidden shadow-xs shrink-0 no-print ${
           activeMobileTab === "cart" ? "flex-1 flex" : "hidden lg:flex"
         }`}>
           
           {/* Metadata information card */}
-          <div className="border-b border-slate-150 dark:border-slate-800/80 pb-3.5 mb-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex justify-between">
+          <div className="border-b border-slate-150 dark:border-slate-800/80 pb-3.5 mb-3 text-[10px] font-bold text-[#71675E] dark:text-[#71675E] uppercase tracking-wider flex justify-between">
             <span>Bill: {currentOrder.invoiceNumber}</span>
             <span>Date: {new Date().toLocaleDateString()}</span>
             <span>Cashier: {session?.user?.name?.slice(0, 16) || "Alex Owner"}</span>
@@ -1850,20 +1850,20 @@ export default function POSPage() {
                       waiterId: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2.5 pr-8 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs font-semibold text-slate-500 focus:outline-none appearance-none cursor-pointer"
+                  className="w-full px-3 py-2.5 pr-8 border border-[#D8CEC1] dark:border-slate-800 rounded-md bg-[#FFFCF7] dark:bg-slate-900 text-xs font-semibold text-[#71675E] focus:outline-none appearance-none cursor-pointer"
                 >
                   <option value="">Select Sales Person</option>
                   {session?.user?.name && (
                     <option value={session.user.name}>{session.user.name} (You)</option>
                   )}
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71675E] pointer-events-none" />
               </div>
             </div>
 
             {/* Wholesale specific customer ledger information */}
             {currentOrder.posMode === "WHOLESALE" && activeCustomer && (
-              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl p-3 text-[10px] font-bold space-y-1">
+              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-md p-3 text-[10px] font-bold space-y-1">
                 <div className="flex justify-between">
                   <span>Customer Type: {activeCustomer.customerType}</span>
                   <span>Outstanding: {currencySymbol}{activeCustomer.balance.toFixed(2)}</span>
@@ -1877,9 +1877,9 @@ export default function POSPage() {
           </div>
 
           {/* Active order heading row */}
-          <div className="flex items-center justify-between mb-3 text-slate-800 dark:text-slate-200 shrink-0">
+          <div className="flex items-center justify-between mb-3 text-[#292320] dark:text-slate-200 shrink-0">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <ShoppingBag className="h-5 w-5 text-[#71675E] dark:text-[#71675E]" />
               <span className="font-extrabold text-base tracking-tight">Order #{currentOrder.invoiceNumber.split("-")[1] || currentOrder.id}</span>
             </div>
             
@@ -1915,10 +1915,10 @@ export default function POSPage() {
                 <div className="w-16 h-16 rounded-full bg-[#2563EB]/10 dark:bg-[#2563EB]/20 flex items-center justify-center mb-3">
                   <ShoppingCart className="h-7 w-7 stroke-1 text-[#2563EB] dark:text-purple-400" />
                 </div>
-                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                <p className="text-sm font-extrabold text-[#292320] dark:text-slate-200">
                   {cartSearchQuery ? "No matching items." : "Cart is empty."}
                 </p>
-                <p className="text-[11px] text-slate-455 dark:text-slate-500 mt-1 max-w-[200px] leading-relaxed">
+                <p className="text-[11px] text-slate-455 dark:text-[#71675E] mt-1 max-w-[200px] leading-relaxed">
                   {cartSearchQuery ? "Refine your search query or clear it." : "Select products to begin billing."}
                 </p>
               </div>
@@ -1933,11 +1933,11 @@ export default function POSPage() {
                 return (
                   <div
                     key={item.id}
-                    className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 hover:shadow-md transition-all duration-200 relative overflow-hidden"
+                    className="group bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800/80 rounded-lg p-4 hover:shadow-sm transition-all duration-200 relative overflow-hidden"
                   >
                     <div className="flex gap-3 items-start">
                       {/* Product Image Thumbnail */}
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 flex items-center justify-center shrink-0 shadow-inner">
+                      <div className="w-12 h-12 rounded-md overflow-hidden bg-[#F7F3EC] dark:bg-slate-950 border border-[#D8CEC1] dark:border-slate-800 flex items-center justify-center shrink-0 shadow-inner">
                         {item.image ? (
                           <img src={item.image} alt={item.name} className="w-[90%] h-[90%] object-contain transition-transform group-hover:scale-105" />
                         ) : (
@@ -1953,7 +1953,7 @@ export default function POSPage() {
                       {/* Name & Formula Calculations */}
                       <div className="flex-1 min-w-0 text-left">
                         <div className="flex justify-between items-start gap-1">
-                          <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-xs tracking-tight truncate leading-snug">
+                          <h4 className="font-extrabold text-[#292320] dark:text-slate-200 text-xs tracking-tight truncate leading-snug">
                             {item.name}
                           </h4>
                           
@@ -1969,14 +1969,14 @@ export default function POSPage() {
                         </div>
 
                         {/* Pricing formula calculation layout: green total matching mockup */}
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                        <div className="text-xs font-semibold text-[#71675E] dark:text-[#71675E] mt-1 flex items-center gap-1.5">
                           <span>{currencySymbol}{(item.price - item.discount).toFixed(2)} &times; {item.quantity}</span>
                           <span className="text-[#10b981] font-bold">{currencySymbol}{((item.price - item.discount) * item.quantity).toFixed(2)}</span>
                         </div>
 
                         {/* Batch / Expiry / Serial info below the calculation line */}
                         {(item.batchNumber || item.expiryDate || item.serialNumber) && (
-                          <div className="flex flex-wrap gap-1 mt-1 text-[8px] font-bold text-slate-400">
+                          <div className="flex flex-wrap gap-1 mt-1 text-[8px] font-bold text-[#71675E]">
                             {item.batchNumber && <span>B: {item.batchNumber}</span>}
                             {item.expiryDate && <span>Exp: {item.expiryDate}</span>}
                             {item.serialNumber && <span>S/N: {item.serialNumber}</span>}
@@ -1986,17 +1986,17 @@ export default function POSPage() {
                     </div>
 
                     {/* Stepper & Add Notes control row */}
-                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3 mt-3">
+                    <div className="flex items-center justify-between border-t border-[#D8CEC1] dark:border-slate-800/80 pt-3 mt-3">
                       {/* Compact gray pill quantity controls */}
-                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+                      <div className="flex items-center gap-2 bg-[#EEE7DD] dark:bg-slate-800 p-0.5 rounded-lg border border-[#D8CEC1]/50 dark:border-slate-700/50">
                         <button
                           type="button"
                           onClick={() => updateCartQty(item.id, item.quantity - 1)}
-                          className="w-5 h-5 flex items-center justify-center rounded-md bg-white dark:bg-slate-900 text-slate-550 hover:text-slate-800 dark:hover:text-slate-100 shadow-xs cursor-pointer active:scale-95 transition-all font-black text-xs"
+                          className="w-5 h-5 flex items-center justify-center rounded-md bg-[#FFFCF7] dark:bg-slate-900 text-slate-550 hover:text-[#292320] dark:hover:text-slate-100 shadow-xs cursor-pointer active:scale-95 transition-all font-black text-xs"
                         >
                           <Minus className="h-2.5 w-2.5 stroke-[2.5px]" />
                         </button>
-                        <span className="font-extrabold text-xs min-w-[16px] text-center text-slate-800 dark:text-slate-250 select-none">
+                        <span className="font-extrabold text-xs min-w-[16px] text-center text-[#292320] dark:text-slate-250 select-none">
                           {item.quantity}
                         </span>
                         <button
@@ -2023,7 +2023,7 @@ export default function POSPage() {
                           className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.notes
                               ? "bg-[#2563EB]/10 border-transparent text-[#2563EB] dark:text-purple-400"
-                              : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"
+                              : "border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-[#71675E]"
                           }`}
                           title="Add Item Comments"
                         >
@@ -2044,7 +2044,7 @@ export default function POSPage() {
                           className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 border rounded-lg text-[9px] sm:text-[10px] font-bold cursor-pointer transition-all ${
                             item.discount > 0
                               ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-250 dark:border-emerald-500/30 text-emerald-600"
-                              : "border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-500"
+                              : "border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-[#71675E]"
                           }`}
                           title="Item Discount"
                         >
@@ -2061,10 +2061,10 @@ export default function POSPage() {
 
           {/* Pricing calculations details */}
           {currentOrder.cart.length > 0 && (
-            <div className="border-t border-slate-200 dark:border-slate-855 pt-3 mt-auto space-y-3 shrink-0 animate-in fade-in duration-200">
+            <div className="border-t border-[#D8CEC1] dark:border-slate-855 pt-3 mt-auto space-y-3 shrink-0 animate-in fade-in duration-200">
               {/* Submit Error alert box (if any) */}
               {submitError && (
-                <div className="bg-red-50 dark:bg-red-950/40 text-red-655 dark:text-red-400 text-[11px] font-bold p-3 rounded-2xl border border-red-200 dark:border-red-900/50 my-1 animate-in fade-in duration-200 flex justify-between items-start gap-2 text-left">
+                <div className="bg-red-50 dark:bg-red-950/40 text-red-655 dark:text-red-400 text-[11px] font-bold p-3 rounded-lg border border-red-200 dark:border-red-900/50 my-1 animate-in fade-in duration-200 flex justify-between items-start gap-2 text-left">
                   <span>{submitError}</span>
                   <button
                     type="button"
@@ -2084,7 +2084,7 @@ export default function POSPage() {
                     onClick={() => {
                       if (currentOrder.cart.length > 0) setHoldModalOpen(true);
                     }}
-                    className="py-2.5 px-3 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
+                    className="py-2.5 px-3 border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-[#292320] dark:text-slate-200 rounded-md cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
                     title="Hold current cart to suspend/save"
                   >
                     <Pause className="h-3.5 w-3.5" />
@@ -2093,7 +2093,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setRecallModalOpen(true)}
-                    className="py-2.5 px-3 border border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
+                    className="py-2.5 px-3 border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-[#292320] dark:text-slate-200 rounded-md cursor-pointer flex items-center justify-center gap-1.5 font-extrabold text-xs active:scale-[0.98] transition-all shadow-xs"
                     title="Recall a saved/held cart"
                   >
                     <Play className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
@@ -2104,7 +2104,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setCheckoutSelectionOpen(true)}
-                  className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-xl shadow-md hover:shadow-lg hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] text-center font-extrabold text-xs"
+                  className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] dark:bg-[#3b82f6] dark:hover:bg-[#2563EB] text-white rounded-md shadow-sm hover:shadow-sm hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 cursor-pointer flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98] text-center font-extrabold text-xs"
                   title="Proceed to Payment Checkout"
                 >
                   <CreditCard className="h-4 w-4" />
@@ -2119,15 +2119,15 @@ export default function POSPage() {
       {/* 3.5. Register Support Ticket Modal */}
       {ticketModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200 no-print">
-          <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200/60 dark:border-slate-800/80 shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 rounded-[28px] border border-[#D8CEC1]/60 dark:border-slate-800/80 shadow-sm w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] dark:border-slate-800 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-5.5 w-5.5 text-blue-600 animate-pulse" />
-                <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Register Support Ticket</h3>
+                <h3 className="text-sm font-extrabold text-[#292320] dark:text-slate-100">Register Support Ticket</h3>
               </div>
               <button
                 onClick={() => setTicketModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
+                className="text-[#71675E] hover:text-[#71675E] dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
@@ -2141,7 +2141,7 @@ export default function POSPage() {
                   placeholder="e.g. Printer is not responding"
                   value={ticketTitle}
                   onChange={(e) => setTicketTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB]"
+                  className="w-full px-3.5 py-2.5 bg-[#F7F3EC] dark:bg-slate-950 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB]"
                 />
               </div>
 
@@ -2150,7 +2150,7 @@ export default function POSPage() {
                 <select
                   value={ticketPriority}
                   onChange={(e) => setTicketPriority(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground outline-none focus:ring-1 focus:ring-[#2563EB]"
+                  className="w-full px-3.5 py-2.5 bg-[#F7F3EC] dark:bg-slate-950 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs text-foreground outline-none focus:ring-1 focus:ring-[#2563EB]"
                 >
                   <option value="LOW">Low priority</option>
                   <option value="MEDIUM">Medium priority</option>
@@ -2165,16 +2165,16 @@ export default function POSPage() {
                   value={ticketDesc}
                   onChange={(e) => setTicketDesc(e.target.value)}
                   rows={4}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB] resize-none"
+                  className="w-full px-3.5 py-2.5 bg-[#F7F3EC] dark:bg-slate-950 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs text-foreground placeholder-slate-400 outline-none focus:ring-1 focus:ring-[#2563EB] resize-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0">
+            <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-4 shrink-0">
               <button
                 type="button"
                 onClick={() => setTicketModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 font-bold cursor-pointer text-slate-700 dark:text-slate-200"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] dark:hover:bg-slate-850 font-bold cursor-pointer text-[#292320] dark:text-slate-200"
               >
                 Cancel
               </button>
@@ -2182,7 +2182,7 @@ export default function POSPage() {
                 type="button"
                 onClick={handleSubmitTicket}
                 disabled={isSubmittingTicket || !ticketTitle.trim() || !ticketDesc.trim()}
-                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 {isSubmittingTicket ? (
                   <>
@@ -2201,10 +2201,10 @@ export default function POSPage() {
       {/* 3. Hold/Suspend Bill Modal */}
       {holdModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 no-print animate-in fade-in duration-100">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-5 w-full max-w-sm space-y-4 shadow-sm">
             <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Suspend Bill Transaction</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h3 className="text-sm font-bold text-[#292320] dark:text-slate-100">Suspend Bill Transaction</h3>
+              <p className="text-xs text-[#71675E] mt-0.5">
                 Save the cart items in the local drafts queue to recall it later.
               </p>
             </div>
@@ -2213,12 +2213,12 @@ export default function POSPage() {
               placeholder="Enter customer reference name..."
               value={holdName}
               onChange={(e) => setHoldName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-xs focus:outline-none text-foreground font-semibold"
+              className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-xs focus:outline-none text-foreground font-semibold"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setHoldModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Cancel
               </button>
@@ -2237,17 +2237,17 @@ export default function POSPage() {
       {/* 3.2. Recall Bill Draft List Modal */}
       {recallModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 no-print animate-in fade-in duration-100">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl flex flex-col max-h-[80vh]">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-5 w-full max-w-md space-y-4 shadow-sm flex flex-col max-h-[80vh]">
             <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Recall Suspended Bills</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h3 className="text-sm font-bold text-[#292320] dark:text-slate-100">Recall Suspended Bills</h3>
+              <p className="text-xs text-[#71675E] mt-0.5">
                 Select a draft order transaction to load back into the POS active tab.
               </p>
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {heldBills.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">
+                <div className="py-6 text-center text-xs text-[#71675E]">
                   No draft bills suspended.
                 </div>
               ) : (
@@ -2255,13 +2255,13 @@ export default function POSPage() {
                   <div
                     key={b.id}
                     onClick={() => handleRecallBill(b)}
-                    className="flex justify-between items-center p-3 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                    className="flex justify-between items-center p-3 border border-[#D8CEC1] dark:border-slate-800 rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800 cursor-pointer transition-colors"
                   >
                     <div className="text-left">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-250 block">
+                      <span className="text-xs font-bold text-[#292320] dark:text-slate-250 block">
                         {b.name}
                       </span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-[#71675E]">
                         {new Date(b.createdAt).toLocaleTimeString()} ({b.items.length} items)
                       </span>
                     </div>
@@ -2273,10 +2273,10 @@ export default function POSPage() {
               )}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end pt-2 border-t border-[#D8CEC1] dark:border-slate-800">
               <button
                 onClick={() => setRecallModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Close
               </button>
@@ -2290,18 +2290,18 @@ export default function POSPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 no-print animate-in fade-in duration-100">
           <form
             onSubmit={handleQuickCustomerSubmit}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-xl"
+            className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-5 w-full max-w-sm space-y-4 shadow-sm"
           >
             <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Quick Customer Registration</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h3 className="text-sm font-bold text-[#292320] dark:text-slate-100">Quick Customer Registration</h3>
+              <p className="text-xs text-[#71675E] mt-0.5">
                 Register a new customer directly to bind with this billing transaction.
               </p>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <label className="block text-[10px] uppercase font-bold text-[#71675E] tracking-wider">
                   Full Name *
                 </label>
                 <input
@@ -2310,12 +2310,12 @@ export default function POSPage() {
                   placeholder="e.g. John Doe"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <label className="block text-[10px] uppercase font-bold text-[#71675E] tracking-wider">
                   Phone Number
                 </label>
                 <input
@@ -2323,12 +2323,12 @@ export default function POSPage() {
                   placeholder="e.g. 9876543210"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <label className="block text-[10px] uppercase font-bold text-[#71675E] tracking-wider">
                   Email Address
                 </label>
                 <input
@@ -2336,12 +2336,12 @@ export default function POSPage() {
                   placeholder="e.g. john@example.com"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                <label className="block text-[10px] uppercase font-bold text-[#71675E] tracking-wider">
                   Address
                 </label>
                 <input
@@ -2349,12 +2349,12 @@ export default function POSPage() {
                   placeholder="e.g. Kathmandu, Nepal"
                   value={newAddress}
                   onChange={(e) => setNewAddress(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
+                  className="w-full px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-xs font-semibold focus:ring-1 focus:ring-primary outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+            <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => {
@@ -2364,13 +2364,13 @@ export default function POSPage() {
                   setNewAddress("");
                   setNewEmail("");
                 }}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-lg hover:bg-[#1D4ED8] shadow-md shadow-[#2563EB]/20"
+                className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-lg hover:bg-[#1D4ED8] shadow-sm shadow-[#2563EB]/20"
               >
                 Register Customer
               </button>
@@ -2382,22 +2382,22 @@ export default function POSPage() {
       {/* 4.5. Weight Entry Modal for Fresh Produce */}
       {weightModalOpen && weightModalProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 no-print animate-in fade-in duration-100">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 w-full max-w-sm space-y-4">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-5 w-full max-w-sm space-y-4">
             <div>
               <span className="text-[9px] bg-primary/20 text-[#2563EB] border border-primary/30 font-bold px-2 py-0.5 rounded-full uppercase">
                 Weight Scale Input
               </span>
-              <h3 className="text-sm font-black mt-2 text-slate-800 dark:text-slate-100">
+              <h3 className="text-sm font-black mt-2 text-[#292320] dark:text-slate-100">
                 Scale Weight: {weightModalProduct.name}
               </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="text-[10px] text-[#71675E] mt-0.5">
                 Unit Price: {currencySymbol}{weightModalProduct.sellingPrice.toFixed(2)} / {weightModalProduct.unit?.name || "Kg"}
               </p>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider block mb-1">
                   Enter Weight ({weightModalProduct.unit?.name || "Kg"})
                 </label>
                 <div className="relative">
@@ -2407,10 +2407,10 @@ export default function POSPage() {
                     placeholder="0.000"
                     value={weightInputValue}
                     onChange={(e) => setWeightInputValue(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-[#2563EB] text-center"
+                    className="w-full pl-3 pr-10 py-2.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] dark:bg-slate-950 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-[#2563EB] text-center"
                     autoFocus
                   />
-                  <span className="absolute right-3 top-3.5 text-xs text-slate-400 font-bold">
+                  <span className="absolute right-3 top-3.5 text-xs text-[#71675E] font-bold">
                     {weightModalProduct.unit?.name || "Kg"}
                   </span>
                 </div>
@@ -2422,7 +2422,7 @@ export default function POSPage() {
                     key={val}
                     type="button"
                     onClick={() => handleWeightSubmit(val)}
-                    className="py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors bg-white dark:bg-slate-950"
+                    className="py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold hover:bg-[#F7F3EC] transition-colors bg-[#FFFCF7] dark:bg-slate-950"
                   >
                     {val.toFixed(2)} Kg
                   </button>
@@ -2430,23 +2430,23 @@ export default function POSPage() {
               </div>
 
               {Number(weightInputValue) > 0 && (
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2.5 rounded-lg flex justify-between items-center text-xs">
+                <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 p-2.5 rounded-lg flex justify-between items-center text-xs">
                   <span className="text-slate-450 font-medium">Calculated Cost:</span>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-100">
+                  <span className="font-extrabold text-[#292320] dark:text-slate-100">
                     {currencySymbol}{(Number(weightInputValue) * weightModalProduct.sellingPrice).toFixed(2)}
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+            <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => {
                   setWeightModalOpen(false);
                   setWeightModalProduct(null);
                 }}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Cancel
               </button>
@@ -2454,7 +2454,7 @@ export default function POSPage() {
                 type="button"
                 onClick={() => handleWeightSubmit(Number(weightInputValue))}
                 disabled={!weightInputValue || isNaN(Number(weightInputValue)) || Number(weightInputValue) <= 0}
-                className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-lg hover:bg-[#1D4ED8] shadow-lg disabled:opacity-50"
+                className="px-5 py-2 bg-[#2563EB] text-white text-xs font-bold rounded-lg hover:bg-[#1D4ED8] shadow-sm disabled:opacity-50"
               >
                 Add Weight
               </button>
@@ -2466,13 +2466,13 @@ export default function POSPage() {
       {/* 4.7. Product Details & Expiry / Alternative Modal */}
       {isDetailsOpen && detailsProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl relative flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-md shadow-sm relative flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <button
               onClick={() => {
                 setIsDetailsOpen(false);
                 setDetailsProduct(null);
               }}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#EEE7DD] text-[#71675E] hover:text-[#292320] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -2481,17 +2481,17 @@ export default function POSPage() {
               <span className="text-[9px] bg-[#2563EB]/10 text-[#2563EB] border border-[#2563EB]/20 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block">
                 Alternative Helpers
               </span>
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100 mt-1">
+              <h3 className="text-base font-black text-[#292320] dark:text-slate-100 mt-1">
                 {detailsProduct.name}
               </h3>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-[#71675E]">
                 SKU: {detailsProduct.sku} | Price: {currencySymbol}{detailsProduct.sellingPrice.toFixed(2)}
               </p>
             </div>
 
             {/* Alternative Products List recommendation */}
             <div className="space-y-2 border-t pt-3">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <span className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider block">
                 Recommended Substitutes (Same Category)
               </span>
 
@@ -2506,14 +2506,14 @@ export default function POSPage() {
                         addToCart(alt);
                         setIsDetailsOpen(false);
                       }}
-                      className="flex justify-between items-center p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors text-xs"
+                      className="flex justify-between items-center p-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800 cursor-pointer transition-colors text-xs"
                     >
-                      <span className="font-semibold text-slate-700 dark:text-slate-350">{alt.name}</span>
+                      <span className="font-semibold text-[#292320] dark:text-slate-350">{alt.name}</span>
                       <span className="font-bold text-[#2563EB]">{currencySymbol}{alt.sellingPrice.toFixed(2)}</span>
                     </div>
                   ))}
                 {products.filter((p) => p.categoryId === detailsProduct.categoryId && p.id !== detailsProduct.id).length === 0 && (
-                  <div className="text-[10px] text-slate-400 py-2">
+                  <div className="text-[10px] text-[#71675E] py-2">
                     No equivalent substitutes in this category.
                   </div>
                 )}
@@ -2526,7 +2526,7 @@ export default function POSPage() {
                   setIsDetailsOpen(false);
                   setDetailsProduct(null);
                 }}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Close Helpers
               </button>
@@ -2538,13 +2538,13 @@ export default function POSPage() {
       {/* 4.9. Admin Override passcode Modal for Large discounts */}
       {adminPasscodeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-5 w-full max-w-sm space-y-4 shadow-sm">
             <div className="text-center space-y-1">
               <ShieldCheck className="h-10 w-10 text-red-500 mx-auto" />
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+              <h3 className="text-sm font-bold text-[#292320] dark:text-slate-100">
                 Large Discount Approval Required
               </h3>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-[#71675E]">
                 You are offering a discount &gt; 25% of the total cart subtotal. Please enter the Admin pin override.
               </p>
             </div>
@@ -2555,7 +2555,7 @@ export default function POSPage() {
                 placeholder="Enter 4-Digit Passcode (try: 1234)"
                 value={passcodeInput}
                 onChange={(e) => setPasscodeInput(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg text-center bg-slate-50 dark:bg-slate-950 text-sm font-black focus:outline-none focus:ring-1 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-center bg-[#F7F3EC] dark:bg-slate-950 text-sm font-black focus:outline-none focus:ring-1 focus:ring-red-500"
                 autoFocus
               />
             </div>
@@ -2563,7 +2563,7 @@ export default function POSPage() {
             <div className="flex justify-end gap-2 border-t pt-3">
               <button
                 onClick={() => setAdminPasscodeModal(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 font-bold"
+                className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] font-bold"
               >
                 Reject Discount
               </button>
@@ -2635,10 +2635,10 @@ export default function POSPage() {
 
       {/* Cashier Printing Notification Floating Card */}
       {printingStatus && printingStatus.active && (
-        <div className="fixed bottom-6 right-6 z-[120] bg-slate-900 text-white dark:bg-slate-900 border border-slate-700 shadow-2xl rounded-2xl p-4 w-84 animate-in slide-in-from-bottom-5 fade-in duration-200 no-print">
+        <div className="fixed bottom-6 right-6 z-[120] bg-slate-900 text-white dark:bg-slate-900 border border-slate-700 shadow-sm rounded-lg p-4 w-84 animate-in slide-in-from-bottom-5 fade-in duration-200 no-print">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center relative shrink-0">
+              <div className="h-10 w-10 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center relative shrink-0">
                 <Printer className="h-5 w-5 animate-pulse" />
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2657,14 +2657,14 @@ export default function POSPage() {
             </div>
             <button
               onClick={() => setPrintingStatus((prev) => (prev ? { ...prev, active: false } : null))}
-              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              className="text-[#71675E] hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 truncate max-w-[170px]">
+            <span className="text-[#71675E] truncate max-w-[170px]">
               Customer: <strong className="text-white">{printingStatus.customerName}</strong>
             </span>
             <div className="flex gap-1.5">
@@ -2687,7 +2687,7 @@ export default function POSPage() {
         </div>
       )}
       {scanToast && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[110] px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg select-none border border-border/80 transition-all animate-bounce ${
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[110] px-4 py-2.5 rounded-md text-xs font-bold shadow-sm select-none border border-border/80 transition-all animate-bounce ${
           scanToast.type === "success"
             ? "bg-emerald-500 text-white border-emerald-450"
             : "bg-rose-500 text-white border-rose-450"
@@ -2698,18 +2698,18 @@ export default function POSPage() {
       {/* 4.0. Complete Payment Checkout Modal */}
       {payModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200 max-h-[92vh]">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-md shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200 max-h-[92vh]">
             
             {/* Modal Header */}
-            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex justify-between items-start border-b border-[#D8CEC1] dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-slate-100">Complete Payment</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Choose payment split and method to finalize order.</p>
+                <h3 className="text-base font-black text-[#292320] dark:text-slate-100">Complete Payment</h3>
+                <p className="text-xs text-[#71675E] mt-0.5">Choose payment split and method to finalize order.</p>
               </div>
               <button
                 onClick={() => setPayModalOpen(false)}
                 disabled={isCheckingOut}
-                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 rounded-full hover:bg-[#EEE7DD] dark:hover:bg-slate-800 text-[#71675E] hover:text-[#292320] dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
@@ -2719,31 +2719,31 @@ export default function POSPage() {
               <div className="flex flex-col max-h-[72vh]">
                 <div className="flex-1 overflow-y-auto pr-1.5 space-y-4 py-1">
                 {/* Detailed Calculations Breakdown */}
-            <div className="bg-[#F3F4F6] dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-4 space-y-2 select-none text-xs font-semibold">
-              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+            <div className="bg-[#F3F4F6] dark:bg-slate-950 border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-4 space-y-2 select-none text-xs font-semibold">
+              <div className="flex justify-between items-center text-[#71675E] dark:text-[#71675E]">
                 <span>Sub Total:</span>
-                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{grossSubtotal.toFixed(2)}</span>
+                <span className="text-[#292320] dark:text-slate-100 font-bold">{currencySymbol}{grossSubtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between items-center text-[#71675E] dark:text-[#71675E]">
                 <span>Discount:</span>
-                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{(rawOverallDiscount + discountSales + couponDiscount).toFixed(2)}</span>
+                <span className="text-[#292320] dark:text-slate-100 font-bold">{currencySymbol}{(rawOverallDiscount + discountSales + couponDiscount).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between items-center text-[#71675E] dark:text-[#71675E]">
                 <span>Tax ({vatPercentage}%):</span>
-                <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{tax.toFixed(2)}</span>
+                <span className="text-[#292320] dark:text-slate-100 font-bold">{currencySymbol}{tax.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800 pt-2 font-black text-sm">
-                <span className="text-slate-800 dark:text-slate-100">Total Payable:</span>
+              <div className="flex justify-between items-center border-t border-[#D8CEC1] dark:border-slate-800 pt-2 font-black text-sm">
+                <span className="text-[#292320] dark:text-slate-100">Total Payable:</span>
                 <span className="text-[#10b981] dark:text-[#10b981] text-base">{currencySymbol}{grandTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Split Type Selector */}
             <div className="space-y-1">
-              <label className="block text-[9px] uppercase font-black text-slate-400 tracking-wider">
+              <label className="block text-[9px] uppercase font-black text-[#71675E] tracking-wider">
                 Payment Splits
               </label>
-              <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/80">
+              <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-md border border-[#D8CEC1]/50 dark:border-slate-800/80">
                 {[
                   { value: "SINGLE", label: "Single Payment" },
                   { value: "METHOD", label: "Split Method" },
@@ -2767,7 +2767,7 @@ export default function POSPage() {
                     className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer text-center ${
                       splitType === opt.value
                         ? "bg-[#2563EB] text-white shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 dark:text-slate-405"
+                        : "text-[#71675E] hover:text-[#292320] dark:text-slate-405"
                     }`}
                   >
                     {opt.label}
@@ -2781,10 +2781,10 @@ export default function POSPage() {
               <div className="space-y-3.5">
                 {/* Single Payment Method Tabs */}
                 <div className="space-y-1">
-                  <label className="block text-[9px] uppercase font-black text-slate-400 tracking-wider">
+                  <label className="block text-[9px] uppercase font-black text-[#71675E] tracking-wider">
                     Payment Method
                   </label>
-                  <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/80">
+                  <div className="flex bg-[#eaedf1] dark:bg-slate-950 p-1 rounded-md border border-[#D8CEC1]/50 dark:border-slate-800/80">
                     {["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"].map((method) => (
                       <button
                         key={method}
@@ -2793,7 +2793,7 @@ export default function POSPage() {
                         className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer text-center ${
                           singlePaymentMethod === method
                             ? "bg-[#2563EB] text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-800 dark:text-slate-405"
+                            : "text-[#71675E] hover:text-[#292320] dark:text-slate-405"
                         }`}
                       >
                         {method === "FONE_PAY" ? "FonePay" : method === "ESEWA" ? "eSewa" : method === "KHALTI" ? "Khalti" : method === "NEPAL_PAY" ? "NepalPay" : method}
@@ -2804,11 +2804,11 @@ export default function POSPage() {
 
                 {/* Cash Method Inputs */}
                 {singlePaymentMethod === "CASH" && (
-                  <div className="space-y-3 p-3 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in slide-in-from-top-1 duration-150">
+                  <div className="space-y-3 p-3 bg-[#F9FAFB] dark:bg-slate-950/40 border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg animate-in slide-in-from-top-1 duration-150">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-500">Cash Rendered:</span>
+                      <span className="text-[11px] font-bold text-[#71675E]">Cash Rendered:</span>
                       <div className="relative">
-                        <span className="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">{currencySymbol}</span>
+                        <span className="absolute left-2.5 top-1.5 text-xs text-[#71675E] font-bold">{currencySymbol}</span>
                         <input
                           type="number"
                           value={amountTendered || ""}
@@ -2816,12 +2816,12 @@ export default function POSPage() {
                             setAmountTendered(Math.max(0, parseFloat(e.target.value) || 0));
                             setIsAmountTenderedManuallySet(true);
                           }}
-                          className="w-28 pl-6 pr-2 py-1 border border-slate-200 dark:border-slate-800 rounded-lg text-right text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-extrabold focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+                          className="w-28 pl-6 pr-2 py-1 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-right text-xs bg-[#FFFCF7] dark:bg-slate-900 text-[#292320] dark:text-white font-extrabold focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                         />
                       </div>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-bold border-t border-slate-100 dark:border-slate-800/60 pt-2">
-                      <span className="text-slate-500">Change Return:</span>
+                    <div className="flex justify-between items-center text-xs font-bold border-t border-[#D8CEC1] dark:border-slate-800/60 pt-2">
+                      <span className="text-[#71675E]">Change Return:</span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">
                         {currencySymbol}{Math.max(0, amountTendered - grandTotal).toFixed(2)}
                       </span>
@@ -2831,13 +2831,13 @@ export default function POSPage() {
 
                 {/* Dynamic QR Code Generator for Fone Pay */}
                 {(singlePaymentMethod === "FONE_PAY" || singlePaymentMethod === "ESEWA" || singlePaymentMethod === "KHALTI" || singlePaymentMethod === "NEPAL_PAY") && (
-                  <div className="flex flex-col items-center justify-center p-5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl animate-in fade-in duration-250 text-center gap-4">
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <div className="flex flex-col items-center justify-center p-5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg animate-in fade-in duration-250 text-center gap-4">
+                    <span className="text-[9px] font-black text-[#71675E] dark:text-[#71675E] uppercase tracking-widest">
                       Dynamic {singlePaymentMethod === "FONE_PAY" ? "Fonepay QR" : singlePaymentMethod === "ESEWA" ? "eSewa QR" : singlePaymentMethod === "KHALTI" ? "Khalti QR" : "NepalPay QR"}
                     </span>
                     
                     {/* QR Code Container with Premium Focus Corners and Scanning Line */}
-                    <div className="relative p-3 bg-white rounded-2xl border border-slate-200 dark:border-transparent dark:bg-white shadow-md flex items-center justify-center w-[180px] h-[180px] group transition-all duration-300">
+                    <div className="relative p-3 bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] dark:border-transparent dark:bg-[#FFFCF7] shadow-sm flex items-center justify-center w-[180px] h-[180px] group transition-all duration-300">
                       {/* Scanner Corners */}
                       <div className="qr-scanner-corner qr-scanner-corner-tl" />
                       <div className="qr-scanner-corner qr-scanner-corner-tr" />
@@ -2862,10 +2862,10 @@ export default function POSPage() {
                     </div>
                     
                     <div className="space-y-1.5 px-2">
-                      <p className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5">
+                      <p className="text-xs font-black text-[#292320] dark:text-slate-100 flex items-center justify-center gap-1.5">
                         Scan to Pay: <span className="text-[#2563EB] dark:text-[#7f74f7] text-sm font-black">{currencySymbol}{grandTotal.toFixed(2)}</span>
                       </p>
-                      <p className="text-[10px] text-slate-450 dark:text-slate-400 leading-relaxed max-w-[240px]">
+                      <p className="text-[10px] text-slate-450 dark:text-[#71675E] leading-relaxed max-w-[240px]">
                         Scan the dynamic {singlePaymentMethod} QR code using any digital wallet or mobile banking app to complete the transaction.
                       </p>
                     </div>
@@ -2874,26 +2874,26 @@ export default function POSPage() {
 
                 {/* Credit Account Details */}
                 {singlePaymentMethod === "CREDIT" && (
-                  <div className="space-y-3 p-4 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in slide-in-from-top-1 duration-150 text-xs font-semibold">
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">
+                  <div className="space-y-3 p-4 bg-[#F9FAFB] dark:bg-slate-950/40 border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg animate-in slide-in-from-top-1 duration-150 text-xs font-semibold">
+                    <span className="text-[9px] font-black text-[#71675E] dark:text-[#71675E] uppercase tracking-widest block mb-1">
                       Customer Credit Status
                     </span>
                     {activeCustomer ? (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Selected Customer:</span>
+                          <span className="text-[#71675E]">Selected Customer:</span>
                           <span className="text-slate-850 dark:text-slate-200 font-extrabold">{activeCustomer.name}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Credit Limit:</span>
-                          <span className="text-slate-800 dark:text-slate-100 font-bold">{currencySymbol}{activeCustomer.creditLimit.toFixed(2)}</span>
+                          <span className="text-[#71675E]">Credit Limit:</span>
+                          <span className="text-[#292320] dark:text-slate-100 font-bold">{currencySymbol}{activeCustomer.creditLimit.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-500">Current Debt Balance:</span>
+                          <span className="text-[#71675E]">Current Debt Balance:</span>
                           <span className="text-destructive font-bold">{currencySymbol}{activeCustomer.balance.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800 pt-2 font-bold animate-in fade-in duration-100">
-                          <span className="text-slate-500">Available Credit:</span>
+                        <div className="flex justify-between items-center border-t border-[#D8CEC1] dark:border-slate-800 pt-2 font-bold animate-in fade-in duration-100">
+                          <span className="text-[#71675E]">Available Credit:</span>
                           <span className={`${activeCustomer.creditLimit - activeCustomer.balance >= grandTotal ? "text-emerald-600" : "text-destructive"} font-black`}>
                             {currencySymbol}{(activeCustomer.creditLimit - activeCustomer.balance).toFixed(2)}
                           </span>
@@ -2905,7 +2905,7 @@ export default function POSPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="py-4 text-center text-slate-400 font-bold text-[11px]">
+                      <div className="py-4 text-center text-[#71675E] font-bold text-[11px]">
                         ⚠️ Please select a customer from the top dropdown to check and charge their credit account.
                       </div>
                     )}
@@ -2915,8 +2915,8 @@ export default function POSPage() {
             )}
 
             {splitType === "METHOD" && (
-              <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
-                <div className="grid grid-cols-7 gap-1 items-center text-[8px] font-black text-slate-400 uppercase text-center border-b pb-1.5 border-slate-200 dark:border-slate-800">
+              <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg animate-in fade-in duration-200">
+                <div className="grid grid-cols-7 gap-1 items-center text-[8px] font-black text-[#71675E] uppercase text-center border-b pb-1.5 border-[#D8CEC1] dark:border-slate-800">
                   <span>Cash</span>
                   <span>Card</span>
                   <span>FonePay</span>
@@ -2941,14 +2941,14 @@ export default function POSPage() {
                           },
                         }))
                       }
-                      className="w-full px-0.5 py-1 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded text-[10px] font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
+                      className="w-full px-0.5 py-1 text-center bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded text-[10px] font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
                     />
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center text-[10px] font-bold border-t border-slate-200 dark:border-slate-800 pt-2 mt-2">
+                <div className="flex justify-between items-center text-[10px] font-bold border-t border-[#D8CEC1] dark:border-slate-800 pt-2 mt-2">
                   <span className="text-slate-455 uppercase">Tendered vs Total:</span>
-                  <span className="text-slate-700 dark:text-slate-350">{currencySymbol}{totalPaidInSplits.toFixed(2)} / {currencySymbol}{grandTotal.toFixed(2)}</span>
+                  <span className="text-[#292320] dark:text-slate-350">{currencySymbol}{totalPaidInSplits.toFixed(2)} / {currencySymbol}{grandTotal.toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] font-bold">
@@ -2963,11 +2963,11 @@ export default function POSPage() {
             )}
 
             {splitType === "PERSONS" && (
-              <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
-                <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="space-y-3.5 p-3.5 bg-[#F9FAFB] dark:bg-slate-950/40 border border-[#D8CEC1]/60 dark:border-slate-800 rounded-lg animate-in fade-in duration-200">
+                <div className="flex items-center justify-between bg-[#FFFCF7] dark:bg-slate-900 p-2.5 rounded-md border border-[#D8CEC1] dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-500">Persons:</span>
-                    <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 border border-slate-200 dark:border-slate-800 rounded-lg">
+                    <span className="text-[10px] font-bold text-[#71675E]">Persons:</span>
+                    <div className="flex items-center gap-1.5 bg-[#F7F3EC] dark:bg-slate-950 px-2 py-0.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg">
                       <button
                         type="button"
                         onClick={() => {
@@ -2979,11 +2979,11 @@ export default function POSPage() {
                             return next;
                           });
                         }}
-                        className="p-0.5 text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"
+                        className="p-0.5 text-[#71675E] hover:text-[#292320] dark:hover:text-white cursor-pointer"
                       >
                         <Minus className="h-2.5 w-2.5 stroke-[3px]" />
                       </button>
-                      <span className="font-extrabold text-xs min-w-[12px] text-center text-slate-800 dark:text-slate-200">
+                      <span className="font-extrabold text-xs min-w-[12px] text-center text-[#292320] dark:text-slate-200">
                         {personsCount}
                       </span>
                       <button
@@ -3024,11 +3024,11 @@ export default function POSPage() {
                 <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-1">
                   {Array.from({ length: personsCount }).map((_, index) => (
                     <div key={index} className="flex flex-col gap-0.5">
-                      <label className="text-[9px] font-extrabold text-slate-400 uppercase">
+                      <label className="text-[9px] font-extrabold text-[#71675E] uppercase">
                         Person {index + 1}
                       </label>
                       <div className="relative flex items-center">
-                        <span className="absolute left-2.5 text-[10px] font-bold text-slate-400">{currencySymbol}</span>
+                        <span className="absolute left-2.5 text-[10px] font-bold text-[#71675E]">{currencySymbol}</span>
                         <input
                           type="number"
                           step="0.01"
@@ -3042,7 +3042,7 @@ export default function POSPage() {
                               return next;
                             });
                           }}
-                          className="w-full pl-5 pr-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
+                          className="w-full pl-5 pr-2 py-1 bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold focus:ring-1 focus:ring-[#2563EB] outline-none text-foreground"
                         />
                       </div>
                     </div>
@@ -3054,20 +3054,20 @@ export default function POSPage() {
             {/* Popup Alert Modal for Checkout Errors */}
             {submitError && (
               <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-slate-900 border-2 border-red-500/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col items-center text-center gap-4 animate-in zoom-in-95 duration-200">
-                  <div className="w-12 h-12 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                <div className="bg-[#FFFCF7] dark:bg-slate-900 border-2 border-red-500/30 rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col items-center text-center gap-4 animate-in zoom-in-95 duration-200">
+                  <div className="w-12 h-12 rounded-lg bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
                     <AlertTriangle className="h-6 w-6 stroke-[2.5]" />
                   </div>
                   <div className="space-y-1.5">
-                    <h4 className="text-base font-black text-slate-800 dark:text-slate-100">Checkout Notice</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold">
+                    <h4 className="text-base font-black text-[#292320] dark:text-slate-100">Checkout Notice</h4>
+                    <p className="text-xs text-[#71675E] dark:text-slate-350 leading-relaxed font-semibold">
                       {submitError}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSubmitError("")}
-                    className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                    className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                   >
                     OK, Got It
                   </button>
@@ -3078,11 +3078,11 @@ export default function POSPage() {
                 </div>
 
                 {/* Modal Actions */}
-                <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4 shrink-0 mt-4">
+                <div className="flex justify-end gap-2 border-t border-[#D8CEC1] dark:border-slate-800 pt-4 shrink-0 mt-4">
                   <button
                     type="button"
                     onClick={() => setPayModalOpen(false)}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-855 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200"
+                    className="px-4 py-2 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-lg hover:bg-[#EEE7DD] dark:hover:bg-slate-855 font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-[#292320] dark:text-slate-200"
                   >
                     Cancel
                   </button>
@@ -3102,7 +3102,7 @@ export default function POSPage() {
                     type="button"
                     onClick={handleCheckoutSubmit}
                     disabled={isCheckingOut || (splitType === "METHOD" && remainingOrChange < 0)}
-                    className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer disabled:cursor-not-allowed animate-in duration-150 flex items-center justify-center gap-1.5 min-w-[140px]"
+                    className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer disabled:cursor-not-allowed animate-in duration-150 flex items-center justify-center gap-1.5 min-w-[140px]"
                   >
                     {isCheckingOut ? (
                       <>
@@ -3129,14 +3129,14 @@ export default function POSPage() {
       />
 
       {/* Mobile Tab Switcher */}
-      <div className="lg:hidden shrink-0 bg-white dark:bg-[#0a0f24] border-t border-slate-200 dark:border-slate-800 p-2 flex gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-20 no-print">
+      <div className="lg:hidden shrink-0 bg-[#FFFCF7] dark:bg-[#0a0f24] border-t border-[#D8CEC1] dark:border-slate-800 p-2 flex gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-20 no-print">
         <button
           type="button"
           onClick={() => setActiveMobileTab("catalog")}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             activeMobileTab === "catalog"
               ? "bg-[#2563EB] text-white"
-              : "bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800"
+              : "bg-[#F7F3EC] dark:bg-slate-900/40 text-[#71675E] dark:text-[#71675E] border border-[#D8CEC1]/60 dark:border-slate-800"
           }`}
         >
           <Grid className="h-4 w-4" />
@@ -3145,10 +3145,10 @@ export default function POSPage() {
         <button
           type="button"
           onClick={() => setActiveMobileTab("cart")}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
+          className={`flex-1 py-2.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative ${
             activeMobileTab === "cart"
               ? "bg-[#2563EB] text-white"
-              : "bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800"
+              : "bg-[#F7F3EC] dark:bg-slate-900/40 text-[#71675E] dark:text-[#71675E] border border-[#D8CEC1]/60 dark:border-slate-800"
           }`}
         >
           <ShoppingCart className="h-4 w-4" />
@@ -3164,9 +3164,9 @@ export default function POSPage() {
       {/* Custom Alert/Confirm Popup Modal */}
       {alertModal.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
                 alertModal.type === "error"
                   ? "bg-red-500/10 text-red-650 dark:text-red-400"
                   : alertModal.type === "confirm"
@@ -3183,7 +3183,7 @@ export default function POSPage() {
               </div>
               <div className="space-y-1.5">
                 <h4 className="text-base font-black text-slate-850 dark:text-slate-100">{alertModal.title}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
+                <p className="text-xs text-[#71675E] dark:text-[#71675E] leading-relaxed font-semibold">
                   {alertModal.message}
                 </p>
               </div>
@@ -3195,7 +3195,7 @@ export default function POSPage() {
                   type="text"
                   id="modal-prompt-input"
                   defaultValue={alertModal.defaultValue || ""}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all text-slate-800 dark:text-slate-100 font-bold"
+                  className="w-full px-3 py-2.5 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all text-[#292320] dark:text-slate-100 font-bold"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -3214,7 +3214,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                    className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-slate-700 dark:text-slate-350"
+                    className="flex-1 py-2.5 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-[#292320] dark:text-slate-350"
                   >
                     Cancel
                   </button>
@@ -3226,7 +3226,7 @@ export default function POSPage() {
                       setAlertModal((prev) => ({ ...prev, open: false }));
                       if (alertModal.onPromptSubmit) alertModal.onPromptSubmit(val);
                     }}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                   >
                     Submit
                   </button>
@@ -3236,7 +3236,7 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                    className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-slate-700 dark:text-slate-350"
+                    className="flex-1 py-2.5 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-[#292320] dark:text-slate-350"
                   >
                     Cancel
                   </button>
@@ -3246,7 +3246,7 @@ export default function POSPage() {
                       setAlertModal((prev) => ({ ...prev, open: false }));
                       if (alertModal.onConfirm) alertModal.onConfirm();
                     }}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                   >
                     Confirm
                   </button>
@@ -3255,7 +3255,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={() => setAlertModal((prev) => ({ ...prev, open: false }))}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
                 >
                   OK
                 </button>
@@ -3268,25 +3268,25 @@ export default function POSPage() {
       {/* Extra Invoice Discount Modal */}
       {discountModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div>
               <h4 className="text-base font-black text-slate-850 dark:text-slate-100">Extra Discount</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed font-semibold">
+              <p className="text-xs text-[#71675E] dark:text-[#71675E] mt-0.5 leading-relaxed font-semibold">
                 Configure the extra overall discount for the current sales ticket.
               </p>
             </div>
 
             <div className="space-y-3.5">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Discount Type</label>
+                <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">Discount Type</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setDiscountModalType("FLAT")}
-                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`flex-1 py-2 text-xs font-bold rounded-md border transition-all cursor-pointer ${
                       discountModalType === "FLAT"
                         ? "bg-blue-600 text-white border-transparent shadow-xs"
-                        : "border-slate-200 dark:border-slate-850 hover:bg-slate-50 text-slate-600 dark:text-slate-400"
+                        : "border-[#D8CEC1] dark:border-slate-850 hover:bg-[#F7F3EC] text-[#71675E] dark:text-[#71675E]"
                     }`}
                   >
                     Flat ({currencySymbol})
@@ -3294,10 +3294,10 @@ export default function POSPage() {
                   <button
                     type="button"
                     onClick={() => setDiscountModalType("PERCENTAGE")}
-                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                    className={`flex-1 py-2 text-xs font-bold rounded-md border transition-all cursor-pointer ${
                       discountModalType === "PERCENTAGE"
                         ? "bg-blue-600 text-white border-transparent shadow-xs"
-                        : "border-slate-200 dark:border-slate-850 hover:bg-slate-50 text-slate-600 dark:text-slate-400"
+                        : "border-[#D8CEC1] dark:border-slate-850 hover:bg-[#F7F3EC] text-[#71675E] dark:text-[#71675E]"
                     }`}
                   >
                     Percentage (%)
@@ -3306,13 +3306,13 @@ export default function POSPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Discount Value</label>
+                <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">Discount Value</label>
                 <input
                   type="number"
                   step="any"
                   value={discountModalAmount}
                   onChange={(e) => setDiscountModalAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-slate-800 dark:text-slate-100"
+                  className="w-full px-3.5 py-2.5 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-[#292320] dark:text-slate-100"
                   placeholder="Enter discount amount"
                   autoFocus
                   onKeyDown={(e) => {
@@ -3329,7 +3329,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => setDiscountModalOpen(false)}
-                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-slate-700 dark:text-slate-350"
+                className="flex-1 py-2.5 border border-[#D8CEC1] dark:border-slate-800 text-xs rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800/80 font-bold transition-all cursor-pointer text-[#292320] dark:text-slate-350"
               >
                 Cancel
               </button>
@@ -3339,7 +3339,7 @@ export default function POSPage() {
                   handleDiscountConfig(parseFloat(discountModalAmount) || 0, discountModalType);
                   setDiscountModalOpen(false);
                 }}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-md shadow-sm transition-colors cursor-pointer"
               >
                 Apply Discount
               </button>
@@ -3351,15 +3351,15 @@ export default function POSPage() {
       {/* Checkout selection Modal */}
       {checkoutSelectionOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] dark:border-slate-800 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 text-blue-600" />
                 <h4 className="text-sm font-black text-slate-850 dark:text-slate-100">Customer Select</h4>
               </div>
               <button
                 onClick={() => setCheckoutSelectionOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
+                className="text-[#71675E] hover:text-[#71675E] dark:hover:text-slate-200 transition-colors p-1 cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
@@ -3379,13 +3379,13 @@ export default function POSPage() {
                     setCheckoutSelectionOpen(false);
                     openCheckout();
                   }}
-                  className="flex flex-col items-center justify-center text-center p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 hover:bg-slate-100/50 dark:bg-slate-950 dark:hover:bg-slate-800 cursor-pointer transition-all hover:scale-[1.02]"
+                  className="flex flex-col items-center justify-center text-center p-4 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-[#F7F3EC] hover:bg-[#EEE7DD]/50 dark:bg-slate-950 dark:hover:bg-slate-800 cursor-pointer transition-all hover:scale-[1.02]"
                 >
-                  <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-2">
-                    <Users className="h-5 w-5 text-slate-500" />
+                  <div className="w-10 h-10 rounded-full bg-[#EEE7DD] dark:bg-slate-800 flex items-center justify-center mb-2">
+                    <Users className="h-5 w-5 text-[#71675E]" />
                   </div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Walk-In</span>
-                  <span className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Guest Checkout</span>
+                  <span className="text-xs font-bold text-[#292320] dark:text-slate-100">Walk-In</span>
+                  <span className="text-[9px] text-[#71675E] mt-1 leading-normal font-medium">Guest Checkout</span>
                 </button>
 
                 <button
@@ -3394,26 +3394,26 @@ export default function POSPage() {
                     setCheckoutSelectionOpen(false);
                     setCustModalOpen(true);
                   }}
-                  className="flex flex-col items-center justify-center text-center p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-blue-50/20 hover:bg-blue-50/50 border-dashed border-blue-300 cursor-pointer transition-all hover:scale-[1.02]"
+                  className="flex flex-col items-center justify-center text-center p-4 border border-[#D8CEC1] dark:border-slate-800 rounded-lg bg-blue-50/20 hover:bg-blue-50/50 border-dashed border-blue-300 cursor-pointer transition-all hover:scale-[1.02]"
                 >
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-2">
                     <Plus className="h-5 w-5 text-blue-600" />
                   </div>
                   <span className="text-xs font-bold text-blue-600">Register New</span>
-                  <span className="text-[9px] text-slate-400 mt-1 leading-normal font-medium">Add Customer</span>
+                  <span className="text-[9px] text-[#71675E] mt-1 leading-normal font-medium">Add Customer</span>
                 </button>
               </div>
 
               {/* Or divider */}
               <div className="flex items-center gap-3 my-2">
-                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-1" />
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Or Select Existing</span>
-                <div className="h-[1px] bg-slate-200 dark:bg-slate-800 flex-1" />
+                <div className="h-[1px] bg-[#EEE7DD] dark:bg-slate-800 flex-1" />
+                <span className="text-[10px] text-[#71675E] font-bold uppercase tracking-wider">Or Select Existing</span>
+                <div className="h-[1px] bg-[#EEE7DD] dark:bg-slate-800 flex-1" />
               </div>
 
               {/* Dropdown search select */}
               <div className="space-y-1 text-left">
-                <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Registered Customer</label>
+                <label className="block text-[10px] uppercase font-bold text-[#71675E] tracking-wider">Registered Customer</label>
                 <SearchableSelect
                   options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.phone || "No Phone"})` }))}
                   value={selectedCustomerIdInCheckout}
@@ -3435,7 +3435,7 @@ export default function POSPage() {
                   setCheckoutSelectionOpen(false);
                   openCheckout();
                 }}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirm & Proceed to Payment
               </button>

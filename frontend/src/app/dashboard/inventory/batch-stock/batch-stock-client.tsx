@@ -41,26 +41,26 @@ export default function BatchStockClient() {
     <div className="space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Batches</div>
           <div className="text-2xl font-black">{summary.totalBatches}</div>
         </div>
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5">
           <div className="text-destructive text-xs font-bold uppercase tracking-wider mb-1">Expired</div>
           <div className="text-2xl font-black text-destructive">{summary.expiredCount}</div>
         </div>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-5">
           <div className="text-yellow-600 text-xs font-bold uppercase tracking-wider mb-1">Expiring Soon</div>
           <div className="text-2xl font-black text-yellow-600">{summary.expiringSoonCount}</div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Value</div>
           <div className="text-2xl font-black">{currencySymbol}{summary.totalValue.toFixed(2)}</div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />

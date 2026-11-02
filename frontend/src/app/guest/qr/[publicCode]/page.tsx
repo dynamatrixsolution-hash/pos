@@ -16,7 +16,6 @@ import {
   ShoppingBag,
   CheckCircle2,
   ChefHat,
-  Sparkles,
   RefreshCw,
   AlertCircle,
   Star,
@@ -26,8 +25,6 @@ import {
   KeyRound,
   X,
   ChevronRight,
-  Flame,
-  Leaf,
   Send,
   LogOut,
 } from "lucide-react";
@@ -835,26 +832,45 @@ export default function GuestQrPortalPage() {
 
   if (loadingInitial) {
     return (
-      <div className="min-h-screen bg-[#FAF6F0] flex flex-col items-center justify-center p-6 text-[#1E1B18]">
-        <div className="w-12 h-12 rounded-full border-4 border-[#6B2837]/20 border-t-[#6B2837] animate-spin mb-4" />
-        <p className="text-sm font-semibold tracking-wide uppercase text-[#6B2837]">
-          RestroInn Guest Concierge
-        </p>
-        <p className="text-xs text-[#6E655F] mt-1">Loading digital menu & location...</p>
+      <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614]">
+        <div className="max-w-md mx-auto min-h-screen flex flex-col bg-[#F7F3EC] border-x border-[#D8CEC1]">
+          <div className="bg-[#1A1614] px-4 py-4 border-b border-[#D8CEC1]">
+            <div className="h-3 w-28 rounded-sm bg-[#2E2723] animate-pulse mb-2" />
+            <div className="h-5 w-48 rounded-sm bg-[#2E2723] animate-pulse" />
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="h-14 w-full rounded-lg bg-[#EFE9DF] border border-[#D8CEC1] animate-pulse" />
+            <div className="flex gap-2">
+              <div className="h-8 w-24 rounded-md bg-[#EFE9DF] animate-pulse" />
+              <div className="h-8 w-24 rounded-md bg-[#EFE9DF] animate-pulse" />
+              <div className="h-8 w-24 rounded-md bg-[#EFE9DF] animate-pulse" />
+            </div>
+            {[1, 2, 3, 4].map((idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-lg bg-[#FFFCF7] border border-[#D8CEC1] space-y-2"
+              >
+                <div className="h-4 w-40 rounded-sm bg-[#EFE9DF] animate-pulse" />
+                <div className="h-3 w-full rounded-sm bg-[#EFE9DF] animate-pulse" />
+                <div className="h-4 w-20 rounded-sm bg-[#EFE9DF] animate-pulse mt-2" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (fatalError || !qrLocation) {
     return (
-      <div className="min-h-screen bg-[#FAF6F0] flex flex-col items-center justify-center p-6 text-center text-[#1E1B18]">
-        <div className="max-w-sm bg-white rounded-2xl p-6 shadow-md border border-[#E6DEC8]">
-          <AlertCircle className="w-12 h-12 text-[#9E2A2B] mx-auto mb-3" />
-          <h1 className="text-lg font-bold text-[#1E1B18]">QR Plaque Unavailable</h1>
-          <p className="text-sm text-[#6E655F] mt-2">
+      <div className="min-h-screen bg-[#F7F3EC] flex flex-col items-center justify-center p-6 text-center text-[#1A1614]">
+        <div className="max-w-sm bg-[#FFFCF7] rounded-lg p-6 border border-[#D8CEC1]">
+          <AlertCircle className="w-10 h-10 text-[#B42318] mx-auto mb-3" />
+          <h1 className="text-lg font-bold text-[#1A1614]">QR Plaque Unavailable</h1>
+          <p className="text-sm text-[#57504A] mt-2">
             {fatalError || "This QR location could not be found or has been rotated by staff."}
           </p>
-          <p className="text-xs text-[#8C827A] mt-4">
+          <p className="text-xs text-[#857B72] mt-4">
             Code: <span className="font-mono">{publicCode}</span>
           </p>
         </div>
@@ -867,19 +883,18 @@ export default function GuestQrPortalPage() {
     : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
 
   return (
-    <div className="min-h-screen bg-[#FAF6F0] text-[#1E1B18]">
-      <div className="max-w-md mx-auto min-h-screen flex flex-col shadow-xl bg-[#FAF6F0] relative pb-24">
+    <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614]">
+      <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-[#D8CEC1] bg-[#F7F3EC] relative pb-24">
         {/* Sticky Top Hospitality Header */}
-        <header className="sticky top-0 z-30 bg-[#1E1B18] text-[#FAF6F0] px-4 py-3.5 shadow-md border-b border-[#A77B38]/30">
+        <header className="sticky top-0 z-30 bg-[#1A1614] text-[#F7F3EC] px-4 py-3.5 border-b border-[#A77B38]/40">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
                 <span className="text-[11px] uppercase tracking-widest text-[#D4AF37] font-semibold truncate">
                   {qrLocation.branch?.name || "Hospitality Portal"}
                 </span>
               </div>
-              <h1 className="text-base font-bold tracking-tight text-white truncate">
+              <h1 className="text-base font-bold tracking-tight text-[#FFFCF7] truncate">
                 {qrLocation.business.name}
               </h1>
             </div>
@@ -992,7 +1007,7 @@ export default function GuestQrPortalPage() {
             <div className="space-y-4">
               {/* Room Unlock Banner for unverified Room QR visitors */}
               {isRoomQr && !isVerified && (
-                <div className="rounded-2xl bg-gradient-to-r from-[#6B2837] to-[#4A1924] text-white p-4 shadow-sm border border-[#A77B38]/40 flex items-center justify-between gap-3">
+                <div className="rounded-lg bg-[#6B2837] text-[#FFFCF7] p-4 border border-[#A77B38]/40 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-[#F3E5AB] font-semibold">
                       In-Room Dining & Concierge
@@ -1000,14 +1015,14 @@ export default function GuestQrPortalPage() {
                     <p className="text-sm font-bold mt-0.5">
                       Unlock Room Services & Live Folio Bill
                     </p>
-                    <p className="text-[11px] text-white/80 mt-0.5">
+                    <p className="text-[11px] text-[#FFFCF7]/80 mt-0.5">
                       Verify with your Last Name or Phone Last 4 digits.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowVerifyModal(true)}
-                    className="px-3.5 py-2 rounded-xl bg-[#FAF6F0] text-[#6B2837] font-bold text-xs shrink-0 shadow hover:bg-white transition"
+                    className="px-3.5 py-2 rounded-md bg-[#FFFCF7] text-[#6B2837] font-bold text-xs shrink-0 hover:bg-[#F7F3EC] transition"
                   >
                     Verify Stay
                   </button>
@@ -1130,13 +1145,8 @@ export default function GuestQrPortalPage() {
                                   {tags.map((tag) => (
                                     <span
                                       key={tag}
-                                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5EFE6] text-[#6B2837] border border-[#E2D9C8]"
+                                      className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider bg-[#EFE9DF] text-[#6B2837] border border-[#D8CEC1]"
                                     >
-                                      {tag.toLowerCase().includes("veg") ? (
-                                        <Leaf className="w-2.5 h-2.5 text-emerald-700" />
-                                      ) : tag.toLowerCase().includes("spicy") ? (
-                                        <Flame className="w-2.5 h-2.5 text-amber-700" />
-                                      ) : null}
                                       {tag}
                                     </span>
                                   ))}
@@ -1366,9 +1376,9 @@ export default function GuestQrPortalPage() {
                               </div>
                             </div>
 
-                            <div className="mt-2.5 h-1.5 w-full bg-[#F0EAE0] rounded-full overflow-hidden">
+                            <div className="mt-2.5 h-1.5 w-full bg-[#F0EAE0] rounded-sm overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-[#6B2837] via-[#A77B38] to-emerald-600 transition-all duration-500"
+                                className="h-full bg-[#6B2837] transition-all duration-300"
                                 style={{
                                   width:
                                     stepIndex === 1 ? "33%" : stepIndex === 2 ? "66%" : "100%",
@@ -1550,7 +1560,7 @@ export default function GuestQrPortalPage() {
                           type: "EXTRA_TOWELS" as ServiceRequestType,
                           title: "Extra Towels & Linens",
                           desc: "Fresh bath towels, pillows, or blankets",
-                          icon: Sparkles,
+                          icon: BedDouble,
                         },
                         {
                           type: "HOUSEKEEPING" as ServiceRequestType,
@@ -1735,7 +1745,7 @@ export default function GuestQrPortalPage() {
               ) : (
                 <div className="space-y-4">
                   {/* Stay Summary Header Card */}
-                  <div className="bg-gradient-to-br from-[#1E1B18] to-[#332C27] text-white rounded-2xl p-4 shadow-md space-y-3 border border-[#A77B38]/40">
+                  <div className="bg-[#1A1614] text-[#FFFCF7] rounded-lg p-4 space-y-3 border border-[#A77B38]/40">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold">
@@ -1876,6 +1886,24 @@ export default function GuestQrPortalPage() {
               )}
             </div>
           )}
+
+          {/* Legal & Privacy Footer */}
+          <footer className="pt-6 pb-4 border-t border-[#D8CEC1] text-center space-y-1.5 text-[11px] text-[#857B72]">
+            <p className="font-medium text-[#57504A]">
+              {qrLocation.business.name} • Secure Guest Self-Service Portal
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <a href="/terms" className="hover:text-[#1A1614] underline">
+                Terms of Service
+              </a>
+              <span>•</span>
+              <a href="/privacy" className="hover:text-[#1A1614] underline">
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <span>Room & Table Data Protected</span>
+            </div>
+          </footer>
         </main>
 
         {/* Floating Cart Bar (when items in cart on MENU tab) */}

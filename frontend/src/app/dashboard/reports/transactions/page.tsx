@@ -257,7 +257,7 @@ export default function TransactionReportsPage() {
       return (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+            <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1]/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
               <th className="py-4 px-6">DATE | TIME</th>
               <th className="py-4 px-6">INVOICE NO</th>
               <th className="py-4 px-6">CUSTOMER</th>
@@ -266,26 +266,26 @@ export default function TransactionReportsPage() {
               <th className="py-4 px-6 text-right">AMOUNT</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-[#FFFCF7] dark:bg-slate-950">
             {items.map((item) => {
               const { date, time } = formatDateTime(item.createdAt);
               const method = formatMethod(item.payments?.[0]?.method || item.paymentMethod);
               const purchasedItems = item.saleItems || item.items || [];
               return (
-                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={item.id} className="hover:bg-[#F7F3EC]/60 transition-colors">
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{date}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-200 text-xs">{date}</div>
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5">{time}</div>
                   </td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.invoiceNumber}</td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.customer?.name || "Walk-in Customer"}</td>
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.invoiceNumber}</td>
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.customer?.name || "Walk-in Customer"}</td>
                   <td className="py-4 px-6 relative">
                     {purchasedItems.length > 0 ? (
                       <div className="relative group inline-block">
                         <button
                           type="button"
                           onClick={() => setSelectedSaleDetails(item)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs"
                         >
                           <Package className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                           <span>{purchasedItems.length} Products ({purchasedItems.reduce((acc: number, cur: any) => acc + (cur.quantity || 1), 0)} items)</span>
@@ -293,19 +293,19 @@ export default function TransactionReportsPage() {
                         </button>
 
                         {/* Floating Hover Popover */}
-                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-72 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl space-y-1.5">
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-72 p-3 bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg shadow-sm space-y-1.5">
                           <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
                             Products in #{item.invoiceNumber}
                           </div>
                           <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                             {purchasedItems.map((si: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg">
-                                <span className="font-semibold text-slate-700 dark:text-slate-200 truncate mr-2">{si.product?.name || "Product"}</span>
+                              <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 bg-[#F7F3EC] dark:bg-slate-800/60 rounded-lg">
+                                <span className="font-semibold text-[#292320] dark:text-slate-200 truncate mr-2">{si.product?.name || "Product"}</span>
                                 <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">x{si.quantity} ({currencySymbol}{(si.price ?? 0).toFixed(2)})</span>
                               </div>
                             ))}
                           </div>
-                          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-100 dark:border-slate-800 font-medium">
+                          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-[#D8CEC1] dark:border-slate-800 font-medium">
                             Click to view full detail modal
                           </div>
                         </div>
@@ -314,8 +314,8 @@ export default function TransactionReportsPage() {
                       <span className="text-slate-400 text-xs font-medium">—</span>
                     )}
                   </td>
-                  <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400">{method}</td>
-                  <td className="py-4 px-6 text-right font-black text-slate-900 dark:text-white text-sm">
+                  <td className="py-4 px-6 font-medium text-[#71675E] dark:text-slate-400">{method}</td>
+                  <td className="py-4 px-6 text-right font-black text-[#292320] dark:text-white text-sm">
                     {currencySymbol} {(item.total ?? 0).toFixed(2)}
                   </td>
                 </tr>
@@ -330,7 +330,7 @@ export default function TransactionReportsPage() {
       return (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+            <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1]/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
               <th className="py-4 px-6">DATE | TIME</th>
               <th className="py-4 px-6">PO NO</th>
               <th className="py-4 px-6">SUPPLIER</th>
@@ -338,19 +338,19 @@ export default function TransactionReportsPage() {
               <th className="py-4 px-6 text-right">AMOUNT</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-[#FFFCF7] dark:bg-slate-950">
             {items.map((item) => {
               const { date, time } = formatDateTime(item.createdAt);
               return (
-                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={item.id} className="hover:bg-[#F7F3EC]/60 transition-colors">
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{date}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-200 text-xs">{date}</div>
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5">{time}</div>
                   </td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.purchaseNumber}</td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.supplier?.name || "N/A"}</td>
-                  <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400">{item.paymentStatus}</td>
-                  <td className="py-4 px-6 text-right font-black text-slate-900 dark:text-white text-sm">
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.purchaseNumber}</td>
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.supplier?.name || "N/A"}</td>
+                  <td className="py-4 px-6 font-medium text-[#71675E] dark:text-slate-400">{item.paymentStatus}</td>
+                  <td className="py-4 px-6 text-right font-black text-[#292320] dark:text-white text-sm">
                     {currencySymbol} {(item.total ?? 0).toFixed(2)}
                   </td>
                 </tr>
@@ -365,7 +365,7 @@ export default function TransactionReportsPage() {
       return (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+            <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1]/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
               <th className="py-4 px-6">DATE | TIME</th>
               <th className="py-4 px-6">RECEIPT NO</th>
               <th className="py-4 px-6">PARTY</th>
@@ -373,20 +373,20 @@ export default function TransactionReportsPage() {
               <th className="py-4 px-6 text-right">AMOUNT</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-[#FFFCF7] dark:bg-slate-950">
             {items.map((item) => {
               const { date, time } = formatDateTime(item.createdAt);
               const method = formatMethod(item.method);
               return (
-                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={item.id} className="hover:bg-[#F7F3EC]/60 transition-colors">
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{date}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-200 text-xs">{date}</div>
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5">{time}</div>
                   </td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.receiptNumber || "—"}</td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.customer?.name || item.supplier?.name || "Walk-in Customer"}</td>
-                  <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400">{method}</td>
-                  <td className="py-4 px-6 text-right font-black text-slate-900 dark:text-white text-sm">
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.receiptNumber || "—"}</td>
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.customer?.name || item.supplier?.name || "Walk-in Customer"}</td>
+                  <td className="py-4 px-6 font-medium text-[#71675E] dark:text-slate-400">{method}</td>
+                  <td className="py-4 px-6 text-right font-black text-[#292320] dark:text-white text-sm">
                     {currencySymbol} {(item.amount ?? 0).toFixed(2)}
                   </td>
                 </tr>
@@ -401,7 +401,7 @@ export default function TransactionReportsPage() {
       return (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+            <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1]/60 dark:border-slate-800 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
               <th className="py-4 px-6">DATE | TIME</th>
               <th className="py-4 px-6">REF NO</th>
               <th className="py-4 px-6">CATEGORY</th>
@@ -409,19 +409,19 @@ export default function TransactionReportsPage() {
               <th className="py-4 px-6 text-right">AMOUNT</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-[#FFFCF7] dark:bg-slate-950">
             {items.map((item) => {
               const { date, time } = formatDateTime(item.createdAt);
               return (
-                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={item.id} className="hover:bg-[#F7F3EC]/60 transition-colors">
                   <td className="py-4 px-6">
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{date}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-200 text-xs">{date}</div>
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5">{time}</div>
                   </td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.reference || "—"}</td>
-                  <td className="py-4 px-6 font-semibold text-slate-700 dark:text-slate-300">{item.category?.name || "Other"}</td>
-                  <td className="py-4 px-6 font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px]">{item.description || "—"}</td>
-                  <td className="py-4 px-6 text-right font-black text-slate-900 dark:text-white text-sm">
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.reference || "—"}</td>
+                  <td className="py-4 px-6 font-semibold text-[#292320] dark:text-slate-300">{item.category?.name || "Other"}</td>
+                  <td className="py-4 px-6 font-medium text-[#71675E] dark:text-slate-400 truncate max-w-[200px]">{item.description || "—"}</td>
+                  <td className="py-4 px-6 text-right font-black text-[#292320] dark:text-white text-sm">
                     {currencySymbol} {(item.amount ?? 0).toFixed(2)}
                   </td>
                 </tr>
@@ -436,9 +436,9 @@ export default function TransactionReportsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black text-[#292320] dark:text-white flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-[#2563EB]" /> Transaction Reports
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -449,7 +449,7 @@ export default function TransactionReportsPage() {
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           {/* Preset parameters */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+            <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
               <Calendar className="h-4 w-4 text-[#2563EB]" />
               <select
                 value={datePreset}
@@ -466,7 +466,7 @@ export default function TransactionReportsPage() {
             </div>
 
             {/* Always visible Start Date & End Date pickers */}
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+            <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-1.5 rounded-md text-xs">
               <span className="text-[10px] font-black text-slate-400 uppercase">From:</span>
               <input
                 type="date"
@@ -492,7 +492,7 @@ export default function TransactionReportsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
             <Store className="h-4 w-4 text-[#2563EB]" />
             <select
               value={selectedBranch}
@@ -515,7 +515,7 @@ export default function TransactionReportsPage() {
             <button
               onClick={exportExcel}
               disabled={isLoading || items.length === 0}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Excel</span>
@@ -523,7 +523,7 @@ export default function TransactionReportsPage() {
             <button
               onClick={exportPDF}
               disabled={isLoading || items.length === 0}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>Print</span>
@@ -533,7 +533,7 @@ export default function TransactionReportsPage() {
       </div>
 
       {/* Search Input bar */}
-      <div className="relative flex items-center bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-2xl px-3.5 h-11 w-full max-w-md shadow-xs">
+      <div className="relative flex items-center bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg px-3.5 h-11 w-full max-w-md shadow-xs">
         <Search className="h-4.5 w-4.5 text-slate-400" />
         <input
           type="text"
@@ -545,7 +545,7 @@ export default function TransactionReportsPage() {
       </div>
 
       {/* Tabs list */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
+      <div className="flex items-center gap-2 border-b border-[#D8CEC1] dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -554,10 +554,10 @@ export default function TransactionReportsPage() {
               setItems([]);
               setPage(1);
             }}
-            className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+            className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
               activeTab === tab.id
-                ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-                : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+                ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+                : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
             }`}
           >
             {tab.label}
@@ -566,7 +566,7 @@ export default function TransactionReportsPage() {
       </div>
 
       {/* Main Table container */}
-      <div className="bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg overflow-hidden shadow-sm">
         {isLoading ? (
           <div className="h-64 flex flex-col items-center justify-center space-y-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#2563EB] border-t-transparent" />
@@ -580,7 +580,7 @@ export default function TransactionReportsPage() {
 
         {/* Pagination */}
         {!isLoading && totalPages > 1 && (
-          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-150 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30">
+          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-150 dark:border-slate-800/80 bg-[#F7F3EC] dark:bg-slate-900/30">
             <span className="text-xs text-muted-foreground font-semibold">
               Showing page {page} of {totalPages}
             </span>
@@ -588,14 +588,14 @@ export default function TransactionReportsPage() {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-950 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
+                className="px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold bg-[#FFFCF7] dark:bg-slate-950 hover:bg-[#F7F3EC] disabled:opacity-50 transition-all cursor-pointer"
               >
                 Previous
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold bg-white dark:bg-slate-950 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer"
+                className="px-3 py-1.5 border border-[#D8CEC1] dark:border-slate-800 rounded-lg text-xs font-bold bg-[#FFFCF7] dark:bg-slate-950 hover:bg-[#F7F3EC] disabled:opacity-50 transition-all cursor-pointer"
               >
                 Next
               </button>
@@ -607,21 +607,21 @@ export default function TransactionReportsPage() {
       {/* Click Modal for Purchased Products Details */}
       {selectedSaleDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 max-w-lg w-full shadow-sm space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#D8CEC1] dark:border-slate-800">
               <div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-black text-[#292320] dark:text-white flex items-center gap-2">
                   <ShoppingBag className="h-5 w-5 text-blue-600" />
                   Purchased Products Breakdown
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Invoice: <span className="font-bold text-slate-700 dark:text-slate-200">#{selectedSaleDetails.invoiceNumber}</span> | Customer: <span className="font-bold text-slate-700 dark:text-slate-200">{selectedSaleDetails.customer?.name || "Walk-in Customer"}</span>
+                  Invoice: <span className="font-bold text-[#292320] dark:text-slate-200">#{selectedSaleDetails.invoiceNumber}</span> | Customer: <span className="font-bold text-[#292320] dark:text-slate-200">{selectedSaleDetails.customer?.name || "Walk-in Customer"}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedSaleDetails(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-[#71675E] dark:hover:text-slate-200 rounded-md hover:bg-[#EEE7DD] dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -631,20 +631,20 @@ export default function TransactionReportsPage() {
               {(selectedSaleDetails.saleItems || selectedSaleDetails.items || []).map((si: any, idx: number) => (
                 <div key={idx} className="pt-2.5 flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-100">{si.product?.name || "Product"}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-100">{si.product?.name || "Product"}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Unit Selling Price: {currencySymbol}{(si.price ?? 0).toFixed(2)}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-black text-blue-600 dark:text-blue-400">Qty: x{si.quantity}</div>
-                    <div className="font-bold text-slate-700 dark:text-slate-300 text-xs mt-0.5">Subtotal: {currencySymbol}{(si.total ?? (si.price * si.quantity)).toFixed(2)}</div>
+                    <div className="font-bold text-[#292320] dark:text-slate-300 text-xs mt-0.5">Subtotal: {currencySymbol}{(si.total ?? (si.price * si.quantity)).toFixed(2)}</div>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Financial Details Summary */}
-            <div className="pt-3 border-t border-dashed border-slate-200 dark:border-slate-800 space-y-1.5 font-mono text-xs">
-              <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+            <div className="pt-3 border-t border-dashed border-[#D8CEC1] dark:border-slate-800 space-y-1.5 font-mono text-xs">
+              <div className="flex justify-between items-center text-[#71675E] dark:text-slate-400">
                 <span>Subtotal:</span>
                 <span className="font-bold">{currencySymbol} {(selectedSaleDetails.subtotal ?? (selectedSaleDetails.saleItems || selectedSaleDetails.items || []).reduce((sum: number, i: any) => sum + (i.total ?? i.price * i.quantity), 0)).toFixed(2)}</span>
               </div>
@@ -657,14 +657,14 @@ export default function TransactionReportsPage() {
               )}
 
               {selectedSaleDetails.tax > 0 && (
-                <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                <div className="flex justify-between items-center text-[#71675E] dark:text-slate-400">
                   <span>Tax (VAT):</span>
                   <span className="font-bold">+ {currencySymbol} {(selectedSaleDetails.tax ?? 0).toFixed(2)}</span>
                 </div>
               )}
 
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between font-extrabold text-sm">
-                <span className="text-slate-900 dark:text-white uppercase tracking-wider font-sans">GRAND TOTAL:</span>
+              <div className="pt-2 border-t border-[#D8CEC1] dark:border-slate-800 flex items-center justify-between font-extrabold text-sm">
+                <span className="text-[#292320] dark:text-white uppercase tracking-wider font-sans">GRAND TOTAL:</span>
                 <span className="text-base font-black text-blue-600 dark:text-blue-400">
                   {currencySymbol} {(selectedSaleDetails.total ?? 0).toFixed(2)}
                 </span>

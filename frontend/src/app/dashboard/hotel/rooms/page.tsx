@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatNPR, parseMoney } from "@/lib/currency";
@@ -12,7 +14,6 @@ import {
   Table as TableIcon,
   RefreshCw,
   Wrench,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   UserCheck,
@@ -154,7 +155,7 @@ export default function HotelRoomsTapeChartPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
 
       const startObj = new Date(`${startDate}T00:00:00.000Z`);
       const endObj = new Date(startObj.getTime() + horizonDays * 24 * 60 * 60 * 1000);
@@ -192,9 +193,7 @@ export default function HotelRoomsTapeChartPage() {
       if (tcData.stats) {
         setStats(tcData.stats);
       }
-    } catch (err: any) {
-      setError(err.message || "Error loading hotel rooms");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error loading hotel rooms"); } finally {
       setLoading(false);
     }
   }, [startDate, horizonDays, selectedRoomTypeFilter, newRoomTypeId]);
@@ -249,7 +248,7 @@ export default function HotelRoomsTapeChartPage() {
       if (data.roomType?.id) setNewRoomTypeId(data.roomType.id);
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -258,7 +257,7 @@ export default function HotelRoomsTapeChartPage() {
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoomTypeId) {
-      alert("Please create or select a Room Type first.");
+      Notify.warning("Please create or select a Room Type first.");
       return;
     }
     try {
@@ -281,7 +280,7 @@ export default function HotelRoomsTapeChartPage() {
       setNewRoomNotes("");
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -290,7 +289,7 @@ export default function HotelRoomsTapeChartPage() {
   const handleFastCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ciRoomId) {
-      alert("Please select a Vacant Clean room to check in.");
+      Notify.warning("Please select a Vacant Clean room to check in.");
       return;
     }
     try {
@@ -323,7 +322,7 @@ export default function HotelRoomsTapeChartPage() {
       setCiNotes("");
       await loadData();
     } catch (err: any) {
-      alert(err.message);
+      Notify.failure(err.message);
     } finally {
       setActionLoading(false);
     }
@@ -438,7 +437,7 @@ export default function HotelRoomsTapeChartPage() {
 
       {/* Top Summary KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="rounded-xl border border-sandstone bg-porcelain p-3.5 shadow-xs">
+        <div className="rounded-md border border-sandstone bg-porcelain p-3.5 shadow-xs">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-warmgray">
             Total Rooms
           </span>
@@ -448,7 +447,7 @@ export default function HotelRoomsTapeChartPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#C3DED0] bg-[#EBF4F0] p-3.5 shadow-xs">
+        <div className="rounded-md border border-[#C3DED0] bg-[#EBF4F0] p-3.5 shadow-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#28634B]">
             Vacant Clean
           </span>
@@ -460,7 +459,7 @@ export default function HotelRoomsTapeChartPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#E3C6CC] bg-[#F9EFF1] p-3.5 shadow-xs">
+        <div className="rounded-md border border-[#E3C6CC] bg-[#F9EFF1] p-3.5 shadow-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B2837]">
             Occupied
           </span>
@@ -472,7 +471,7 @@ export default function HotelRoomsTapeChartPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#EDD7AD] bg-[#FDF6E9] p-3.5 shadow-xs">
+        <div className="rounded-md border border-[#EDD7AD] bg-[#FDF6E9] p-3.5 shadow-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#946000]">
             Vacant Dirty
           </span>
@@ -489,7 +488,7 @@ export default function HotelRoomsTapeChartPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] p-3.5 shadow-xs">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] p-3.5 shadow-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#B33432]">
             Maintenance
           </span>
@@ -503,7 +502,7 @@ export default function HotelRoomsTapeChartPage() {
       </div>
 
       {/* Filter & View Mode Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-porcelain p-3 rounded-xl border border-sandstone">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-porcelain p-3 rounded-md border border-sandstone">
         <div className="flex flex-wrap items-center gap-2">
           {/* View Mode Toggle */}
           <div className="inline-flex rounded-lg border border-sandstone bg-ivory p-0.5">
@@ -612,18 +611,18 @@ export default function HotelRoomsTapeChartPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
+        <div className="rounded-md border border-[#E9B6B7] bg-[#FCEEEE] p-3 text-xs font-medium text-[#B33432]">
           {error}
         </div>
       )}
 
       {/* Main Content Area */}
       {loading ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center text-xs text-warmgray">
           Loading hotel inventory and tape chart...
         </div>
       ) : rooms.length === 0 ? (
-        <div className="rounded-xl border border-sandstone bg-porcelain p-12 text-center space-y-3">
+        <div className="rounded-md border border-sandstone bg-porcelain p-12 text-center space-y-3">
           <BedDouble className="h-8 w-8 text-warmgray mx-auto" />
           <div className="text-sm font-bold text-espresso">No Hotel Rooms Configured Yet</div>
           <p className="text-xs text-warmgray max-w-md mx-auto">
@@ -649,7 +648,7 @@ export default function HotelRoomsTapeChartPage() {
         </div>
       ) : viewMode === "TAPE_CHART" ? (
         /* Tape Chart Matrix (Rooms x Dates) */
-        <div className="rounded-xl border border-sandstone bg-porcelain shadow-xs overflow-hidden">
+        <div className="rounded-md border border-sandstone bg-porcelain shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
@@ -804,7 +803,7 @@ export default function HotelRoomsTapeChartPage() {
             return (
               <div
                 key={room.id}
-                className="rounded-xl border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-[#6B2837]/50 transition-all"
+                className="rounded-md border border-sandstone bg-porcelain p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-[#6B2837]/50 transition-all"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -870,9 +869,8 @@ export default function HotelRoomsTapeChartPage() {
                   ) : room.status === "VACANT_DIRTY" ? (
                     <Link
                       href="/dashboard/hotel/housekeeping"
-                      className="flex-1 py-1.5 text-center text-xs font-bold rounded-lg bg-[#FDF6E9] text-[#946000] border border-[#EDD7AD] hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
+                      className="flex-1 py-1.5 text-center text-xs font-bold rounded-md bg-[#FDF6E9] text-[#946000] border border-[#EDD7AD] hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5"
                     >
-                      <Sparkles className="h-3.5 w-3.5" />
                       <span>Housekeeping</span>
                     </Link>
                   ) : (
@@ -894,7 +892,7 @@ export default function HotelRoomsTapeChartPage() {
       {/* + Room Type Modal */}
       {showRoomTypeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">Create New Room Type</h3>
               <button
@@ -1003,7 +1001,7 @@ export default function HotelRoomsTapeChartPage() {
       {/* + Add Room Modal */}
       {showAddRoomModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-md rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <h3 className="text-sm font-bold text-espresso">Add Physical Room</h3>
               <button
@@ -1099,7 +1097,7 @@ export default function HotelRoomsTapeChartPage() {
       {/* Fast Check-In Modal */}
       {showFastCheckInModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-xl border border-sandstone bg-porcelain p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg rounded-md border border-sandstone bg-porcelain p-5 space-y-4 shadow-sm max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-sandstone pb-3">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-[#6B2837]" />

@@ -527,7 +527,7 @@ export default function OpeningStockPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header Control Panel */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card border border-border p-6 rounded-3xl shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card border border-border p-6 rounded-lg shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2">
             <Layers className="h-6 w-6 text-primary" />
@@ -548,7 +548,7 @@ export default function OpeningStockPage() {
             />
             <label
               htmlFor="excel-upload"
-              className="flex items-center gap-1.5 px-3 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-md text-xs font-bold transition-all cursor-pointer"
             >
               <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-600" />
               <span>Excel Import</span>
@@ -574,7 +574,7 @@ export default function OpeningStockPage() {
               });
               setShowForm(true);
             }}
-            className="flex items-center gap-1 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-bold transition-all cursor-pointer"
           >
             <Plus className="h-4.5 w-4.5" />
             Add Entry
@@ -603,12 +603,12 @@ export default function OpeningStockPage() {
       </div>
 
       {successMsg && (
-        <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 rounded-xl font-bold border border-emerald-500/20">
+        <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 rounded-md font-bold border border-emerald-500/20">
           {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-xl font-bold border border-destructive/20">
+        <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-md font-bold border border-destructive/20">
           {errorMsg}
         </div>
       )}
@@ -616,7 +616,7 @@ export default function OpeningStockPage() {
       {activeTab === "entries" ? (
         <>
           {/* Filters Panel */}
-          <div className="bg-card border border-border p-6 rounded-3xl shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-card border border-border p-6 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <input
@@ -663,7 +663,7 @@ export default function OpeningStockPage() {
           </div>
 
           {/* Value Indicator Banner */}
-          <div className="bg-secondary/40 border border-border rounded-2xl p-4 flex justify-between items-center text-xs">
+          <div className="bg-secondary/40 border border-border rounded-lg p-4 flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4.5 w-4.5 text-primary animate-pulse" />
               <span className="font-semibold text-muted-foreground">Approved Valuation:</span>
@@ -675,7 +675,7 @@ export default function OpeningStockPage() {
           </div>
 
           {/* Table List */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             {loading ? (
               <div className="py-12 text-center text-xs text-muted-foreground">
                 <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
@@ -821,7 +821,7 @@ export default function OpeningStockPage() {
               <button
                 key={rep.id}
                 onClick={() => setSelectedReport(rep.id as any)}
-                className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-4 py-2 border rounded-md text-xs font-bold transition-all cursor-pointer ${
                   selectedReport === rep.id 
                     ? "bg-primary text-primary-foreground border-primary" 
                     : "bg-card text-foreground border-border hover:bg-secondary"
@@ -837,7 +837,7 @@ export default function OpeningStockPage() {
             const report = currentReport();
             if (!report) return null;
             return (
-              <div className="bg-card border border-border p-6 rounded-3xl space-y-4 shadow-sm">
+              <div className="bg-card border border-border p-6 rounded-lg space-y-4 shadow-sm">
                 <div className="flex justify-between items-center border-b border-border pb-4">
                   <div>
                     <h2 className="text-sm font-black text-foreground">{report.title}</h2>
@@ -846,14 +846,14 @@ export default function OpeningStockPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleExportReportExcel(report.title, report.headers, report.rows)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 rounded-md text-xs font-bold text-foreground transition-all cursor-pointer"
                     >
                       <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                       Excel Export
                     </button>
                     <button
                       onClick={() => handleExportReportPDF(report.title, report.headers, report.rows)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border hover:bg-secondary/80 rounded-md text-xs font-bold text-foreground transition-all cursor-pointer"
                     >
                       <FileText className="h-4 w-4 text-red-500" />
                       PDF Export
@@ -919,7 +919,7 @@ export default function OpeningStockPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleSubmit}
-            className="bg-card border border-border rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+            className="bg-card border border-border rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-sm animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="p-6 border-b border-border/50 flex items-center justify-between">
               <h3 className="font-black text-foreground text-sm flex items-center gap-2">
@@ -929,7 +929,7 @@ export default function OpeningStockPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-xl font-semibold cursor-pointer"
+                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-md font-semibold cursor-pointer"
               >
                 Cancel
               </button>
@@ -1118,7 +1118,7 @@ export default function OpeningStockPage() {
             </div>
 
             {!isManagerOrOwner && (
-              <div className="mx-6 px-4 py-2 border border-amber-500/20 bg-amber-500/10 rounded-xl text-[10px] text-amber-700 font-semibold flex items-center gap-1.5">
+              <div className="mx-6 px-4 py-2 border border-amber-500/20 bg-amber-500/10 rounded-md text-[10px] text-amber-700 font-semibold flex items-center gap-1.5">
                 <ShieldAlert className="h-4 w-4" />
                 This entry will require a Manager or Owner's approval before modifying active stock level quantities.
               </div>
@@ -1128,13 +1128,13 @@ export default function OpeningStockPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-xl font-bold cursor-pointer"
+                className="px-4 py-2 bg-secondary border border-border hover:bg-secondary/80 rounded-md font-bold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl font-bold cursor-pointer"
+                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md font-bold cursor-pointer"
               >
                 {editingEntry ? "Save Changes" : isManagerOrOwner ? "Save and Approve" : "Submit Entry"}
               </button>

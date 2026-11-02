@@ -94,8 +94,17 @@ export default function RevenuePaymentsPage() {
       const res = await fetch("/api/v1/super-admin/revenue");
       if (res.ok) {
         const data = await res.json();
-        setPayments(data.payments || []);
-        setInvoices(data.invoices || []);
+        setPayments(data.payments || data.transactionLogs || []);
+        const mappedInvoices = (data.invoices || []).map((i: any) => ({
+          invoiceNumber: i.invoiceNumber,
+          businessName: i.business?.name || i.businessName || "Unknown Tenant",
+          plan: i.plan || "SUBSCRIPTION",
+          amount: Number(i.amount),
+          currency: i.currency || "NPR",
+          date: i.createdAt || i.date || new Date().toISOString(),
+          status: i.status,
+        }));
+        setInvoices(mappedInvoices);
       }
     } catch (err) {
       console.error("Load revenue logs error:", err);
@@ -156,7 +165,7 @@ export default function RevenuePaymentsPage() {
   return (
     <div className="space-y-6 text-[#0F172A]">
       {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/80 p-6 rounded-3xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FFFCF7] border border-[#D8CEC1]/80 p-6 rounded-lg">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <DollarSign className="h-5.5 w-5.5 text-blue-600" /> Revenue & Billing Ledger
@@ -169,8 +178,8 @@ export default function RevenuePaymentsPage() {
 
       {/* 2. Overview metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4">
-          <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 flex items-center justify-center rounded-xl">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
+          <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 flex items-center justify-center rounded-md">
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
@@ -179,8 +188,8 @@ export default function RevenuePaymentsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4">
-          <div className="h-10 w-10 bg-amber-500/10 text-amber-500 flex items-center justify-center rounded-xl">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
+          <div className="h-10 w-10 bg-amber-500/10 text-amber-500 flex items-center justify-center rounded-md">
             <ArrowDownLeft className="h-5 w-5" />
           </div>
           <div>
@@ -189,8 +198,8 @@ export default function RevenuePaymentsPage() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center gap-4">
-          <div className="h-10 w-10 bg-red-500/10 text-red-500 flex items-center justify-center rounded-xl">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
+          <div className="h-10 w-10 bg-red-500/10 text-red-500 flex items-center justify-center rounded-md">
             <ArrowUpRight className="h-5 w-5" />
           </div>
           <div>
@@ -201,11 +210,11 @@ export default function RevenuePaymentsPage() {
       </div>
 
       {/* 3. Tab selection */}
-      <div className="flex border-b border-slate-200 gap-6">
+      <div className="flex border-b border-[#D8CEC1] gap-6">
         <button
           onClick={() => setActiveTab("overview")}
           className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "overview" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+            activeTab === "overview" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
           }`}
         >
           Revenue Overview
@@ -213,7 +222,7 @@ export default function RevenuePaymentsPage() {
         <button
           onClick={() => setActiveTab("payments")}
           className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "payments" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+            activeTab === "payments" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
           }`}
         >
           Business Payments Log
@@ -221,7 +230,7 @@ export default function RevenuePaymentsPage() {
         <button
           onClick={() => setActiveTab("invoices")}
           className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "invoices" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-slate-700"
+            activeTab === "invoices" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
           }`}
         >
           Invoices
@@ -231,7 +240,7 @@ export default function RevenuePaymentsPage() {
       {/* Tab Contents: FINANCIAL CHARTS */}
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-3xl p-6 flex flex-col justify-between">
+          <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-6 flex flex-col justify-between">
             <div>
               <h2 className="text-sm font-bold">MRR Billing Trend</h2>
               <p className="text-[10px] text-slate-400 mt-0.5">Aggregated monthly subscription intake.</p>
@@ -255,7 +264,7 @@ export default function RevenuePaymentsPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 flex flex-col justify-between">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-6 flex flex-col justify-between">
             <div>
               <h2 className="text-sm font-bold">Revenue by Plan Tier</h2>
               <p className="text-[10px] text-slate-400 mt-0.5">Distribution of revenue shares.</p>
@@ -286,7 +295,7 @@ export default function RevenuePaymentsPage() {
       {/* Tab Contents: PAYMENTS LEDGER LOG */}
       {activeTab === "payments" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200/80 p-5 rounded-2xl flex flex-col sm:flex-row justify-between gap-4 items-center">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex flex-col sm:flex-row justify-between gap-4 items-center">
             <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-450" />
               <input
@@ -294,7 +303,7 @@ export default function RevenuePaymentsPage() {
                 placeholder="Search by business name or transaction ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none"
+                className="pl-10 w-full px-4 py-2 border border-[#D8CEC1] rounded-lg bg-[#F7F3EC] text-sm focus:outline-none"
               />
             </div>
             <div className="flex gap-2 items-center w-full sm:w-auto shrink-0">
@@ -302,7 +311,7 @@ export default function RevenuePaymentsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-bold bg-white focus:outline-none cursor-pointer"
+                className="px-3.5 py-2 border border-[#D8CEC1] rounded-lg text-xs font-bold bg-[#FFFCF7] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">All Payments</option>
                 <option value="PAID">Paid</option>
@@ -313,14 +322,14 @@ export default function RevenuePaymentsPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 overflow-hidden">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-5 overflow-hidden">
             {filteredPayments.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-450">No payments found.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-450 font-bold uppercase tracking-wider text-[9px]">
+                    <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold uppercase tracking-wider text-[9px]">
                       <th className="py-3 px-2">Merchant Name</th>
                       <th className="py-3 px-2">Subscription Tier</th>
                       <th className="py-3 px-2 text-center">Tx Transaction ID</th>
@@ -332,15 +341,15 @@ export default function RevenuePaymentsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredPayments.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3.5 px-2 font-bold text-slate-700">{p.businessName}</td>
+                      <tr key={p.id} className="hover:bg-[#F7F3EC] transition-colors">
+                        <td className="py-3.5 px-2 font-bold text-[#292320]">{p.businessName}</td>
                         <td className="py-3.5 px-2 font-semibold">
-                          <span className="px-2 py-0.5 rounded bg-slate-100 text-[9px] uppercase">{p.plan}</span>
+                          <span className="px-2 py-0.5 rounded bg-[#EEE7DD] text-[9px] uppercase">{p.plan}</span>
                         </td>
-                        <td className="py-3.5 px-2 text-center font-mono text-[10px] text-slate-500">{p.transactionId}</td>
+                        <td className="py-3.5 px-2 text-center font-mono text-[10px] text-[#71675E]">{p.transactionId}</td>
                         <td className="py-3.5 px-2 text-center font-bold text-slate-650">{p.method}</td>
                         <td className="py-3.5 px-2 text-center text-slate-450">{new Date(p.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-slate-800">{formatCurrency(p.amount, p.currency)}</td>
+                        <td className="py-3.5 px-2 text-right font-black text-[#292320]">{formatCurrency(p.amount, p.currency)}</td>
                         <td className="py-3.5 px-2 text-right">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                             p.status === "Paid"
@@ -365,7 +374,7 @@ export default function RevenuePaymentsPage() {
       {/* Tab Contents: INVOICES MANAGER */}
       {activeTab === "invoices" && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200/80 p-5 rounded-2xl">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg">
             <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-450" />
               <input
@@ -373,19 +382,19 @@ export default function RevenuePaymentsPage() {
                 placeholder="Search by business name or invoice number..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none"
+                className="pl-10 w-full px-4 py-2 border border-[#D8CEC1] rounded-lg bg-[#F7F3EC] text-sm focus:outline-none"
               />
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 overflow-hidden">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-5 overflow-hidden">
             {filteredInvoices.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-450">No invoices logged.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-450 font-bold uppercase tracking-wider text-[9px]">
+                    <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold uppercase tracking-wider text-[9px]">
                       <th className="py-3 px-2">Invoice #</th>
                       <th className="py-3 px-2">Billed Tenant</th>
                       <th className="py-3 px-2">Purchased License</th>
@@ -397,14 +406,14 @@ export default function RevenuePaymentsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredInvoices.map((inv) => (
-                      <tr key={inv.invoiceNumber} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={inv.invoiceNumber} className="hover:bg-[#F7F3EC] transition-colors">
                         <td className="py-3.5 px-2 font-black text-blue-600">{inv.invoiceNumber}</td>
-                        <td className="py-3.5 px-2 font-bold text-slate-700">{inv.businessName}</td>
+                        <td className="py-3.5 px-2 font-bold text-[#292320]">{inv.businessName}</td>
                         <td className="py-3.5 px-2 font-semibold">
-                          <span className="px-2 py-0.5 rounded bg-slate-100 text-[9px] uppercase">{inv.plan}</span>
+                          <span className="px-2 py-0.5 rounded bg-[#EEE7DD] text-[9px] uppercase">{inv.plan}</span>
                         </td>
                         <td className="py-3.5 px-2 text-center text-slate-450">{new Date(inv.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-slate-800">{formatCurrency(inv.amount, inv.currency)}</td>
+                        <td className="py-3.5 px-2 text-right font-black text-[#292320]">{formatCurrency(inv.amount, inv.currency)}</td>
                         <td className="py-3.5 px-2 text-right">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                             inv.status === "PAID"
@@ -419,7 +428,7 @@ export default function RevenuePaymentsPage() {
                         <td className="py-3.5 px-2 text-right">
                           <button
                             onClick={() => setSelectedInvoice(inv)}
-                            className="p-1 text-slate-500 hover:text-blue-600 hover:bg-slate-50 rounded border border-transparent hover:border-slate-100 cursor-pointer"
+                            className="p-1 text-[#71675E] hover:text-blue-600 hover:bg-[#F7F3EC] rounded border border-transparent hover:border-[#D8CEC1] cursor-pointer"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -437,7 +446,7 @@ export default function RevenuePaymentsPage() {
       {/* Invoice Detail Sheet Modal */}
       {selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border border-slate-200 my-8">
+          <div className="bg-[#FFFCF7] rounded-lg w-full max-w-lg p-6 shadow-sm border border-[#D8CEC1] my-8">
             <div className="flex justify-between items-center border-b border-slate-150 pb-3 mb-6">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-600" />
@@ -445,36 +454,36 @@ export default function RevenuePaymentsPage() {
               </div>
               <button
                 onClick={() => setSelectedInvoice(null)}
-                className="px-2 py-1.5 hover:bg-slate-100 text-xs font-semibold text-slate-500 rounded-lg cursor-pointer"
+                className="px-2 py-1.5 hover:bg-[#EEE7DD] text-xs font-semibold text-[#71675E] rounded-lg cursor-pointer"
               >
                 Close
               </button>
             </div>
 
             {/* Print template mock view */}
-            <div className="border border-slate-150 p-6 rounded-2xl space-y-6 text-xs text-slate-650 bg-slate-50">
+            <div className="border border-slate-150 p-6 rounded-lg space-y-6 text-xs text-slate-650 bg-[#F7F3EC]">
               <div className="flex justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800">RestroInn Systems Inc.</h3>
+                  <h3 className="text-sm font-black text-[#292320]">RestroInn Systems Inc.</h3>
                   <p className="mt-1 text-slate-400">100 SaaS HQ Road</p>
                   <p className="text-slate-400">billing@restroinn.com</p>
                 </div>
                 <div className="text-right">
                   <h2 className="text-sm font-black text-blue-600">INVOICE</h2>
-                  <p className="mt-1 font-bold text-slate-700">{selectedInvoice.invoiceNumber}</p>
+                  <p className="mt-1 font-bold text-[#292320]">{selectedInvoice.invoiceNumber}</p>
                   <p className="text-slate-400">{new Date(selectedInvoice.date).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-4">
+              <div className="border-t border-[#D8CEC1] pt-4">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Billed To:</span>
-                <h4 className="font-black text-slate-800 mt-1">{selectedInvoice.businessName}</h4>
+                <h4 className="font-black text-[#292320] mt-1">{selectedInvoice.businessName}</h4>
                 <p className="text-slate-400 mt-0.5">SaaS Platform License Holder</p>
               </div>
 
               <table className="w-full text-xs text-left border-collapse mt-4">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-450 font-bold text-[9px] uppercase pb-2">
+                  <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold text-[9px] uppercase pb-2">
                     <th className="py-2">Item Description</th>
                     <th className="py-2 text-right">Quantity</th>
                     <th className="py-2 text-right">Rate</th>
@@ -482,20 +491,20 @@ export default function RevenuePaymentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-slate-100">
+                  <tr className="border-b border-[#D8CEC1]">
                     <td className="py-3 font-semibold text-slate-850">
                       SaaS License Tier - {selectedInvoice.plan}
                       <p className="text-[9px] text-slate-400 font-normal mt-0.5">Monthly platform utility access rights</p>
                     </td>
                     <td className="py-3 text-right">1</td>
                     <td className="py-3 text-right">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
-                    <td className="py-3 text-right font-bold text-slate-800">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
+                    <td className="py-3 text-right font-bold text-[#292320]">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
                   </tr>
                 </tbody>
               </table>
 
-              <div className="flex justify-between items-center border-t border-slate-200 pt-4 font-black">
-                <span className="text-slate-700 font-bold text-sm">TOTAL DUE:</span>
+              <div className="flex justify-between items-center border-t border-[#D8CEC1] pt-4 font-black">
+                <span className="text-[#292320] font-bold text-sm">TOTAL DUE:</span>
                 <span className="text-blue-600 text-lg">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
               </div>
 
@@ -504,16 +513,16 @@ export default function RevenuePaymentsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-6 border-t border-slate-100 mt-6">
+            <div className="flex gap-3 pt-6 border-t border-[#D8CEC1] mt-6">
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 border border-[#D8CEC1] text-[#292320] rounded-lg text-xs font-semibold hover:bg-[#F7F3EC] flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="h-3.5 w-3.5" /> Print Statement
               </button>
               <button
                 onClick={() => setSelectedInvoice(null)}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer"
               >
                 Done
               </button>

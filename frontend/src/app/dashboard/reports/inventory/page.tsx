@@ -141,10 +141,10 @@ export default function InventoryReportsPage() {
     if (activeTab === "summary" || activeTab === "lowstock") {
       return (
         <div className="space-y-4">
-          <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl">
+          <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-2.5 px-3">Product Name</th>
                   <th className="py-2.5 px-3">SKU</th>
                   <th className="py-2.5 px-3">Category</th>
@@ -160,10 +160,10 @@ export default function InventoryReportsPage() {
                   const isLow = stock <= p.alertQuantity;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{p.name}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-500">{p.sku}</td>
-                      <td className="py-2.5 px-3 text-slate-500">{p.category?.name || "N/A"}</td>
+                    <tr key={p.id} className="hover:bg-[#F7F3EC]">
+                      <td className="py-2.5 px-3 font-semibold text-[#292320] dark:text-slate-200">{p.name}</td>
+                      <td className="py-2.5 px-3 font-mono text-[#71675E]">{p.sku}</td>
+                      <td className="py-2.5 px-3 text-[#71675E]">{p.category?.name || "N/A"}</td>
                       <td className="py-2.5 px-3 text-right">{currencySymbol}{p.costPrice.toFixed(2)}</td>
                       <td className="py-2.5 px-3 text-right">{currencySymbol}{p.sellingPrice.toFixed(2)}</td>
                       <td className="py-2.5 px-3 text-right font-semibold text-slate-400">{p.alertQuantity}</td>
@@ -189,20 +189,20 @@ export default function InventoryReportsPage() {
       return (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Asset Stock Value</span>
               <h4 className="text-lg font-black text-[#2563EB] mt-1">{currencySymbol}{totalInventoryValue.toFixed(2)}</h4>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 p-4 rounded-2xl">
+            <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Products Catalog Count</span>
               <h4 className="text-lg font-black text-foreground mt-1">{products.length} entries</h4>
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl">
+          <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900/50 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-2.5 px-3">Product Name</th>
                   <th className="py-2.5 px-3">SKU</th>
                   <th className="py-2.5 px-3 text-right">Available Stock</th>
@@ -216,7 +216,7 @@ export default function InventoryReportsPage() {
                   const netValue = stock * p.costPrice;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/50 font-sans">
+                    <tr key={p.id} className="hover:bg-[#F7F3EC] font-sans">
                       <td className="py-2.5 px-3 font-semibold text-slate-850 dark:text-slate-200">{p.name}</td>
                       <td className="py-2.5 px-3 font-mono text-slate-400">{p.sku}</td>
                       <td className="py-2.5 px-3 text-right">{stock}</td>
@@ -235,10 +235,10 @@ export default function InventoryReportsPage() {
     if (activeTab === "batch") {
       return (
         <div className="space-y-4">
-          <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl">
+          <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-2.5 px-3">Product</th>
                   <th className="py-2.5 px-3">Batch Number</th>
                   <th className="py-2.5 px-3 text-right">Stock Quantity</th>
@@ -248,11 +248,11 @@ export default function InventoryReportsPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {products.filter((p) => p.batches && p.batches.length > 0).flatMap((p) =>
                   (p.batches || []).map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50/50 font-sans">
-                      <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{p.name}</td>
+                    <tr key={b.id} className="hover:bg-[#F7F3EC] font-sans">
+                      <td className="py-2.5 px-3 font-semibold text-[#292320] dark:text-slate-200">{p.name}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#2563EB]">{b.batchNumber}</td>
                       <td className="py-2.5 px-3 text-right font-bold">{b.quantity}</td>
-                      <td className="py-2.5 px-3 text-slate-500 font-mono">
+                      <td className="py-2.5 px-3 text-[#71675E] font-mono">
                         {b.expiryDate ? new Date(b.expiryDate).toLocaleDateString() : "No Expiry Limit"}
                       </td>
                     </tr>
@@ -269,9 +269,9 @@ export default function InventoryReportsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black text-[#292320] dark:text-white flex items-center gap-2">
             <Boxes className="h-6 w-6 text-[#2563EB]" /> Inventory Reports
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -280,7 +280,7 @@ export default function InventoryReportsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
             <Search className="h-4 w-4 text-slate-400" />
             <input
               type="text"
@@ -293,14 +293,14 @@ export default function InventoryReportsPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={exportExcel}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Excel</span>
             </button>
             <button
               onClick={exportPDF}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>PDF</span>
@@ -310,43 +310,43 @@ export default function InventoryReportsPage() {
       </div>
 
       {/* 2. Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
+      <div className="flex items-center gap-2 border-b border-[#D8CEC1] dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
         <button
           onClick={() => setActiveTab("summary")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "summary"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Stock Summary
         </button>
         <button
           onClick={() => setActiveTab("lowstock")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "lowstock"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Low Stock Alerts
         </button>
         <button
           onClick={() => setActiveTab("stockvalue")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "stockvalue"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Stock Asset Valuation
         </button>
         <button
           onClick={() => setActiveTab("batch")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "batch"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Batch-wise Stock
@@ -354,7 +354,7 @@ export default function InventoryReportsPage() {
       </div>
 
       {/* 3. Content */}
-      <div className="bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         {renderContent()}
       </div>
     </div>

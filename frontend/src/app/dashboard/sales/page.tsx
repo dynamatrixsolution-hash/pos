@@ -137,7 +137,7 @@ export default function SalesPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-2xl">
+      <div className="flex items-center justify-between bg-card border border-border p-5 rounded-lg">
         <div>
           <h1 className="text-xl font-bold">Sales Log History</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -147,7 +147,7 @@ export default function SalesPage() {
       </div>
 
       {/* Main List */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-muted-foreground" />

@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -10,7 +12,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
-  Terminal,
   Receipt,
   Play,
   RotateCcw,
@@ -346,7 +347,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
   const loadPilotConsoleData = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError('');
 
       const headers = buildHeaders();
       const [ffRes, pjRes, osRes, rcRes, hlRes, stRes] = await Promise.all([
@@ -427,9 +428,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           );
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load Phase 8 Pilot Operations console data");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Failed to load Phase 8 Pilot Operations console data"); } finally {
       setLoading(false);
     }
   }, [buildHeaders, declaredCashTotal]);
@@ -462,7 +461,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
   ) => {
     try {
       setSavingFlagKey(changedKey);
-      setError(null);
+      setError('');
       setFeatureFlags(updatedFlags);
 
       const res = await fetch(`${BACKEND_URL}/api/v1/hotel/pilot/feature-flags`, {
@@ -484,7 +483,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
       }
       showToast(`Updated feature flag: ${changedKey}`);
     } catch (err: any) {
-      setError(err.message || "Unable to update feature flags");
+      Notify.failure(err.message || "Unable to update feature flags"); setError(err.message || "Unable to update feature flags");
       await loadPilotConsoleData();
     } finally {
       setSavingFlagKey(null);
@@ -517,7 +516,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
   const handleRunFullMatrixRehearsal = async () => {
     try {
       setRehearsingMatrix(true);
-      setError(null);
+      setError('');
 
       const res = await fetch(`${BACKEND_URL}/api/v1/hotel/pilot/print-jobs`, {
         method: "POST",
@@ -538,9 +537,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
       showToast(
         "Completed 4-Step Hardware Matrix Rehearsal (80mm Receipt, 58mm KOT, RJ11 Drawer Pulse \\x1B\\x70\\x00\\x19\\xFA, & Backup Printer Failover)"
       );
-    } catch (err: any) {
-      setError(err.message || "Error running 4-step hardware rehearsal");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error running 4-step hardware rehearsal"); } finally {
       setRehearsingMatrix(false);
     }
   };
@@ -549,7 +546,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
     e.preventDefault();
     try {
       setDispatchingPrint(true);
-      setError(null);
+      setError('');
 
       const is58mm = selectedJobType === "KOT_58MM";
       const hasPulse = selectedJobType === "CASH_DRAWER_PULSE" || includeDrawerPulse;
@@ -593,9 +590,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           ? "Primary printer jam simulated — Job automatically redirected to backup station!"
           : `Print job (${selectedJobType}) dispatched to thermal printer.`
       );
-    } catch (err: any) {
-      setError(err.message || "Error dispatching print job");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error dispatching print job"); } finally {
       setDispatchingPrint(false);
     }
   };
@@ -672,7 +667,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
   const handleSyncOfflineBatch = async (isReplay: boolean = false) => {
     try {
       setSyncingBatch(true);
-      setError(null);
+      setError('');
       setLastSyncReplayStatus(null);
 
       const payloadToSync =
@@ -734,9 +729,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           ? `Idempotent Replay Verified (${payloadToSync.batchKey}) — Zero duplicate records created!`
           : `Offline batch ${payloadToSync.batchKey} synced idempotently!`
       );
-    } catch (err: any) {
-      setError(err.message || "Error syncing offline draft batch");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error syncing offline draft batch"); } finally {
       setSyncingBatch(false);
     }
   };
@@ -751,7 +744,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
     e.preventDefault();
     try {
       setRunningReconciliation(true);
-      setError(null);
+      setError('');
 
       const numericDeclared =
         overrideDeclaredCash !== undefined
@@ -784,9 +777,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
       showToast(
         `Daily Pilot Audit Reconciled for ${businessDate} (${rec?.status || "COMPLETED"})`
       );
-    } catch (err: any) {
-      setError(err.message || "Error running daily cash reconciliation");
-    } finally {
+    } catch (err: any) { Notify.failure(err.message || "Error running daily cash reconciliation"); } finally {
       setRunningReconciliation(false);
     }
   };
@@ -809,7 +800,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
       {/* =====================================================================
           TOP COMMAND CENTER HEADER & NAVIGATION TABS
          ===================================================================== */}
-      <div className="bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm space-y-4">
+      <div className="bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6B2837]">
@@ -826,7 +817,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
               <Activity className="w-3.5 h-3.5 text-emerald-700" />
               RPO &lt; {healthMetrics?.rpoTargetMinutes ?? 5} min • RTO &lt;{" "}
               {healthMetrics?.rtoTargetMinutes ?? 30} min ({healthMetrics?.status || "HEALTHY"})
@@ -836,7 +827,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               type="button"
               onClick={loadPilotConsoleData}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] hover:bg-[#F0EAE0] transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] hover:bg-[#F0EAE0] transition cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
               Refresh Console
@@ -876,7 +867,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as PilotPanelTab)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-bold transition cursor-pointer ${
                   active
                     ? "bg-[#6B2837] text-white shadow-sm"
                     : "bg-[#FAF6F0] text-[#4A433E] border border-[#E2D9C8] hover:bg-[#F0EAE0]"
@@ -892,7 +883,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
 
       {/* Feedback Toast & Error Banner */}
       {toastMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium flex items-center justify-between">
+        <div className="p-4 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
             <span>{toastMessage}</span>
@@ -904,7 +895,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
       )}
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 text-sm font-medium flex items-center justify-between">
+        <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-900 text-sm font-medium flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-700 shrink-0" />
             <span>{error}</span>
@@ -922,10 +913,10 @@ export default function PilotRolloutAndHardwareOpsPage() {
         <div
           role="alert"
           data-testid="kds-printer-failover-banner"
-          className="rounded-2xl bg-amber-50 border-2 border-amber-400 p-5 shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          className="rounded-lg bg-amber-50 border-2 border-amber-400 p-5 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4"
         >
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-md bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
@@ -967,7 +958,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
             <button
               type="button"
               onClick={() => setPreviewPrintJob(redirectedPrintJobs[0])}
-              className="px-3.5 py-2 rounded-xl bg-amber-900 text-white text-xs font-bold hover:bg-amber-950 transition cursor-pointer inline-flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-md bg-amber-900 text-white text-xs font-bold hover:bg-amber-950 transition cursor-pointer inline-flex items-center gap-1.5"
             >
               <Eye className="w-3.5 h-3.5" />
               Inspect Failover Slip
@@ -982,11 +973,11 @@ export default function PilotRolloutAndHardwareOpsPage() {
       {(activeTab === "ALL_PANELS" || activeTab === "FEATURE_FLAGS") && (
         <section
           aria-label="Property & Branch Feature Flags"
-          className="bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm space-y-5"
+          className="bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm space-y-5"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-[#F0EAE0] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
+              <div className="w-10 h-10 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
@@ -1024,7 +1015,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                     "ALL_PILOT_ENABLED"
                   )
                 }
-                className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer"
+                className="px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer"
               >
                 Enable All Hospitality Flags
               </button>
@@ -1044,7 +1035,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                     "EMERGENCY_RETAIL_ONLY_CUTOVER"
                   )
                 }
-                className="px-3 py-1.5 rounded-xl bg-[#FAF6F0] hover:bg-red-50 text-[#9E2A2B] border border-red-200 text-xs font-bold transition cursor-pointer"
+                className="px-3 py-1.5 rounded-md bg-[#FAF6F0] hover:bg-red-50 text-[#9E2A2B] border border-red-200 text-xs font-bold transition cursor-pointer"
               >
                 Emergency Cutover (Retail POS Only)
               </button>
@@ -1052,7 +1043,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           </div>
 
           {/* Governance Callout */}
-          <div className="p-4 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-start gap-3">
+          <div className="p-4 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-start gap-3">
             <Lock className="w-5 h-5 text-[#6B2837] shrink-0 mt-0.5" />
             <div className="text-xs text-[#4A433E] space-y-1">
               <p className="font-extrabold text-[#1E1B18]">
@@ -1078,9 +1069,9 @@ export default function PilotRolloutAndHardwareOpsPage() {
               return (
                 <div
                   key={item.key}
-                  className={`rounded-2xl p-4 border transition flex flex-col justify-between gap-3 ${
+                  className={`rounded-lg p-4 border transition flex flex-col justify-between gap-3 ${
                     isEnabled
-                      ? "bg-white border-[#E6DEC8] shadow-xs"
+                      ? "bg-[#FFFCF7] border-[#E6DEC8] shadow-xs"
                       : "bg-red-50/40 border-red-200"
                   }`}
                 >
@@ -1121,7 +1112,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#FFFCF7] shadow ring-0 transition duration-200 ease-in-out ${
                           isEnabled ? "translate-x-5" : "translate-x-0"
                         }`}
                       />
@@ -1140,11 +1131,11 @@ export default function PilotRolloutAndHardwareOpsPage() {
       {(activeTab === "ALL_PANELS" || activeTab === "HARDWARE_REHEARSAL") && (
         <section
           aria-label="Hardware Rehearsal & Printer Failover Simulator"
-          className="bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm space-y-6"
+          className="bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm space-y-6"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#F0EAE0] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
+              <div className="w-10 h-10 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                 <Printer className="w-5 h-5" />
               </div>
               <div>
@@ -1163,7 +1154,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               type="button"
               onClick={handleRunFullMatrixRehearsal}
               disabled={rehearsingMatrix}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow-sm transition cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow-sm transition cursor-pointer disabled:opacity-60"
             >
               <Play className="w-4 h-4" />
               {rehearsingMatrix
@@ -1176,13 +1167,13 @@ export default function PilotRolloutAndHardwareOpsPage() {
             {/* Custom Print Job & Failover Tester Form */}
             <form
               onSubmit={handleDispatchCustomPrintJob}
-              className="bg-[#FAF6F0] rounded-2xl p-5 border border-[#E6DEC8] space-y-4 h-fit"
+              className="bg-[#FAF6F0] rounded-lg p-5 border border-[#E6DEC8] space-y-4 h-fit"
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-[#1E1B18]">
                   Custom Print Job & Failover Tester
                 </h3>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white border border-[#E2D9C8] text-[#6B2837]">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#FFFCF7] border border-[#E2D9C8] text-[#6B2837]">
                   ESC/POS TCP 9100
                 </span>
               </div>
@@ -1198,7 +1189,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                       e.target.value as "KOT_58MM" | "RECEIPT_80MM" | "CASH_DRAWER_PULSE"
                     )
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-xs font-bold text-[#1E1B18]"
+                  className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold text-[#1E1B18]"
                 >
                   <option value="KOT_58MM">KOT_58MM (58mm Kitchen Order Ticket - 32 cols)</option>
                   <option value="RECEIPT_80MM">
@@ -1218,7 +1209,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   <select
                     value={primaryStationId}
                     onChange={(e) => setPrimaryStationId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-xs font-semibold"
+                    className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-semibold"
                   >
                     <option value="">Hot Kitchen Primary (192.168.1.201)</option>
                     {stations.map((st) => (
@@ -1236,7 +1227,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   <select
                     value={backupStationId}
                     onChange={(e) => setBackupStationId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-xs font-semibold"
+                    className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-semibold"
                   >
                     <option value="">Backup Pass Printer (192.168.1.202)</option>
                     {stations.map((st) => (
@@ -1249,7 +1240,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               </div>
 
               <div className="space-y-2.5 pt-1">
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer">
+                <label className="flex items-center gap-2.5 p-3 rounded-md bg-amber-50 border border-amber-200 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={simulatePrinterJam}
@@ -1267,7 +1258,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 </label>
 
                 {selectedJobType !== "CASH_DRAWER_PULSE" && (
-                  <label className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] cursor-pointer">
+                  <label className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={includeDrawerPulse}
@@ -1285,7 +1276,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <button
                 type="submit"
                 disabled={dispatchingPrint}
-                className="w-full py-2.5 rounded-xl bg-[#1E1B18] hover:bg-[#332E2A] text-white text-xs font-bold shadow transition cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 rounded-md bg-[#1E1B18] hover:bg-[#332E2A] text-white text-xs font-bold shadow transition cursor-pointer disabled:opacity-50"
               >
                 {dispatchingPrint
                   ? "Dispatching ESC/POS Job..."
@@ -1305,7 +1296,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               </div>
 
               {printJobs.length === 0 ? (
-                <div className="rounded-2xl border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
+                <div className="rounded-lg border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
                   <Printer className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <p className="text-sm font-bold text-[#1E1B18]">
                     No Hardware Print Jobs Recorded Yet
@@ -1316,7 +1307,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-[#E6DEC8]">
+                <div className="overflow-x-auto rounded-lg border border-[#E6DEC8]">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#FAF6F0] border-b border-[#E6DEC8] text-[11px] font-extrabold uppercase text-[#6E655F]">
@@ -1421,11 +1412,11 @@ export default function PilotRolloutAndHardwareOpsPage() {
       {(activeTab === "ALL_PANELS" || activeTab === "OFFLINE_SYNC") && (
         <section
           aria-label="Offline Terminal Draft Buffer & Idempotent Reconnect Sync"
-          className="bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm space-y-6"
+          className="bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm space-y-6"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#F0EAE0] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
+              <div className="w-10 h-10 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                 <WifiOff className="w-5 h-5" />
               </div>
               <div>
@@ -1444,7 +1435,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 type="button"
                 disabled={syncingBatch || localDrafts.length === 0}
                 onClick={() => handleSyncOfflineBatch(false)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow-sm transition cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow-sm transition cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${syncingBatch ? "animate-spin" : ""}`} />
                 Reconnect & Sync Batch Idempotently
@@ -1454,7 +1445,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 type="button"
                 disabled={syncingBatch}
                 onClick={() => handleSyncOfflineBatch(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#FAF6F0] hover:bg-[#F0EAE0] text-[#1E1B18] border border-[#E2D9C8] text-xs font-bold transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-md bg-[#FAF6F0] hover:bg-[#F0EAE0] text-[#1E1B18] border border-[#E2D9C8] text-xs font-bold transition cursor-pointer"
                 title="Re-send the exact same batchKey to prove idempotency (zero duplicate records)"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-[#A77B38]" />
@@ -1464,7 +1455,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
           </div>
 
           {lastSyncReplayStatus && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-950 flex items-center gap-2">
+            <div className="p-3.5 rounded-md bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-950 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
               <span>{lastSyncReplayStatus}</span>
             </div>
@@ -1472,7 +1463,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column: Local Browser Offline Draft Buffer */}
-            <div className="bg-[#FAF6F0] rounded-2xl p-5 border border-[#E6DEC8] space-y-4">
+            <div className="bg-[#FAF6F0] rounded-lg p-5 border border-[#E6DEC8] space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1E1B18]">
@@ -1488,21 +1479,21 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   <button
                     type="button"
                     onClick={() => handleQueueDraftPreset("RESTAURANT_ORDER_DRAFT")}
-                    className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2D9C8] text-[11px] font-bold text-[#6B2837] hover:bg-[#F0EAE0] cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] text-[11px] font-bold text-[#6B2837] hover:bg-[#F0EAE0] cursor-pointer"
                   >
                     + Dine-In Draft
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQueueDraftPreset("SERVICE_REQUEST_DRAFT")}
-                    className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2D9C8] text-[11px] font-bold text-[#6B2837] hover:bg-[#F0EAE0] cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] text-[11px] font-bold text-[#6B2837] hover:bg-[#F0EAE0] cursor-pointer"
                   >
                     + Service Request Draft
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQueueDraftPreset("NOTE_DRAFT")}
-                    className="px-2.5 py-1.5 rounded-lg bg-white border border-[#E2D9C8] text-[11px] font-bold text-[#1E1B18] hover:bg-[#F0EAE0] cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] text-[11px] font-bold text-[#1E1B18] hover:bg-[#F0EAE0] cursor-pointer"
                   >
                     + Terminal Note
                   </button>
@@ -1518,7 +1509,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                     type="text"
                     value={terminalId}
                     onChange={(e) => setTerminalId(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E2D9C8] text-xs font-mono"
+                    className="w-full px-3 py-1.5 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-mono"
                   />
                 </div>
                 <div>
@@ -1529,7 +1520,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                     type="text"
                     value={currentBatchKey}
                     onChange={(e) => setCurrentBatchKey(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#E2D9C8] text-xs font-mono"
+                    className="w-full px-3 py-1.5 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-mono"
                   />
                 </div>
               </div>
@@ -1538,7 +1529,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 {localDrafts.map((draft) => (
                   <div
                     key={draft.id}
-                    className="bg-white rounded-xl p-3.5 border border-[#E6DEC8] flex items-start justify-between gap-3"
+                    className="bg-[#FFFCF7] rounded-md p-3.5 border border-[#E6DEC8] flex items-start justify-between gap-3"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -1577,7 +1568,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               </h3>
 
               {syncBatches.length === 0 ? (
-                <div className="rounded-2xl border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
+                <div className="rounded-lg border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
                   <Database className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <p className="text-sm font-bold text-[#1E1B18]">No Offline Batches Synced Yet</p>
                   <p className="text-xs text-[#6E655F]">
@@ -1586,7 +1577,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-[#E6DEC8]">
+                <div className="overflow-x-auto rounded-lg border border-[#E6DEC8]">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#FAF6F0] border-b border-[#E6DEC8] text-[11px] font-extrabold uppercase text-[#6E655F]">
@@ -1638,11 +1629,11 @@ export default function PilotRolloutAndHardwareOpsPage() {
       {(activeTab === "ALL_PANELS" || activeTab === "RECONCILIATION") && (
         <section
           aria-label="Pilot Daily Audit & Cash Drawer Reconciliation"
-          className="bg-white rounded-2xl p-6 border border-[#E6DEC8] shadow-sm space-y-6"
+          className="bg-[#FFFCF7] rounded-lg p-6 border border-[#E6DEC8] shadow-sm space-y-6"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#F0EAE0] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
+              <div className="w-10 h-10 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                 <Receipt className="w-5 h-5" />
               </div>
               <div>
@@ -1672,7 +1663,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
 
           {/* Reconciled Breakdown + DR / Outbox Health KPI Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            <div className="bg-[#FAF6F0] rounded-2xl p-4 border border-[#E6DEC8]">
+            <div className="bg-[#FAF6F0] rounded-lg p-4 border border-[#E6DEC8]">
               <p className="text-[11px] font-bold uppercase text-[#6E655F]">Retail POS Sales</p>
               <p className="text-xl font-extrabold text-[#1E1B18] mt-1">
                 {formatCurrency(latestReconciliation?.retailSalesTotal ?? 0)}
@@ -1680,7 +1671,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] text-[#8C827A] mt-0.5">Committed branch sales</p>
             </div>
 
-            <div className="bg-[#FAF6F0] rounded-2xl p-4 border border-[#E6DEC8]">
+            <div className="bg-[#FAF6F0] rounded-lg p-4 border border-[#E6DEC8]">
               <p className="text-[11px] font-bold uppercase text-[#6E655F]">Restaurant Orders</p>
               <p className="text-xl font-extrabold text-[#1E1B18] mt-1">
                 {formatCurrency(latestReconciliation?.restaurantOrdersTotal ?? 0)}
@@ -1688,7 +1679,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] text-[#8C827A] mt-0.5">Dine-in, takeaway & room dining</p>
             </div>
 
-            <div className="bg-[#FAF6F0] rounded-2xl p-4 border border-[#E6DEC8]">
+            <div className="bg-[#FAF6F0] rounded-lg p-4 border border-[#E6DEC8]">
               <p className="text-[11px] font-bold uppercase text-[#6E655F]">
                 Hotel Folio Settlements
               </p>
@@ -1698,7 +1689,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] text-[#8C827A] mt-0.5">Front desk & checkout payments</p>
             </div>
 
-            <div className="bg-[#FAF6F0] rounded-2xl p-4 border border-[#E6DEC8]">
+            <div className="bg-[#FAF6F0] rounded-lg p-4 border border-[#E6DEC8]">
               <p className="text-[11px] font-bold uppercase text-[#6E655F]">
                 Expected vs Declared Cash
               </p>
@@ -1710,7 +1701,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
             </div>
 
             <div
-              className={`rounded-2xl p-4 border ${
+              className={`rounded-lg p-4 border ${
                 Number(latestReconciliation?.cashVariance ?? 0) === 0
                   ? "bg-emerald-50 border-emerald-200"
                   : "bg-amber-50 border-amber-300"
@@ -1740,7 +1731,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] text-[#6E655F] mt-0.5">Target: $0.00 discrepancy</p>
             </div>
 
-            <div className="bg-[#FAF6F0] rounded-2xl p-4 border border-[#E6DEC8]">
+            <div className="bg-[#FAF6F0] rounded-lg p-4 border border-[#E6DEC8]">
               <p className="text-[11px] font-bold uppercase text-[#6E655F]">
                 Outbox & DR Readiness
               </p>
@@ -1758,7 +1749,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
             {/* Daily Cash Drawer Reconciliation Form */}
             <form
               onSubmit={(e) => handleRunDailyReconciliation(e)}
-              className="bg-[#FAF6F0] rounded-2xl p-5 border border-[#E6DEC8] space-y-4 h-fit"
+              className="bg-[#FAF6F0] rounded-lg p-5 border border-[#E6DEC8] space-y-4 h-fit"
             >
               <h3 className="text-sm font-extrabold text-[#1E1B18]">
                 Execute Daily Cash Drawer Reconciliation
@@ -1773,7 +1764,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   required
                   value={businessDate}
                   onChange={(e) => setBusinessDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-xs font-bold"
+                  className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold"
                 />
               </div>
 
@@ -1802,7 +1793,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   required
                   value={declaredCashTotal}
                   onChange={(e) => setDeclaredCashTotal(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-sm font-mono font-bold text-[#1E1B18]"
+                  className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-sm font-mono font-bold text-[#1E1B18]"
                 />
               </div>
 
@@ -1814,7 +1805,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   rows={2}
                   value={reconciliationNotes}
                   onChange={(e) => setReconciliationNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2D9C8] text-xs"
+                  className="w-full px-3 py-2 rounded-md bg-[#FFFCF7] border border-[#E2D9C8] text-xs"
                 />
               </div>
 
@@ -1822,7 +1813,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                 <button
                   type="submit"
                   disabled={runningReconciliation}
-                  className="w-full py-2.5 rounded-xl bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow transition cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 rounded-md bg-[#6B2837] hover:bg-[#561F2B] text-white text-xs font-extrabold shadow transition cursor-pointer disabled:opacity-50"
                 >
                   {runningReconciliation
                     ? "Reconciling Ledgers..."
@@ -1833,7 +1824,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   type="button"
                   disabled={runningReconciliation}
                   onClick={handleMatchExpectedCash}
-                  className="w-full py-2 rounded-xl bg-white hover:bg-[#F0EAE0] text-[#1E1B18] border border-[#E2D9C8] text-xs font-bold transition cursor-pointer"
+                  className="w-full py-2 rounded-md bg-[#FFFCF7] hover:bg-[#F0EAE0] text-[#1E1B18] border border-[#E2D9C8] text-xs font-bold transition cursor-pointer"
                 >
                   Auto-Match Expected Cash ($0.00 Variance)
                 </button>
@@ -1848,7 +1839,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               </h3>
 
               {reconciliations.length === 0 ? (
-                <div className="rounded-2xl border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
+                <div className="rounded-lg border border-[#E6DEC8] bg-[#FAF6F0] p-10 text-center space-y-2">
                   <DollarSign className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <p className="text-sm font-bold text-[#1E1B18]">
                     No Daily Reconciliations Logged Yet
@@ -1859,7 +1850,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-[#E6DEC8]">
+                <div className="overflow-x-auto rounded-lg border border-[#E6DEC8]">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#FAF6F0] border-b border-[#E6DEC8] text-[11px] font-extrabold uppercase text-[#6E655F]">
@@ -1925,10 +1916,10 @@ export default function PilotRolloutAndHardwareOpsPage() {
          ===================================================================== */}
       {previewPrintJob && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E6DEC8] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-3">
+          <div className="bg-[#FFFCF7] rounded-lg max-w-lg w-full p-6 border border-[#D8CEC1] space-y-4">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
               <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-[#6B2837]" />
+                <Printer className="w-4 h-4 text-[#6B2837]" />
                 <h3 className="text-sm font-extrabold text-[#1E1B18]">
                   ESC/POS Hardware Payload Inspector • {previewPrintJob.jobNumber}
                 </h3>
@@ -1942,7 +1933,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-xs bg-[#FAF6F0] p-3 rounded-xl border border-[#E6DEC8]">
+            <div className="flex items-center justify-between text-xs bg-[#FAF6F0] p-3 rounded-md border border-[#E6DEC8]">
               <div>
                 <span className="font-bold text-[#1E1B18]">{previewPrintJob.jobType}</span> •{" "}
                 <span className="font-mono">{previewPrintJob.printerWidthMm}mm</span>
@@ -1959,7 +1950,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
             </div>
 
             {previewPrintJob.cashDrawerPulse && (
-              <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-950 font-mono">
+              <div className="p-3 rounded-md bg-purple-50 border border-purple-200 text-xs text-purple-950 font-mono">
                 RJ11 Cash Drawer Kick Pulse Included: <strong>\x1B\x70\x00\x19\xFA</strong> (ESC p 0
                 25 250)
               </div>
@@ -1969,7 +1960,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] font-bold uppercase text-[#6E655F] mb-1">
                 Formatted Thermal Slip Output ({previewPrintJob.printerWidthMm}mm)
               </p>
-              <pre className="p-4 rounded-xl bg-[#1E1B18] text-[#FAF6F0] font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60 leading-relaxed">
+              <pre className="p-4 rounded-md bg-[#1E1B18] text-[#FAF6F0] font-mono text-xs overflow-x-auto whitespace-pre-wrap max-h-60 leading-relaxed">
                 {previewPrintJob.escPosPayload}
               </pre>
             </div>
@@ -1978,7 +1969,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <p className="text-[11px] font-bold uppercase text-[#6E655F] mb-1">
                 Leading Raw Hex Stream
               </p>
-              <div className="p-2.5 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] font-mono text-[11px] text-[#4A433E] break-all">
+              <div className="p-2.5 rounded-md bg-[#FAF6F0] border border-[#E6DEC8] font-mono text-[11px] text-[#4A433E] break-all">
                 {formatEscPosHexPreview(previewPrintJob.escPosPayload)}
               </div>
             </div>
@@ -1987,7 +1978,7 @@ export default function PilotRolloutAndHardwareOpsPage() {
               <button
                 type="button"
                 onClick={() => setPreviewPrintJob(null)}
-                className="px-4 py-2 rounded-xl bg-[#6B2837] text-white text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-md bg-[#6B2837] text-white text-xs font-bold cursor-pointer"
               >
                 Close Inspector
               </button>

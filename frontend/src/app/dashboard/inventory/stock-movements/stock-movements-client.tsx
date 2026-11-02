@@ -47,22 +47,22 @@ export default function StockMovementsClient() {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-5">
+        <div className="bg-primary/10 border border-primary/20 rounded-md p-5">
           <div className="text-primary text-xs font-bold uppercase tracking-wider mb-1">Stock In</div>
           <div className="text-2xl font-black text-primary">{summary.totalIn}</div>
         </div>
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5">
           <div className="text-destructive text-xs font-bold uppercase tracking-wider mb-1">Stock Out</div>
           <div className="text-2xl font-black text-destructive">{summary.totalOut}</div>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-5">
           <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Transfers</div>
           <div className="text-2xl font-black text-blue-600">{summary.totalTransfers}</div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <select
             value={typeFilter}

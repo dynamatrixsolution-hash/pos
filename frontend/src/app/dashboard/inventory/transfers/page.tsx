@@ -297,7 +297,7 @@ export default function StockTransfersPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-6 rounded-3xl shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-6 rounded-lg shadow-sm bg-gradient-to-br from-primary/5 via-transparent to-transparent">
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2">
             <Truck className="h-6 w-6 text-primary" />
@@ -319,7 +319,7 @@ export default function StockTransfersPage() {
             setTransferType("REQUEST");
             setShowRequestModal(true);
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl text-xs font-bold transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md text-xs font-bold transition-all cursor-pointer"
         >
           <Plus className="h-4.5 w-4.5" />
           Request Transfer
@@ -327,18 +327,18 @@ export default function StockTransfersPage() {
       </div>
 
       {successMsg && (
-        <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 rounded-xl font-bold border border-emerald-500/20">
+        <div className="p-3 text-xs bg-emerald-500/10 text-emerald-600 rounded-md font-bold border border-emerald-500/20">
           {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-xl font-bold border border-destructive/20">
+        <div className="p-3 text-xs bg-destructive/10 text-destructive rounded-md font-bold border border-destructive/20">
           {errorMsg}
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-card border border-border p-6 rounded-3xl shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="bg-card border border-border p-6 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-4">
         <select
           value={filterSource}
           onChange={(e) => setFilterSource(e.target.value)}
@@ -376,7 +376,7 @@ export default function StockTransfersPage() {
       </div>
 
       {/* Transfers List */}
-      <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
         {loading ? (
           <div className="py-12 text-center text-xs text-muted-foreground">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary mb-2" />
@@ -392,7 +392,7 @@ export default function StockTransfersPage() {
             {filteredTransfers.map((t) => (
               <div 
                 key={t.id} 
-                className="border border-border/60 hover:border-primary/30 rounded-2xl p-5 flex flex-col space-y-4 transition-all"
+                className="border border-border/60 hover:border-primary/30 rounded-lg p-5 flex flex-col space-y-4 transition-all"
               >
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border/40 pb-3">
@@ -494,7 +494,7 @@ export default function StockTransfersPage() {
                 </div>
 
                 {/* Items Box */}
-                <div className="bg-secondary/30 rounded-xl p-4 border border-border/40">
+                <div className="bg-secondary/30 rounded-md p-4 border border-border/40">
                   <span className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground/80 block mb-2">Item Checklist</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                     {t.items.map((item) => (
@@ -519,7 +519,7 @@ export default function StockTransfersPage() {
       {/* Workflow Action Remarks Dialog */}
       {actingTransfer && actionType && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-3xl max-w-md w-full shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-xs">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full shadow-sm p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-xs">
             <div>
               <h3 className="font-black text-foreground text-sm uppercase tracking-wide">
                 Confirm {actionType} Workflow Action
@@ -547,14 +547,14 @@ export default function StockTransfersPage() {
                   setActionType(null);
                   setActionRemarks("");
                 }}
-                className="px-3.5 py-1.5 border border-border rounded-xl font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
+                className="px-3.5 py-1.5 border border-border rounded-md font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={executeWorkflowStep}
-                className="px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl font-bold cursor-pointer"
+                className="px-4 py-1.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md font-bold cursor-pointer"
               >
                 Confirm
               </button>
@@ -568,7 +568,7 @@ export default function StockTransfersPage() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateRequest}
-            className="bg-card border border-border rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-xs"
+            className="bg-card border border-border rounded-lg max-w-xl w-full max-h-[90vh] flex flex-col shadow-sm animate-in fade-in zoom-in-95 duration-150 text-xs"
           >
             <div className="p-6 border-b border-border/50 flex items-center justify-between">
               <h3 className="font-black text-foreground text-sm flex items-center gap-2">
@@ -578,7 +578,7 @@ export default function StockTransfersPage() {
               <button
                 type="button"
                 onClick={() => setShowRequestModal(false)}
-                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-xl font-semibold cursor-pointer"
+                className="px-2.5 py-1 text-xs border border-border hover:bg-secondary rounded-md font-semibold cursor-pointer"
               >
                 Cancel
               </button>
@@ -586,7 +586,7 @@ export default function StockTransfersPage() {
 
             <div className="p-6 overflow-y-auto space-y-4">
               {/* Transfer Mode Selector Toggle */}
-              <div className="bg-secondary/15 p-1 rounded-xl border border-border/40 grid grid-cols-2 gap-1">
+              <div className="bg-secondary/15 p-1 rounded-md border border-border/40 grid grid-cols-2 gap-1">
                 <button
                   type="button"
                   onClick={() => setTransferType("REQUEST")}
@@ -655,7 +655,7 @@ export default function StockTransfersPage() {
 
               {/* Overstock Suggestions */}
               {transferType === "SEND_OVERSTOCK" && selectedSource && (
-                <div className="border border-border/60 rounded-xl p-4 bg-primary/5 space-y-2">
+                <div className="border border-border/60 rounded-md p-4 bg-primary/5 space-y-2">
                   <div className="flex justify-between items-center border-b border-border/40 pb-1.5">
                     <span className="text-[10px] uppercase font-black tracking-wider text-primary block">
                       Suggested Overstocked Items at Source
@@ -708,7 +708,7 @@ export default function StockTransfersPage() {
               )}
 
               {/* Add Product Line Section */}
-              <div className="border border-border/60 rounded-xl p-4 bg-secondary/10 space-y-3">
+              <div className="border border-border/60 rounded-md p-4 bg-secondary/10 space-y-3">
                 <span className="text-[10px] uppercase font-black tracking-wider text-muted-foreground block border-b border-border/40 pb-1.5">
                   Add Stock Item
                 </span>
@@ -747,7 +747,7 @@ export default function StockTransfersPage() {
 
                 {/* Real-time stock display */}
                 {currentProduct && (
-                  <div className="mt-2.5 p-3 rounded-xl border border-border/60 text-[11px] space-y-2.5 bg-background shadow-xs">
+                  <div className="mt-2.5 p-3 rounded-md border border-border/60 text-[11px] space-y-2.5 bg-background shadow-xs">
                     {/* Status in selected source */}
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground font-semibold">Selected Source Stock:</span>
@@ -809,7 +809,7 @@ export default function StockTransfersPage() {
               <div className="space-y-2">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">Items Requested</span>
                 {transferItems.length === 0 ? (
-                  <div className="p-4 border border-dashed border-border rounded-xl text-center text-muted-foreground font-semibold">
+                  <div className="p-4 border border-dashed border-border rounded-md text-center text-muted-foreground font-semibold">
                     No items added yet. Search and add items above.
                   </div>
                 ) : (
@@ -828,7 +828,7 @@ export default function StockTransfersPage() {
                       ) || [];
 
                       return (
-                        <div key={index} className={`flex flex-col p-3 border rounded-xl bg-card hover:bg-secondary/10 transition-all ${
+                        <div key={index} className={`flex flex-col p-3 border rounded-md bg-card hover:bg-secondary/10 transition-all ${
                           !hasSufficientStock ? "border-destructive/30 bg-destructive/5" : "border-border"
                         }`}>
                           <div className="flex justify-between items-center">
@@ -915,13 +915,13 @@ export default function StockTransfersPage() {
               <button
                 type="button"
                 onClick={() => setShowRequestModal(false)}
-                className="px-4 py-2 border border-border rounded-xl font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
+                className="px-4 py-2 border border-border rounded-md font-bold hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer text-xs"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl font-bold cursor-pointer"
+                className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/95 rounded-md font-bold cursor-pointer"
               >
                 Send Request
               </button>

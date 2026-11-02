@@ -1,5 +1,7 @@
 "use client";
 
+import { Notify } from "@/lib/notify";
+
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
@@ -204,7 +206,7 @@ export default function AccountingReportsPage() {
 
   const exportExcel = () => {
     const list = activeTab === "cashbook" ? cashPayments : bankPayments;
-    if (list.length === 0) return alert("No ledger logs available");
+    if (list.length === 0) return Notify.warning("No ledger logs available");
     const ws = XLSX.utils.json_to_sheet(list);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ledger");
@@ -236,10 +238,10 @@ export default function AccountingReportsPage() {
 
       return (
         <div className="space-y-4">
-          <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl">
+          <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg">
             <table className="w-full text-xs text-left border-collapse font-mono">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-2.5 px-3">Date</th>
                   <th className="py-2.5 px-3">Reference</th>
                   <th className="py-2.5 px-3">Description</th>
@@ -252,17 +254,17 @@ export default function AccountingReportsPage() {
                 {activeList.map((entry) => {
                   runningBalance += entry.debit - entry.credit;
                   return (
-                    <tr key={entry.id} className="hover:bg-slate-50/50">
+                    <tr key={entry.id} className="hover:bg-[#F7F3EC]">
                       <td className="py-2.5 px-3 font-medium whitespace-nowrap">{new Date(entry.date).toLocaleDateString()}</td>
                       <td className="py-2.5 px-3 font-semibold">{entry.reference}</td>
-                      <td className="py-2.5 px-3 text-slate-500 font-sans">{entry.description}</td>
+                      <td className="py-2.5 px-3 text-[#71675E] font-sans">{entry.description}</td>
                       <td className="py-2.5 px-3 text-right text-emerald-600 font-bold">
                         {entry.debit > 0 ? `${currencySymbol}${entry.debit.toFixed(2)}` : "—"}
                       </td>
                       <td className="py-2.5 px-3 text-right text-red-500 font-bold">
                         {entry.credit > 0 ? `${currencySymbol}${entry.credit.toFixed(2)}` : "—"}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-black text-slate-800 dark:text-slate-200">
+                      <td className="py-2.5 px-3 text-right font-black text-[#292320] dark:text-slate-200">
                         {currencySymbol}{runningBalance.toFixed(2)}
                       </td>
                     </tr>
@@ -289,10 +291,10 @@ export default function AccountingReportsPage() {
 
       return (
         <div className="space-y-4">
-          <div className="overflow-x-auto border border-slate-200/50 dark:border-slate-800 rounded-2xl">
+          <div className="overflow-x-auto border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                <tr className="bg-[#F7F3EC] dark:bg-slate-900 border-b border-[#D8CEC1] dark:border-slate-800 text-[#71675E] font-bold uppercase text-[9px] tracking-wider">
                   <th className="py-2.5 px-3">Account Ledger Name</th>
                   <th className="py-2.5 px-3 text-right">Debit Balance</th>
                   <th className="py-2.5 px-3 text-right">Credit Balance</th>
@@ -302,27 +304,27 @@ export default function AccountingReportsPage() {
                 <tr>
                   <td className="py-2.5 px-3 font-semibold">Sales Revenue Account</td>
                   <td className="py-2.5 px-3 text-right">—</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">{currencySymbol}{totalSales.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">{currencySymbol}{totalSales.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-semibold">Purchases Stock Account</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">{currencySymbol}{totalPurchases.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">{currencySymbol}{totalPurchases.toFixed(2)}</td>
                   <td className="py-2.5 px-3 text-right">—</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-semibold">Operating Expense Accounts</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">{currencySymbol}{totalExpenses.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">{currencySymbol}{totalExpenses.toFixed(2)}</td>
                   <td className="py-2.5 px-3 text-right">—</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-semibold">Accounts Receivables (Customers Debt)</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">{currencySymbol}{totalReceivables.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">{currencySymbol}{totalReceivables.toFixed(2)}</td>
                   <td className="py-2.5 px-3 text-right">—</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-semibold">Accounts Payables (Supplier Credit Owed)</td>
                   <td className="py-2.5 px-3 text-right">—</td>
-                  <td className="py-2.5 px-3 text-right font-bold text-slate-800 dark:text-slate-200">{currencySymbol}{totalPayables.toFixed(2)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">{currencySymbol}{totalPayables.toFixed(2)}</td>
                 </tr>
               </tbody>
             </table>
@@ -339,9 +341,9 @@ export default function AccountingReportsPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-black text-[#292320] dark:text-white flex items-center gap-2">
             <Receipt className="h-6 w-6 text-[#2563EB]" /> Accounting Reports
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -350,7 +352,7 @@ export default function AccountingReportsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 px-3 py-2 rounded-xl text-xs w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 px-3 py-2 rounded-md text-xs w-full sm:w-auto">
             <Calendar className="h-4 w-4 text-[#2563EB]" />
             <select
               value={datePreset}
@@ -368,14 +370,14 @@ export default function AccountingReportsPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={exportExcel}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#EEE7DD] hover:bg-[#EEE7DD] dark:bg-slate-900 dark:hover:bg-slate-800 border border-[#D8CEC1] dark:border-slate-800 rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Excel</span>
             </button>
             <button
               onClick={exportPDF}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-md text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
             >
               <Printer className="h-4 w-4" />
               <span>PDF</span>
@@ -385,33 +387,33 @@ export default function AccountingReportsPage() {
       </div>
 
       {/* 2. Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
+      <div className="flex items-center gap-2 border-b border-[#D8CEC1] dark:border-slate-800 pb-2.5 overflow-x-auto scrollbar-none shrink-0">
         <button
           onClick={() => setActiveTab("cashbook")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "cashbook"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Cash Book
         </button>
         <button
           onClick={() => setActiveTab("bankbook")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "bankbook"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Bank Book
         </button>
         <button
           onClick={() => setActiveTab("trialbalance")}
-          className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all select-none cursor-pointer border ${
+          className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer border ${
             activeTab === "trialbalance"
-              ? "bg-[#2563EB] text-white border-transparent shadow-md shadow-[#2563EB]/15"
-              : "bg-white hover:bg-slate-50 dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-850"
+              ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+              : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-[#0a0f24] dark:hover:bg-slate-900 text-[#71675E] border-[#D8CEC1] dark:border-slate-850"
           }`}
         >
           Trial Balance Sheet
@@ -419,7 +421,7 @@ export default function AccountingReportsPage() {
       </div>
 
       {/* 3. Content */}
-      <div className="bg-white dark:bg-[#0a0f24] border border-slate-200/50 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+      <div className="bg-[#FFFCF7] dark:bg-[#0a0f24] border border-[#D8CEC1]/50 dark:border-slate-800 rounded-lg p-6 shadow-sm">
         {renderContent()}
       </div>
     </div>

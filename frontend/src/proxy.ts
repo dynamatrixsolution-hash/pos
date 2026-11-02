@@ -11,6 +11,11 @@ export default auth(function proxy(req: any): any {
   const user = req.auth?.user as any;
   const role = user?.role || "CASHIER";
 
+  // Always allow the unauthorized page itself to prevent redirect loops!
+  if (pathname === "/dashboard/unauthorized" || pathname.startsWith("/dashboard/unauthorized/")) {
+    return NextResponse.next();
+  }
+
   // Check if user has access to the requested route
   if (!canAccessRoute(role, pathname)) {
     const redirectUrl = new URL("/dashboard/unauthorized", req.nextUrl.origin);

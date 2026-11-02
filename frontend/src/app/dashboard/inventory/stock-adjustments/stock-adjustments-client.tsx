@@ -52,30 +52,30 @@ export default function StockAdjustmentsClient() {
     <div className="space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Adjustments</div>
           <div className="text-2xl font-black">{summary.totalAdjustments}</div>
         </div>
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-5">
+        <div className="bg-primary/10 border border-primary/20 rounded-md p-5">
           <div className="text-primary text-xs font-bold uppercase tracking-wider mb-1">Stock In</div>
           <div className="text-2xl font-black text-primary">{(summary.byType as any)?.STOCK_IN || 0}</div>
         </div>
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5">
           <div className="text-destructive text-xs font-bold uppercase tracking-wider mb-1">Stock Out</div>
           <div className="text-2xl font-black text-destructive">{(summary.byType as any)?.STOCK_OUT || 0}</div>
         </div>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-5">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-5">
           <div className="text-yellow-600 text-xs font-bold uppercase tracking-wider mb-1">Damage</div>
           <div className="text-2xl font-black text-yellow-600">{(summary.byType as any)?.DAMAGE || 0}</div>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-5">
           <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Adjustments</div>
           <div className="text-2xl font-black text-blue-600">{(summary.byType as any)?.ADJUSTMENT || 0}</div>
         </div>
       </div>
 
       {/* Controls & List */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <select
             value={typeFilter}

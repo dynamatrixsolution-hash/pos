@@ -81,30 +81,30 @@ export default function MovementHistoryClient() {
     <div className="space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Movements</div>
           <div className="text-2xl font-black">{summary.totalMovements}</div>
         </div>
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-5">
+        <div className="bg-primary/10 border border-primary/20 rounded-md p-5">
           <div className="text-primary text-xs font-bold uppercase tracking-wider mb-1">Purchases</div>
           <div className="text-2xl font-black text-primary">{summary.byType.PURCHASE}</div>
         </div>
-        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-5">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-5">
           <div className="text-destructive text-xs font-bold uppercase tracking-wider mb-1">Sales</div>
           <div className="text-2xl font-black text-destructive">{summary.byType.SALE}</div>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-5">
           <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Adjustments</div>
           <div className="text-2xl font-black text-blue-600">{summary.byType.ADJUSTMENT}</div>
         </div>
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-5">
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-md p-5">
           <div className="text-purple-600 text-xs font-bold uppercase tracking-wider mb-1">Transfers</div>
           <div className="text-2xl font-black text-purple-600">{summary.byType.TRANSFER}</div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+      <div className="bg-card border border-border rounded-lg p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
