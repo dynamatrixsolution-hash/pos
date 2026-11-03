@@ -42,6 +42,11 @@ const supplierSchema = z.object({
 
 type SupplierInputs = z.infer<typeof supplierSchema>;
 
+const num = (v: any) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
+
 export default function SuppliersPage() {
   const { currencySymbol } = useSettings();
   const [suppliers, setSuppliers] = React.useState<SupplierItem[]>([]);

@@ -49,7 +49,10 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      suppliers,
+      suppliers: suppliers.map((s) => ({
+        ...s,
+        balance: Number(s.balance || 0),
+      })),
       pagination: {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limit),
