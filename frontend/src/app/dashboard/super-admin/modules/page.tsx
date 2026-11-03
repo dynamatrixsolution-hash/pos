@@ -7,18 +7,10 @@ import Link from "next/link";
 import {
   Boxes,
   Zap,
-  TrendingUp,
-  DollarSign,
   Layers,
-  ShieldCheck,
   Search,
-  Filter,
   Plus,
-  CheckCircle2,
-  AlertTriangle,
   X,
-  RefreshCw,
-  SlidersHorizontal,
   UtensilsCrossed,
   Store,
   Coffee,
@@ -31,11 +23,9 @@ import {
   WifiOff,
   Building2,
   ShieldAlert,
-  ChevronDown,
-  Info,
-  Sliders,
-  Check,
+  SlidersHorizontal,
 } from "lucide-react";
+import { toast } from "@/components/toast";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 
@@ -136,9 +126,6 @@ export default function ModuleControlCenterPage() {
   const [tenantModules, setTenantModules] = useState<string[]>([]);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
 
-  // Feedback Notification
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
   const fetchModulesData = useCallback(async () => {
     setLoading(true);
     try {
@@ -157,10 +144,10 @@ export default function ModuleControlCenterPage() {
         }
       } else {
         const err = await res.json().catch(() => ({}));
-        setFeedback({ type: "error", message: err.error || "Failed to load modules" });
+        toast.error(err.error || "Failed to load modules");
       }
     } catch {
-      setFeedback({ type: "error", message: "Network connection error loading modules." });
+      toast.error("Network connection error loading modules.");
     } finally {
       setLoading(false);
     }
@@ -215,12 +202,9 @@ export default function ModuleControlCenterPage() {
       setModules((prev) =>
         prev.map((m) => (m.code === module.code ? { ...m, isActive: nextState } : m))
       );
-      setFeedback({
-        type: "success",
-        message: `Module '${module.name}' is now ${nextState ? "ACTIVE" : "INACTIVE"}.`,
-      });
+      toast.success(`Module '${module.name}' is now ${nextState ? "ACTIVE" : "INACTIVE"}.`);
     } catch (err: any) {
-      setFeedback({ type: "error", message: err.message });
+      toast.error(err.message);
     }
   };
 
@@ -248,12 +232,9 @@ export default function ModuleControlCenterPage() {
       setModules((prev) =>
         prev.map((m) => (m.code === module.code ? { ...m, [planKey]: nextVal } : m))
       );
-      setFeedback({
-        type: "success",
-        message: `Updated tier inclusion for ${module.name}.`,
-      });
+      toast.success(`Updated tier inclusion for ${module.name}.`);
     } catch (err: any) {
-      setFeedback({ type: "error", message: err.message });
+      toast.error(err.message);
     }
   };
 
@@ -261,7 +242,7 @@ export default function ModuleControlCenterPage() {
   const handleAddModule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newModuleName.trim() || !newModuleCode.trim()) {
-      setFeedback({ type: "error", message: "Module name and code are required." });
+      toast.error("Module name and code are required.");
       return;
     }
     setIsSubmitting(true);
@@ -288,10 +269,10 @@ export default function ModuleControlCenterPage() {
       setNewModuleName("");
       setNewModuleCode("");
       setNewModuleDesc("");
-      setFeedback({ type: "success", message: `Module '${newModuleName}' created successfully.` });
+      toast.success(`Module '${newModuleName}' created successfully.`);
       fetchModulesData();
     } catch (err: any) {
-      setFeedback({ type: "error", message: err.message });
+      toast.error(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -335,9 +316,9 @@ export default function ModuleControlCenterPage() {
       setTenants((prev) =>
         prev.map((t) => (t.id === selectedTenantId ? { ...t, enabledModules: tenantModules } : t))
       );
-      setFeedback({ type: "success", message: "Property module permissions saved successfully." });
+      toast.success("Property module permissions saved successfully.");
     } catch (err: any) {
-      setFeedback({ type: "error", message: err.message });
+      toast.error(err.message);
     } finally {
       setIsSavingTenant(false);
     }
@@ -372,612 +353,512 @@ export default function ModuleControlCenterPage() {
   });
 
   return (
-    <div className="space-y-5 text-[#292320]">
-      {/* 1. Header with Breadcrumbs & Action Tools matching Screenshot */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#292320]">Module Control Center</h1>
-          <p className="text-xs text-[#71675E] mt-0.5">
-            Configure feature flags, set plan availability, and monitor global module usage across all properties.
-          </p>
-        </div>
-
-        {/* Action Tools */}
-        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
-          {/* Quick Search */}
-          <div className="relative flex-1 sm:w-60">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#71675E]" />
-            <input
-              type="text"
-              placeholder="Search modules..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-md text-xs text-[#292320] placeholder-[#71675E] focus:outline-none focus:ring-1 focus:ring-[#6B2837]"
-            />
+    <div
+      className="min-h-full bg-[#F7F3EC] text-[#292320]"
+      style={{
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      }}
+    >
+      <div className="max-w-[1400px] mx-auto space-y-2">
+        {/* 1. Header Block: Breadcrumb & Title grouped tightly */}
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-[#71675E] font-normal leading-none">
+            <Link href="/dashboard/super-admin" className="hover:text-[#292320]">
+              Platform
+            </Link>
+            <span>/</span>
+            <span className="text-[#292320]">Modules &amp; Feature Matrix</span>
           </div>
 
-          <ExportDropdown
-            getExportOptions={getExportOptions}
-            buttonText="Export Data"
-            variant="outline"
-          />
+          <div className="flex items-center justify-between pt-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-[#292320] leading-tight">
+              Module Control Center
+            </h1>
 
-          <button
-            onClick={() => setShowAddModuleModal(true)}
-            className="px-3.5 py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>+ Add Module</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Banner */}
-      {feedback && (
-        <div
-          className={`p-3 text-xs rounded-md border flex items-center justify-between ${
-            feedback.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : "bg-rose-50 text-rose-800 border-rose-200"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {feedback.type === "success" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-            ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-            )}
-            <span className="font-medium">{feedback.message}</span>
-          </div>
-          <button
-            onClick={() => setFeedback(null)}
-            className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* 2. Top 6-KPI Cards Row matching Screenshot */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Total Modules */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Total Modules</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-[#292320] tabular-nums">
-                {modules.length}
-              </span>
-              <span className="text-[10px] text-emerald-700 font-medium truncate">Live in DB</span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
-            <Boxes className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Active Modules */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Active Modules</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-[#292320] tabular-nums">
-                {modules.filter((m) => m.isActive).length}
-              </span>
-              <span className="text-[10px] text-emerald-700 font-medium truncate">
-                {modules.filter((m) => m.isActive).length}/{modules.length} enabled
-              </span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
-            <Zap className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Total MRR */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Total MRR</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-emerald-700 tabular-nums">
-                NPR 18.7k
-              </span>
-              <span className="text-[10px] text-emerald-700 font-medium truncate">↑ 12.3%</span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0 font-bold text-xs">
-            $
-          </div>
-        </div>
-
-        {/* Avg Usage */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Avg Usage</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-purple-700 tabular-nums">
-                {tenants.length || 3}
-              </span>
-              <span className="text-[10px] text-[#71675E] truncate">properties / mod</span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0">
-            <TrendingUp className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Categories</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-amber-700 tabular-nums">
-                {categories.length || 4}
-              </span>
-              <span className="text-[10px] text-[#71675E] truncate">Dining, Hotel, Ops</span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
-            <Layers className="h-4 w-4" />
-          </div>
-        </div>
-
-        {/* Plan Coverage */}
-        <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1]/80 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium text-[#71675E] truncate">Plan Coverage</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold tracking-tight text-blue-700 tabular-nums">
-                4
-              </span>
-              <span className="text-[10px] text-[#71675E] truncate">Starter → Ent</span>
-            </div>
-          </div>
-          <div className="h-8 w-8 rounded-md bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Sub-Navigation Tabs matching Screenshot */}
-      <div className="flex border-b border-[#D8CEC1] gap-6 text-xs font-semibold overflow-x-auto">
-        <button
-          onClick={() => setActiveTab("ALL")}
-          className={`pb-2.5 border-b-2 whitespace-nowrap cursor-pointer transition-colors ${
-            activeTab === "ALL"
-              ? "border-[#6B2837] text-[#6B2837]"
-              : "border-transparent text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          All ({modules.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("DINING")}
-          className={`pb-2.5 border-b-2 whitespace-nowrap cursor-pointer transition-colors ${
-            activeTab === "DINING"
-              ? "border-[#6B2837] text-[#6B2837]"
-              : "border-transparent text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          Dining & POS ({modules.filter((m) => m.category === "DINING").length})
-        </button>
-        <button
-          onClick={() => setActiveTab("LODGING")}
-          className={`pb-2.5 border-b-2 whitespace-nowrap cursor-pointer transition-colors ${
-            activeTab === "LODGING"
-              ? "border-[#6B2837] text-[#6B2837]"
-              : "border-transparent text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          Hotel & Lodging ({modules.filter((m) => m.category === "LODGING").length})
-        </button>
-        <button
-          onClick={() => setActiveTab("OPERATIONS")}
-          className={`pb-2.5 border-b-2 whitespace-nowrap cursor-pointer transition-colors ${
-            activeTab === "OPERATIONS"
-              ? "border-[#6B2837] text-[#6B2837]"
-              : "border-transparent text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          Kitchen & Operations ({modules.filter((m) => m.category === "OPERATIONS").length})
-        </button>
-        <button
-          onClick={() => setActiveTab("INTEGRATION")}
-          className={`pb-2.5 border-b-2 whitespace-nowrap cursor-pointer transition-colors ${
-            activeTab === "INTEGRATION"
-              ? "border-[#6B2837] text-[#6B2837]"
-              : "border-transparent text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          Integrations & Fiscal ({modules.filter((m) => m.category === "INTEGRATION").length})
-        </button>
-      </div>
-
-      {/* 4. Split Layout: Main 3-Column Cards Grid + Right Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* Main 3-Column Grid Area (75% on Desktop) */}
-        <div className="lg:col-span-3 space-y-4">
-          {loading ? (
-            <div className="p-12 text-center space-y-3 bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#6B2837] border-t-transparent mx-auto" />
-              <p className="text-xs text-[#71675E]">Loading platform module matrix...</p>
-            </div>
-          ) : filteredModules.length === 0 ? (
-            <div className="p-12 text-center space-y-2 bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg">
-              <Boxes className="h-8 w-8 text-[#71675E] mx-auto opacity-50" />
-              <p className="text-xs font-semibold text-[#292320]">No modules found</p>
-              <p className="text-[11px] text-[#71675E]">No modules matched your criteria in this category.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {filteredModules.map((mod) => {
-                const IconComponent = ICON_MAP[mod.iconName] || Boxes;
-                return (
-                  <div
-                    key={mod.id}
-                    className={`bg-[#FFFCF7] rounded-lg border p-4 flex flex-col justify-between transition-all ${
-                      mod.isActive
-                        ? "border-[#D8CEC1]/80 hover:border-[#6B2837]/60 shadow-2xs"
-                        : "border-[#D8CEC1]/40 bg-[#F7F3EC]/30 opacity-70"
-                    }`}
-                  >
-                    <div>
-                      {/* Top Row: Icon + Name + Category + Toggle Switch */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <div className="p-2 rounded-md bg-[#F7F3EC] text-[#6B2837] border border-[#D8CEC1] shrink-0 mt-0.5">
-                            <IconComponent className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-xs font-bold text-[#292320] leading-tight truncate">
-                              {mod.name}
-                            </h3>
-                            <p className="text-[10px] text-[#71675E] mt-0.5 flex items-center gap-1 font-medium">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <span>
-                                {mod.category === "DINING"
-                                  ? "Dining & POS"
-                                  : mod.category === "LODGING"
-                                  ? "Hotel & Lodging"
-                                  : mod.category === "OPERATIONS"
-                                  ? "Operations"
-                                  : "Integration"}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Minimal Toggle Switch */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleModuleActive(mod)}
-                          title={mod.isActive ? "Disable module globally" : "Enable module globally"}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            mod.isActive ? "bg-emerald-600" : "bg-[#D8CEC1]"
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                              mod.isActive ? "translate-x-4" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Description */}
-                      <p className="text-[11px] text-[#71675E] mt-2.5 line-clamp-2 min-h-[32px] leading-relaxed">
-                        {mod.description}
-                      </p>
-                    </div>
-
-                    {/* Bottom Row: Plan Badges + Status Tag */}
-                    <div className="mt-4 pt-3 border-t border-[#D8CEC1]/60 flex items-center justify-between gap-1">
-                      {/* Interactive Plan Badges */}
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePlanInclusion(mod, "starterIncluded")}
-                          title={`Toggle Starter tier (${mod.starterIncluded ? "Included" : "Excluded"})`}
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-tight border transition-colors cursor-pointer ${
-                            mod.starterIncluded
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                              : "bg-[#F7F3EC] text-[#71675E] border-transparent opacity-50"
-                          }`}
-                        >
-                          Basic
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePlanInclusion(mod, "standardIncluded")}
-                          title={`Toggle Standard tier (${mod.standardIncluded ? "Included" : "Excluded"})`}
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-tight border transition-colors cursor-pointer ${
-                            mod.standardIncluded
-                              ? "bg-blue-50 text-blue-800 border-blue-300"
-                              : "bg-[#F7F3EC] text-[#71675E] border-transparent opacity-50"
-                          }`}
-                        >
-                          Standard
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePlanInclusion(mod, "proIncluded")}
-                          title={`Toggle Professional tier (${mod.proIncluded ? "Included" : "Excluded"})`}
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-tight border transition-colors cursor-pointer ${
-                            mod.proIncluded
-                              ? "bg-[#FAF2F4] text-[#6B2837] border-[#E8D7DA]"
-                              : "bg-[#F7F3EC] text-[#71675E] border-transparent opacity-50"
-                          }`}
-                        >
-                          Pro
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePlanInclusion(mod, "enterpriseIncluded")}
-                          title={`Toggle Enterprise tier (${mod.enterpriseIncluded ? "Included" : "Excluded"})`}
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-tight border transition-colors cursor-pointer ${
-                            mod.enterpriseIncluded
-                              ? "bg-amber-50 text-amber-800 border-amber-300"
-                              : "bg-[#F7F3EC] text-[#71675E] border-transparent opacity-50"
-                          }`}
-                        >
-                          Enterprise
-                        </button>
-                      </div>
-
-                      {/* Active Status Pill */}
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                          mod.isActive ? "text-emerald-700" : "text-[#71675E]"
-                        }`}
-                      >
-                        {mod.isActive ? "ACTIVE" : "INACTIVE"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar Column (25% on Desktop) */}
-        <div className="space-y-4">
-          {/* Card 1: Categories matching Screenshot */}
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-4 space-y-3">
-            <h3 className="text-xs font-bold text-[#292320]">Categories</h3>
-            <div className="space-y-2 text-xs">
-              {categories.map((cat) => (
-                <button
-                  key={cat.code}
-                  onClick={() => setActiveTab(cat.code)}
-                  className={`w-full flex items-center justify-between text-left py-1 px-1.5 rounded transition-colors cursor-pointer ${
-                    activeTab === cat.code
-                      ? "bg-[#FAF2F4] text-[#6B2837] font-bold"
-                      : "text-[#71675E] hover:text-[#292320] hover:bg-[#F7F3EC]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        activeTab === cat.code ? "bg-[#6B2837]" : "bg-[#71675E]"
-                      }`}
-                    />
-                    <span>{cat.name}</span>
-                  </span>
-                  <span className="text-[11px] tabular-nums font-semibold opacity-75">{cat.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Card 2: Module Notice matching Screenshot */}
-          <div className="bg-[#FFFDF5] border border-amber-200/80 rounded-lg p-3.5 space-y-2 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <span>Module Notice</span>
-            </div>
-            <p className="text-[11px] text-amber-800 leading-relaxed">
-              Disabling a module globally will immediately remove it from all restaurant and hotel menus. Click a plan badge to toggle its default inclusion.
-            </p>
-          </div>
-
-          {/* Card 3: Property Feature Overrides Gatekeeper */}
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-4 space-y-3 text-xs">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[#292320]">Property Overrides</h3>
-              <span className="text-[10px] text-[#71675E] font-medium">Tenant Gate</span>
-            </div>
-            <p className="text-[11px] text-[#71675E]">
-              Customize granted modules for an individual property regardless of plan limits.
-            </p>
-
-            <select
-              value={selectedTenantId}
-              onChange={(e) => handleSelectTenant(e.target.value)}
-              className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320] cursor-pointer"
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.plan})
-                </option>
-              ))}
-            </select>
-
-            {/* Checklist of modules for selected tenant */}
-            <div className="max-h-52 overflow-y-auto space-y-1.5 pt-1 border-t border-[#D8CEC1]/60">
-              {modules.map((m) => {
-                const isEnabled = tenantModules.includes(m.code);
-                return (
-                  <label
-                    key={m.code}
-                    className="flex items-center justify-between p-1.5 rounded hover:bg-[#F7F3EC] text-xs cursor-pointer select-none"
-                  >
-                    <span className="text-[#292320] truncate font-medium">{m.name}</span>
-                    <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      onChange={() => handleToggleTenantModule(m.code)}
-                      className="rounded border-[#D8CEC1] text-[#6B2837] focus:ring-[#6B2837] cursor-pointer"
-                    />
-                  </label>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={handleSaveTenantOverrides}
-              disabled={isSavingTenant}
-              className="w-full py-2 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded-md text-xs font-semibold shadow-xs transition-colors cursor-pointer text-center disabled:opacity-50"
-            >
-              {isSavingTenant ? "Saving..." : "Save Property Overrides"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* MODAL: Add New Module */}
-      {showAddModuleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-5 space-y-4 shadow-md text-[#292320]">
-            <div className="flex justify-between items-start border-b border-[#D8CEC1] pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#292320]">Create New Feature Module</h3>
-                <p className="text-xs text-[#71675E] mt-0.5">Register a new capability in the platform catalog.</p>
-              </div>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowAddModuleModal(false)}
-                className="text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
+                onClick={fetchModulesData}
+                disabled={loading}
+                className="px-3 py-1 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] text-xs font-medium rounded hover:bg-[#EEE7DD] transition-colors cursor-pointer disabled:opacity-50"
               >
-                <X className="h-4 w-4" />
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+
+              <ExportDropdown
+                getExportOptions={getExportOptions}
+                buttonText="Export Matrix"
+                className="!text-xs !py-1 !px-3"
+              />
+
+              <button
+                onClick={() => setShowAddModuleModal(true)}
+                className="px-3.5 py-1 bg-[#6B2837] hover:bg-[#521E2A] text-white text-xs font-medium rounded shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="h-3 w-3 stroke-[2.5]" />
+                <span>Add Module</span>
               </button>
             </div>
+          </div>
+        </div>
 
-            <form onSubmit={handleAddModule} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                  Module Name <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Valet Parking & Luggage Dispatch"
-                  value={newModuleName}
-                  onChange={(e) => setNewModuleName(e.target.value)}
-                  className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320]"
-                />
+        {/* 2. Top Metric Bar (4-Column Connected Strip with compact <= 7px padding) */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#D8CEC1]">
+          {/* Total Modules */}
+          <div className="px-3.5 py-1.5">
+            <div className="text-xs text-[#71675E] leading-none">Total modules</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {modules.length}
+              </span>
+              <span className="text-[11px] font-medium text-[#057A55] leading-none">Catalog Live</span>
+            </div>
+          </div>
+
+          {/* Active Modules */}
+          <div className="px-3.5 py-1.5">
+            <div className="text-xs text-[#71675E] leading-none">Active modules</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {modules.filter((m) => m.isActive).length}
+              </span>
+              <span className="text-[11px] text-[#71675E] leading-none">
+                {modules.filter((m) => !m.isActive).length} disabled
+              </span>
+            </div>
+          </div>
+
+          {/* Module Categories */}
+          <div className="px-3.5 py-1.5">
+            <div className="text-xs text-[#71675E] leading-none">Categories</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {categories.length || 4}
+              </span>
+              <span className="text-[11px] text-[#71675E] leading-none">Dining, Hotel, Ops</span>
+            </div>
+          </div>
+
+          {/* Plan Coverage */}
+          <div className="px-3.5 py-1.5">
+            <div className="text-xs text-[#71675E] leading-none">Plan coverage</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                4 Tiers
+              </span>
+              <span className="text-[11px] text-[#71675E] leading-none">Starter → Ent</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Filter Bar & Category Tabs */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab("ALL")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "ALL"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              All ({modules.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("DINING")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "DINING"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Dining &amp; POS ({modules.filter((m) => m.category === "DINING").length})
+            </button>
+            <button
+              onClick={() => setActiveTab("LODGING")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "LODGING"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Hotel &amp; Rooms ({modules.filter((m) => m.category === "LODGING").length})
+            </button>
+            <button
+              onClick={() => setActiveTab("OPERATIONS")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "OPERATIONS"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Kitchen &amp; Ops ({modules.filter((m) => m.category === "OPERATIONS").length})
+            </button>
+            <button
+              onClick={() => setActiveTab("INTEGRATION")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === "INTEGRATION"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Fiscal &amp; IRD ({modules.filter((m) => m.category === "INTEGRATION").length})
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Search module name or code..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-2.5 py-1 border border-[#D8CEC1] rounded text-xs bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837] w-full sm:w-56"
+            />
+          </div>
+        </div>
+
+        {/* 4. Split Layout: Modules Matrix (Left) + Property Overrides (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+          {/* Main Modules Matrix Area (Left 9 cols) */}
+          <div className="lg:col-span-8 xl:col-span-9">
+            {loading ? (
+              <div className="p-8 text-center bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs text-[#71675E]">
+                Loading platform modules...
+              </div>
+            ) : filteredModules.length === 0 ? (
+              <div className="p-8 text-center bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs text-[#71675E]">
+                No modules match the selected filter.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                {filteredModules.map((mod) => {
+                  const IconComponent = ICON_MAP[mod.iconName] || Boxes;
+                  return (
+                    <div
+                      key={mod.id}
+                      className={`bg-[#FFFCF7] rounded-lg border p-2.5 flex flex-col justify-between transition-colors ${
+                        mod.isActive
+                          ? "border-[#D8CEC1] hover:border-[#6B2837]"
+                          : "border-[#D8CEC1]/60 opacity-60 bg-[#F7F3EC]/50"
+                      }`}
+                    >
+                      <div>
+                        {/* Top Row: Icon + Name + Category + Toggle Switch */}
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="flex items-start gap-2 min-w-0">
+                            <div className="p-1.5 rounded bg-[#F7F3EC] text-[#6B2837] border border-[#D8CEC1] shrink-0 mt-0.5">
+                              <IconComponent className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-xs font-semibold text-[#292320] leading-tight truncate">
+                                {mod.name}
+                              </h3>
+                              <span className="text-[10px] text-[#71675E] font-mono leading-none">
+                                {mod.code}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Minimal Toggle Switch */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModuleActive(mod)}
+                            title={mod.isActive ? "Disable globally" : "Enable globally"}
+                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-150 ease-in-out ${
+                              mod.isActive ? "bg-[#057A55]" : "bg-[#D8CEC1]"
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs transition duration-150 ease-in-out ${
+                                mod.isActive ? "translate-x-3" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-[11px] text-[#71675E] mt-1.5 line-clamp-2 leading-relaxed">
+                          {mod.description}
+                        </p>
+                      </div>
+
+                      {/* Bottom Row: Plan Badges */}
+                      <div className="mt-2.5 pt-2 border-t border-[#D8CEC1] flex items-center justify-between">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePlanInclusion(mod, "starterIncluded")}
+                            title={`Toggle Starter tier (${mod.starterIncluded ? "Included" : "Excluded"})`}
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border transition-colors cursor-pointer ${
+                              mod.starterIncluded
+                                ? "bg-[#DEF7EC] text-[#03543F] border-[#BCF0DA]"
+                                : "bg-[#F7F3EC] text-[#71675E] border-[#D8CEC1] opacity-50"
+                            }`}
+                          >
+                            Starter
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePlanInclusion(mod, "standardIncluded")}
+                            title={`Toggle Standard tier (${mod.standardIncluded ? "Included" : "Excluded"})`}
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border transition-colors cursor-pointer ${
+                              mod.standardIncluded
+                                ? "bg-[#DEF7EC] text-[#03543F] border-[#BCF0DA]"
+                                : "bg-[#F7F3EC] text-[#71675E] border-[#D8CEC1] opacity-50"
+                            }`}
+                          >
+                            Standard
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePlanInclusion(mod, "proIncluded")}
+                            title={`Toggle Professional tier (${mod.proIncluded ? "Included" : "Excluded"})`}
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border transition-colors cursor-pointer ${
+                              mod.proIncluded
+                                ? "bg-[#FAF2F4] text-[#6B2837] border-[#E8D7DA]"
+                                : "bg-[#F7F3EC] text-[#71675E] border-[#D8CEC1] opacity-50"
+                            }`}
+                          >
+                            Pro
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePlanInclusion(mod, "enterpriseIncluded")}
+                            title={`Toggle Enterprise tier (${mod.enterpriseIncluded ? "Included" : "Excluded"})`}
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border transition-colors cursor-pointer ${
+                              mod.enterpriseIncluded
+                                ? "bg-[#DEF7EC] text-[#03543F] border-[#BCF0DA]"
+                                : "bg-[#F7F3EC] text-[#71675E] border-[#D8CEC1] opacity-50"
+                            }`}
+                          >
+                            Ent
+                          </button>
+                        </div>
+
+                        <span
+                          className={`text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                            mod.isActive ? "text-[#057A55]" : "text-[#71675E]"
+                          }`}
+                        >
+                          {mod.isActive ? "ACTIVE" : "OFF"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Right Sidebar: Property Feature Overrides Gatekeeper (Right 3 cols) */}
+          <div className="lg:col-span-4 xl:col-span-3 space-y-2">
+            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#D8CEC1]">
+                <h3 className="text-xs font-bold text-[#292320]">Property Overrides</h3>
+                <span className="text-[10px] text-[#71675E]">Tenant Gate</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <p className="text-[11px] text-[#71675E] leading-relaxed">
+                Grant or revoke specific feature flags for a property regardless of default plan limits.
+              </p>
+
+              <div>
+                <label className="block text-[10px] uppercase font-semibold text-[#71675E] mb-1">
+                  Target Business
+                </label>
+                <select
+                  value={selectedTenantId}
+                  onChange={(e) => handleSelectTenant(e.target.value)}
+                  className="w-full px-2 py-1 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320] focus:outline-none"
+                >
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.plan})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Checklist of modules for selected tenant */}
+              <div className="max-h-64 overflow-y-auto space-y-1 pt-1.5 border-t border-[#D8CEC1]">
+                {modules.map((m) => {
+                  const isEnabled = tenantModules.includes(m.code);
+                  return (
+                    <label
+                      key={m.code}
+                      className="flex items-center justify-between p-1 rounded hover:bg-[#F7F3EC] text-xs cursor-pointer select-none"
+                    >
+                      <span className="text-[#292320] truncate font-medium text-[11px]">
+                        {m.name}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={() => handleToggleTenantModule(m.code)}
+                        className="rounded border-[#D8CEC1] text-[#6B2837] focus:ring-[#6B2837] cursor-pointer"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={handleSaveTenantOverrides}
+                disabled={isSavingTenant}
+                className="w-full py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded text-xs font-semibold shadow-xs transition-colors cursor-pointer text-center disabled:opacity-50"
+              >
+                {isSavingTenant ? "Saving..." : "Save Property Overrides"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* MODAL: Add New Module */}
+        {showAddModuleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3 shadow-md text-[#292320]">
+              <div className="flex justify-between items-start border-b border-[#D8CEC1] pb-2">
+                <div>
+                  <h3 className="text-sm font-bold text-[#292320]">Create New Feature Module</h3>
+                  <p className="text-xs text-[#71675E]">Register a new capability in the platform catalog.</p>
+                </div>
+                <button
+                  onClick={() => setShowAddModuleModal(false)}
+                  className="text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddModule} className="space-y-2.5 text-xs">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                    System Code <span className="text-rose-600">*</span>
+                    Module Name *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="VALET_OPS"
-                    value={newModuleCode}
-                    onChange={(e) => setNewModuleCode(e.target.value)}
-                    className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320] font-mono"
+                    placeholder="e.g. Valet Parking & Luggage Dispatch"
+                    value={newModuleName}
+                    onChange={(e) => setNewModuleName(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
+                      System Code *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VALET_OPS"
+                      value={newModuleCode}
+                      onChange={(e) => setNewModuleCode(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320] font-mono focus:outline-none focus:border-[#6B2837]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={newModuleCategory}
+                      onChange={(e: any) => setNewModuleCategory(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320] focus:outline-none"
+                    >
+                      <option value="DINING">Dining &amp; POS</option>
+                      <option value="LODGING">Hotel &amp; Lodging</option>
+                      <option value="OPERATIONS">Operations &amp; Kitchen</option>
+                      <option value="INTEGRATION">Integrations &amp; Fiscal</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                    Category
+                    Description
                   </label>
-                  <select
-                    value={newModuleCategory}
-                    onChange={(e: any) => setNewModuleCategory(e.target.value)}
-                    className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320]"
+                  <textarea
+                    rows={2}
+                    placeholder="Describe module functionality and operations role..."
+                    value={newModuleDesc}
+                    onChange={(e) => setNewModuleDesc(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1.5">
+                    Default Plan Inclusions
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded border border-[#D8CEC1] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newStarter}
+                        onChange={(e) => setNewStarter(e.target.checked)}
+                        className="rounded text-[#6B2837]"
+                      />
+                      <span>Starter</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded border border-[#D8CEC1] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newStandard}
+                        onChange={(e) => setNewStandard(e.target.checked)}
+                        className="rounded text-[#6B2837]"
+                      />
+                      <span>Standard</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded border border-[#D8CEC1] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newPro}
+                        onChange={(e) => setNewPro(e.target.checked)}
+                        className="rounded text-[#6B2837]"
+                      />
+                      <span>Professional</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded border border-[#D8CEC1] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newEnterprise}
+                        onChange={(e) => setNewEnterprise(e.target.checked)}
+                        className="rounded text-[#6B2837]"
+                      />
+                      <span>Enterprise</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-[#D8CEC1]">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModuleModal(false)}
+                    className="px-3 py-1 border border-[#D8CEC1] text-xs font-semibold rounded hover:bg-[#F7F3EC] cursor-pointer"
                   >
-                    <option value="DINING">Dining & POS</option>
-                    <option value="LODGING">Hotel & Lodging</option>
-                    <option value="OPERATIONS">Operations & Kitchen</option>
-                    <option value="INTEGRATION">Integrations & Fiscal</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-1 bg-[#6B2837] text-white text-xs font-semibold rounded hover:bg-[#521E2A] disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSubmitting ? "Registering..." : "Register Module"}
+                  </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Describe module functionality and operations role..."
-                  value={newModuleDesc}
-                  onChange={(e) => setNewModuleDesc(e.target.value)}
-                  className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-2">
-                  Default Plan Inclusions
-                </label>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newStarter}
-                      onChange={(e) => setNewStarter(e.target.checked)}
-                      className="rounded text-[#6B2837]"
-                    />
-                    <span>Basic (Starter)</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newStandard}
-                      onChange={(e) => setNewStandard(e.target.checked)}
-                      className="rounded text-[#6B2837]"
-                    />
-                    <span>Standard</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newPro}
-                      onChange={(e) => setNewPro(e.target.checked)}
-                      className="rounded text-[#6B2837]"
-                    />
-                    <span>Professional</span>
-                  </label>
-                  <label className="flex items-center gap-2 p-1.5 bg-[#F7F3EC] rounded cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newEnterprise}
-                      onChange={(e) => setNewEnterprise(e.target.checked)}
-                      className="rounded text-[#6B2837]"
-                    />
-                    <span>Enterprise</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-[#D8CEC1]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModuleModal(false)}
-                  className="px-3 py-1.5 border border-[#D8CEC1] text-xs font-semibold rounded-md hover:bg-[#F7F3EC] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-1.5 bg-[#6B2837] text-white text-xs font-semibold rounded-md hover:bg-[#521E2A] disabled:opacity-50 cursor-pointer"
-                >
-                  {isSubmitting ? "Registering..." : "Register Module"}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -61,6 +61,11 @@ const purchaseFormSchema = z.object({
 
 type PurchaseInputs = z.infer<typeof purchaseFormSchema>;
 
+const num = (v: any) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
+
 export default function PurchasesPage() {
   const { data: session } = useSession();
   const { currencySymbol } = useSettings();
@@ -304,10 +309,10 @@ export default function PurchasesPage() {
                         </td>
                         <td className="py-3 px-2 font-semibold text-foreground">{p.supplier.name}</td>
                         <td className="py-3 px-2 text-right font-bold text-foreground">
-                          {currencySymbol}{p.total.toFixed(2)}
+                          {currencySymbol}{num(p.total).toFixed(2)}
                         </td>
                         <td className="py-3 px-2 text-right font-medium text-primary">
-                          {currencySymbol}{p.paidAmount.toFixed(2)}
+                          {currencySymbol}{num(p.paidAmount).toFixed(2)}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <span className={`px-2 py-0.5 rounded font-semibold text-[9px] border ${
@@ -387,14 +392,14 @@ export default function PurchasesPage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground block text-[9px] uppercase font-semibold">Total Amount</span>
-                        <span className="font-extrabold text-foreground">{currencySymbol}{p.total.toFixed(2)}</span>
+                        <span className="font-extrabold text-foreground">{currencySymbol}{num(p.total).toFixed(2)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-[10px]">
                       <div>
                         <span className="text-muted-foreground">Paid Amount: </span>
-                        <span className="font-bold text-primary">{currencySymbol}{p.paidAmount.toFixed(2)}</span>
+                        <span className="font-bold text-primary">{currencySymbol}{num(p.paidAmount).toFixed(2)}</span>
                       </div>
                       <div className="text-muted-foreground">
                         By: <span className="font-semibold">{p.user.name}</span>

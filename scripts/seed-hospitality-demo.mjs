@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { PrismaClient } = require("../packages/db/client");
+const bcrypt = require("bcryptjs");
 
 const envConfig = Object.fromEntries(
   readFileSync(".env.restro.local", "utf8")
@@ -17,13 +18,57 @@ const envConfig = Object.fromEntries(
 const db = new PrismaClient({ datasourceUrl: envConfig.DATABASE_URL });
 
 async function main() {
-  const owner = await db.user.findUnique({
+  let owner = await db.user.findUnique({
     where: { email: "owner@restroinn.com" },
     include: { business: { include: { branches: true } } },
   });
 
   if (!owner) {
-    throw new Error("owner@restroinn.com not found in database.");
+    console.log("Creating owner@restroinn.com and RestroInn Grand Hotel & Dining...");
+    const business = await db.business.upsert({
+      where: { slug: "restroinn-grand" },
+      update: {},
+      create: {
+        name: "RestroInn Grand Hotel & Dining",
+        slug: "restroinn-grand",
+        phone: "+977-1-4400000",
+        email: "contact@restroinngrand.com",
+        address: "Thamel Marg, Kathmandu, Nepal",
+        currency: "NPR",
+        settings: {
+          propertyType: "BOTH",
+          nepalFiscalEnabled: true,
+          irdSyncMode: "REALTIME",
+          defaultTaxRate: 13,
+        },
+      },
+    });
+
+    let branch = await db.branch.findFirst({ where: { businessId: business.id } });
+    if (!branch) {
+      branch = await db.branch.create({
+        data: {
+          businessId: business.id,
+          name: "Grand Flagship Property",
+          address: "Thamel Marg, Kathmandu",
+          phone: "+977-1-4400000",
+          isMain: true,
+        },
+      });
+    }
+
+    const passwordHash = await bcrypt.hash("Password123!", 10);
+    owner = await db.user.create({
+      data: {
+        email: "owner@restroinn.com",
+        name: "RestroInn Owner",
+        passwordHash: passwordHash,
+        role: "ADMIN",
+        businessId: business.id,
+        branchId: branch.id,
+      },
+      include: { business: { include: { branches: true } } },
+    });
   }
 
   const businessId = owner.businessId;
@@ -97,6 +142,8 @@ async function main() {
     { floorId: mainFloor.id, tableNumber: "T-02", capacity: 4 },
     { floorId: mainFloor.id, tableNumber: "T-03", capacity: 4 },
     { floorId: mainFloor.id, tableNumber: "T-04", capacity: 6 },
+    { floorId: mainFloor.id, tableNumber: "C-01", capacity: 6 },
+    { floorId: mainFloor.id, tableNumber: "H-01", capacity: 24 },
     { floorId: rooftopFloor.id, tableNumber: "R-01", capacity: 4 },
     { floorId: rooftopFloor.id, tableNumber: "R-02", capacity: 8 },
   ];

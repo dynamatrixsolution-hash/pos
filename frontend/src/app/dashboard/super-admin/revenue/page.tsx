@@ -1,82 +1,107 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  DollarSign,
-  TrendingUp,
-  FileText,
-  Search,
-  Filter,
-  CheckCircle,
-  AlertTriangle,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Eye,
   Printer,
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Check,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
-} from "recharts";
+import { toast } from "@/components/toast";
+import ExportDropdown from "@/components/export-dropdown";
+import { ExportOptions } from "@/lib/export-service";
 
-interface PaymentItem {
+interface BusinessMeta {
+  id: string;
+  name: string;
+  slug: string;
+  currency?: string;
+}
+
+interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string;
+  businessId: string;
+  amount: number | string;
+  currency: string;
+  status: "PENDING" | "PAID" | "OVERDUE" | "CANCELLED";
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  dueDate: string;
+  paidAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  business?: BusinessMeta;
+  payments?: any[];
+}
+
+interface PaymentRecord {
   id: string;
   businessName: string;
-  plan: string;
+  invoiceNumber: string;
   amount: number;
   currency: string;
   method: string;
-  transactionId: string;
+  reference: string;
+  recordedBy: string;
   date: string;
   status: string;
 }
-
-interface InvoiceItem {
-  invoiceNumber: string;
-  businessName: string;
-  plan: string;
-  amount: number;
-  currency: string;
-  date: string;
-  status: string;
-}
-
-const planColors: Record<string, string> = {
-  STARTER: "#3B82F6",
-  BASIC: "#10B981",
-  PROFESSIONAL: "#8B5CF6",
-  ENTERPRISE: "#EC4899",
-};
 
 export default function RevenuePaymentsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "payments" | "invoices">("overview");
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
-  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"invoices" | "transactions">("invoices");
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalCollected: 0,
+    totalOutstanding: 0,
+    overdueAmount: 0,
+    currency: "NPR",
+    totalInvoicesCount: 0,
+    totalPaymentsCount: 0,
+  });
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "OVERDUE" | "PENDING" | "PAID">("ALL");
 
-  // Selected Invoice Modal Detail
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceItem | null>(null);
+  // Settlement Modal State
+  const [settlingInvoice, setSettlingInvoice] = useState<InvoiceRecord | null>(null);
+  const [settlementMethod, setSettlementMethod] = useState("BANK_TRANSFER");
+  const [settlementRef, setSettlementRef] = useState("");
+  const [settlementNotes, setSettlementNotes] = useState("");
+  const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
 
-  const formatCurrency = (amount: number, currencyCode: string = "NPR") => {
-    if (currencyCode === "NPR") return `Rs. ${amount.toFixed(2)}`;
-    if (currencyCode === "INR") return `₹${amount.toFixed(2)}`;
-    return `$${amount.toFixed(2)}`;
-  };
+  // Statement / Print Modal State
+  const [selectedStatement, setSelectedStatement] = useState<InvoiceRecord | null>(null);
+
+  const loadRevenueData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/v1/super-admin/revenue");
+      if (!res.ok) {
+        throw new Error("Failed to load revenue and billing data");
+      }
+      const data = await res.json();
+      setInvoices(data.invoices || []);
+      setPayments(data.transactionLogs || data.payments || []);
+      if (data.revenueMetrics) {
+        setMetrics(data.revenueMetrics);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load revenue data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -86,450 +111,741 @@ export default function RevenuePaymentsPage() {
     } else if (status === "authenticated") {
       loadRevenueData();
     }
-  }, [status, session, router]);
+  }, [status, session, router, loadRevenueData]);
 
-  const loadRevenueData = async () => {
-    setLoading(true);
+  // Execute Record Settlement
+  const handleExecuteSettlement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settlingInvoice) return;
+
     try {
-      const res = await fetch("/api/v1/super-admin/revenue");
-      if (res.ok) {
-        const data = await res.json();
-        setPayments(data.payments || data.transactionLogs || []);
-        const mappedInvoices = (data.invoices || []).map((i: any) => ({
-          invoiceNumber: i.invoiceNumber,
-          businessName: i.business?.name || i.businessName || "Unknown Tenant",
-          plan: i.plan || "SUBSCRIPTION",
-          amount: Number(i.amount),
-          currency: i.currency || "NPR",
-          date: i.createdAt || i.date || new Date().toISOString(),
-          status: i.status,
-        }));
-        setInvoices(mappedInvoices);
+      setIsSubmittingSettlement(true);
+      const res = await fetch("/api/v1/super-admin/revenue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: settlingInvoice.id,
+          amount: Number(settlingInvoice.amount),
+          paymentMethod: settlementMethod,
+          reference: settlementRef || `SETTLE-${Date.now().toString().slice(-6)}`,
+          notes: settlementNotes || "Settled by Super Admin",
+        }),
+      });
+
+      const resJson = await res.json();
+      if (!res.ok) {
+        throw new Error(resJson.error || "Failed to record settlement");
       }
-    } catch (err) {
-      console.error("Load revenue logs error:", err);
+
+      toast.success(resJson.message || "Invoice settled successfully.");
+      setSettlingInvoice(null);
+      setSettlementRef("");
+      setSettlementNotes("");
+      loadRevenueData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to record settlement");
     } finally {
-      setLoading(false);
+      setIsSubmittingSettlement(false);
     }
   };
 
-  // Aggregated metrics
-  const totalRevenueSum = payments.reduce((sum, p) => p.status === "Paid" ? sum + p.amount : sum, 0);
-  const totalPendingSum = payments.reduce((sum, p) => p.status === "Pending" ? sum + p.amount : sum, 0);
-  const totalFailedSum = payments.reduce((sum, p) => p.status === "Failed" ? sum + p.amount : sum, 0);
+  const formatDate = (dateStr: string | Date | undefined) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "-";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-  // Revenue chart aggregate
-  const planRevenueData = Object.entries(
-    payments.reduce((acc: Record<string, number>, p) => {
-      if (p.status === "Paid") {
-        acc[p.plan] = (acc[p.plan] || 0) + p.amount;
-      }
-      return acc;
-    }, {})
-  ).map(([name, value]) => ({ name, value }));
+  const formatCurrency = (val: number | string) => {
+    const num = Number(val) || 0;
+    return `NPR ${num.toLocaleString()}`;
+  };
 
-  // Monthly revenue trend mock data matching database
-  const billingTrend = [
-    { month: "Jan", billing: 1450 },
-    { month: "Feb", billing: 2890 },
-    { month: "Mar", billing: 3910 },
-    { month: "Apr", billing: 4890 },
-    { month: "May", billing: 6420 },
-    { month: "Jun", billing: Math.max(500, totalRevenueSum) },
-  ];
+  // Filtered Invoices
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        inv.invoiceNumber.toLowerCase().includes(q) ||
+        (inv.business?.name || "").toLowerCase().includes(q) ||
+        (inv.business?.slug || "").toLowerCase().includes(q);
 
-  const filteredPayments = payments.filter((p) => {
-    const matchesSearch = p.businessName.toLowerCase().includes(search.toLowerCase()) ||
-      p.transactionId.toLowerCase().includes(search.toLowerCase());
-    
-    if (statusFilter === "ALL") return matchesSearch;
-    return matchesSearch && p.status.toUpperCase() === statusFilter;
-  });
+      if (!matchSearch) return false;
+      if (statusFilter === "ALL") return true;
+      return inv.status === statusFilter;
+    });
+  }, [invoices, search, statusFilter]);
 
-  const filteredInvoices = invoices.filter((i) => {
-    return i.businessName.toLowerCase().includes(search.toLowerCase()) ||
-      i.invoiceNumber.toLowerCase().includes(search.toLowerCase());
-  });
+  // Filtered Payments
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => {
+      const q = search.toLowerCase();
+      return (
+        p.businessName.toLowerCase().includes(q) ||
+        p.invoiceNumber.toLowerCase().includes(q) ||
+        p.reference.toLowerCase().includes(q)
+      );
+    });
+  }, [payments, search]);
 
-  if (loading) {
-    return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
-          <p className="text-xs text-muted-foreground">Aggregating financial logs...</p>
-        </div>
-      </div>
-    );
-  }
+  const overdueInvoicesCount = useMemo(() => {
+    return invoices.filter((i) => i.status === "OVERDUE").length;
+  }, [invoices]);
+
+  const pendingInvoicesCount = useMemo(() => {
+    return invoices.filter((i) => i.status === "PENDING").length;
+  }, [invoices]);
+
+  const paidInvoicesCount = useMemo(() => {
+    return invoices.filter((i) => i.status === "PAID").length;
+  }, [invoices]);
+
+  // Enterprise Export Configuration
+  const getExportOptions = (): ExportOptions => {
+    if (activeTab === "invoices") {
+      return {
+        title: "Platform Subscription Invoices Ledger",
+        subtitle: `Generated on ${new Date().toLocaleDateString()} • RestroInn Hospitality OS`,
+        filename: `subscription-invoices-${new Date().toISOString().slice(0, 10)}`,
+        data: filteredInvoices.map((inv) => ({
+          "Invoice #": inv.invoiceNumber,
+          Property: inv.business?.name || "N/A",
+          Slug: inv.business?.slug || "N/A",
+          Amount: Number(inv.amount),
+          Currency: inv.currency,
+          Status: inv.status,
+          "Due Date": formatDate(inv.dueDate),
+          "Created Date": formatDate(inv.createdAt),
+        })),
+        columns: [
+          { header: "Invoice #", key: "Invoice #" },
+          { header: "Property", key: "Property" },
+          { header: "Slug", key: "Slug" },
+          { header: "Amount", key: "Amount" },
+          { header: "Currency", key: "Currency" },
+          { header: "Status", key: "Status" },
+          { header: "Due Date", key: "Due Date" },
+          { header: "Created Date", key: "Created Date" },
+        ],
+      };
+    }
+
+    return {
+      title: "Subscription Payments & Settlements Ledger",
+      subtitle: `Generated on ${new Date().toLocaleDateString()} • RestroInn Hospitality OS`,
+      filename: `subscription-payments-${new Date().toISOString().slice(0, 10)}`,
+      data: filteredPayments.map((p) => ({
+        "Tx ID": p.id,
+        Property: p.businessName,
+        "Invoice #": p.invoiceNumber,
+        Method: p.method,
+        Reference: p.reference,
+        Amount: p.amount,
+        Currency: p.currency,
+        "Settled By": p.recordedBy,
+        "Settled Date": formatDate(p.date),
+      })),
+      columns: [
+        { header: "Tx ID", key: "Tx ID" },
+        { header: "Property", key: "Property" },
+        { header: "Invoice #", key: "Invoice #" },
+        { header: "Method", key: "Method" },
+        { header: "Reference", key: "Reference" },
+        { header: "Amount", key: "Amount" },
+        { header: "Currency", key: "Currency" },
+        { header: "Settled By", key: "Settled By" },
+        { header: "Settled Date", key: "Settled Date" },
+      ],
+    };
+  };
 
   return (
-    <div className="space-y-6 text-[#0F172A]">
-      {/* 1. Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FFFCF7] border border-[#D8CEC1]/80 p-6 rounded-lg">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <DollarSign className="h-5.5 w-5.5 text-blue-600" /> Revenue & Billing Ledger
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Audit subscription pricing payments, print business invoices, and inspect yearly MRR performance.
-          </p>
-        </div>
-      </div>
+    <div
+      className="min-h-full bg-[#F7F3EC] text-[#292320]"
+      style={{
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      }}
+    >
+      <div className="max-w-[1400px] mx-auto space-y-2">
+        {/* 1. Header Block: Breadcrumb & Title grouped tightly */}
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-[#71675E] font-normal leading-none">
+            <Link href="/dashboard/super-admin" className="hover:text-[#292320]">
+              Platform
+            </Link>
+            <span>/</span>
+            <span className="text-[#292320]">Billing &amp; Payments</span>
+          </div>
 
-      {/* 2. Overview metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
-          <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 flex items-center justify-center rounded-md">
-            <TrendingUp className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Gross Paid Revenue</p>
-            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalRevenueSum)}</h3>
-          </div>
-        </div>
+          <div className="flex items-center justify-between pt-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-[#292320] leading-tight">
+              Billing &amp; Payments Ledger
+            </h1>
 
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
-          <div className="h-10 w-10 bg-amber-500/10 text-amber-500 flex items-center justify-center rounded-md">
-            <ArrowDownLeft className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pending Billing</p>
-            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalPendingSum)}</h3>
-          </div>
-        </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadRevenueData}
+                disabled={loading}
+                className="px-3 py-1 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] text-xs font-medium rounded hover:bg-[#EEE7DD] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
 
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex items-center gap-4">
-          <div className="h-10 w-10 bg-red-500/10 text-red-500 flex items-center justify-center rounded-md">
-            <ArrowUpRight className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Failed Payments</p>
-            <h3 className="text-xl font-black mt-0.5">{formatCurrency(totalFailedSum)}</h3>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Tab selection */}
-      <div className="flex border-b border-[#D8CEC1] gap-6">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "overview" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
-          }`}
-        >
-          Revenue Overview
-        </button>
-        <button
-          onClick={() => setActiveTab("payments")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "payments" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
-          }`}
-        >
-          Business Payments Log
-        </button>
-        <button
-          onClick={() => setActiveTab("invoices")}
-          className={`pb-3 text-xs font-bold transition-all border-b-2 uppercase tracking-wider cursor-pointer ${
-            activeTab === "invoices" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-450 hover:text-[#292320]"
-          }`}
-        >
-          Invoices
-        </button>
-      </div>
-
-      {/* Tab Contents: FINANCIAL CHARTS */}
-      {activeTab === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-sm font-bold">MRR Billing Trend</h2>
-              <p className="text-[10px] text-slate-400 mt-0.5">Aggregated monthly subscription intake.</p>
+              <ExportDropdown
+                getExportOptions={getExportOptions}
+                buttonText="Export Ledger"
+                className="!text-xs !py-1 !px-3"
+              />
             </div>
-            <div className="h-64 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={billingTrend} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="mrrGlow" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(229, 231, 235, 0.5)" />
-                  <XAxis dataKey="month" stroke="#64748B" style={{ fontSize: "10px" }} />
-                  <YAxis stroke="#64748B" style={{ fontSize: "10px" }} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="billing" name="Gross (Rs.)" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#mrrGlow)" />
-                </AreaChart>
-              </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 2. Top Metric Bar (4-Column Connected Strip with compact <= 7px padding) */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#D8CEC1]">
+          {/* Collected Revenue */}
+          <div className="px-3.5 py-1.5">
+            <div className="text-xs text-[#71675E] leading-none">Collected revenue</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {formatCurrency(metrics.totalCollected)}
+              </span>
+              <span className="text-[11px] font-medium text-[#057A55] leading-none">
+                {payments.length} settled
+              </span>
             </div>
           </div>
 
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-sm font-bold">Revenue by Plan Tier</h2>
-              <p className="text-[10px] text-slate-400 mt-0.5">Distribution of revenue shares.</p>
-            </div>
-            <div className="h-64 w-full mt-4">
-              {planRevenueData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">No revenue recorded.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={planRevenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(229, 231, 235, 0.5)" />
-                    <XAxis dataKey="name" stroke="#64748B" style={{ fontSize: "10px" }} />
-                    <YAxis stroke="#64748B" style={{ fontSize: "10px" }} />
-                    <Tooltip />
-                    <Bar dataKey="value" name="Intake (Rs.)" radius={[6, 6, 0, 0]}>
-                      {planRevenueData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={planColors[entry.name] || "#3B82F6"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Overdue Subscriptions */}
+          <div
+            onClick={() => setStatusFilter("OVERDUE")}
+            className="px-3.5 py-1.5 cursor-pointer hover:bg-[#F7F3EC]/50 transition-colors"
+          >
+            <div className="text-xs text-[#71675E] leading-none">Overdue subscriptions</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#9C3232] tabular-nums leading-none">
+                {formatCurrency(metrics.overdueAmount)}
+              </span>
+              {overdueInvoicesCount > 0 && (
+                <span className="text-xs font-medium text-[#9C3232] leading-none">
+                  {overdueInvoicesCount} Action
+                </span>
               )}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Tab Contents: PAYMENTS LEDGER LOG */}
-      {activeTab === "payments" && (
-        <div className="space-y-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg flex flex-col sm:flex-row justify-between gap-4 items-center">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-450" />
-              <input
-                type="text"
-                placeholder="Search by business name or transaction ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full px-4 py-2 border border-[#D8CEC1] rounded-lg bg-[#F7F3EC] text-sm focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-2 items-center w-full sm:w-auto shrink-0">
-              <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3.5 py-2 border border-[#D8CEC1] rounded-lg text-xs font-bold bg-[#FFFCF7] focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">All Payments</option>
-                <option value="PAID">Paid</option>
-                <option value="PENDING">Pending</option>
-                <option value="FAILED">Failed</option>
-                <option value="REFUNDED">Refunded</option>
-              </select>
+          {/* Pending Billing */}
+          <div
+            onClick={() => setStatusFilter("PENDING")}
+            className="px-3.5 py-1.5 cursor-pointer hover:bg-[#F7F3EC]/50 transition-colors"
+          >
+            <div className="text-xs text-[#71675E] leading-none">Pending billing</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {formatCurrency(metrics.totalOutstanding)}
+              </span>
+              <span className="text-[11px] text-[#71675E] leading-none">
+                {pendingInvoicesCount} invoices
+              </span>
             </div>
           </div>
 
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-5 overflow-hidden">
-            {filteredPayments.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-450">No payments found.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold uppercase tracking-wider text-[9px]">
-                      <th className="py-3 px-2">Merchant Name</th>
-                      <th className="py-3 px-2">Subscription Tier</th>
-                      <th className="py-3 px-2 text-center">Tx Transaction ID</th>
-                      <th className="py-3 px-2 text-center">Settlement Method</th>
-                      <th className="py-3 px-2 text-center">Billing Date</th>
-                      <th className="py-3 px-2 text-right">Licensing Amount</th>
-                      <th className="py-3 px-2 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredPayments.map((p) => (
-                      <tr key={p.id} className="hover:bg-[#F7F3EC] transition-colors">
-                        <td className="py-3.5 px-2 font-bold text-[#292320]">{p.businessName}</td>
-                        <td className="py-3.5 px-2 font-semibold">
-                          <span className="px-2 py-0.5 rounded bg-[#EEE7DD] text-[9px] uppercase">{p.plan}</span>
-                        </td>
-                        <td className="py-3.5 px-2 text-center font-mono text-[10px] text-[#71675E]">{p.transactionId}</td>
-                        <td className="py-3.5 px-2 text-center font-bold text-slate-650">{p.method}</td>
-                        <td className="py-3.5 px-2 text-center text-slate-450">{new Date(p.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-[#292320]">{formatCurrency(p.amount, p.currency)}</td>
-                        <td className="py-3.5 px-2 text-right">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                            p.status === "Paid"
-                              ? "bg-emerald-50 text-emerald-600"
-                              : p.status === "Failed"
-                              ? "bg-red-50 text-red-500"
-                              : "bg-amber-50 text-amber-500"
-                          }`}>
-                            {p.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* Total Invoices Issued */}
+          <div
+            onClick={() => setStatusFilter("ALL")}
+            className="px-3.5 py-1.5 cursor-pointer hover:bg-[#F7F3EC]/50 transition-colors"
+          >
+            <div className="text-xs text-[#71675E] leading-none">Total statements</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-lg font-bold text-[#292320] tabular-nums leading-none">
+                {invoices.length}
+              </span>
+              <span className="text-[11px] text-[#71675E] leading-none">All time</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Filter & Tab Controls */}
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+          {/* Left: View Tabs */}
+          <div className="flex items-center gap-1 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab("invoices")}
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                activeTab === "invoices"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Invoices &amp; Statements ({invoices.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("transactions")}
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
+                activeTab === "transactions"
+                  ? "bg-[#6B2837] text-white"
+                  : "bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              Settled Transactions ({payments.length})
+            </button>
+          </div>
+
+          {/* Right: Search & Status Pills */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {activeTab === "invoices" && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setStatusFilter("ALL")}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors cursor-pointer ${
+                    statusFilter === "ALL"
+                      ? "bg-[#292320] text-white font-semibold"
+                      : "bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E] hover:text-[#292320]"
+                  }`}
+                >
+                  All ({invoices.length})
+                </button>
+                <button
+                  onClick={() => setStatusFilter("OVERDUE")}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors cursor-pointer ${
+                    statusFilter === "OVERDUE"
+                      ? "bg-[#9C3232] text-white font-semibold"
+                      : "bg-[#F7F3EC] border border-[#D8CEC1] text-[#9C3232] hover:bg-[#FDE8E8]"
+                  }`}
+                >
+                  Overdue ({overdueInvoicesCount})
+                </button>
+                <button
+                  onClick={() => setStatusFilter("PENDING")}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors cursor-pointer ${
+                    statusFilter === "PENDING"
+                      ? "bg-[#854D0E] text-white font-semibold"
+                      : "bg-[#F7F3EC] border border-[#D8CEC1] text-[#854D0E] hover:bg-[#FEF08A]/30"
+                  }`}
+                >
+                  Pending ({pendingInvoicesCount})
+                </button>
+                <button
+                  onClick={() => setStatusFilter("PAID")}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors cursor-pointer ${
+                    statusFilter === "PAID"
+                      ? "bg-[#057A55] text-white font-semibold"
+                      : "bg-[#F7F3EC] border border-[#D8CEC1] text-[#057A55] hover:bg-[#DEF7EC]"
+                  }`}
+                >
+                  Paid ({paidInvoicesCount})
+                </button>
               </div>
             )}
+
+            <input
+              type="text"
+              placeholder="Search property or invoice..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="px-2.5 py-1 border border-[#D8CEC1] rounded text-xs bg-[#FFFCF7] text-[#292320] focus:outline-none focus:border-[#6B2837] w-full sm:w-56"
+            />
           </div>
         </div>
-      )}
 
-      {/* Tab Contents: INVOICES MANAGER */}
-      {activeTab === "invoices" && (
-        <div className="space-y-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-slate-450" />
-              <input
-                type="text"
-                placeholder="Search by business name or invoice number..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full px-4 py-2 border border-[#D8CEC1] rounded-lg bg-[#F7F3EC] text-sm focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg p-5 overflow-hidden">
-            {filteredInvoices.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-450">No invoices logged.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold uppercase tracking-wider text-[9px]">
-                      <th className="py-3 px-2">Invoice #</th>
-                      <th className="py-3 px-2">Billed Tenant</th>
-                      <th className="py-3 px-2">Purchased License</th>
-                      <th className="py-3 px-2 text-center">Billed Date</th>
-                      <th className="py-3 px-2 text-right">Gross Amount</th>
-                      <th className="py-3 px-2 text-right">Status</th>
-                      <th className="py-3 px-2 text-right">Print</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredInvoices.map((inv) => (
-                      <tr key={inv.invoiceNumber} className="hover:bg-[#F7F3EC] transition-colors">
-                        <td className="py-3.5 px-2 font-black text-blue-600">{inv.invoiceNumber}</td>
-                        <td className="py-3.5 px-2 font-bold text-[#292320]">{inv.businessName}</td>
-                        <td className="py-3.5 px-2 font-semibold">
-                          <span className="px-2 py-0.5 rounded bg-[#EEE7DD] text-[9px] uppercase">{inv.plan}</span>
-                        </td>
-                        <td className="py-3.5 px-2 text-center text-slate-450">{new Date(inv.date).toLocaleDateString()}</td>
-                        <td className="py-3.5 px-2 text-right font-black text-[#292320]">{formatCurrency(inv.amount, inv.currency)}</td>
-                        <td className="py-3.5 px-2 text-right">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                            inv.status === "PAID"
-                              ? "bg-emerald-50 text-emerald-600"
-                              : inv.status === "FAILED"
-                              ? "bg-red-50 text-red-500"
-                              : "bg-amber-50 text-amber-500"
-                          }`}>
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-2 text-right">
-                          <button
-                            onClick={() => setSelectedInvoice(inv)}
-                            className="p-1 text-[#71675E] hover:text-blue-600 hover:bg-[#F7F3EC] rounded border border-transparent hover:border-[#D8CEC1] cursor-pointer"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {/* 4. Tab 1: Invoices & Statements Table (compact <= 7px padding) */}
+        {activeTab === "invoices" && (
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#D8CEC1]">
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-xs font-bold text-[#292320]">
+                  Subscription Invoices
+                </span>
+                <span className="text-xs text-[#71675E]">
+                  ({filteredInvoices.length} records)
+                </span>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Detail Sheet Modal */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#FFFCF7] rounded-lg w-full max-w-lg p-6 shadow-sm border border-[#D8CEC1] my-8">
-            <div className="flex justify-between items-center border-b border-slate-150 pb-3 mb-6">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <span className="font-bold text-slate-850">Billing Statement: {selectedInvoice.invoiceNumber}</span>
-              </div>
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="px-2 py-1.5 hover:bg-[#EEE7DD] text-xs font-semibold text-[#71675E] rounded-lg cursor-pointer"
-              >
-                Close
-              </button>
             </div>
 
-            {/* Print template mock view */}
-            <div className="border border-slate-150 p-6 rounded-lg space-y-6 text-xs text-slate-650 bg-[#F7F3EC]">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-[#292320]">RestroInn Systems Inc.</h3>
-                  <p className="mt-1 text-slate-400">100 SaaS HQ Road</p>
-                  <p className="text-slate-400">billing@restroinn.com</p>
-                </div>
-                <div className="text-right">
-                  <h2 className="text-sm font-black text-blue-600">INVOICE</h2>
-                  <p className="mt-1 font-bold text-[#292320]">{selectedInvoice.invoiceNumber}</p>
-                  <p className="text-slate-400">{new Date(selectedInvoice.date).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="border-t border-[#D8CEC1] pt-4">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Billed To:</span>
-                <h4 className="font-black text-[#292320] mt-1">{selectedInvoice.businessName}</h4>
-                <p className="text-slate-400 mt-0.5">SaaS Platform License Holder</p>
-              </div>
-
-              <table className="w-full text-xs text-left border-collapse mt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#D8CEC1] text-slate-450 font-bold text-[9px] uppercase pb-2">
-                    <th className="py-2">Item Description</th>
-                    <th className="py-2 text-right">Quantity</th>
-                    <th className="py-2 text-right">Rate</th>
-                    <th className="py-2 text-right">Line Total</th>
+                  <tr className="text-[#71675E] border-b border-[#D8CEC1]">
+                    <th className="py-1.5 px-3 font-normal">Invoice #</th>
+                    <th className="py-1.5 px-3 font-normal">Business / Property</th>
+                    <th className="py-1.5 px-3 font-normal">Billing Period</th>
+                    <th className="py-1.5 px-3 font-normal">Amount</th>
+                    <th className="py-1.5 px-3 font-normal">Due Date</th>
+                    <th className="py-1.5 px-3 font-normal">Status</th>
+                    <th className="py-1.5 px-3 font-normal text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr className="border-b border-[#D8CEC1]">
-                    <td className="py-3 font-semibold text-slate-850">
-                      SaaS License Tier - {selectedInvoice.plan}
-                      <p className="text-[9px] text-slate-400 font-normal mt-0.5">Monthly platform utility access rights</p>
-                    </td>
-                    <td className="py-3 text-right">1</td>
-                    <td className="py-3 text-right">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
-                    <td className="py-3 text-right font-bold text-[#292320]">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
-                  </tr>
+                <tbody className="divide-y divide-[#D8CEC1]">
+                  {filteredInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-center text-xs text-[#71675E]">
+                        No invoices match the current filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInvoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-[#F7F3EC]/30 transition-colors">
+                        <td className="py-1.5 px-3 font-mono font-medium text-[#292320]">
+                          #{inv.invoiceNumber}
+                        </td>
+                        <td className="py-1.5 px-3">
+                          <Link
+                            href={`/dashboard/super-admin/businesses/${inv.businessId}`}
+                            className="font-medium text-[#292320] hover:text-[#6B2837] transition-colors"
+                          >
+                            {inv.business?.name || "Unknown Tenant"}
+                          </Link>
+                          {inv.business?.slug && (
+                            <span className="text-xs font-mono text-[#71675E] ml-1.5">
+                              /{inv.business.slug}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 text-[#71675E] tabular-nums">
+                          {formatDate(inv.billingPeriodStart)} - {formatDate(inv.billingPeriodEnd)}
+                        </td>
+                        <td
+                          className={`py-1.5 px-3 font-semibold tabular-nums ${
+                            inv.status === "OVERDUE" ? "text-[#9C3232]" : "text-[#292320]"
+                          }`}
+                        >
+                          {formatCurrency(inv.amount)}
+                        </td>
+                        <td className="py-1.5 px-3 text-[#71675E] tabular-nums">
+                          {formatDate(inv.dueDate)}
+                        </td>
+                        <td className="py-1.5 px-3">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                inv.status === "PAID"
+                                  ? "bg-[#057A55]"
+                                  : inv.status === "OVERDUE"
+                                  ? "bg-[#9C3232]"
+                                  : "bg-[#D97706]"
+                              }`}
+                            />
+                            <span
+                              className={`font-medium ${
+                                inv.status === "PAID"
+                                  ? "text-[#057A55]"
+                                  : inv.status === "OVERDUE"
+                                  ? "text-[#9C3232]"
+                                  : "text-[#D97706]"
+                              }`}
+                            >
+                              {inv.status === "PAID"
+                                ? "Paid"
+                                : inv.status === "OVERDUE"
+                                ? "Overdue"
+                                : "Pending"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-1.5 px-3 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            {inv.status !== "PAID" && (
+                              <button
+                                onClick={() => setSettlingInvoice(inv)}
+                                className="px-2.5 py-0.5 bg-[#6B2837] hover:bg-[#521E2A] text-white text-xs font-medium rounded transition-colors cursor-pointer leading-normal"
+                              >
+                                Record Settlement
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setSelectedStatement(inv)}
+                              className="px-2 py-0.5 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] text-xs font-medium rounded hover:bg-[#EEE7DD] transition-colors cursor-pointer leading-normal"
+                            >
+                              Statement
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
-
-              <div className="flex justify-between items-center border-t border-[#D8CEC1] pt-4 font-black">
-                <span className="text-[#292320] font-bold text-sm">TOTAL DUE:</span>
-                <span className="text-blue-600 text-lg">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
-              </div>
-
-              <div className="text-center border-t border-slate-150 pt-4 text-[9px] text-slate-400 font-medium">
-                Thank you for choosing RestroInn Hotel & Restaurant Platform!
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-6 border-t border-[#D8CEC1] mt-6">
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 border border-[#D8CEC1] text-[#292320] rounded-lg text-xs font-semibold hover:bg-[#F7F3EC] flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="h-3.5 w-3.5" /> Print Statement
-              </button>
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm cursor-pointer"
-              >
-                Done
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* 5. Tab 2: Settled Transactions Table (compact <= 7px padding) */}
+        {activeTab === "transactions" && (
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#D8CEC1]">
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-xs font-bold text-[#292320]">
+                  Payment Transactions Ledger
+                </span>
+                <span className="text-xs text-[#71675E]">
+                  ({filteredPayments.length} transactions)
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="text-[#71675E] border-b border-[#D8CEC1]">
+                    <th className="py-1.5 px-3 font-normal">Transaction ID</th>
+                    <th className="py-1.5 px-3 font-normal">Property / Tenant</th>
+                    <th className="py-1.5 px-3 font-normal">Invoice #</th>
+                    <th className="py-1.5 px-3 font-normal">Method</th>
+                    <th className="py-1.5 px-3 font-normal">Reference</th>
+                    <th className="py-1.5 px-3 font-normal">Recorded By</th>
+                    <th className="py-1.5 px-3 font-normal">Amount</th>
+                    <th className="py-1.5 px-3 font-normal text-right">Settled Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#D8CEC1]">
+                  {filteredPayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-4 text-center text-xs text-[#71675E]">
+                        No payment transactions recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPayments.map((p) => (
+                      <tr key={p.id} className="hover:bg-[#F7F3EC]/30 transition-colors">
+                        <td className="py-1.5 px-3 font-mono text-[11px] text-[#71675E]">
+                          {p.id.slice(0, 8)}...
+                        </td>
+                        <td className="py-1.5 px-3 font-medium text-[#292320]">
+                          {p.businessName}
+                        </td>
+                        <td className="py-1.5 px-3 font-mono text-[11px] text-[#71675E]">
+                          #{p.invoiceNumber}
+                        </td>
+                        <td className="py-1.5 px-3">
+                          <span className="px-1.5 py-0.2 rounded bg-[#F7F3EC] border border-[#D8CEC1] text-[10px] font-semibold text-[#71675E]">
+                            {p.method}
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-3 font-mono text-[11px] text-[#71675E]">
+                          {p.reference}
+                        </td>
+                        <td className="py-1.5 px-3 text-[#71675E]">{p.recordedBy}</td>
+                        <td className="py-1.5 px-3 font-semibold text-[#057A55] tabular-nums">
+                          {formatCurrency(p.amount)}
+                        </td>
+                        <td className="py-1.5 px-3 text-right text-[#71675E] tabular-nums">
+                          {formatDate(p.date)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 6. Settlement Modal */}
+        {settlingInvoice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-md p-4 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
+                <div>
+                  <h3 className="text-sm font-bold text-[#292320]">
+                    Record Settlement
+                  </h3>
+                  <p className="text-xs text-[#71675E]">
+                    Invoice #{settlingInvoice.invoiceNumber} • {settlingInvoice.business?.name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSettlingInvoice(null)}
+                  className="p-1 text-[#71675E] hover:text-[#292320] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleExecuteSettlement} className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[#71675E] mb-1">Settlement Amount (NPR)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={formatCurrency(settlingInvoice.amount)}
+                    className="w-full px-2.5 py-1.5 bg-[#F7F3EC] border border-[#D8CEC1] rounded font-bold text-[#292320]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#71675E] mb-1">Settlement Method</label>
+                  <select
+                    value={settlementMethod}
+                    onChange={(e) => setSettlementMethod(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-[#292320] focus:outline-none"
+                  >
+                    <option value="BANK_TRANSFER">Bank Transfer (Direct Deposit)</option>
+                    <option value="KHALTI">Khalti Merchant Settlement</option>
+                    <option value="ESEWA">eSewa Merchant Settlement</option>
+                    <option value="CASH">Cash / Direct Office Settlement</option>
+                    <option value="CONNECT_IPS">ConnectIPS / NCHL</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#71675E] mb-1">Reference / UTR Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. UTR-2026-98124 or Deposit Slip #"
+                    value={settlementRef}
+                    onChange={(e) => setSettlementRef(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#71675E] mb-1">Administrative Notes</label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Annual renewal payment verified via bank voucher"
+                    value={settlementNotes}
+                    onChange={(e) => setSettlementNotes(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#D8CEC1]">
+                  <button
+                    type="button"
+                    onClick={() => setSettlingInvoice(null)}
+                    className="px-3 py-1 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] rounded hover:bg-[#EEE7DD] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingSettlement}
+                    className="px-4 py-1 bg-[#6B2837] hover:bg-[#521E2A] text-white font-semibold rounded transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSubmittingSettlement ? "Recording..." : "Confirm Settlement"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 7. Statement / Print Modal */}
+        {selectedStatement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
+            <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-lg p-5 space-y-4 my-8">
+              <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-[#292320]">
+                    Statement: #{selectedStatement.invoiceNumber}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedStatement(null)}
+                  className="p-1 text-[#71675E] hover:text-[#292320] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Printable Body */}
+              <div className="border border-[#D8CEC1] bg-[#F7F3EC] p-4 rounded text-xs space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-sm text-[#292320]">RestroInn Systems</h4>
+                    <p className="text-[#71675E]">Hospitality OS Platform Services</p>
+                    <p className="text-[#71675E]">billing@restroinn.com</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-[#6B2837]">INVOICE STATEMENT</span>
+                    <p className="font-mono text-[#292320]">#{selectedStatement.invoiceNumber}</p>
+                    <p className="text-[#71675E]">{formatDate(selectedStatement.createdAt)}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#D8CEC1] pt-2">
+                  <span className="text-[10px] uppercase font-semibold text-[#71675E]">
+                    Billed Tenant
+                  </span>
+                  <div className="font-bold text-sm text-[#292320]">
+                    {selectedStatement.business?.name}
+                  </div>
+                  <div className="text-[#71675E] font-mono text-[11px]">
+                    Workspace: /{selectedStatement.business?.slug}
+                  </div>
+                </div>
+
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#D8CEC1] text-[#71675E]">
+                      <th className="py-1 font-normal">Description</th>
+                      <th className="py-1 text-right font-normal">Period</th>
+                      <th className="py-1 text-right font-normal">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-[#D8CEC1]">
+                      <td className="py-2">
+                        <div className="font-medium text-[#292320]">
+                          SaaS Hospitality Subscription License
+                        </div>
+                        <div className="text-[11px] text-[#71675E]">
+                          Multi-tenant cloud platform access
+                        </div>
+                      </td>
+                      <td className="py-2 text-right text-[#71675E] tabular-nums">
+                        {formatDate(selectedStatement.billingPeriodStart)} -{" "}
+                        {formatDate(selectedStatement.billingPeriodEnd)}
+                      </td>
+                      <td className="py-2 text-right font-bold text-[#292320] tabular-nums">
+                        {formatCurrency(selectedStatement.amount)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="flex justify-between items-center border-t border-[#D8CEC1] pt-2">
+                  <div>
+                    <span className="text-[10px] uppercase font-semibold text-[#71675E]">
+                      Status
+                    </span>
+                    <div className="font-bold text-xs text-[#292320]">
+                      {selectedStatement.status}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-semibold text-[#71675E]">
+                      Total Due
+                    </span>
+                    <div className="text-base font-bold text-[#6B2837] tabular-nums">
+                      {formatCurrency(selectedStatement.amount)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#D8CEC1]">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] text-xs font-medium rounded hover:bg-[#EEE7DD] transition-colors inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#71675E]" />
+                  <span>Print Statement</span>
+                </button>
+                <button
+                  onClick={() => setSelectedStatement(null)}
+                  className="px-4 py-1 bg-[#6B2837] hover:bg-[#521E2A] text-white text-xs font-semibold rounded transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

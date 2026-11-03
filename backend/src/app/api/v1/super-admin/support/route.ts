@@ -3,6 +3,43 @@ import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
+function parseTicketConversation(ticket: any) {
+  const messages: any[] = [];
+
+  // 1. Root message from the requester / property
+  messages.push({
+    id: `init-${ticket.id}`,
+    senderName: ticket.user?.name || ticket.business?.name || "Client Requester",
+    role: "CLIENT",
+    message: ticket.description,
+    createdAt: ticket.createdAt,
+  });
+
+  // 2. Follow-up conversation messages or resolution
+  if (ticket.resolution) {
+    try {
+      const parsed = JSON.parse(ticket.resolution);
+      if (Array.isArray(parsed)) {
+        for (const msg of parsed) {
+          messages.push(msg);
+        }
+        return messages;
+      }
+    } catch {
+      // Plain text resolution
+      messages.push({
+        id: `res-${ticket.id}`,
+        senderName: ticket.assignedTo || "Platform Support",
+        role: "SUPER_ADMIN",
+        message: ticket.resolution,
+        createdAt: ticket.resolvedAt || ticket.updatedAt || ticket.createdAt,
+      });
+    }
+  }
+
+  return messages;
+}
+
 // GET /api/v1/super-admin/support
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -75,6 +112,7 @@ export async function GET(request: Request) {
         description: t.description,
         assignedTo: t.assignedTo,
         resolution: t.resolution,
+        conversation: parseTicketConversation(t),
         resolvedAt: t.resolvedAt,
         createdAt: t.createdAt,
       })),
@@ -131,7 +169,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT /api/v1/super-admin/support - Update status, assign, or resolve ticket
+// PUT /api/v1/super-admin/support - Update status, reply to ticket, or resolve
 export async function PUT(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
@@ -139,17 +177,22 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, status, assignedTo, resolution, reason } = body;
+    const { id, status, assignedTo, resolution, replyMessage, reason } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Ticket ID is required" }, { status: 400 });
     }
-    if (!reason || reason.trim().length < 5) {
+    const auditReason = reason || (replyMessage ? `Support reply dispatched: ${replyMessage.slice(0, 30)}` : "Support ticket status update");
+    if (auditReason.trim().length < 5) {
       return NextResponse.json({ error: "A valid administrative audit reason (min 5 characters) is required" }, { status: 400 });
     }
 
     const existing = await db.platformSupportTicket.findUnique({
       where: { id },
+      include: {
+        business: true,
+        user: true,
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
@@ -161,15 +204,68 @@ export async function PUT(request: Request) {
       if (status === "RESOLVED" || status === "CLOSED") {
         updateData.resolvedAt = new Date();
       }
+    } else if (replyMessage && existing.status === "OPEN") {
+      updateData.status = "IN_PROGRESS";
     }
+
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
-    if (resolution !== undefined) updateData.resolution = resolution;
+
+    // Handle conversation reply
+    if (replyMessage && replyMessage.trim()) {
+      let conversationList: any[] = [];
+      if (existing.resolution) {
+        try {
+          const parsed = JSON.parse(existing.resolution);
+          if (Array.isArray(parsed)) {
+            conversationList = parsed;
+          } else {
+            conversationList = [{
+              id: `res-${existing.id}`,
+              senderName: existing.assignedTo || "Platform Support",
+              role: "SUPER_ADMIN",
+              message: existing.resolution,
+              createdAt: existing.resolvedAt || new Date().toISOString(),
+            }];
+          }
+        } catch {
+          conversationList = [{
+            id: `res-${existing.id}`,
+            senderName: existing.assignedTo || "Platform Support",
+            role: "SUPER_ADMIN",
+            message: existing.resolution,
+            createdAt: existing.resolvedAt || new Date().toISOString(),
+          }];
+        }
+      }
+
+      conversationList.push({
+        id: `msg-${Date.now()}`,
+        senderName: context.name || "Platform Support",
+        role: "SUPER_ADMIN",
+        message: replyMessage.trim(),
+        createdAt: new Date().toISOString(),
+      });
+
+      updateData.resolution = JSON.stringify(conversationList);
+    } else if (resolution !== undefined) {
+      updateData.resolution = resolution;
+    }
 
     const updated = await db.platformSupportTicket.update({
       where: { id },
       data: updateData,
       include: {
-        business: { select: { name: true } },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            email: true,
+            phone: true,
+            subscription: { select: { packageType: true } },
+          },
+        },
+        user: { select: { id: true, name: true, email: true } },
       },
     });
 
@@ -180,12 +276,31 @@ export async function PUT(request: Request) {
       targetType: "SYSTEM",
       targetId: id,
       businessId: existing.businessId,
-      reason: reason.trim(),
+      reason: auditReason.trim(),
       beforeState: { status: existing.status, assignedTo: existing.assignedTo },
       afterState: { status: updated.status, assignedTo: updated.assignedTo, resolution: updated.resolution },
     });
 
-    return NextResponse.json({ success: true, ticket: updated });
+    return NextResponse.json({
+      success: true,
+      ticket: {
+        id: updated.id,
+        ticketNumber: updated.ticketNumber,
+        businessId: updated.businessId,
+        business: updated.business,
+        user: updated.user,
+        subject: updated.subject,
+        category: updated.category,
+        priority: updated.priority,
+        status: updated.status,
+        description: updated.description,
+        assignedTo: updated.assignedTo,
+        resolution: updated.resolution,
+        conversation: parseTicketConversation(updated),
+        resolvedAt: updated.resolvedAt,
+        createdAt: updated.createdAt,
+      },
+    });
   } catch (error: any) {
     console.error("PUT support ticket error:", error);
     return NextResponse.json({ error: error.message || "Failed to update support ticket" }, { status: 500 });

@@ -31,6 +31,7 @@ Globe,
   BarChart2,
   Sliders,
   Tag,
+  Upload,
 } from "lucide-react";
 
 export interface OnboardingWizardProps {
@@ -54,6 +55,7 @@ export default function BusinessOnboardingWizard({
     // Step 1: Business Info
     businessName: "",
     slug: "",
+    logo: "",
     businessType: "RETAIL",
     currency: "NPR",
     taxNumber: "",
@@ -396,6 +398,68 @@ export default function BusinessOnboardingWizard({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Branding Logo Upload */}
+                <div className="space-y-1 sm:col-span-2 p-3 bg-[#FAF6F0] border border-[#D8CEC1] rounded-md">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider block">
+                      Business Branding Logo (Optional)
+                    </label>
+                    {formData.logo && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, logo: "" }))}
+                        className="text-[10px] text-[#B91C1C] hover:underline font-semibold cursor-pointer"
+                      >
+                        Remove Logo
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {formData.logo ? (
+                      <img
+                        src={formData.logo}
+                        alt="Logo Preview"
+                        className="h-12 w-12 rounded-lg object-cover border border-[#D8CEC1] bg-[#FFFCF7] shrink-0"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-lg bg-[#6B2837] text-white flex items-center justify-center font-bold text-sm shrink-0 border border-[#D8CEC1]">
+                        {formData.businessName ? formData.businessName.slice(0, 2).toUpperCase() : "BI"}
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="onboarding-logo-upload"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              Notify.warning("Logo file size must be less than 5MB.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setFormData((prev) => ({ ...prev, logo: reader.result as string }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="onboarding-logo-upload"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] border border-[#D8CEC1] rounded text-xs font-semibold cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="h-3.5 w-3.5 text-[#6B2837]" /> Upload Logo from File
+                      </label>
+                      <p className="text-[10px] text-[#71675E]">
+                        PNG, JPG, SVG or WebP up to 5MB. Persisted securely and renders on receipts and header.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                     Business / Store Name <span className="text-red-500">*</span>

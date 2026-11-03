@@ -99,13 +99,25 @@ export function generateThermalReceiptHtml(
   const lineSpacing = widthClass === "58mm" ? "1.2" : "1.3";
   const currency = settings.currencySymbol || "Rs. ";
 
-  const subtotal = data.subtotal || 0;
-  const discount = data.discount || 0;
-  const taxableValue = data.taxableValue ?? Math.max(0, subtotal - discount);
-  const tax = data.tax || 0;
-  const total = data.total || subtotal + tax - discount;
-  const roundOff = data.roundOff ?? parseFloat((Math.round(total) - total).toFixed(2));
-  const roundedTotal = data.roundedTotal ?? Math.round(total);
+  const subtotal = Number(data.subtotal) || 0;
+  const discount = Number(data.discount) || 0;
+  const taxableValue =
+    data.taxableValue !== undefined && data.taxableValue !== null
+      ? Number(data.taxableValue) || 0
+      : Math.max(0, subtotal - discount);
+  const tax = Number(data.tax) || 0;
+  const total =
+    data.total !== undefined && data.total !== null
+      ? Number(data.total) || 0
+      : subtotal + tax - discount;
+  const roundOff =
+    data.roundOff !== undefined && data.roundOff !== null
+      ? Number(data.roundOff) || 0
+      : parseFloat((Math.round(total) - total).toFixed(2));
+  const roundedTotal =
+    data.roundedTotal !== undefined && data.roundedTotal !== null
+      ? Number(data.roundedTotal) || 0
+      : Math.round(total);
 
   const qrImage = settings.paymentQrImage || DEFAULT_QR_SVG;
   const qrMedium = settings.paymentQrMedium || "Fonepay";
@@ -114,9 +126,12 @@ export function generateThermalReceiptHtml(
   const showQr = settings.showQrCode !== false;
 
   // Build Item rows
-  const itemsHtml = data.items
+  const itemsHtml = (data.items || [])
     .map((item) => {
-      const lineTotal = ((item.price - (item.discount || 0)) * item.quantity).toFixed(2);
+      const itemPrice = Number(item.price) || 0;
+      const itemQty = Number(item.quantity) || 1;
+      const itemDiscount = Number(item.discount) || 0;
+      const lineTotal = ((itemPrice - itemDiscount) * itemQty).toFixed(2);
       const subInfoParts: string[] = [];
       if (item.hsn) subInfoParts.push(`HSN: ${item.hsn}`);
       else if (item.sku) subInfoParts.push(`SKU: ${item.sku}`);
@@ -130,7 +145,7 @@ export function generateThermalReceiptHtml(
               ${item.name}
             </span>
             <span style="width: 28px; text-align: center; flex-shrink: 0;">${item.quantity}</span>
-            <span style="width: 52px; text-align: right; flex-shrink: 0;">${item.price.toFixed(2)}</span>
+            <span style="width: 52px; text-align: right; flex-shrink: 0;">${itemPrice.toFixed(2)}</span>
             <span style="width: 58px; text-align: right; flex-shrink: 0; font-weight: 600;">${lineTotal}</span>
           </div>
           ${

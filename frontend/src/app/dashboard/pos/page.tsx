@@ -2,6 +2,7 @@
 import { postCommerce } from "@/lib/idempotent-request";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
 import dynamic from "next/dynamic";
@@ -454,14 +455,14 @@ export default function POSPage() {
         customerPan: target?.customerPan,
         tableNumber: target?.tableNumber || (currentOrder.posMode === "RESTAURANT" ? currentOrder.tableNumber : undefined),
         items: receiptItems,
-        subtotal: target?.subtotal ?? subtotal,
-        discount: target?.overallDiscount ?? rawOverallDiscount,
-        taxableValue: target?.taxableAmount ?? (target?.subtotal ? target.subtotal - (target.overallDiscount || 0) : Math.max(0, subtotal - rawOverallDiscount)),
-        tax: target?.tax ?? tax,
-        total: target?.total ?? total,
-        paidAmount: target?.paidAmount,
-        roundOff: target?.roundOff ?? roundOff,
-        roundedTotal: target?.roundedTotal ?? grandTotal,
+        subtotal: Number(target?.subtotal ?? subtotal) || 0,
+        discount: Number(target?.overallDiscount ?? rawOverallDiscount) || 0,
+        taxableValue: Number(target?.taxableAmount ?? (target?.subtotal ? Number(target.subtotal) - Number(target.overallDiscount || 0) : Math.max(0, subtotal - rawOverallDiscount))) || 0,
+        tax: Number(target?.tax ?? tax) || 0,
+        total: Number(target?.total ?? total) || 0,
+        paidAmount: target?.paidAmount ? Number(target.paidAmount) || 0 : undefined,
+        roundOff: Number(target?.roundOff ?? roundOff) || 0,
+        roundedTotal: Number(target?.roundedTotal ?? grandTotal) || 0,
         paymentMethod: target?.paymentMethod,
       };
 
@@ -678,20 +679,28 @@ export default function POSPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch product catalog, categories, customers
+  // Fetch product catalog, categories, customers, and restaurant menus
   React.useEffect(() => {
     async function loadData() {
       try {
-        const [prodRes, catRes, custRes] = await Promise.all([
+        const [prodRes, catRes, custRes, menuRes] = await Promise.all([
           fetch("/api/v1/products?limit=250"),
           fetch("/api/v1/categories"),
           fetch("/api/v1/customers"),
+          fetch("/api/v1/restaurant/menus").catch(() => null),
         ]);
 
+        let loadedProducts: any[] = [];
         if (prodRes.ok) {
           const data = await prodRes.json();
-          setProducts(data.products || []);
-          setFilteredProducts(data.products || []);
+          loadedProducts = (data.products || []).map((p: any) => ({
+            ...p,
+            sellingPrice: Number(p.sellingPrice) || 0,
+            costPrice: Number(p.costPrice) || 0,
+            wholesalePrice: Number(p.wholesalePrice) || 0,
+          }));
+          setProducts(loadedProducts);
+          setFilteredProducts(loadedProducts);
         }
         if (catRes.ok) {
           const data = await catRes.json();
@@ -700,6 +709,56 @@ export default function POSPage() {
         if (custRes.ok) {
           const data = await custRes.json();
           setCustomers(data.customers || []);
+        }
+
+        // Merge Restaurant Menu catalog items into POS catalog
+        if (menuRes && menuRes.ok) {
+          try {
+            const menuData = await menuRes.json();
+            if (menuData.catalog && Array.isArray(menuData.catalog)) {
+              const menuItemsList: any[] = [];
+              const menuCategoriesList: any[] = [];
+              menuData.catalog.forEach((m: any) => {
+                (m.sections || []).forEach((sec: any) => {
+                  menuCategoriesList.push({ id: sec.id, name: sec.name });
+                  (sec.items || []).forEach((item: any) => {
+                    menuItemsList.push({
+                      id: item.productId || item.id,
+                      name: item.name,
+                      sku: "MENU-" + item.name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8),
+                      barcode: "",
+                      costPrice: Number(item.basePrice) * 0.4,
+                      sellingPrice: Number(item.basePrice),
+                      alertQuantity: 0,
+                      batchTracking: false,
+                      productStocks: [{ quantity: 999 }],
+                      unit: { name: "plate" },
+                      description: item.description,
+                      category: { name: sec.name },
+                      categoryId: sec.id,
+                      isKitchenItem: true,
+                    });
+                  });
+                });
+              });
+
+              setProducts((prev) => {
+                const existingIds = new Set(prev.map((p) => p.id));
+                const newOnes = menuItemsList.filter((m) => !existingIds.has(m.id));
+                const combined = [...prev, ...newOnes];
+                setFilteredProducts(combined);
+                return combined;
+              });
+
+              setCategories((prev) => {
+                const existingNames = new Set(prev.map((c) => c.name.toLowerCase()));
+                const newCats = menuCategoriesList.filter((c) => !existingNames.has(c.name.toLowerCase()));
+                return [...prev, ...newCats];
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse restaurant menus in POS:", e);
+          }
         }
 
         // Fetch active plan safely
@@ -880,8 +939,12 @@ export default function POSPage() {
 
   const addUnitToCart = (product: ProductItem, qty: number) => {
     playBeep();
-    const branchStock = product.productStocks.find((s: any) => s.branchId === branchId);
-    const stockQty = branchStock ? branchStock.quantity : 0;
+    const branchStock = product.productStocks?.find((s: any) => s.branchId === branchId);
+    const stockQty = branchStock
+      ? branchStock.quantity
+      : product.productStocks && product.productStocks.length > 0
+      ? product.productStocks[0].quantity
+      : 999;
 
     if (stockQty <= 0) {
       showAlert("Out of Stock", `Product "${product.name}" is completely out of stock.`, "error");
@@ -1535,7 +1598,7 @@ export default function POSPage() {
                 onClick={() => setCurrentOrderId(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold cursor-pointer transition-all select-none border whitespace-nowrap ${
                   tab.id === currentOrderId
-                    ? "bg-[#2563EB] text-white border-transparent shadow-sm shadow-[#2563EB]/15"
+                    ? "bg-[#6B2837] text-white border-transparent shadow-sm shadow-[#6B2837]/20"
                     : "bg-[#FFFCF7] hover:bg-[#F7F3EC] dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-650 dark:text-[#71675E] border-[#D8CEC1] dark:border-slate-800"
                 }`}
               >
@@ -1569,6 +1632,14 @@ export default function POSPage() {
             >
               <FileText className="h-4 w-4 text-emerald-500" /> Drafts ({heldBills.length})
             </button>
+            <Link
+              href="/dashboard/restaurant/pos"
+              className="px-3.5 py-2 bg-[#6B2837] hover:bg-[#541E2A] text-white border border-[#6B2837] rounded-md text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+              title="Switch to Dining Floor Tables & Kitchen KDS POS"
+            >
+              <Table className="h-4 w-4" />
+              <span>Dining Table POS</span>
+            </Link>
           </div>
 
           {/* Category Horizontal scrolling pills */}
@@ -1577,7 +1648,7 @@ export default function POSPage() {
               onClick={() => setSelectedCategory("all")}
               className={`px-4 py-2 text-xs font-bold rounded-md transition-all select-none cursor-pointer ${
                 selectedCategory === "all"
-                  ? "bg-[#2563EB] text-white shadow-xs"
+                  ? "bg-[#6B2837] text-white shadow-xs"
                   : "text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#EEE7DD]/60 dark:hover:bg-slate-800/40"
               }`}
             >
@@ -1589,7 +1660,7 @@ export default function POSPage() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-4 py-2 text-xs font-bold rounded-md whitespace-nowrap transition-all select-none cursor-pointer ${
                   selectedCategory === cat.id
-                    ? "bg-[#2563EB] text-white shadow-xs"
+                    ? "bg-[#6B2837] text-white shadow-xs"
                     : "text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#EEE7DD]/60 dark:hover:bg-slate-800/40"
                 }`}
               >
@@ -1648,8 +1719,8 @@ export default function POSPage() {
                               {stock <= 0 ? "Out of Stock" : `${stock} available`}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-bold text-[#2563EB] dark:text-[#7f74f7]">
-                            {currencySymbol}{p.sellingPrice.toFixed(2)}
+                          <td className="py-3 px-3 font-bold text-[#6B2837] dark:text-[#7f74f7]">
+                            {currencySymbol}{Number(p.sellingPrice || 0).toFixed(2)}
                           </td>
                           {isPharmacy && (
                             <td className="py-3 px-3 text-[#71675E] font-medium">
@@ -1765,8 +1836,8 @@ export default function POSPage() {
                           {prod.name}
                         </h4>
                         <div className="flex justify-between items-center gap-1 pt-1">
-                          <span className="text-[10px] sm:text-xs font-black text-[#2563EB] dark:text-purple-400 whitespace-nowrap">
-                            {currencySymbol}{prod.sellingPrice.toFixed(2)}
+                          <span className="text-[10px] sm:text-xs font-black text-[#6B2837] dark:text-purple-400 whitespace-nowrap">
+                            {currencySymbol}{Number(prod.sellingPrice || 0).toFixed(2)}
                           </span>
                           
                           {/* Circular plus button */}
@@ -1810,8 +1881,8 @@ export default function POSPage() {
           {/* Metadata information card */}
           <div className="border-b border-slate-150 dark:border-slate-800/80 pb-3.5 mb-3 text-[10px] font-bold text-[#71675E] dark:text-[#71675E] uppercase tracking-wider flex justify-between">
             <span>Bill: {currentOrder.invoiceNumber}</span>
-            <span>Date: {new Date().toLocaleDateString()}</span>
-            <span>Cashier: {session?.user?.name?.slice(0, 16) || "Alex Owner"}</span>
+            <span suppressHydrationWarning>Date: {new Date().toLocaleDateString()}</span>
+            <span suppressHydrationWarning>Cashier: {session?.user?.name?.slice(0, 16) || "Alex Owner"}</span>
           </div>
 
           {/* Dining type & Table / Waiter selectors */}
@@ -2391,7 +2462,7 @@ export default function POSPage() {
                 Scale Weight: {weightModalProduct.name}
               </h3>
               <p className="text-[10px] text-[#71675E] mt-0.5">
-                Unit Price: {currencySymbol}{weightModalProduct.sellingPrice.toFixed(2)} / {weightModalProduct.unit?.name || "Kg"}
+                Unit Price: {currencySymbol}{Number(weightModalProduct.sellingPrice || 0).toFixed(2)} / {weightModalProduct.unit?.name || "Kg"}
               </p>
             </div>
 
@@ -2433,7 +2504,7 @@ export default function POSPage() {
                 <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 p-2.5 rounded-lg flex justify-between items-center text-xs">
                   <span className="text-slate-450 font-medium">Calculated Cost:</span>
                   <span className="font-extrabold text-[#292320] dark:text-slate-100">
-                    {currencySymbol}{(Number(weightInputValue) * weightModalProduct.sellingPrice).toFixed(2)}
+                    {currencySymbol}{(Number(weightInputValue || 0) * Number(weightModalProduct.sellingPrice || 0)).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -2485,7 +2556,7 @@ export default function POSPage() {
                 {detailsProduct.name}
               </h3>
               <p className="text-[10px] text-[#71675E]">
-                SKU: {detailsProduct.sku} | Price: {currencySymbol}{detailsProduct.sellingPrice.toFixed(2)}
+                SKU: {detailsProduct.sku} | Price: {currencySymbol}{Number(detailsProduct.sellingPrice || 0).toFixed(2)}
               </p>
             </div>
 
@@ -2509,7 +2580,7 @@ export default function POSPage() {
                       className="flex justify-between items-center p-2 border border-[#D8CEC1] dark:border-slate-800 rounded-md hover:bg-[#F7F3EC] dark:hover:bg-slate-800 cursor-pointer transition-colors text-xs"
                     >
                       <span className="font-semibold text-[#292320] dark:text-slate-350">{alt.name}</span>
-                      <span className="font-bold text-[#2563EB]">{currencySymbol}{alt.sellingPrice.toFixed(2)}</span>
+                      <span className="font-bold text-[#6B2837]">{currencySymbol}{Number(alt.sellingPrice || 0).toFixed(2)}</span>
                     </div>
                   ))}
                 {products.filter((p) => p.categoryId === detailsProduct.categoryId && p.id !== detailsProduct.id).length === 0 && (
@@ -2600,13 +2671,13 @@ export default function POSPage() {
                 hsn: it.hsn,
                 taxRate: it.taxRate,
               })),
-              subtotal: lastInvoice.subtotal ?? subtotal,
-              discount: lastInvoice.overallDiscount ?? 0,
-              taxableValue: lastInvoice.taxableAmount ?? (lastInvoice.subtotal - (lastInvoice.overallDiscount || 0)),
-              tax: lastInvoice.tax ?? tax,
-              total: lastInvoice.total ?? total,
-              roundOff: lastInvoice.roundOff ?? roundOff,
-              roundedTotal: lastInvoice.roundedTotal ?? grandTotal,
+              subtotal: Number(lastInvoice.subtotal ?? subtotal) || 0,
+              discount: Number(lastInvoice.overallDiscount ?? 0) || 0,
+              taxableValue: Number(lastInvoice.taxableAmount ?? (Number(lastInvoice.subtotal || 0) - Number(lastInvoice.overallDiscount || 0))) || 0,
+              tax: Number(lastInvoice.tax ?? tax) || 0,
+              total: Number(lastInvoice.total ?? total) || 0,
+              roundOff: Number(lastInvoice.roundOff ?? roundOff) || 0,
+              roundedTotal: Number(lastInvoice.roundedTotal ?? grandTotal) || 0,
             }}
             settings={{
               businessName,

@@ -21,6 +21,7 @@ const productUpdateSchema = z.object({
   expiryTracking: z.boolean().optional(),
   isVatItem: z.boolean().optional(),
   image: z.string().optional().nullable(),
+  isRestaurantDish: z.boolean().optional(),
 });
 
 export async function GET(
@@ -55,6 +56,60 @@ export async function GET(
         },
       },
     });
+
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -101,14 +156,186 @@ export async function PUT(
       },
     });
 
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
+
     if (!existingProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const { isRestaurantDish, ...productUpdateData } = result.data;
     const updatedProduct = await db.product.update({
       where: { id },
-      data: result.data,
+      data: productUpdateData,
     });
+
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: 'asc' },
+          });
+          if (!section) {
+            let menu = await db.menu.findFirst({
+              where: { businessId: context.businessId },
+            });
+            if (!menu) {
+              menu = await db.menu.create({
+                data: { businessId: context.businessId, name: 'Main Dining Menu' },
+              });
+            }
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                menuId: menu.id,
+                name: 'Kitchen Dishes',
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
+
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
 
     await logActivity({
       userId: context.userId,
@@ -122,6 +349,60 @@ export async function PUT(
       request,
     });
 
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
+
     if (existingProduct.isVatItem !== (updatedProduct as any).isVatItem) {
       await logActivity({
         userId: context.userId,
@@ -134,6 +415,60 @@ export async function PUT(
         newValue: { isVatItem: (updatedProduct as any).isVatItem },
         request,
       });
+
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
     }
 
     return NextResponse.json(updatedProduct);
@@ -167,6 +502,60 @@ export async function DELETE(
       },
     });
 
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
+
     if (!existingProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
@@ -179,6 +568,60 @@ export async function DELETE(
       },
     });
 
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
+
     await logActivity({
       userId: context.userId,
       businessId: context.businessId,
@@ -189,6 +632,60 @@ export async function DELETE(
       oldValue: existingProduct,
       request,
     });
+
+    if (isRestaurantDish !== undefined) {
+      const existingMenuItem = await db.menuItem.findFirst({
+        where: { businessId: context.businessId, productId: id },
+      });
+      if (isRestaurantDish) {
+        if (existingMenuItem) {
+          await db.menuItem.update({
+            where: { id: existingMenuItem.id },
+            data: {
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+            },
+          });
+        } else {
+          let section = await db.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+          if (!section) {
+            section = await db.menuSection.create({
+              data: {
+                businessId: context.businessId,
+                name: "Kitchen Dishes",
+                displayOrder: 0,
+              },
+            });
+          }
+          await db.menuItem.create({
+            data: {
+              businessId: context.businessId,
+              sectionId: section.id,
+              productId: id,
+              name: updatedProduct.name,
+              description: updatedProduct.description,
+              basePrice: updatedProduct.sellingPrice,
+              taxRate: updatedProduct.isVatItem ? 13 : 0,
+              imageUrl: updatedProduct.image,
+              isAvailable: true,
+              isKitchenItem: true,
+            },
+          });
+        }
+      } else if (existingMenuItem) {
+        await db.menuItem.update({
+          where: { id: existingMenuItem.id },
+          data: { isAvailable: false },
+        });
+      }
+    }
 
     return NextResponse.json({ message: "Product deleted successfully" });
   } catch (error: any) {

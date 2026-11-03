@@ -3,7 +3,12 @@ import type { NextAuthConfig } from "next-auth";
 export const authConfig = {
   pages: {
     signIn: "/auth/login",
+    error: "/auth/error",
   },
+  secret:
+    process.env.AUTH_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    "763edd7e57c60b9057170b23348d159c948728cbc82cfdd42f78bb594f092344",
   session: {
     strategy: "jwt",
   },

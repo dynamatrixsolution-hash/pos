@@ -47,6 +47,8 @@ import {
   Megaphone,
   BarChart3,
   Rocket,
+  MessageSquare,
+  BellRing,
 } from "lucide-react";
 
 interface UserMeta {
@@ -170,6 +172,14 @@ export default function DashboardShellClient({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [broadcastsList, setBroadcastsList] = React.useState<any[]>([]);
   const [dismissedNoticeIds, setDismissedNoticeIds] = React.useState<string[]>([]);
+  const [notifications, setNotifications] = React.useState<NotificationMeta[]>(initialNotifications);
+  const [notifTab, setNotifTab] = React.useState<"all" | "notices" | "alerts">("all");
+
+  const unreadBroadcasts = React.useMemo(() => {
+    return broadcastsList.filter((b) => !dismissedNoticeIds.includes(b.id));
+  }, [broadcastsList, dismissedNoticeIds]);
+
+  const totalNotificationsCount = notifications ? notifications.length + unreadBroadcasts.length : unreadBroadcasts.length;
 
   React.useEffect(() => {
     fetch("/api/v1/notifications/broadcasts")
@@ -367,6 +377,8 @@ export default function DashboardShellClient({
     { title: "Billing & payments", href: "/dashboard/super-admin/revenue", icon: CreditCard },
     { title: "Modules & Features", href: "/dashboard/super-admin/modules", icon: Boxes },
     { title: "Broadcast notices", href: "/dashboard/super-admin/notices", icon: Megaphone },
+    { title: "Direct messages", href: "/dashboard/super-admin/chat", icon: MessageSquare },
+    { title: "Push notifications", href: "/dashboard/super-admin/notifications", icon: BellRing },
     { title: "Reports & exports", href: "/dashboard/super-admin/reports", icon: BarChart3 },
   ];
 
@@ -476,6 +488,7 @@ export default function DashboardShellClient({
   };
 
     const isPosRoute = pathname === "/dashboard/pos";
+    const isChatRoute = pathname.startsWith("/dashboard/super-admin/chat") || pathname.startsWith("/dashboard/super-admin/messages");
   const [posSidebarOpen, setPosSidebarOpen] = React.useState(false);
   const [posNavbarOpen, setPosNavbarOpen] = React.useState(true);
 
@@ -504,16 +517,30 @@ export default function DashboardShellClient({
     branches.find((b) => b.id === user.branchId) || branches[0] || null
   );
   
-  const [notifications, setNotifications] = React.useState<NotificationMeta[]>(initialNotifications);
-
   // Filter navigation by user role and active features
-  const userRole = (user.role as Role) || "CASHIER";
+  const effectiveRoleStr = user.role === "ADMIN" ? "OWNER" : user.role;
+  const userRole = (effectiveRoleStr as Role) || "CASHIER";
   const allowedNavigation = React.useMemo(() => {
+    const isOwner = userRole === "OWNER";
+    const coreFeatures = [
+      "Inventory",
+      "Purchases",
+      "Suppliers",
+      "Expenses",
+      "Payments",
+      "POS Billing",
+      "Products",
+      "Customers",
+      "Reports",
+    ];
     return navigationConfig
       .filter((item) => {
         // 1. Role check
         if (!item.roles.includes(userRole)) return false;
-        // 2. Plan feature check
+        // 2. Plan feature check: OWNER always retains full core operational access
+        if (isOwner && item.feature && coreFeatures.includes(item.feature)) {
+          return true;
+        }
         if (userRole !== "SUPER_ADMIN" && item.feature && features && features[item.feature] === false) {
           return false;
         }
@@ -526,6 +553,9 @@ export default function DashboardShellClient({
             children: item.children.filter((child) => {
               // Check subitem roles and features
               if (!child.roles.includes(userRole)) return false;
+              if (isOwner && child.feature && coreFeatures.includes(child.feature)) {
+                return true;
+              }
               if (userRole !== "SUPER_ADMIN" && child.feature && features && features[child.feature] === false) {
                 return false;
               }
@@ -662,10 +692,7 @@ export default function DashboardShellClient({
             {/* 1. Sidebar desktop */}
       {userRole === "SUPER_ADMIN" ? (
         <aside 
-          className="hidden md:flex md:flex-col flex-shrink-0 w-64 bg-[#F7F3EC] border-r border-[#D8CEC1] no-print"
-          style={{
-            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif',
-          }}
+          className="hidden md:flex md:flex-col flex-shrink-0 w-64 bg-[#F7F3EC] border-r border-[#D8CEC1] no-print font-sans"
         >
           {/* Brand Header */}
           <div className="h-16 flex items-center px-5 border-b border-[#D8CEC1] bg-[#F7F3EC]">
@@ -759,11 +786,7 @@ export default function DashboardShellClient({
         {/* Top Navbar */}
         {userRole === "SUPER_ADMIN" ? (
           <header 
-            className="flex items-center justify-between px-4 sm:px-6 h-16 flex-shrink-0 z-30 bg-[#FFFCF7] border-b border-[#D8CEC1] no-print"
-            style={{
-              fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif',
-              letterSpacing: '-0.011em',
-            }}
+            className="flex items-center justify-between px-4 sm:px-6 h-16 flex-shrink-0 z-30 bg-[#FFFCF7] border-b border-[#D8CEC1] no-print font-sans"
           >
             <div className="flex items-center gap-3">
               <button
@@ -1091,37 +1114,107 @@ export default function DashboardShellClient({
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="p-2 rounded-md text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#F7F3EC] dark:hover:bg-slate-900 transition-colors relative cursor-pointer"
+                title="Notifications & Platform Notices"
               >
                 <Bell className="h-5 w-5" />
-                {notifications.length > 0 && (
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border border-white dark:border-[#050B1E]" />
+                {totalNotificationsCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-[#6B2837] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#FFFCF7] dark:border-slate-900 tabular-nums">
+                    {totalNotificationsCount}
+                  </span>
                 )}
               </button>
               {notificationsOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 rounded-lg border border-slate-150 dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-sm z-50 p-1.5">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-[#D8CEC1] dark:border-slate-800">
-                      <span className="text-xs font-bold text-[#292320] dark:text-slate-200">Alerts & Logs</span>
-                      {notifications.length > 0 && (
-                        <button onClick={handleMarkAllNotificationsRead} className="text-[10px] text-[#2563EB] hover:underline font-semibold cursor-pointer">
-                          Clear all
-                        </button>
-                      )}
+                  <div className="absolute right-0 mt-2 w-96 rounded-lg border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-lg z-50 p-2 text-left">
+                    <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#D8CEC1] dark:border-slate-800">
+                      <div>
+                        <span className="text-xs font-bold text-[#292320] dark:text-slate-200">Notifications & Notices</span>
+                        <div className="text-[10px] text-[#71675E] font-medium">{totalNotificationsCount} unread items</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {totalNotificationsCount > 0 && (
+                          <button
+                            onClick={() => {
+                              handleMarkAllNotificationsRead();
+                              setDismissedNoticeIds(broadcastsList.map((b) => b.id));
+                            }}
+                            className="text-[10px] text-[#6B2837] hover:underline font-bold cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="max-h-60 overflow-y-auto py-1">
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-xs text-slate-450">No alerts right now</div>
-                      ) : (
-                        notifications.map((n) => (
-                          <div key={n.id} className="p-3 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 rounded-md flex items-start gap-2.5 border-b border-[#D8CEC1] dark:border-slate-800/50 last:border-b-0">
-                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+
+                    {/* Filter Tabs */}
+                    <div className="flex gap-1 p-1 bg-[#F7F3EC] dark:bg-slate-800/50 rounded-md my-1.5 text-[10px] font-bold">
+                      <button
+                        onClick={() => setNotifTab("all")}
+                        className={`flex-1 py-1 px-2 rounded cursor-pointer transition-colors ${notifTab === "all" ? "bg-[#FFFCF7] dark:bg-slate-900 text-[#292320] dark:text-slate-100 shadow-xs" : "text-[#71675E] hover:text-[#292320]"}`}
+                      >
+                        All ({totalNotificationsCount})
+                      </button>
+                      <button
+                        onClick={() => setNotifTab("notices")}
+                        className={`flex-1 py-1 px-2 rounded cursor-pointer transition-colors ${notifTab === "notices" ? "bg-[#FFFCF7] dark:bg-slate-900 text-[#292320] dark:text-slate-100 shadow-xs" : "text-[#71675E] hover:text-[#292320]"}`}
+                      >
+                        Notices ({unreadBroadcasts.length})
+                      </button>
+                      <button
+                        onClick={() => setNotifTab("alerts")}
+                        className={`flex-1 py-1 px-2 rounded cursor-pointer transition-colors ${notifTab === "alerts" ? "bg-[#FFFCF7] dark:bg-slate-900 text-[#292320] dark:text-slate-100 shadow-xs" : "text-[#71675E] hover:text-[#292320]"}`}
+                      >
+                        Alerts ({notifications.length})
+                      </button>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto divide-y divide-[#D8CEC1]/50 dark:divide-slate-800/50">
+                      {/* Platform Notices */}
+                      {(notifTab === "all" || notifTab === "notices") && unreadBroadcasts.map((b) => (
+                        <div key={b.id} className="p-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 rounded-md flex items-start justify-between gap-2.5 group">
+                          <div className="flex items-start gap-2">
+                            <div className="p-1 rounded bg-[#6B2837]/10 text-[#6B2837] mt-0.5 shrink-0">
+                              <Megaphone className="h-3.5 w-3.5" />
+                            </div>
                             <div>
-                              <div className="text-xs font-semibold text-slate-850 dark:text-slate-200">{n.title}</div>
-                              <p className="text-[10px] text-[#71675E] dark:text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-[#292320] dark:text-slate-200">{b.title}</span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#EEE7DD] dark:bg-slate-800 text-[#71675E] font-semibold">
+                                  {b.priority || "Platform"}
+                                </span>
+                              </div>
+                              {b.subheading && <div className="text-[10px] text-[#71675E] font-medium mt-0.5">{b.subheading}</div>}
+                              <p className="text-[11px] text-[#292320]/80 dark:text-slate-300 mt-1 leading-snug">{b.body}</p>
                             </div>
                           </div>
-                        ))
+                          <button
+                            onClick={() => setDismissedNoticeIds((prev) => [...prev, b.id])}
+                            title="Dismiss notice"
+                            className="text-[#71675E] hover:text-[#292320] p-1 rounded hover:bg-[#EEE7DD] dark:hover:bg-slate-800 cursor-pointer opacity-70 group-hover:opacity-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* System Alerts */}
+                      {(notifTab === "all" || notifTab === "alerts") && notifications.map((n) => (
+                        <div key={n.id} className="p-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 rounded-md flex items-start gap-2.5">
+                          <div className="p-1 rounded bg-amber-500/10 text-amber-600 mt-0.5 shrink-0">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-xs font-bold text-[#292320] dark:text-slate-200">{n.title}</div>
+                            <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {totalNotificationsCount === 0 && (
+                        <div className="px-4 py-8 text-center text-xs text-[#71675E]">
+                          No new notifications or platform notices
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1179,36 +1272,7 @@ export default function DashboardShellClient({
         </header>
         )}
 
-        <main className={`flex-1 ${isPosRoute ? "overflow-hidden h-full" : "overflow-y-auto"} bg-background relative ${isPosRoute ? "p-0" : "p-4 md:p-6"}`}>
-          {/* Platform Broadcast Banner */}
-          {broadcastsList.filter((b) => !dismissedNoticeIds.includes(b.id)).map((broadcast) => (
-            <div
-              key={broadcast.id}
-              className={`mb-4 px-4 py-3 rounded-lg border text-xs flex items-start justify-between gap-3 ${
-                broadcast.priority === "URGENT_MAINTENANCE"
-                  ? "bg-[#FDE8E8] border-[#F8B4B4] text-[#9C3232]"
-                  : broadcast.priority === "WARNING"
-                  ? "bg-[#FEF08A]/30 border-[#FEF08A] text-[#854D0E]"
-                  : "bg-[#DEF7EC] border-[#BCF0DA] text-[#03543F]"
-              }`}
-            >
-              <div className="flex items-start gap-2.5">
-                <Megaphone className="w-4 h-4 mt-0.5 shrink-0" />
-                <div>
-                  <span className="font-bold">{broadcast.title}</span>
-                  {broadcast.subheading && <span className="ml-1.5 opacity-80 font-medium">— {broadcast.subheading}</span>}
-                  <p className="mt-0.5 leading-relaxed">{broadcast.body}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setDismissedNoticeIds((prev) => [...prev, broadcast.id])}
-                className="opacity-70 hover:opacity-100 p-1 shrink-0 cursor-pointer"
-                title="Dismiss notice"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+        <main className={`flex-1 ${isPosRoute ? "overflow-hidden h-full p-0" : isChatRoute ? "overflow-hidden h-[calc(100vh-4rem)] p-3 md:p-4" : "overflow-y-auto p-4 md:p-6"} bg-background relative`}>
           {children}
         </main>
       </div>

@@ -362,8 +362,8 @@ export async function advanceTicketStatus(
         data: { fulfillmentStatus: input.newStatus },
       });
 
-      // Invariant: Trigger recipe ingredient consumption when marked READY
-      if (input.newStatus === "READY") {
+      // Invariant: Trigger recipe ingredient consumption when marked READY or SERVED
+      if (input.newStatus === "READY" || input.newStatus === "SERVED") {
         await deductRecipeIngredientsForTicketLine(
           {
             businessId: input.businessId,
@@ -395,9 +395,7 @@ export async function advanceTicketStatus(
   };
 
   if (externalTx) return await runner(externalTx);
-  return await db.$transaction(runner, {
-    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-  });
+  return await db.$transaction(runner);
 }
 
 /**
@@ -456,9 +454,7 @@ export async function advanceTicketLineStatus(
   };
 
   if (externalTx) return await runner(externalTx);
-  return await db.$transaction(runner, {
-    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-  });
+  return await db.$transaction(runner);
 }
 
 /**
@@ -487,5 +483,36 @@ export async function getLiveKDSTickets(
       },
     },
     orderBy: { createdAt: "asc" },
+  });
+}
+
+/**
+ * Fetch recently served KDS tickets for the Recall view
+ */
+export async function getRecentServedTickets(
+  businessId: string,
+  branchId: string,
+  stationId?: string,
+  limit = 30
+) {
+  return await db.kitchenTicket.findMany({
+    where: {
+      businessId,
+      branchId,
+      status: "SERVED",
+      ...(stationId ? { stationId } : {}),
+    },
+    include: {
+      station: true,
+      order: {
+        include: { table: true },
+      },
+      round: true,
+      lines: {
+        include: { orderLine: true },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
   });
 }

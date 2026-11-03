@@ -28,7 +28,16 @@ const createOrderSchema = z.object({
   branchId: z.string().optional().nullable(),
   tableSessionId: z.string().optional().nullable(),
   tableId: z.string().optional().nullable(),
-  orderType: z.enum(["DINE_IN", "TAKEAWAY", "BAR_WALK_IN"]).default("DINE_IN"),
+  orderType: z.enum(["DINE_IN", "TAKEAWAY", "BAR_WALK_IN", "DELIVERY"]).default("DINE_IN"),
+  deliveryInfo: z
+    .object({
+      customerName: z.string().optional(),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      riderName: z.string().optional(),
+      deliveryFee: z.union([z.number(), z.string()]).optional(),
+    })
+    .optional(),
   items: z.array(orderItemSchema).min(1, "At least one item is required"),
   notes: z.string().optional(),
   autoRouteToKitchen: z.boolean().optional().default(true),
@@ -78,9 +87,32 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = createOrderSchema.parse(body);
 
-    const branchId = parsed.branchId || session.branchId;
+    let branchId: string | undefined = (parsed.branchId || session.branchId) ?? undefined;
+    if (!branchId) {
+      const defaultBranch = await db.branch.findFirst({
+        where: { businessId: session.businessId, deletedAt: null },
+        orderBy: { createdAt: "asc" },
+      });
+      branchId = defaultBranch?.id;
+    }
     if (!branchId) {
       return NextResponse.json({ error: "Branch ID is required" }, { status: 400 });
+    }
+
+    let finalNotes = parsed.notes || "";
+    if (parsed.orderType === "DELIVERY" && parsed.deliveryInfo) {
+      const d = parsed.deliveryInfo;
+      const dParts = [
+        d.customerName ? `Customer: ${d.customerName}` : "",
+        d.phone ? `Phone: ${d.phone}` : "",
+        d.address ? `Address: ${d.address}` : "",
+        d.riderName ? `Rider: ${d.riderName}` : "",
+        d.deliveryFee ? `Delivery Fee: ${d.deliveryFee}` : "",
+      ].filter(Boolean);
+      if (dParts.length > 0) {
+        const deliveryNote = `[DELIVERY] ${dParts.join(" | ")}`;
+        finalNotes = finalNotes ? `${deliveryNote}\n${finalNotes}` : deliveryNote;
+      }
     }
 
     const result = await createOrAppendOrder({
@@ -90,7 +122,7 @@ export async function POST(req: Request) {
       tableId: parsed.tableId,
       orderType: parsed.orderType,
       items: parsed.items,
-      notes: parsed.notes,
+      notes: finalNotes || undefined,
       actorId: session.userId,
     });
 
@@ -127,6 +159,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: any) {
+    console.error("Order creation POST error:", error);
     if (error instanceof RestaurantOrderError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }

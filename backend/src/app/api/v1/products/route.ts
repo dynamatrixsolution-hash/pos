@@ -22,6 +22,7 @@ const productCreateSchema = z.object({
   expiryTracking: z.boolean().default(false),
   isVatItem: z.boolean().default(true),
   image: z.string().optional().nullable(),
+  isRestaurantDish: z.boolean().optional(),
   initialStock: z.number().nonnegative().optional(), // optional initial stock for main branch
   manufacturingDate: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
@@ -105,6 +106,24 @@ export async function GET(request: Request) {
             },
             orderBy: { expiryDate: "asc" },
           },
+          menuItems: {
+            include: {
+              section: { select: { id: true, name: true } },
+              recipeVersions: {
+                where: { isActive: true },
+                include: {
+                  ingredients: {
+                    include: {
+                      product: { select: { id: true, name: true, sku: true, unit: true, costPrice: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          recipeIngredients: {
+            select: { id: true },
+          },
         },
         orderBy: { name: "asc" },
         skip,
@@ -145,7 +164,7 @@ export async function POST(request: Request) {
 
     const data = result.data;
     if (context.branchId) await checkBranch(context, context.branchId);
-    const { initialStock, manufacturingDate, expiryDate, ...productData } = data;
+    const { initialStock, manufacturingDate, expiryDate, isRestaurantDish, ...productData } = data;
 
     // Check product limit from subscription settings
     const limits = await getBusinessLimits(context.businessId);
@@ -278,6 +297,45 @@ export async function POST(request: Request) {
             sellingPrice: productData.sellingPrice,
             expiryDate: expiryDate ? new Date(expiryDate) : null,
             manufacturingDate: manufacturingDate ? new Date(manufacturingDate) : null,
+          },
+        });
+      }
+
+      if (isRestaurantDish) {
+        let section = await tx.menuSection.findFirst({
+          where: { businessId: context.businessId },
+          orderBy: { displayOrder: "asc" },
+        });
+        if (!section) {
+          let menu = await tx.menu.findFirst({
+            where: { businessId: context.businessId },
+          });
+          if (!menu) {
+            menu = await tx.menu.create({
+              data: { businessId: context.businessId, name: "Main Dining Menu" },
+            });
+          }
+          section = await tx.menuSection.create({
+            data: {
+              businessId: context.businessId,
+              menuId: menu.id,
+              name: "Kitchen Dishes",
+              displayOrder: 0,
+            },
+          });
+        }
+        await tx.menuItem.create({
+          data: {
+            businessId: context.businessId,
+            sectionId: section.id,
+            productId: newProduct.id,
+            name: newProduct.name,
+            description: newProduct.description,
+            basePrice: newProduct.sellingPrice,
+            taxRate: newProduct.isVatItem ? 13 : 0,
+            imageUrl: newProduct.image,
+            isAvailable: true,
+            isKitchenItem: true,
           },
         });
       }

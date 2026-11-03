@@ -67,8 +67,17 @@ export async function GET(request: Request) {
       db.purchase.count({ where }),
     ]);
 
+    const mappedPurchases = purchases.map((p) => ({
+      ...p,
+      total: Number(p.total),
+      paidAmount: Number(p.paidAmount),
+      subtotal: Number(p.subtotal),
+      discount: Number(p.discount),
+      tax: Number(p.tax),
+    }));
+
     return NextResponse.json({
-      purchases,
+      purchases: mappedPurchases,
       pagination: {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limit),

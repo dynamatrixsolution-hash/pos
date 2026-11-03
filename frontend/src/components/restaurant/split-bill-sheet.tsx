@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { formatMoney, toCents, fromCents } from "@/lib/currency";
+import { formatNPR, toCents, fromCents } from "@/lib/currency";
+import { X, Plus, Minus } from "lucide-react";
 
 export interface BillOrderLine {
   id: string;
@@ -32,18 +33,16 @@ export function SplitBillSheet({
 }: SplitBillSheetProps) {
   const [splitMode, setSplitMode] = useState<"EQUAL" | "ITEMIZED">("EQUAL");
   const [guestCount, setGuestCount] = useState(2);
-  const [itemAssignments, setItemAssignments] = useState<Record<string, number>>({}); // lineId -> guestIndex (0-indexed)
+  const [itemAssignments, setItemAssignments] = useState<Record<string, number>>({});
 
   const totalCents = toCents(totalAmount);
 
-  // Equal Split Calculations with remainder distribution
   const equalSplits = useMemo(() => {
     const n = Math.max(1, guestCount);
     const baseShareCents = Math.floor(totalCents / n);
     const remainderCents = totalCents % n;
 
     return Array.from({ length: n }, (_, i) => {
-      // Add 1 cent to the first 'remainderCents' guests so the sum is exact
       const cents = baseShareCents + (i < remainderCents ? 1 : 0);
       return {
         guestIndex: i,
@@ -54,7 +53,6 @@ export function SplitBillSheet({
     });
   }, [totalCents, guestCount]);
 
-  // Itemized Split Calculations
   const itemizedSplits = useMemo(() => {
     const n = Math.max(1, guestCount);
     const splits = Array.from({ length: n }, (_, i) => ({
@@ -91,34 +89,36 @@ export function SplitBillSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-xl border border-sandstone bg-porcelain shadow-lg flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-3">
+      <div className="w-full max-w-md rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] flex flex-col max-h-[85vh] shadow-none">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-sandstone px-4 py-3 bg-warmstone/20">
+        <div className="flex items-center justify-between border-b border-[#D8CEC1] px-3.5 py-2 bg-[#EEE7DD]/30 shrink-0">
           <div>
-            <h3 className="text-sm font-semibold text-espresso">
-              Split Bill — Table {tableNumber}
+            <h3 className="text-xs font-bold text-[#292320]">
+              Split Bill — Table {tableNumber || "-"}
             </h3>
-            <p className="text-xs text-warmgray">Order #{orderNumber} • Total: {formatMoney(totalAmount)}</p>
+            <p className="text-[10px] text-[#71675E] font-mono tabular-nums leading-none mt-0.5">
+              Order #{orderNumber} • Total: {formatNPR(totalAmount)}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-warmgray hover:bg-warmstone hover:text-espresso transition-colors"
+            className="text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Mode Selector */}
-        <div className="p-4 border-b border-sandstone flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg border border-sandstone p-0.5 bg-warmstone/40">
+        {/* Mode Selector & Guest Stepper */}
+        <div className="p-2.5 border-b border-[#D8CEC1] flex items-center justify-between gap-2 shrink-0">
+          <div className="inline-flex rounded-md border border-[#D8CEC1] p-0.5 bg-[#EEE7DD]">
             <button
               type="button"
               onClick={() => setSplitMode("EQUAL")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
                 splitMode === "EQUAL"
-                  ? "bg-porcelain text-burgundy shadow-xs"
-                  : "text-warmgray hover:text-espresso"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
               Equal Split
@@ -126,75 +126,79 @@ export function SplitBillSheet({
             <button
               type="button"
               onClick={() => setSplitMode("ITEMIZED")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded transition-colors cursor-pointer ${
                 splitMode === "ITEMIZED"
-                  ? "bg-porcelain text-burgundy shadow-xs"
-                  : "text-warmgray hover:text-espresso"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
               Itemized Split
             </button>
           </div>
 
-          {/* Number of Guests Selector */}
+          {/* Guest Count Stepper */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-warmgray font-medium">Guests:</span>
-            <div className="flex items-center rounded-lg border border-sandstone bg-porcelain">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71675E]">Covers:</span>
+            <div className="flex items-center rounded-md border border-[#D8CEC1] bg-[#FFFCF7]">
               <button
                 type="button"
                 onClick={() => setGuestCount((g) => Math.max(1, g - 1))}
-                className="px-2.5 py-1 text-xs font-semibold hover:bg-warmstone"
+                className="p-1 text-[#292320] hover:bg-[#EEE7DD] transition-colors cursor-pointer"
               >
-                -
+                <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="px-2.5 py-0.5 text-xs font-bold tabular-nums text-espresso">{guestCount}</span>
+              <span className="px-2 text-xs font-bold font-mono tabular-nums text-[#292320]">
+                {guestCount}
+              </span>
               <button
                 type="button"
                 onClick={() => setGuestCount((g) => Math.min(12, g + 1))}
-                className="px-2.5 py-1 text-xs font-semibold hover:bg-warmstone"
+                className="p-1 text-[#292320] hover:bg-[#EEE7DD] transition-colors cursor-pointer"
               >
-                +
+                <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {splitMode === "EQUAL" ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {equalSplits.map((share) => (
                 <div
                   key={share.guestIndex}
-                  className="flex items-center justify-between p-3 rounded-lg border border-sandstone bg-warmivory/30"
+                  className="flex items-center justify-between p-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC]/50"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="h-6 w-6 rounded-full bg-burgundy/10 text-burgundy text-xs font-bold flex items-center justify-center">
+                    <span className="h-5 w-5 rounded bg-[#6B2837]/10 text-[#6B2837] text-[10px] font-bold flex items-center justify-center font-mono">
                       {share.guestIndex + 1}
                     </span>
-                    <span className="text-xs font-medium text-espresso">{share.guestName}</span>
+                    <span className="text-xs font-medium text-[#292320]">{share.guestName}</span>
                   </div>
-                  <span className="text-sm font-bold tabular-nums text-espresso">
-                    {formatMoney(share.amountStr)}
+                  <span className="text-xs font-bold font-mono tabular-nums text-[#292320]">
+                    {formatNPR(share.amountStr)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-xs text-warmgray">Assign each ordered dish to the guest who is paying for it:</p>
-              <div className="space-y-2">
+            <div className="space-y-2">
+              <p className="text-[10px] font-medium text-[#71675E]">
+                Assign dishes to the responsible guest:
+              </p>
+              <div className="space-y-1">
                 {orderLines.map((line) => {
                   const assigned = itemAssignments[line.id] ?? 0;
                   return (
                     <div
                       key={line.id}
-                      className="p-3 rounded-lg border border-sandstone bg-porcelain flex items-center justify-between gap-3 text-xs"
+                      className="p-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-espresso truncate">{line.itemName}</p>
-                        <p className="text-warmgray text-[11px]">
-                          {line.quantity}x @ {formatMoney(line.unitPrice)} = {formatMoney(line.total)}
+                        <p className="font-medium text-[#292320] truncate">{line.itemName}</p>
+                        <p className="text-[#71675E] text-[10px] font-mono tabular-nums">
+                          {line.quantity}x @ {formatNPR(line.unitPrice)} = {formatNPR(line.total)}
                         </p>
                       </div>
 
@@ -204,7 +208,7 @@ export function SplitBillSheet({
                           const val = parseInt(e.target.value, 10);
                           setItemAssignments((prev) => ({ ...prev, [line.id]: val }));
                         }}
-                        className="rounded-lg border border-sandstone bg-warmstone/20 px-2 py-1 text-xs font-medium text-espresso focus:outline-none focus:border-burgundy"
+                        className="rounded-md border border-[#D8CEC1] bg-[#F7F3EC] px-2 py-1 text-xs font-medium text-[#292320] focus:outline-none focus:border-[#6B2837]"
                       >
                         {Array.from({ length: guestCount }, (_, i) => (
                           <option key={i} value={i}>
@@ -218,12 +222,21 @@ export function SplitBillSheet({
               </div>
 
               {/* Summary per guest */}
-              <div className="pt-2 border-t border-sandstone space-y-1.5">
-                <span className="text-xs font-semibold text-espresso">Shares Breakdown:</span>
+              <div className="pt-2 border-t border-[#D8CEC1] space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#71675E] block">
+                  Shares Breakdown
+                </span>
                 {itemizedSplits.map((share) => (
-                  <div key={share.guestIndex} className="flex justify-between text-xs py-1 px-2 rounded bg-warmstone/20">
-                    <span className="text-warmgray">{share.guestName} ({share.lines.length} items):</span>
-                    <span className="font-bold tabular-nums text-espresso">{formatMoney(share.amountStr)}</span>
+                  <div
+                    key={share.guestIndex}
+                    className="flex justify-between text-xs py-1 px-2 rounded-md bg-[#EEE7DD]/50"
+                  >
+                    <span className="text-[#71675E]">
+                      {share.guestName} ({share.lines.length} items):
+                    </span>
+                    <span className="font-bold font-mono tabular-nums text-[#292320]">
+                      {formatNPR(share.amountStr)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -232,21 +245,22 @@ export function SplitBillSheet({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-sandstone p-4 bg-warmstone/20 flex items-center justify-between gap-3">
+        <div className="border-t border-[#D8CEC1] p-2.5 bg-[#EEE7DD]/40 flex items-center justify-between gap-2 shrink-0">
           <div className="text-xs">
-            <span className="text-warmgray">Total: </span>
-            <span className="font-bold text-espresso tabular-nums">{formatMoney(totalAmount)}</span>
+            <span className="text-[10px] text-[#71675E] uppercase block leading-none">Total</span>
+            <span className="font-bold text-[#292320] font-mono tabular-nums text-xs">
+              {formatNPR(totalAmount)}
+            </span>
           </div>
           <button
             type="button"
             onClick={handlePay}
-            className="px-5 py-2 rounded-lg bg-burgundy hover:bg-burgundy-hover text-porcelain text-xs font-semibold transition-colors shadow-xs"
+            className="px-3.5 py-1.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-white text-xs font-semibold transition-colors cursor-pointer"
           >
-            Process Split Settlement
+            Confirm Split Settlement
           </button>
         </div>
       </div>
     </div>
   );
 }
-

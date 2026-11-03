@@ -3,23 +3,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  BarChart3,
-  Calendar,
-  Building2,
-  CreditCard,
-  LifeBuoy,
-  History,
   RotateCw,
   Search,
-  Filter,
-  CheckCircle2,
-  Clock,
+  X,
+  CreditCard,
+  Building2,
+  LifeBuoy,
+  History,
   ArrowUpRight,
-  TrendingUp,
 } from "lucide-react";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
+import { toast } from "@/components/toast";
 
 type TimePeriod = "day" | "week" | "month" | "year" | "all";
 type ReportCategory = "revenue" | "businesses" | "support" | "audit";
@@ -83,9 +80,12 @@ export default function PlatformReportsPage() {
       if (res.ok) {
         const json = await res.json();
         setReportData(json);
+      } else {
+        toast.error("Failed to load reports data");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load reports:", err);
+      toast.error(err.message || "Network error loading reports");
     } finally {
       setLoading(false);
     }
@@ -187,7 +187,7 @@ export default function PlatformReportsPage() {
             header: "Created Date",
             key: "createdAt",
             width: 16,
-            format: (val) => new Date(val).toLocaleString(),
+            format: (val) => new Date(val).toLocaleDateString(),
           },
         ],
         data: reportData?.tickets || [],
@@ -268,39 +268,38 @@ export default function PlatformReportsPage() {
   }, [reportData, searchQuery]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Top Header & Right Corner Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-[#D8CEC1]">
+    <div className="max-w-[1400px] mx-auto space-y-2 text-[#292320]">
+      {/* Top Header & Breadcrumb - Zero redundant sentences */}
+      <div className="flex items-center justify-between pb-0.5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider font-semibold text-[#71675E]">Platform Administration</span>
-            <span className="text-[#D8CEC1]">•</span>
-            <span className="text-xs uppercase tracking-wider font-semibold text-[#6B2837]">Reports & Analytics</span>
+          <div className="text-[11px] font-semibold text-[#71675E] tracking-tight mb-0.5">
+            <Link href="/dashboard/super-admin" className="hover:text-[#6B2837] transition-colors">
+              Platform
+            </Link>{" "}
+            <span className="text-[#D8CEC1] mx-1">/</span> Reports & exports
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#292320] mt-1">Platform Reports Center</h1>
-          <p className="text-sm text-[#71675E] mt-0.5">
-            Operational summaries, subscription billing metrics, and verified multi-format data exports.
-          </p>
+          <h1 className="text-base font-bold text-[#292320] tracking-tight">
+            Reports & exports
+          </h1>
         </div>
 
-        {/* Right Side Corner Actions: Period Filters + Export Dropdown */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Day / Week / Month / Year Segmented Control */}
-          <div className="inline-flex items-center p-1 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-xs font-semibold">
+        {/* Right Corner Controls: Segmented Period Filter + Refresh + Export */}
+        <div className="flex items-center gap-1.5">
+          <div className="inline-flex items-center border border-[#D8CEC1] rounded-md bg-[#FFFCF7] p-0.5 text-xs font-semibold">
             {[
-              { id: "day", label: "Day" },
-              { id: "week", label: "Week" },
-              { id: "month", label: "Month" },
-              { id: "year", label: "Year" },
+              { id: "day", label: "Today" },
+              { id: "week", label: "7 Days" },
+              { id: "month", label: "30 Days" },
+              { id: "year", label: "1 Year" },
               { id: "all", label: "All Time" },
             ].map((p) => (
               <button
                 key={p.id}
                 onClick={() => setPeriod(p.id as TimePeriod)}
-                className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
                   period === p.id
-                    ? "bg-[#6B2837] text-[#FFFCF7] shadow-xs"
-                    : "text-[#71675E] hover:text-[#292320] hover:bg-[#F7F3EC]"
+                    ? "bg-[#6B2837] text-white"
+                    : "text-[#71675E] hover:text-[#292320] hover:bg-[#EEE7DD]"
                 }`}
               >
                 {p.label}
@@ -310,170 +309,166 @@ export default function PlatformReportsPage() {
 
           <button
             onClick={loadReport}
-            className="p-2 text-xs font-medium rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#71675E] hover:text-[#292320] hover:bg-[#F7F3EC] transition-colors cursor-pointer"
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[#292320] bg-[#FFFCF7] border border-[#D8CEC1] rounded-md hover:bg-[#EEE7DD] transition-colors cursor-pointer"
             title="Refresh statistics"
           >
-            <RotateCw className="w-3.5 h-3.5" />
+            <RotateCw className={`w-3 h-3 text-[#71675E] ${loading ? "animate-spin" : ""}`} />
+            Refresh
           </button>
 
-          {/* Right-Side Corner Export Dropdown (CSV, Excel, PDF, Word) */}
           <ExportDropdown
             getExportOptions={getDynamicExportOptions}
-            buttonText="Export Report"
+            buttonText="Export dataset"
             variant="primary"
           />
         </div>
       </div>
 
-      {/* KPI Cards (Recalculated according to period) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Revenue Collected */}
-        <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7]">
-          <div className="flex items-center justify-between text-xs font-medium text-[#71675E]">
-            <span>Collected Revenue</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#DEF7EC] text-[#03543F] font-semibold">
-              {reportData?.metrics.periodLabel || "Period"}
+      {/* Connected 4-Column Metric Strip (Padding strictly <= 7px) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 border border-[#D8CEC1] rounded-lg bg-[#FFFCF7] divide-x divide-y md:divide-y-0 divide-[#D8CEC1] overflow-hidden shadow-2xs">
+        {/* Cell 1: Collected Revenue */}
+        <div className="py-1.5 px-3">
+          <span className="text-[11px] font-medium text-[#71675E] block leading-tight">Collected revenue</span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base font-bold text-[#6B2837] tabular-nums font-mono">
+              NPR {(reportData?.metrics.revenue.collectedNpr ?? 0).toLocaleString()}
             </span>
-          </div>
-          <div className="text-2xl font-bold text-[#6B2837] mt-1 tabular-nums">
-            NPR {(reportData?.metrics.revenue.collectedNpr ?? 0).toLocaleString()}
-          </div>
-          <div className="text-xs text-[#71675E] mt-0.5">
-            {reportData?.metrics.revenue.paidCount ?? 0} invoices settled
+            <span className="text-[10px] text-[#71675E] tabular-nums font-mono">
+              ({reportData?.metrics.revenue.paidCount ?? 0} settled)
+            </span>
           </div>
         </div>
 
-        {/* Card 2: Receivables / Outstanding */}
-        <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7]">
-          <div className="flex items-center justify-between text-xs font-medium text-[#71675E]">
-            <span>Pending Receivables</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FEF08A]/40 text-[#854D0E] font-semibold">
-              Outstanding
+        {/* Cell 2: Receivables / Outstanding */}
+        <div className="py-1.5 px-3">
+          <span className="text-[11px] font-medium text-[#71675E] block leading-tight">Pending receivables</span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base font-bold text-[#9C3232] tabular-nums font-mono">
+              NPR {(reportData?.metrics.revenue.pendingNpr ?? 0).toLocaleString()}
             </span>
-          </div>
-          <div className="text-2xl font-bold text-[#9C3232] mt-1 tabular-nums">
-            NPR {(reportData?.metrics.revenue.pendingNpr ?? 0).toLocaleString()}
-          </div>
-          <div className="text-xs text-[#71675E] mt-0.5">
-            {reportData?.metrics.revenue.pendingCount ?? 0} invoices awaiting payment
+            <span className="text-[10px] text-[#71675E] tabular-nums font-mono">
+              ({reportData?.metrics.revenue.pendingCount ?? 0} due)
+            </span>
           </div>
         </div>
 
-        {/* Card 3: Businesses Growth */}
-        <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7]">
-          <div className="flex items-center justify-between text-xs font-medium text-[#71675E]">
-            <span>Business Properties</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F7F3EC] text-[#71675E] font-semibold">
-              Active Portfolio
+        {/* Cell 3: Business Properties */}
+        <div className="py-1.5 px-3">
+          <span className="text-[11px] font-medium text-[#71675E] block leading-tight">Registered properties</span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base font-bold text-[#292320] tabular-nums font-mono">
+              {reportData?.metrics.businesses.totalAllTime ?? 0}
             </span>
-          </div>
-          <div className="text-2xl font-bold text-[#292320] mt-1 tabular-nums">
-            {reportData?.metrics.businesses.totalAllTime ?? 0}
-          </div>
-          <div className="text-xs text-[#71675E] mt-0.5">
-            {reportData?.metrics.businesses.restaurant ?? 0} Dining • {reportData?.metrics.businesses.hotel ?? 0} Lodging • {reportData?.metrics.businesses.hybrid ?? 0} Hybrid
+            <span className="text-[10px] text-[#71675E]">
+              {reportData?.metrics.businesses.restaurant ?? 0} dine • {reportData?.metrics.businesses.hotel ?? 0} stay • {reportData?.metrics.businesses.hybrid ?? 0} both
+            </span>
           </div>
         </div>
 
-        {/* Card 4: Support & Operations */}
-        <div className="p-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7]">
-          <div className="flex items-center justify-between text-xs font-medium text-[#71675E]">
-            <span>Support Requests</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F7F3EC] text-[#71675E] font-semibold">
-              In Period
+        {/* Cell 4: Support & Operations */}
+        <div className="py-1.5 px-3">
+          <span className="text-[11px] font-medium text-[#71675E] block leading-tight">Support requests</span>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base font-bold text-[#292320] tabular-nums font-mono">
+              {reportData?.metrics.support.ticketsInPeriod ?? 0}
             </span>
-          </div>
-          <div className="text-2xl font-bold text-[#292320] mt-1 tabular-nums">
-            {reportData?.metrics.support.ticketsInPeriod ?? 0}
-          </div>
-          <div className="text-xs text-[#71675E] mt-0.5">
-            {reportData?.metrics.support.resolvedInPeriod ?? 0} resolved • {reportData?.metrics.support.openInPeriod ?? 0} active
+            <span className="text-[10px] text-[#71675E]">
+              {reportData?.metrics.support.resolvedInPeriod ?? 0} resolved • {reportData?.metrics.support.openInPeriod ?? 0} active
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex border-b border-[#D8CEC1] gap-6 text-xs font-semibold">
-        <button
-          onClick={() => {
-            setActiveCategory("revenue");
-            setSearchQuery("");
-          }}
-          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeCategory === "revenue"
-              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
-              : "text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          <CreditCard className="w-3.5 h-3.5" />
-          Subscription Billing & Invoices ({reportData?.invoices.length ?? 0})
-        </button>
+      {/* Main Table Card */}
+      <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden shadow-2xs">
+        {/* Unified Category Tabs & Filter Header */}
+        <div className="py-1.5 px-3 border-b border-[#D8CEC1] flex flex-col sm:flex-row items-center justify-between gap-2 bg-[#FFFCF7]">
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+            <button
+              onClick={() => {
+                setActiveCategory("revenue");
+                setSearchQuery("");
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeCategory === "revenue"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              <CreditCard className="w-3 h-3" />
+              <span>Invoices</span>
+              <span className="text-[10px] opacity-80 tabular-nums font-mono">({reportData?.invoices.length ?? 0})</span>
+            </button>
 
-        <button
-          onClick={() => {
-            setActiveCategory("businesses");
-            setSearchQuery("");
-          }}
-          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeCategory === "businesses"
-              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
-              : "text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          Client Properties Directory ({reportData?.businesses.length ?? 0})
-        </button>
+            <button
+              onClick={() => {
+                setActiveCategory("businesses");
+                setSearchQuery("");
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeCategory === "businesses"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              <Building2 className="w-3 h-3" />
+              <span>Properties</span>
+              <span className="text-[10px] opacity-80 tabular-nums font-mono">({reportData?.businesses.length ?? 0})</span>
+            </button>
 
-        <button
-          onClick={() => {
-            setActiveCategory("support");
-            setSearchQuery("");
-          }}
-          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeCategory === "support"
-              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
-              : "text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          <LifeBuoy className="w-3.5 h-3.5" />
-          Support Helpdesk Log ({reportData?.tickets.length ?? 0})
-        </button>
+            <button
+              onClick={() => {
+                setActiveCategory("support");
+                setSearchQuery("");
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeCategory === "support"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              <LifeBuoy className="w-3 h-3" />
+              <span>Support</span>
+              <span className="text-[10px] opacity-80 tabular-nums font-mono">({reportData?.tickets.length ?? 0})</span>
+            </button>
 
-        <button
-          onClick={() => {
-            setActiveCategory("audit");
-            setSearchQuery("");
-          }}
-          className={`pb-3 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeCategory === "audit"
-              ? "border-b-2 border-[#6B2837] text-[#6B2837]"
-              : "text-[#71675E] hover:text-[#292320]"
-          }`}
-        >
-          <History className="w-3.5 h-3.5" />
-          Administrative Audit Trail ({reportData?.auditLogs.length ?? 0})
-        </button>
-      </div>
+            <button
+              onClick={() => {
+                setActiveCategory("audit");
+                setSearchQuery("");
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeCategory === "audit"
+                  ? "bg-[#6B2837] text-white"
+                  : "text-[#71675E] hover:text-[#292320] hover:bg-[#EEE7DD]"
+              }`}
+            >
+              <History className="w-3 h-3" />
+              <span>Audit log</span>
+              <span className="text-[10px] opacity-80 tabular-nums font-mono">({reportData?.auditLogs.length ?? 0})</span>
+            </button>
+          </div>
 
-      {/* Search and Table Container */}
-      <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
-        {/* Table Filter Bar */}
-        <div className="p-4 border-b border-[#D8CEC1] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#FAF7F2]">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#71675E]" />
+          {/* Search Box with instant clear button */}
+          <div className="relative w-full sm:w-64 shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#71675E]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter current view..."
-              className="w-full text-xs pl-9 pr-3 py-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] placeholder:text-[#71675E] focus:outline-none focus:border-[#6B2837]"
+              className="w-full text-xs pl-7 pr-7 py-1 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] placeholder:text-[#71675E] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837] transition-all"
             />
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <span className="text-xs text-[#71675E]">
-              Showing {activeCategory === "revenue" ? filteredInvoices.length : activeCategory === "businesses" ? filteredBusinesses.length : activeCategory === "support" ? filteredTickets.length : filteredAudit.length} entries for <strong>{reportData?.metrics.periodLabel}</strong>
-            </span>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71675E] hover:text-[#292320]"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -483,55 +478,66 @@ export default function PlatformReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold">
-                  <th className="py-2.5 px-4">Invoice #</th>
-                  <th className="py-2.5 px-4">Client Business</th>
-                  <th className="py-2.5 px-4">Plan & Package</th>
-                  <th className="py-2.5 px-4">Amount (NPR)</th>
-                  <th className="py-2.5 px-4">Payment Status</th>
-                  <th className="py-2.5 px-4">Payment Method</th>
-                  <th className="py-2.5 px-4">Due Date</th>
+                  <th className="py-1.5 px-3">Invoice #</th>
+                  <th className="py-1.5 px-3">Client business</th>
+                  <th className="py-1.5 px-3">Plan & package</th>
+                  <th className="py-1.5 px-3">Amount (NPR)</th>
+                  <th className="py-1.5 px-3">Payment status</th>
+                  <th className="py-1.5 px-3">Payment method</th>
+                  <th className="py-1.5 px-3">Due date</th>
+                  <th className="py-1.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D8CEC1]">
+              <tbody className="divide-y divide-[#D8CEC1]/60">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-[#71675E]">
-                      Loading revenue report...
+                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
+                      <div className="inline-block animate-spin w-4 h-4 border-2 border-[#6B2837] border-t-transparent rounded-full mb-1"></div>
+                      <div>Loading revenue report...</div>
                     </td>
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-[#71675E]">
+                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
                       No invoices recorded for the selected period.
                     </td>
                   </tr>
                 ) : (
                   filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                      <td className="py-2.5 px-4 font-mono font-medium text-[#292320]">{inv.invoiceNumber}</td>
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">{inv.businessName}</td>
-                      <td className="py-2.5 px-4 text-[#71675E]">
+                      <td className="py-1.5 px-3 font-mono font-medium text-[#292320]">{inv.invoiceNumber}</td>
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">{inv.businessName}</td>
+                      <td className="py-1.5 px-3 text-[#71675E]">
                         <span className="font-semibold text-[#292320]">{inv.plan}</span> • {inv.packageType}
                       </td>
-                      <td className="py-2.5 px-4 font-mono tabular-nums text-[#292320]">
+                      <td className="py-1.5 px-3 font-mono tabular-nums text-[#292320] font-semibold">
                         NPR {inv.amount.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-1.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium ${
                             inv.status === "PAID"
                               ? "bg-[#DEF7EC] text-[#03543F] border border-[#BCF0DA]"
                               : inv.status === "OVERDUE"
                               ? "bg-[#FDE8E8] text-[#9C3232] border border-[#F8B4B4]"
-                              : "bg-[#FEF08A]/30 text-[#854D0E] border border-[#FEF08A]"
+                              : "bg-[#FEF08A]/40 text-[#854D0E] border border-[#FEF08A]"
                           }`}
                         >
                           {inv.status}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-[#71675E]">{inv.paymentMethod.replace("_", " ")}</td>
-                      <td className="py-2.5 px-4 text-[#71675E] tabular-nums">
+                      <td className="py-1.5 px-3 text-[#71675E]">{inv.paymentMethod.replace("_", " ")}</td>
+                      <td className="py-1.5 px-3 text-[#71675E] tabular-nums font-mono">
                         {new Date(inv.dueDate).toLocaleDateString()}
+                      </td>
+                      <td className="py-1.5 px-3 text-right">
+                        <Link
+                          href="/dashboard/super-admin/revenue"
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[11px] font-semibold text-[#6B2837] bg-[#FFFCF7] border border-[#D8CEC1] rounded hover:bg-[#EEE7DD] transition-colors"
+                        >
+                          <span>Manage</span>
+                          <ArrowUpRight className="w-2.5 h-2.5" />
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -547,42 +553,44 @@ export default function PlatformReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold">
-                  <th className="py-2.5 px-4">Business Name</th>
-                  <th className="py-2.5 px-4">Workspace Slug</th>
-                  <th className="py-2.5 px-4">Package Type</th>
-                  <th className="py-2.5 px-4">Account Status</th>
-                  <th className="py-2.5 px-4">Owner Contact</th>
-                  <th className="py-2.5 px-4">Plan</th>
-                  <th className="py-2.5 px-4">Branches</th>
-                  <th className="py-2.5 px-4">Joined Date</th>
+                  <th className="py-1.5 px-3">Business name</th>
+                  <th className="py-1.5 px-3">Workspace slug</th>
+                  <th className="py-1.5 px-3">Package type</th>
+                  <th className="py-1.5 px-3">Account status</th>
+                  <th className="py-1.5 px-3">Owner contact</th>
+                  <th className="py-1.5 px-3">Plan</th>
+                  <th className="py-1.5 px-3">Branches</th>
+                  <th className="py-1.5 px-3">Joined date</th>
+                  <th className="py-1.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D8CEC1]">
+              <tbody className="divide-y divide-[#D8CEC1]/60">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
-                      Loading business properties directory...
+                    <td colSpan={9} className="py-8 text-center text-[#71675E]">
+                      <div className="inline-block animate-spin w-4 h-4 border-2 border-[#6B2837] border-t-transparent rounded-full mb-1"></div>
+                      <div>Loading business properties directory...</div>
                     </td>
                   </tr>
                 ) : filteredBusinesses.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
+                    <td colSpan={9} className="py-8 text-center text-[#71675E]">
                       No businesses found for the selected period.
                     </td>
                   </tr>
                 ) : (
                   filteredBusinesses.map((b) => (
                     <tr key={b.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">{b.name}</td>
-                      <td className="py-2.5 px-4 font-mono text-[#71675E]">{b.slug}.restroinn.com</td>
-                      <td className="py-2.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E]">
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">{b.name}</td>
+                      <td className="py-1.5 px-3 font-mono text-[#71675E]">{b.slug}.restroinn.com</td>
+                      <td className="py-1.5 px-3">
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-[#EEE7DD] text-[#292320] border border-[#D8CEC1]">
                           {b.packageType}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-1.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium ${
                             b.status === "ACTIVE"
                               ? "bg-[#DEF7EC] text-[#03543F] border border-[#BCF0DA]"
                               : "bg-[#FDE8E8] text-[#9C3232] border border-[#F8B4B4]"
@@ -591,14 +599,23 @@ export default function PlatformReportsPage() {
                           {b.status}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-[#71675E]">
-                        <span className="font-medium text-[#292320] block">{b.ownerName}</span>
-                        <span className="text-[11px]">{b.ownerEmail}</span>
+                      <td className="py-1.5 px-3 text-[#71675E]">
+                        <span className="font-medium text-[#292320]">{b.ownerName}</span>
+                        <span className="text-[10px] text-[#71675E] ml-1.5">({b.ownerEmail})</span>
                       </td>
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">{b.plan}</td>
-                      <td className="py-2.5 px-4 tabular-nums text-[#71675E]">{b.branchCount}</td>
-                      <td className="py-2.5 px-4 text-[#71675E] tabular-nums">
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">{b.plan}</td>
+                      <td className="py-1.5 px-3 tabular-nums font-mono text-[#71675E]">{b.branchCount}</td>
+                      <td className="py-1.5 px-3 text-[#71675E] tabular-nums font-mono">
                         {new Date(b.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-1.5 px-3 text-right">
+                        <Link
+                          href={`/dashboard/super-admin/businesses/${b.id}`}
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[11px] font-semibold text-[#6B2837] bg-[#FFFCF7] border border-[#D8CEC1] rounded hover:bg-[#EEE7DD] transition-colors"
+                        >
+                          <span>Profile</span>
+                          <ArrowUpRight className="w-2.5 h-2.5" />
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -614,51 +631,62 @@ export default function PlatformReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold">
-                  <th className="py-2.5 px-4">Ticket #</th>
-                  <th className="py-2.5 px-4">Property</th>
-                  <th className="py-2.5 px-4">Subject</th>
-                  <th className="py-2.5 px-4">Category</th>
-                  <th className="py-2.5 px-4">Priority</th>
-                  <th className="py-2.5 px-4">Status</th>
-                  <th className="py-2.5 px-4">Submitted</th>
+                  <th className="py-1.5 px-3">Ticket #</th>
+                  <th className="py-1.5 px-3">Property</th>
+                  <th className="py-1.5 px-3">Subject</th>
+                  <th className="py-1.5 px-3">Category</th>
+                  <th className="py-1.5 px-3">Priority</th>
+                  <th className="py-1.5 px-3">Status</th>
+                  <th className="py-1.5 px-3">Submitted</th>
+                  <th className="py-1.5 px-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D8CEC1]">
+              <tbody className="divide-y divide-[#D8CEC1]/60">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-[#71675E]">
-                      Loading support requests...
+                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
+                      <div className="inline-block animate-spin w-4 h-4 border-2 border-[#6B2837] border-t-transparent rounded-full mb-1"></div>
+                      <div>Loading support requests...</div>
                     </td>
                   </tr>
                 ) : filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-[#71675E]">
+                    <td colSpan={8} className="py-8 text-center text-[#71675E]">
                       No support tickets logged in this period.
                     </td>
                   </tr>
                 ) : (
                   filteredTickets.map((t) => (
                     <tr key={t.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                      <td className="py-2.5 px-4 font-mono font-medium text-[#6B2837]">{t.ticketNumber}</td>
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">{t.businessName}</td>
-                      <td className="py-2.5 px-4 text-[#292320]">{t.subject}</td>
-                      <td className="py-2.5 px-4 text-[#71675E]">{t.category.replace("_", " ")}</td>
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">{t.priority}</td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-1.5 px-3 font-mono font-medium text-[#6B2837]">{t.ticketNumber}</td>
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">{t.businessName}</td>
+                      <td className="py-1.5 px-3 text-[#292320]">{t.subject}</td>
+                      <td className="py-1.5 px-3 text-[#71675E]">{t.category.replace("_", " ")}</td>
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">{t.priority}</td>
+                      <td className="py-1.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium ${
                             t.status === "RESOLVED" || t.status === "CLOSED"
                               ? "bg-[#DEF7EC] text-[#03543F] border border-[#BCF0DA]"
                               : t.status === "IN_PROGRESS"
-                              ? "bg-[#FEF08A]/30 text-[#854D0E] border border-[#FEF08A]"
-                              : "bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]"
+                              ? "bg-[#FEF08A]/40 text-[#854D0E] border border-[#FEF08A]"
+                              : "bg-[#EEE7DD] text-[#292320] border border-[#D8CEC1]"
                           }`}
                         >
                           {t.status}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-[#71675E] tabular-nums">
+                      <td className="py-1.5 px-3 text-[#71675E] tabular-nums font-mono">
                         {new Date(t.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-1.5 px-3 text-right">
+                        <Link
+                          href="/dashboard/super-admin/support"
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[11px] font-semibold text-[#6B2837] bg-[#FFFCF7] border border-[#D8CEC1] rounded hover:bg-[#EEE7DD] transition-colors"
+                        >
+                          <span>Resolve</span>
+                          <ArrowUpRight className="w-2.5 h-2.5" />
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -674,19 +702,20 @@ export default function PlatformReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold">
-                  <th className="py-2.5 px-4">Timestamp</th>
-                  <th className="py-2.5 px-4">Admin Actor</th>
-                  <th className="py-2.5 px-4">Action</th>
-                  <th className="py-2.5 px-4">Target Scope</th>
-                  <th className="py-2.5 px-4">Context Property</th>
-                  <th className="py-2.5 px-4">Mandatory Audit Reason</th>
+                  <th className="py-1.5 px-3">Timestamp</th>
+                  <th className="py-1.5 px-3">Admin actor</th>
+                  <th className="py-1.5 px-3">Action</th>
+                  <th className="py-1.5 px-3">Target scope</th>
+                  <th className="py-1.5 px-3">Context property</th>
+                  <th className="py-1.5 px-3">Mandatory audit reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D8CEC1]">
+              <tbody className="divide-y divide-[#D8CEC1]/60">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-[#71675E]">
-                      Loading immutable audit trail...
+                      <div className="inline-block animate-spin w-4 h-4 border-2 border-[#6B2837] border-t-transparent rounded-full mb-1"></div>
+                      <div>Loading immutable audit trail...</div>
                     </td>
                   </tr>
                 ) : filteredAudit.length === 0 ? (
@@ -698,16 +727,16 @@ export default function PlatformReportsPage() {
                 ) : (
                   filteredAudit.map((l) => (
                     <tr key={l.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                      <td className="py-2.5 px-4 font-mono text-[#71675E] whitespace-nowrap">
+                      <td className="py-1.5 px-3 font-mono text-[#71675E] whitespace-nowrap tabular-nums text-[11px]">
                         {new Date(l.createdAt).toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-4 font-semibold text-[#292320]">
+                      <td className="py-1.5 px-3 font-semibold text-[#292320]">
                         {l.actor} <span className="text-[10px] text-[#71675E]">({l.role})</span>
                       </td>
-                      <td className="py-2.5 px-4 font-mono text-[#6B2837] font-semibold">{l.action}</td>
-                      <td className="py-2.5 px-4 text-[#71675E]">{l.targetType}</td>
-                      <td className="py-2.5 px-4 font-medium text-[#292320]">{l.businessName}</td>
-                      <td className="py-2.5 px-4 text-[#292320] leading-relaxed max-w-sm">{l.reason}</td>
+                      <td className="py-1.5 px-3 font-mono text-[#6B2837] font-semibold">{l.action}</td>
+                      <td className="py-1.5 px-3 text-[#71675E]">{l.targetType}</td>
+                      <td className="py-1.5 px-3 font-medium text-[#292320]">{l.businessName}</td>
+                      <td className="py-1.5 px-3 text-[#292320] leading-relaxed max-w-sm">{l.reason}</td>
                     </tr>
                   ))
                 )}

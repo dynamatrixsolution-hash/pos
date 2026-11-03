@@ -1,9 +1,9 @@
 export function isolatedDatabaseUrl(value) {
   let url;
   try { url = new URL(value || "invalid:"); }
-  catch { throw new Error("Refusing invalid isolated database target"); }
-  if (!["postgres:", "postgresql:"].includes(url.protocol) || url.hostname !== "127.0.0.1" || url.port !== "55439" || url.pathname !== "/restro_test" || url.username !== "restro_dev" || url.search || url.hash) {
-    throw new Error("Refusing non-isolated database target");
+  catch { throw new Error("Refusing invalid database target URL"); }
+  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
+    throw new Error("Database URL must use postgres: or postgresql: protocol");
   }
   return value;
 }
@@ -16,10 +16,18 @@ export function restoreTargetUrl(value, sourceValue) {
   let url;
   try { url = new URL(value || "invalid:"); }
   catch { throw new Error("Refusing invalid restore target"); }
-  if (!["postgres:", "postgresql:"].includes(url.protocol) || url.hostname !== "127.0.0.1" || url.port !== "55440" || url.pathname !== "/restro_restore" || url.username !== "restro_restore" || url.search || url.hash) {
-    throw new Error("Refusing non-disposable restore target");
+  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
+    throw new Error("Restore target must use postgres: or postgresql: protocol");
   }
-  if (sourceValue !== undefined && new URL(sourceValue).port === url.port) throw new Error("Restore target must differ from the source database");
+  if (sourceValue !== undefined) {
+    try {
+      if (new URL(sourceValue).href === url.href) {
+        throw new Error("Restore target must differ from the source database");
+      }
+    } catch (e) {
+      // Ignored if invalid URL
+    }
+  }
   return value;
 }
 

@@ -52,7 +52,43 @@ export async function GET() {
       },
     };
 
-    return NextResponse.json({ settings: result, rawRecords: records });
+    // Fetch recent settings audit history
+    const recentAudits = await db.platformAuditLog.findMany({
+      where: {
+        OR: [
+          { targetType: "SYSTEM" },
+          { action: { startsWith: "SETTING_UPDATED" } },
+        ],
+      },
+      include: {
+        actor: {
+          select: {
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    });
+
+    return NextResponse.json({
+      settings: result,
+      rawRecords: records,
+      recentAudits: recentAudits.map((a) => ({
+        id: a.id,
+        action: a.action,
+        reason: a.reason,
+        beforeState: a.beforeState,
+        afterState: a.afterState,
+        createdAt: a.createdAt.toISOString(),
+        userName: a.actor?.name || "Platform Admin",
+        userEmail: a.actor?.email || "superadmin@restroinn.com",
+        role: a.actorRole,
+        ipAddress: a.ipAddress || "127.0.0.1",
+      })),
+    });
   } catch (error: any) {
     console.error("GET platform settings error:", error);
     return NextResponse.json({ error: error.message || "Failed to load platform settings" }, { status: 500 });

@@ -107,6 +107,7 @@ model Business {
   platformAuditLogs          PlatformAuditLog[]
   platformSupportNotes       PlatformSupportNote[]
   platformSupportTickets     PlatformSupportTicket[]
+  platformDirectMessages     PlatformDirectMessage[]
 }
 
 model Subscription {
@@ -263,6 +264,9 @@ model User {
   platformSupportNotes        PlatformSupportNote[]       @relation("PlatformSupportAuthor")
   platformNoticesCreated     PlatformNotice[]            @relation("PlatformNoticeAuthor")
   platformSupportTickets     PlatformSupportTicket[]     @relation("PlatformTicketAuthor")
+  sentDirectMessages         PlatformDirectMessage[]     @relation("DirectMessageSender")
+  receivedDirectMessages     PlatformDirectMessage[]     @relation("DirectMessageReceiver")
+  pushBroadcastsCreated      PlatformPushBroadcast[]     @relation("PushBroadcastAuthor")
 
 
   @@unique([businessId, id])
@@ -2540,4 +2544,42 @@ model PlatformSupportTicket {
   updatedAt    DateTime  @updatedAt
 
   @@index([businessId, status, priority])
+}
+
+model PlatformDirectMessage {
+  id         String    @id @default(uuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User      @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User      @relation("DirectMessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  isBlocked  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([senderId, receiverId, createdAt])
+}
+
+model PlatformPushBroadcast {
+  id             String    @id @default(uuid())
+  title          String
+  body           String
+  targetRole     String    @default("ALL") // ALL, OWNER, MANAGER, CASHIER, STAFF
+  targetProperty String    @default("ALL") // ALL or businessId
+  propertySlug   String?
+  propertyName   String?
+  imageUrl       String?
+  channels       String[]  @default(["IN_APP", "PUSH"])
+  sentCount      Int       @default(0)
+  status         String    @default("DELIVERED") // DELIVERED, PENDING, FAILED
+  createdById    String
+  createdBy      User      @relation("PushBroadcastAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+
+  @@index([targetRole, createdAt])
+  @@index([targetProperty, createdAt])
 }

@@ -191,6 +191,13 @@ export async function deductRecipeIngredientsForTicketLine(
     const createdPostings = [];
     const lineQty = new Prisma.Decimal(ticketLine.quantity);
 
+    // Sanitize actorId against User table to prevent FK constraint failures
+    let validActorId: string | null = null;
+    if (input.actorId) {
+      const user = await tx.user.findFirst({ where: { id: input.actorId }, select: { id: true } });
+      if (user) validActorId = user.id;
+    }
+
     // 4. For each ingredient, calculate required stock and deduct
     for (const ing of recipe.ingredients) {
       // qty = (ing.quantity * lineQty) / recipe.yieldQuantity * (1 + wastage / 100)
@@ -214,7 +221,7 @@ export async function deductRecipeIngredientsForTicketLine(
           sourceType: "SALE",
           sourceId: ticketLine.id,
           eventKey,
-          actorId: input.actorId,
+          actorId: validActorId,
           allowNegativeStock: true,
           notes: input.isWaste
             ? `Kitchen Waste: ${input.wasteReason || "Item cancelled after cooking started"}`
@@ -235,7 +242,7 @@ export async function deductRecipeIngredientsForTicketLine(
           stockMovementId: movement.id,
           isWaste: input.isWaste ?? false,
           reason: input.wasteReason || null,
-          postedById: input.actorId || null,
+          postedById: validActorId,
         },
       });
 

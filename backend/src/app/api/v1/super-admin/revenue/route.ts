@@ -89,3 +89,80 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch platform subscription revenue" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+  if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
+
+  try {
+    const body = await request.json();
+    const { invoiceId, amount, paymentMethod = "BANK_TRANSFER", reference, notes } = body;
+
+    if (!invoiceId) {
+      return NextResponse.json({ error: "Invoice ID is required" }, { status: 400 });
+    }
+
+    const invoice = await db.subscriptionInvoice.findUnique({
+      where: { id: invoiceId },
+      include: { business: true },
+    });
+
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    const settlementAmount = amount ? Number(amount) : Number(invoice.amount);
+
+    const payment = await db.subscriptionPayment.create({
+      data: {
+        businessId: invoice.businessId,
+        invoiceId: invoice.id,
+        amount: settlementAmount,
+        currency: invoice.currency || "NPR",
+        paymentMethod: paymentMethod,
+        reference: reference || `SETTLE-${Date.now().toString().slice(-6)}`,
+        notes: notes || "Settled by Super Admin",
+        recordedById: context.userId,
+      },
+    });
+
+    await db.subscriptionInvoice.update({
+      where: { id: invoice.id },
+      data: {
+        status: "PAID",
+        paidAt: new Date(),
+      },
+    });
+
+    // Update active business subscription if overdue
+    await db.subscription.updateMany({
+      where: { businessId: invoice.businessId, status: "OVERDUE" },
+      data: { status: "ACTIVE" },
+    });
+
+    // Audit log
+    await db.platformAuditLog.create({
+      data: {
+        action: "PAYMENT_SETTLED",
+        businessId: invoice.businessId,
+        actorId: context.userId,
+        actorRole: "SUPER_ADMIN",
+        targetType: "SUBSCRIPTION_INVOICE",
+        targetId: invoice.id,
+        reason: `Settled invoice #${invoice.invoiceNumber} for NPR ${settlementAmount}`,
+        afterState: { status: "PAID", amount: settlementAmount, paymentMethod },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      paymentId: payment.id,
+      message: `Invoice #${invoice.invoiceNumber} settled successfully.`,
+    });
+  } catch (error: any) {
+    console.error("Super Admin Record Settlement API Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to record payment settlement" }, { status: 500 });
+  }
+}
+

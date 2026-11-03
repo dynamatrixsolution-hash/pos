@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Notify } from "@/lib/notify";
+import { toast } from "@/components/toast";
 import {
   ArrowLeft,
   Building,
@@ -26,6 +26,8 @@ import {
   DollarSign,
   FileText,
   Lock,
+  Pencil,
+  Camera,
 } from "lucide-react";
 
 interface Branch {
@@ -118,6 +120,9 @@ interface BusinessDetail {
   email: string | null;
   phone: string | null;
   address: string | null;
+  logo?: string | null;
+  settings?: any;
+  taxConfig?: any;
   status: "ACTIVE" | "SUSPENDED" | "PENDING" | "CLOSED";
   suspendedReason: string | null;
   suspendedAt: string | null;
@@ -158,6 +163,21 @@ export default function BusinessDetailPage() {
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "subscription" | "billing" | "support" | "activity">("overview");
+
+  // Edit Business Profile & Branding Modal
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    slug: "",
+    logo: "",
+    email: "",
+    phone: "",
+    address: "",
+    currency: "NPR",
+    businessType: "RESTAURANT",
+    taxNumber: "",
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Modals & Action States
   const [actionLoading, setActionLoading] = useState(false);
@@ -210,11 +230,72 @@ export default function BusinessDetailPage() {
         setEditBranchLimit(sub.branchLimit || 1);
       }
     } catch (err: any) {
-      Notify.error(err.message || "Failed to load business details");
+      toast.error(err.message || "Failed to load business details");
     } finally {
       setLoading(false);
     }
   }, [businessId]);
+
+  const openEditProfileModal = () => {
+    if (!business) return;
+    setProfileForm({
+      name: business.name || "",
+      slug: business.slug || "",
+      logo: business.logo || "",
+      email: business.email || "",
+      phone: business.phone || "",
+      address: business.address || "",
+      currency: business.currency || "NPR",
+      businessType:
+        business.settings?.businessType ||
+        business.subscription?.packageType ||
+        "RESTAURANT",
+      taxNumber:
+        business.taxConfig?.taxNumber ||
+        (business as any).taxNumber ||
+        "",
+    });
+    setIsEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!profileForm.name.trim()) {
+      toast.error("Business name cannot be empty");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_PROFILE",
+          payload: {
+            name: profileForm.name.trim(),
+            slug: profileForm.slug.trim().toLowerCase(),
+            logo: profileForm.logo.trim() || null,
+            email: profileForm.email.trim() || null,
+            phone: profileForm.phone.trim() || null,
+            address: profileForm.address.trim() || null,
+            currency: profileForm.currency,
+            businessType: profileForm.businessType,
+            taxNumber: profileForm.taxNumber.trim() || null,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update business profile");
+
+      toast.success("Business profile & branding updated successfully");
+      setIsEditProfileOpen(false);
+      await fetchBusinessData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     fetchBusinessData();
@@ -230,7 +311,7 @@ export default function BusinessDetailPage() {
   // 1. Suspend Business
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
-      Notify.warning("Please provide a mandatory reason for suspending this tenant account.");
+      toast.warning("Please provide a mandatory reason for suspending this tenant account.");
       return;
     }
     setActionLoading(true);
@@ -246,12 +327,12 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to suspend account");
 
-      Notify.success("Account suspended successfully. Active tenant sessions terminated.");
+      toast.success("Account suspended successfully. Active tenant sessions terminated.");
       setSuspendModalOpen(false);
       setSuspendReason("");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to suspend business");
+      toast.error(err.message || "Failed to suspend business");
     } finally {
       setActionLoading(false);
     }
@@ -272,10 +353,10 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reactivate account");
 
-      Notify.success("Account reactivated successfully.");
+      toast.success("Account reactivated successfully.");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to reactivate business");
+      toast.error(err.message || "Failed to reactivate business");
     } finally {
       setActionLoading(false);
     }
@@ -284,7 +365,7 @@ export default function BusinessDetailPage() {
   // 3. Save Subscription & Module Entitlements
   const handleSaveSubscription = async () => {
     if (!editReason.trim()) {
-      Notify.warning("A mandatory audit reason is required when modifying tenant subscription & modules.");
+      toast.warning("A mandatory audit reason is required when modifying tenant subscription & modules.");
       return;
     }
     setActionLoading(true);
@@ -308,12 +389,12 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update subscription");
 
-      Notify.success("Subscription & module entitlements updated.");
+      toast.success("Subscription & module entitlements updated.");
       setSubEditModalOpen(false);
       setEditReason("");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to update subscription");
+      toast.error(err.message || "Failed to update subscription");
     } finally {
       setActionLoading(false);
     }
@@ -323,11 +404,11 @@ export default function BusinessDetailPage() {
   const handleRecordPayment = async () => {
     if (!selectedInvoice) return;
     if (paymentAmount <= 0) {
-      Notify.warning("Please enter a valid payment amount greater than zero.");
+      toast.warning("Please enter a valid payment amount greater than zero.");
       return;
     }
     if (!paymentReason.trim()) {
-      Notify.warning("A reason/reference description is required for audit logs.");
+      toast.warning("A reason/reference description is required for audit logs.");
       return;
     }
     setActionLoading(true);
@@ -350,7 +431,7 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to record payment");
 
-      Notify.success("SaaS subscription payment recorded.");
+      toast.success("SaaS subscription payment recorded.");
       setPaymentModalOpen(false);
       setSelectedInvoice(null);
       setPaymentAmount(0);
@@ -359,7 +440,7 @@ export default function BusinessDetailPage() {
       setPaymentReason("");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to record payment");
+      toast.error(err.message || "Failed to record payment");
     } finally {
       setActionLoading(false);
     }
@@ -381,10 +462,10 @@ export default function BusinessDetailPage() {
       if (!res.ok) throw new Error(data.error || "Failed to generate reset link");
 
       setResetInviteUrl(data.inviteUrl);
-      Notify.success(data.message || "Password reset invitation generated.");
+      toast.success(data.message || "Password reset invitation generated.");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to generate password reset invitation");
+      toast.error(err.message || "Failed to generate password reset invitation");
     } finally {
       setActionLoading(false);
     }
@@ -408,10 +489,10 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to revoke sessions");
 
-      Notify.success("All tenant sessions revoked successfully.");
+      toast.success("All tenant sessions revoked successfully.");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to revoke sessions");
+      toast.error(err.message || "Failed to revoke sessions");
     } finally {
       setActionLoading(false);
     }
@@ -420,7 +501,7 @@ export default function BusinessDetailPage() {
   // 7. Add Internal Support Note
   const handleAddNote = async () => {
     if (!noteTitle.trim() || !noteContent.trim()) {
-      Notify.warning("Please provide both title and content for the support note.");
+      toast.warning("Please provide both title and content for the support note.");
       return;
     }
     setActionLoading(true);
@@ -441,13 +522,13 @@ export default function BusinessDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to log note");
 
-      Notify.success("Internal support note logged.");
+      toast.success("Internal support note logged.");
       setNoteModalOpen(false);
       setNoteTitle("");
       setNoteContent("");
       fetchBusinessData();
     } catch (err: any) {
-      Notify.error(err.message || "Failed to save support note");
+      toast.error(err.message || "Failed to save support note");
     } finally {
       setActionLoading(false);
     }
@@ -484,7 +565,7 @@ export default function BusinessDetailPage() {
   return (
     <div className="min-h-screen bg-[#F7F3EC] p-6 sm:p-8 text-[#292320]">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Navigation Breadcrumb */}
+        {/* Navigation Breadcrumb & Top Actions */}
         <div className="flex items-center justify-between">
           <Link
             href="/dashboard/super-admin/businesses"
@@ -494,11 +575,17 @@ export default function BusinessDetailPage() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <Link
+              href={`/dashboard/super-admin/businesses/${business.id}/edit`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] border border-[#D8CEC1] text-xs font-bold rounded-md transition-colors shadow-sm cursor-pointer"
+            >
+              <Pencil className="h-3.5 w-3.5 text-[#6B2837]" /> Edit Business
+            </Link>
             {business.status === "SUSPENDED" ? (
               <button
                 onClick={handleActivate}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#15803D] hover:bg-[#15803D]/90 text-[#FFFCF7] text-xs font-bold rounded-md transition-colors shadow-sm disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#15803D] hover:bg-[#15803D]/90 text-[#FFFCF7] text-xs font-bold rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 <UserCheck className="h-3.5 w-3.5" /> Activate Business
               </button>
@@ -506,7 +593,7 @@ export default function BusinessDetailPage() {
               <button
                 onClick={() => setSuspendModalOpen(true)}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] hover:bg-[#B91C1C]/90 text-[#FFFCF7] text-xs font-bold rounded-md transition-colors shadow-sm disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] hover:bg-[#B91C1C]/90 text-[#FFFCF7] text-xs font-bold rounded-md transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 <Ban className="h-3.5 w-3.5" /> Suspend Business
               </button>
@@ -515,55 +602,79 @@ export default function BusinessDetailPage() {
         </div>
 
         {/* Business Header Card */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
+        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-[#292320]">{business.name}</h1>
-                <span
-                  className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${
-                    business.status === "ACTIVE"
-                      ? "bg-[#15803D]/10 text-[#15803D] border-[#15803D]/20"
-                      : business.status === "SUSPENDED"
-                      ? "bg-[#B91C1C]/10 text-[#B91C1C] border-[#B91C1C]/20"
-                      : "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/20"
-                  }`}
+            <div className="flex items-start gap-4">
+              {/* Business Logo Avatar */}
+              <div className="relative group shrink-0">
+                {business.logo ? (
+                  <img
+                    src={business.logo}
+                    alt={business.name}
+                    className="h-14 w-14 rounded-lg object-cover border border-[#D8CEC1] bg-[#FFFCF7] shadow-sm"
+                  />
+                ) : (
+                  <div className="h-14 w-14 rounded-lg bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center font-bold text-lg border border-[#D8CEC1] shadow-sm tracking-wider">
+                    {business.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <Link
+                  href={`/dashboard/super-admin/businesses/${business.id}/edit`}
+                  title="Edit Business Profile & Logo"
+                  className="absolute -bottom-1 -right-1 p-1 bg-[#FFFCF7] border border-[#D8CEC1] rounded-full text-[#71675E] hover:text-[#6B2837] shadow-sm transition-colors cursor-pointer"
                 >
-                  {business.status}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#EEE7DD] text-[#71675E] border border-[#D8CEC1]">
-                  {business.subscription?.packageType || "RESTAURANT"}
-                </span>
+                  <Camera className="h-2.5 w-2.5" />
+                </Link>
               </div>
-              <p className="text-xs text-[#71675E]">
-                Workspace Slug: <span className="font-mono text-[#292320]">{business.slug}.restroinn.com</span> • Currency:{" "}
-                <span className="font-semibold text-[#292320]">{business.currency}</span> • ID:{" "}
-                <span className="font-mono text-[11px] text-[#71675E]">{business.id}</span>
-              </p>
-              {business.suspendedReason && (
-                <div className="mt-2 text-xs text-[#B91C1C] bg-[#B91C1C]/10 px-3 py-1.5 rounded-md border border-[#B91C1C]/20">
-                  <span className="font-bold">Suspension Notice:</span> {business.suspendedReason}
+
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#292320]">{business.name}</h1>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${
+                      business.status === "ACTIVE"
+                        ? "bg-[#15803D]/10 text-[#15803D] border-[#15803D]/20"
+                        : business.status === "SUSPENDED"
+                        ? "bg-[#B91C1C]/10 text-[#B91C1C] border-[#B91C1C]/20"
+                        : "bg-[#B45309]/10 text-[#B45309] border-[#B45309]/20"
+                    }`}
+                  >
+                    {business.status}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-[#EEE7DD] text-[#71675E] border border-[#D8CEC1]">
+                    {business.settings?.businessType || business.subscription?.packageType || "RESTAURANT"}
+                  </span>
                 </div>
-              )}
+                <p className="text-xs text-[#71675E]">
+                  Workspace Slug: <span className="font-mono text-[#292320]">{business.slug}.restroinn.com</span> • Currency:{" "}
+                  <span className="font-semibold text-[#292320]">{business.currency}</span> • ID:{" "}
+                  <span className="font-mono text-[11px] text-[#71675E]">{business.id}</span>
+                </p>
+                {business.suspendedReason && (
+                  <div className="mt-2 text-xs text-[#B91C1C] bg-[#B91C1C]/10 px-3 py-1.5 rounded-md border border-[#B91C1C]/20">
+                    <span className="font-bold">Suspension Notice:</span> {business.suspendedReason}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#EEE7DD] text-center min-w-[100px]">
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-[#F7F3EC] px-3 py-2 rounded-md border border-[#EEE7DD] text-center min-w-[90px]">
                 <div className="text-[10px] uppercase font-bold text-[#71675E]">Branches</div>
-                <div className="text-base font-bold tabular-nums text-[#292320] mt-0.5">
+                <div className="text-sm font-bold tabular-nums text-[#292320] mt-0.5">
                   {business.metrics.branchCount}
                 </div>
               </div>
-              <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#EEE7DD] text-center min-w-[100px]">
+              <div className="bg-[#F7F3EC] px-3 py-2 rounded-md border border-[#EEE7DD] text-center min-w-[90px]">
                 <div className="text-[10px] uppercase font-bold text-[#71675E]">Staff Users</div>
-                <div className="text-base font-bold tabular-nums text-[#292320] mt-0.5">
+                <div className="text-sm font-bold tabular-nums text-[#292320] mt-0.5">
                   {business.metrics.userCount}
                 </div>
               </div>
-              <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#EEE7DD] text-center min-w-[110px]">
+              <div className="bg-[#F7F3EC] px-3 py-2 rounded-md border border-[#EEE7DD] text-center min-w-[105px]">
                 <div className="text-[10px] uppercase font-bold text-[#71675E]">Balance Due</div>
-                <div className="text-base font-bold tabular-nums text-[#6B2837] mt-0.5">
+                <div className="text-sm font-bold tabular-nums text-[#6B2837] mt-0.5">
                   Rs. {business.metrics.balanceDue.toLocaleString()}
                 </div>
               </div>
@@ -571,7 +682,7 @@ export default function BusinessDetailPage() {
           </div>
 
           {/* Canonical 5-Tab Bar */}
-          <div className="flex border-b border-[#D8CEC1] gap-6 mt-6 pt-2">
+          <div className="flex border-b border-[#D8CEC1] gap-6 mt-5 pt-2">
             {[
               { id: "overview", label: "Overview", icon: Building },
               { id: "subscription", label: "Subscription & Modules", icon: Sliders },
@@ -604,13 +715,43 @@ export default function BusinessDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Identity & Owner */}
             <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#71675E] border-b border-[#EEE7DD] pb-2">
-                Business Identity & Owner
-              </h3>
-              <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#71675E]">
+                  Business Identity & Owner
+                </h3>
+                <Link
+                  href={`/dashboard/super-admin/businesses/${business.id}/edit`}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6B2837] hover:underline cursor-pointer"
+                >
+                  <Pencil className="h-3 w-3" /> Edit Details
+                </Link>
+              </div>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-[#EEE7DD]/60">
+                  <span className="text-[#71675E]">Business Logo</span>
+                  <div className="flex items-center gap-2">
+                    {business.logo ? (
+                      <img src={business.logo} alt="Logo" className="h-7 w-7 rounded object-cover border border-[#D8CEC1]" />
+                    ) : (
+                      <span className="text-[11px] text-[#71675E] italic">No logo configured</span>
+                    )}
+                  </div>
+                </div>
                 <div className="flex justify-between py-1 border-b border-[#EEE7DD]/60">
                   <span className="text-[#71675E]">Legal Name</span>
                   <span className="font-semibold text-[#292320]">{business.name}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-[#EEE7DD]/60">
+                  <span className="text-[#71675E]">Workspace Subdomain</span>
+                  <span className="font-mono text-[#292320]">{business.slug}.restroinn.com</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-[#EEE7DD]/60">
+                  <span className="text-[#71675E]">Business Category</span>
+                  <span className="font-semibold text-[#292320]">{business.settings?.businessType || business.subscription?.packageType || "RESTAURANT"}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-[#EEE7DD]/60">
+                  <span className="text-[#71675E]">PAN / VAT Registration</span>
+                  <span className="font-mono font-semibold text-[#292320]">{business.taxConfig?.taxNumber || "Not registered"}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#EEE7DD]/60">
                   <span className="text-[#71675E]">Registered Email</span>
@@ -961,7 +1102,7 @@ export default function BusinessDetailPage() {
                             navigator.clipboard.writeText(resetInviteUrl);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
-                            Notify.success("Invitation link copied to clipboard.");
+                            toast.success("Invitation link copied to clipboard.");
                           }}
                           className="px-2.5 py-1.5 bg-[#EEE7DD] hover:bg-[#D8CEC1] rounded text-xs font-bold"
                         >
@@ -1409,6 +1550,224 @@ export default function BusinessDetailPage() {
                 {actionLoading ? "Saving..." : "Save Support Note"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: EDIT BUSINESS PROFILE & LOGO */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
+              <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
+                <Pencil className="h-4 w-4 text-[#6B2837]" /> Edit Business Profile & Branding
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditProfileOpen(false)}
+                className="text-[#71675E] hover:text-[#292320] text-sm p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
+              {/* Logo Preview and File Upload */}
+              <div className="p-3 bg-[#F7F3EC] rounded-md border border-[#EEE7DD] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#292320] block">Branding Logo</label>
+                  <Link
+                    href={`/dashboard/super-admin/businesses/${businessId}/edit`}
+                    className="text-[10px] font-bold text-[#6B2837] hover:underline"
+                  >
+                    Open Full Edit Page &rarr;
+                  </Link>
+                </div>
+                <div className="flex items-center gap-3">
+                  {profileForm.logo ? (
+                    <img
+                      src={profileForm.logo}
+                      alt="Logo preview"
+                      className="h-12 w-12 rounded-lg object-cover border border-[#D8CEC1] bg-[#FFFCF7] shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-lg bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center font-bold text-base border border-[#D8CEC1] shrink-0">
+                      {profileForm.name ? profileForm.name.slice(0, 2).toUpperCase() : "BI"}
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="modal-quick-logo-upload"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error("File is too large (max 5MB).");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setProfileForm((prev) => ({ ...prev, logo: reader.result as string }));
+                            toast.success("Logo file selected.");
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="modal-quick-logo-upload"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] border border-[#D8CEC1] rounded text-[11px] font-semibold cursor-pointer shadow-2xs"
+                      >
+                        <Camera className="h-3 w-3 text-[#6B2837]" /> Choose Image File
+                      </label>
+                      {profileForm.logo && (
+                        <button
+                          type="button"
+                          onClick={() => setProfileForm((prev) => ({ ...prev, logo: "" }))}
+                          className="text-[10px] text-[#B91C1C] hover:underline font-semibold cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={profileForm.logo}
+                      onChange={(e) => setProfileForm({ ...profileForm, logo: e.target.value })}
+                      placeholder="Or paste image URL (https://...)"
+                      className="w-full text-[11px] p-1.5 border border-[#D8CEC1] rounded bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Name and Slug */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#71675E]">Legal Business Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-[#71675E]">Workspace Subdomain Slug *</label>
+                  <div className="flex items-center mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus-within:bg-[#FFFCF7] focus-within:border-[#6B2837]">
+                    <input
+                      type="text"
+                      required
+                      value={profileForm.slug}
+                      onChange={(e) => setProfileForm({ ...profileForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                      className="w-full text-xs p-2 bg-transparent focus:outline-none"
+                    />
+                    <span className="text-[11px] text-[#71675E] pr-2.5 font-mono select-none">.restroinn.com</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category, Currency & PAN */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-[#71675E]">Business Category</label>
+                  <select
+                    value={profileForm.businessType}
+                    onChange={(e) => setProfileForm({ ...profileForm, businessType: e.target.value })}
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  >
+                    <option value="RESTAURANT">Restaurant & Cafe</option>
+                    <option value="HOTEL">Hotel & Resort</option>
+                    <option value="BOTH">Hotel + Restaurant</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-[#71675E]">Default Currency</label>
+                  <select
+                    value={profileForm.currency}
+                    onChange={(e) => setProfileForm({ ...profileForm, currency: e.target.value })}
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  >
+                    <option value="NPR">NPR (Rs.)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-[#71675E]">PAN / VAT Number</label>
+                  <input
+                    type="text"
+                    value={profileForm.taxNumber}
+                    onChange={(e) => setProfileForm({ ...profileForm, taxNumber: e.target.value })}
+                    placeholder="e.g. 601234567"
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Email & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#71675E]">Registered Contact Email</label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    placeholder="info@business.com"
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-[#71675E]">Contact Phone Number</label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    placeholder="+977 9800000000"
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+              </div>
+
+              {/* Physical Address */}
+              <div>
+                <label className="font-bold text-[#71675E]">Physical Address / Location</label>
+                <input
+                  type="text"
+                  value={profileForm.address}
+                  onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                  placeholder="e.g. Lakeside Ward 6, Pokhara, Nepal"
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] focus:bg-[#FFFCF7] focus:outline-none focus:border-[#6B2837]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#EEE7DD]">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-[#71675E] hover:text-[#292320] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile || !profileForm.name.trim()}
+                  className="px-4 py-1.5 bg-[#6B2837] hover:bg-[#6B2837]/90 text-[#FFFCF7] text-xs font-bold rounded-md disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                >
+                  {savingProfile ? "Saving Profile..." : "Save Profile & Branding"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

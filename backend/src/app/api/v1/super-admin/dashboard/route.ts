@@ -140,7 +140,7 @@ export async function GET(request: Request) {
       db.business.findMany({
         where: { slug: { not: "platform-admin" } },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 8,
         include: {
           subscription: { select: { plan: true, status: true, packageType: true } },
           users: { where: { role: "OWNER" }, select: { name: true, email: true } },
@@ -210,6 +210,7 @@ export async function GET(request: Request) {
           id: b.id,
           name: b.name,
           slug: b.slug,
+          logo: b.logo || null,
           status: b.subscription?.status || "ACTIVE",
           plan: b.subscription?.plan || "STANDARD",
           packageType: b.subscription?.packageType || "RESTAURANT",

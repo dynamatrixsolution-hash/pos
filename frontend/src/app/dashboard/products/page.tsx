@@ -6,7 +6,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, Trash2, Tag, Percent, Barcode, Boxes, Edit, Camera, FileSpreadsheet, Upload, Download, Loader2, AlertTriangle, Info, Sliders } from "lucide-react";
+import { Search, Plus, Trash2, Tag, Percent, Barcode, Boxes, Edit, Camera, FileSpreadsheet, Upload, Download, Loader2, AlertTriangle, Info, Sliders, BookOpen, UtensilsCrossed, CheckCircle2, X } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
@@ -33,6 +33,8 @@ interface ProductItem {
   subcategory?: { name: string } | null;
   description?: string | null;
   image?: string | null;
+  menuItems?: any[];
+  recipeIngredients?: any[];
 }
 
 interface CategoryItem {
@@ -61,6 +63,7 @@ const productSchema = z.object({
   expiryDate: z.string().optional().nullable().or(z.literal("")),
   isVatItem: z.boolean(),
   image: z.string().optional().nullable().or(z.literal("")),
+  isRestaurantDish: z.boolean(),
 });
 
 type ProductInputs = z.infer<typeof productSchema>;
@@ -74,8 +77,47 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = React.useState<string>("");
   const [selectedSubcategory, setSelectedSubcategory] = React.useState<string>("");
   const [onlyLowStock, setOnlyLowStock] = React.useState<boolean>(false);
+  const [productTypeFilter, setProductTypeFilter] = React.useState<"ALL" | "RETAIL" | "RESTAURANT" | "INGREDIENTS">("ALL");
+
+  // Recipe BOM Drawer/Modal states
+  const [bomProduct, setBomProduct] = React.useState<ProductItem | null>(null);
+  const [bomIngredients, setBomIngredients] = React.useState<Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    unit: string;
+    costPrice: number;
+    wastagePercent: number;
+  }>>([]);
+  const [loadingBom, setLoadingBom] = React.useState<boolean>(false);
+  const [savingBom, setSavingBom] = React.useState<boolean>(false);
+
+  // New ingredient row state
+  const [newIngProductId, setNewIngProductId] = React.useState<string>("");
+  const [newIngQty, setNewIngQty] = React.useState<string>("0.1");
+  const [newIngUnit, setNewIngUnit] = React.useState<string>("kg");
+  const [newIngWastage, setNewIngWastage] = React.useState<string>("0");
   
   const { currencySymbol } = useSettings();
+  const displayedProducts = React.useMemo(() => {
+    return products.filter((p) => {
+      if (productTypeFilter === "RESTAURANT") {
+        return Boolean(p.menuItems && p.menuItems.length > 0);
+      }
+      if (productTypeFilter === "INGREDIENTS") {
+        return Boolean(p.recipeIngredients && p.recipeIngredients.length > 0);
+      }
+      if (productTypeFilter === "RETAIL") {
+        return (
+          (!p.menuItems || p.menuItems.length === 0) &&
+          (!p.recipeIngredients || p.recipeIngredients.length === 0)
+        );
+      }
+      return true;
+    });
+  }, [products, productTypeFilter]);
+
+  
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -182,6 +224,7 @@ export default function ProductsPage() {
       categoryId: "",
       subcategoryId: "",
       isVatItem: true,
+      isRestaurantDish: false,
     },
   });
 
@@ -263,6 +306,7 @@ export default function ProductsPage() {
     setValue("expiryDate", "");
     setValue("isVatItem", product.isVatItem ?? true);
     setValue("image", product.image || "");
+    setValue("isRestaurantDish", Boolean(product.menuItems && product.menuItems.length > 0));
     setModalOpen(true);
   };
 
@@ -283,6 +327,7 @@ export default function ProductsPage() {
           categoryId: data.categoryId || null,
           subcategoryId: data.subcategoryId || null,
           image: data.image || null,
+          isRestaurantDish: data.isRestaurantDish,
         };
 
         const res = await fetch(`/api/v1/products/${editingId}`, {
@@ -304,6 +349,7 @@ export default function ProductsPage() {
           manufacturingDate: data.mfgDate || null,
           expiryDate: data.expiryDate || null,
           image: data.image || null,
+          isRestaurantDish: data.isRestaurantDish,
         };
 
         const res = await fetch("/api/v1/products", {
@@ -395,6 +441,107 @@ export default function ProductsPage() {
         }
       }
     );
+  };
+
+  const openRecipeBom = async (product: ProductItem) => {
+    setBomProduct(product);
+    setLoadingBom(true);
+    setNewIngProductId("");
+    setNewIngQty("0.1");
+    setNewIngUnit("kg");
+    setNewIngWastage("0");
+    try {
+      const res = await fetch(`/api/v1/restaurant/recipes?productId=${product.id}`);
+      if (res.ok) {
+        const json = await res.json();
+        const ingredients = json.recipe?.ingredients || [];
+        setBomIngredients(
+          ingredients.map((ing: any) => ({
+            productId: ing.productId,
+            productName: ing.product?.name || "Ingredient",
+            quantity: Number(ing.quantity),
+            unit: ing.unit,
+            costPrice: Number(ing.product?.costPrice || 0),
+            wastagePercent: Number(ing.wastagePercent || 0),
+          }))
+        );
+      }
+    } catch (e) {
+      console.error("Failed to load recipe BOM:", e);
+      Notify.failure("Failed to load recipe ingredients");
+    } finally {
+      setLoadingBom(false);
+    }
+  };
+
+  const addIngredientToBom = () => {
+    if (!newIngProductId) {
+      Notify.failure("Please select an ingredient from inventory");
+      return;
+    }
+    const targetProd = products.find((p) => p.id === newIngProductId);
+    if (!targetProd) return;
+    const qtyNum = parseFloat(newIngQty);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      Notify.failure("Please enter a valid ingredient quantity");
+      return;
+    }
+
+    setBomIngredients((prev) => [
+      ...prev.filter((i) => i.productId !== newIngProductId),
+      {
+        productId: targetProd.id,
+        productName: targetProd.name,
+        quantity: qtyNum,
+        unit: newIngUnit || "kg",
+        costPrice: Number(targetProd.costPrice || 0),
+        wastagePercent: parseFloat(newIngWastage) || 0,
+      },
+    ]);
+    setNewIngProductId("");
+  };
+
+  const removeIngredientFromBom = (productId: string) => {
+    setBomIngredients((prev) => prev.filter((i) => i.productId !== productId));
+  };
+
+  const saveRecipeBom = async () => {
+    if (!bomProduct) return;
+    if (bomIngredients.length === 0) {
+      Notify.failure("Recipe requires at least one ingredient");
+      return;
+    }
+    try {
+      setSavingBom(true);
+      const res = await fetch("/api/v1/restaurant/recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: bomProduct.id,
+          yieldQuantity: 1,
+          yieldUnit: "PORTION",
+          ingredients: bomIngredients.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            unit: i.unit,
+            wastagePercent: i.wastagePercent,
+          })),
+        }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to save recipe BOM");
+      }
+
+      Notify.success(`Recipe BOM saved for ${bomProduct.name}`);
+      setBomProduct(null);
+      await loadData();
+    } catch (e: any) {
+      Notify.failure(e.message || "Failed to save recipe BOM");
+    } finally {
+      setSavingBom(false);
+    }
   };
 
   const handleExcelFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -571,6 +718,7 @@ export default function ProductsPage() {
                 image: "",
                 categoryId: "",
                 subcategoryId: "",
+                isRestaurantDish: false,
               });
               setModalOpen(true);
             }}
@@ -588,6 +736,29 @@ export default function ProductsPage() {
         <div className={`bg-card border border-border rounded-lg p-5 space-y-4 w-full order-2 lg:order-1 transition-all duration-300 ${
           modalOpen ? "lg:w-2/3" : "lg:w-full"
         }`}>
+        {/* Catalog Scope Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-3">
+          {[
+            { id: "ALL", label: `All Products (${products.length})` },
+            { id: "RETAIL", label: "Retail & Packaged" },
+            { id: "RESTAURANT", label: `Restaurant Menu Dishes (${products.filter((p) => p.menuItems && p.menuItems.length > 0).length})` },
+            { id: "INGREDIENTS", label: `Raw Kitchen Ingredients (${products.filter((p) => p.recipeIngredients && p.recipeIngredients.length > 0).length})` },
+          ].map((seg) => (
+            <button
+              key={seg.id}
+              type="button"
+              onClick={() => setProductTypeFilter(seg.id as any)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                productTypeFilter === seg.id
+                  ? "bg-[#6B2837] text-white shadow-xs"
+                  : "bg-secondary/10 hover:bg-secondary/20 text-muted-foreground"
+              }`}
+            >
+              {seg.label}
+            </button>
+          ))}
+        </div>
+
         {/* Search & Filter Controls */}
         <div className="flex flex-col md:flex-row gap-3">
           {/* Search Bar */}
@@ -656,7 +827,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Tabular list */}
-        {products.length === 0 && !isLoading ? (
+        {displayedProducts.length === 0 && !isLoading ? (
           <div className="py-12 text-center text-xs text-muted-foreground">No products found.</div>
         ) : (
           <>
@@ -703,13 +874,35 @@ export default function ProductsPage() {
                       </tr>
                     ))
                   ) : (
-                    products.map((p) => (
+                    displayedProducts.map((p) => (
                       <tr key={p.id} className="hover:bg-secondary/10">
                         <td className="py-3 px-2">
                           <div className="font-semibold text-primary">{p.sku || "GENERIC"}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">{p.barcode || "No Barcode"}</div>
                         </td>
-                        <td className="py-3 px-2 font-bold text-foreground">{p.name}</td>
+                        <td className="py-3 px-2">
+                          <div className="font-bold text-foreground">{p.name}</div>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            {p.menuItems && p.menuItems.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-[#6B2837]/10 text-[#6B2837] border border-[#6B2837]/20 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                <UtensilsCrossed className="h-3 w-3" />
+                                Dish
+                                {p.menuItems[0]?.recipeVersions?.[0]?.ingredients?.length ? (
+                                  <span className="font-mono text-[9px] bg-white/80 dark:bg-black/40 px-1 rounded">
+                                    {p.menuItems[0].recipeVersions[0].ingredients.length} ing.
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-amber-600 font-semibold">(No Recipe)</span>
+                                )}
+                              </span>
+                            )}
+                            {p.recipeIngredients && p.recipeIngredients.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                Kitchen Ingredient
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-2">
                           <div className="flex flex-col gap-1">
                             <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full w-fit">
@@ -808,7 +1001,7 @@ export default function ProductsPage() {
                   </div>
                 ))
               ) : (
-                products.map((p) => (
+                displayedProducts.map((p) => (
                   <div key={p.id} className="bg-card border border-border/80 rounded-md p-4 space-y-3 shadow-xs">
                     <div className="flex justify-between items-start">
                       <div className="min-w-0 flex-1 pr-2">

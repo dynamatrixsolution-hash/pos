@@ -36,6 +36,8 @@ import {
   QrCode,
   Clock,
   Rocket,
+  MessageSquare,
+  BellRing,
 } from "lucide-react";
 
 export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
@@ -528,6 +530,22 @@ export const navigationConfig: NavItem[] = [
         roles: ["SUPER_ADMIN"],
       },
     ],
+  },
+
+  // Direct Messages
+  {
+    title: "Direct Messages",
+    href: "/dashboard/super-admin/chat",
+    icon: MessageSquare,
+    roles: ["SUPER_ADMIN"],
+  },
+
+  // Push Notifications Center
+  {
+    title: "Push Notifications",
+    href: "/dashboard/super-admin/notifications",
+    icon: BellRing,
+    roles: ["SUPER_ADMIN"],
   },
 
   // Support Center

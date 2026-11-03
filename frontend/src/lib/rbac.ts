@@ -1,4 +1,4 @@
-/**
+ /**
  * Role-Based Access Control (RBAC) Configuration
  * Defines permissions and restrictions for each role
  */
@@ -133,8 +133,9 @@ export const accessibleResources = {
 /**
  * Check if a role has permission to perform an action on a resource
  */
-export function hasPermission(role: Role, resource: string, action: string): boolean {
-  const permissions = rolePermissions[role];
+export function hasPermission(role: Role | string, resource: string, action: string): boolean {
+  const effectiveRole = (role === "ADMIN" ? "OWNER" : role) as Role;
+  const permissions = rolePermissions[effectiveRole];
   if (!permissions) return false;
 
   const resourcePermission = permissions.find((p) => p.resource === resource);
@@ -144,9 +145,10 @@ export function hasPermission(role: Role, resource: string, action: string): boo
 /**
  * Check if a role can access a route
  */
-export function canAccessRoute(role: Role, path: string): boolean {
+export function canAccessRoute(role: Role | string, path: string): boolean {
   if (path === "/dashboard/unauthorized" || path.startsWith("/dashboard/unauthorized/")) return true;
-  const accessible = accessibleResources[role];
+  const effectiveRole = (role === "ADMIN" ? "OWNER" : role) as Role;
+  const accessible = accessibleResources[effectiveRole];
   if (!accessible) return false;
 
   // Check exact match or prefix match

@@ -2,39 +2,121 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import {
-  Building2,
-  FileText,
-  CreditCard,
-  Users,
-  RefreshCw,
-  Plus,
-  ChevronRight,
-  ArrowRight,
-  Database,
-  LifeBuoy,
-  Settings,
-  ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Activity,
-  Layers,
-  UtensilsCrossed,
-  BedDouble,
-} from "lucide-react";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import { Notify } from "@/lib/notify";
+import { toast } from "@/components/toast";
+
+function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-3.5 w-3.5 ${spinning ? "animate-spin" : ""}`}
+    >
+      <path
+        d="M16.3 8A6.5 6.5 0 0 0 4.8 5.6L3.5 7M3.5 7V3.9M3.5 7h3.1M3.7 12A6.5 6.5 0 0 0 15.2 14.4l1.3-1.4m0 0v3.1m0-3.1h-3.1"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BroadcastIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5">
+      <path
+        d="M7.2 7.1a4.1 4.1 0 0 0 0 5.8m5.6-5.8a4.1 4.1 0 0 1 0 5.8M4.5 4.4a7.9 7.9 0 0 0 0 11.2m11-11.2a7.9 7.9 0 0 1 0 11.2M10 8.4v3.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx="10" cy="13.9" r=".8" fill="currentColor" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5">
+      <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+type MetricCardProps = {
+  href: string;
+  label: string;
+  value: React.ReactNode;
+  actionLabel?: string;
+  tone?: "default" | "danger";
+};
+
+function MetricCard({ href, label, value, actionLabel, tone = "default" }: MetricCardProps) {
+  return (
+    <Link
+      href={href}
+      className="group min-h-[82px] rounded-md border border-[#E4E1DD] bg-white px-4 py-3 transition-colors hover:border-[#C9B5BA] hover:bg-[#FFFEFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.075em] text-[#77736F]">
+          {label}
+        </span>
+        {actionLabel ? (
+          <span
+            className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
+              tone === "danger" ? "bg-[#FEF0EF] text-[#B42318]" : "bg-[#FFF5DF] text-[#96610A]"
+            }`}
+          >
+            {actionLabel}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-2 text-[23px] font-semibold leading-none tracking-tight text-[#201D1B] tabular-nums group-hover:text-[#7B263A]">
+        {value}
+      </div>
+    </Link>
+  );
+}
+
+type SectionHeaderProps = {
+  title: string;
+  count?: React.ReactNode;
+  href: string;
+  linkLabel: string;
+  danger?: boolean;
+};
+
+function SectionHeader({ title, count, href, linkLabel, danger = false }: SectionHeaderProps) {
+  return (
+    <div className="flex min-h-[43px] items-center justify-between gap-3 border-b border-[#ECE9E6] px-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 className="truncate text-[13px] font-semibold text-[#292522]">{title}</h2>
+        {count ? (
+          <span
+            className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+              danger ? "bg-[#FEF0EF] text-[#B42318]" : "bg-[#F3F1EF] text-[#68635F]"
+            }`}
+          >
+            {count}
+          </span>
+        ) : null}
+      </div>
+      <Link
+        href={href}
+        className="shrink-0 text-[11px] font-medium text-[#7B263A] transition-colors hover:text-[#551827] focus-visible:outline-none focus-visible:underline"
+      >
+        {linkLabel} <span aria-hidden="true">→</span>
+      </Link>
+    </div>
+  );
+}
 
 export default function SuperAdminDashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"recent" | "approvals" | "overdue" | "suspended">("recent");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -47,7 +129,7 @@ export default function SuperAdminDashboardPage() {
       const json = await res.json();
       setData(json);
     } catch (err: any) {
-      Notify.error(err.message || "Failed to load super admin overview");
+      toast.error(err.message || "Failed to load command center data");
     } finally {
       setLoading(false);
     }
@@ -56,6 +138,32 @@ export default function SuperAdminDashboardPage() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Keep the existing direct approval workflow and API contract.
+  const handleApproveRequest = async (requestId: string, businessName: string) => {
+    try {
+      setApprovingId(requestId);
+      const res = await fetch(`/api/v1/super-admin/requests/${requestId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "APPROVE",
+          reason: "Approved from Command Center",
+          adminNotes: "Approved from Command Center",
+        }),
+      });
+      const resJson = await res.json();
+      if (!res.ok) {
+        throw new Error(resJson.error || "Failed to approve application");
+      }
+      toast.success(`"${businessName}" successfully approved and provisioned.`);
+      await fetchDashboardData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve application");
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const overviewMetrics = data?.overviewMetrics || {
     totalBusinesses: 0,
@@ -71,34 +179,26 @@ export default function SuperAdminDashboardPage() {
     overdueSubscriptions: { count: 0 },
     trialsEnding: { count: 0 },
     expiringWithin30Days: { count: 0 },
-    suspendedAccounts: { count: 0 },
   };
 
-  const analytics = data?.analytics || {
-    planDistribution: [
-      { name: "Starter", value: 20, count: 1, color: "#71675E" },
-      { name: "Standard", value: 40, count: 2, color: "#057A55" },
-      { name: "Professional", value: 30, count: 2, color: "#6B2837" },
-      { name: "Enterprise", value: 10, count: 1, color: "#1C64F2" },
-    ],
-    support: { open: 1, inProgress: 1, waiting: 0, resolved: 3 },
-  };
+  const actionLists = data?.actionLists || {};
+  const urgentRegistrationRequests = Array.isArray(actionLists.urgentRegistrationRequests)
+    ? actionLists.urgentRegistrationRequests
+    : [];
+  const overdueInvoicesList = Array.isArray(actionLists.overdueInvoicesList)
+    ? actionLists.overdueInvoicesList
+    : [];
+  const recentAuditActivity = Array.isArray(actionLists.recentAuditActivity)
+    ? actionLists.recentAuditActivity
+    : [];
+  const recentBusinesses = Array.isArray(actionLists.recentBusinesses)
+    ? actionLists.recentBusinesses
+    : [];
 
-  const actionLists = data?.actionLists || {
-    urgentRegistrationRequests: [],
-    overdueInvoicesList: [],
-    recentAuditActivity: [],
-    recentBusinesses: [],
-  };
+  const pendingCount = Number(attentionQueues.pendingApprovals?.count ?? 0);
+  const overdueCount = Number(attentionQueues.overdueSubscriptions?.count ?? 0);
 
-  const latestBackup = data?.latestBackup;
-
-  const pendingCount = attentionQueues.pendingApprovals.count;
-  const overdueCount = attentionQueues.overdueSubscriptions.count;
-  const expiringCount = attentionQueues.expiringWithin30Days.count;
-
-  // Format NPR values compactly like NexaEdu
-  const formatRevenueNpr = (num: number) => {
+  const formatRevenueK = (num: number) => {
     if (!num || num <= 0) return "NPR 0";
     if (num >= 10000000) return `NPR ${(num / 10000000).toFixed(1)}Cr`;
     if (num >= 100000) return `NPR ${(num / 100000).toFixed(1)}L`;
@@ -106,610 +206,413 @@ export default function SuperAdminDashboardPage() {
     return `NPR ${num.toLocaleString()}`;
   };
 
-  // Top 6 KPI Cards definition matching NexaEdu
-  const kpiCards = [
-    {
-      label: "Total Businesses",
-      value: overviewMetrics.totalBusinesses.toLocaleString(),
-      sub: "↑ 12 mo",
-      subHighlight: true,
-      href: "/dashboard/super-admin/businesses",
-      icon: Building2,
-    },
-    {
-      label: "Active Properties",
-      value: overviewMetrics.activeBusinesses.toLocaleString(),
-      sub: "Live & operating",
-      subHighlight: false,
-      href: "/dashboard/super-admin/businesses",
-      icon: ShieldCheck,
-    },
-    {
-      label: "Pending Approvals",
-      value: String(pendingCount),
-      sub: pendingCount > 0 ? "Review needed" : "All clear",
-      subHighlight: pendingCount > 0,
-      href: "/dashboard/super-admin/businesses/pending",
-      icon: Clock,
-    },
-    {
-      label: "Expiring / Overdue",
-      value: String(overdueCount || expiringCount),
-      sub: overdueCount > 0 ? "Requires payment" : "Within 30d",
-      subHighlight: overdueCount > 0,
-      href: "/dashboard/super-admin/subscriptions",
-      icon: AlertTriangle,
-    },
-    {
-      label: "Platform Staff",
-      value: overviewMetrics.totalUsers.toLocaleString(),
-      sub: "Across all properties",
-      subHighlight: false,
-      href: "/dashboard/super-admin/users",
-      icon: Users,
-    },
-    {
-      label: "Estimated Revenue",
-      value: formatRevenueNpr(overviewMetrics.totalPlatformRevenue),
-      sub: "Platform rev",
-      subHighlight: false,
-      href: "/dashboard/super-admin/revenue",
-      icon: CreditCard,
-    },
-  ];
+  const formatDate = (dateStr: string | Date | undefined) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "-";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateShort = (dateStr: string | Date | undefined) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "-";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}`;
+  };
+
+  const formatBusinessType = (type?: string) => {
+    if (!type) return "Restaurant";
+    if (type === "HOTEL_RESTAURANT" || type === "BOTH") return "Both";
+    if (type === "HOTEL") return "Hotel";
+    return "Restaurant";
+  };
+
+  const formatPackageType = (pkg?: string) => {
+    if (!pkg) return "Restaurant";
+    if (pkg === "BOTH" || pkg === "HOTEL_RESTAURANT") return "Both";
+    if (pkg === "HOTEL") return "Hotel";
+    return "Restaurant";
+  };
+
+  const formatPlan = (plan?: string) => {
+    if (!plan) return "Starter";
+    return plan.charAt(0).toUpperCase() + plan.slice(1).toLowerCase();
+  };
+
+  const formatActionLabel = (action?: string) => {
+    if (!action) return "Activity logged";
+    const map: Record<string, string> = {
+      SUPPORT_TICKET_UPDATED: "Support ticket updated",
+      SUPPORT_TICKET_UPDATE: "Support ticket updated",
+      SETTING_UPDATED_GENERAL_CONFIG: "General config updated",
+      PLATFORM_SETTING_UPDATED: "General config updated",
+      NOTICE_CREATED: "Notice created",
+      NOTICE_CREATE: "Notice created",
+      BUSINESS_APPROVED: "Business approved",
+      BUSINESS_APPROVE: "Business approved",
+      BUSINESS_CREATED: "Business registered",
+      BUSINESS_CREATE: "Business registered",
+    };
+    if (map[action]) return map[action];
+    return action
+      .replace(/^SETTING_UPDATED_/, "")
+      .split("_")
+      .map((word, index) =>
+        index === 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word.toLowerCase(),
+      )
+      .join(" ");
+  };
+
+  const formatTargetName = (log: any) => {
+    if (!log.business?.name) return "Global platform";
+    const name = log.business.name;
+    if (name.includes("RestroInn Grand Hotel")) return "RestroInn Grand Hotel";
+    return name;
+  };
 
   return (
-    <div
-      className="min-h-full bg-[#F7F3EC] text-[#292320]"
+    <main
+      className="min-h-full w-full bg-[#F7F7F5] text-[#24211F]"
       style={{
         fontFamily:
-          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "San Francisco", "Helvetica Neue", Helvetica, Arial, sans-serif',
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif',
       }}
     >
-      <div className="max-w-[1400px] mx-auto p-6 space-y-5">
-        {/* 1. Header Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#292320]">
-              Welcome back, Super Admin
-            </h1>
-            <p className="text-xs sm:text-sm text-[#71675E] mt-0.5">
-              Multi-tenant platform overview, hospitality operations, and subscription status across Nepal.
-            </p>
+      <div className="mx-auto w-full max-w-[1600px] space-y-4">
+        {/* Page heading */}
+        <header className="space-y-2">
+          <div className="flex items-center gap-2 text-[11px] leading-none text-[#85807B]">
+            <span>Platform</span>
+            <span aria-hidden="true" className="text-[#B6B1AC]">/</span>
+            <span className="font-medium text-[#514B47]">Command Center</span>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-            <button
-              onClick={fetchDashboardData}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] text-[#292320] text-xs font-semibold rounded-md hover:bg-[#EEE7DD] transition-colors cursor-pointer disabled:opacity-50"
-              title="Refresh platform statistics"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 text-[#71675E] ${loading ? "animate-spin text-[#6B2837]" : ""}`} />
-              <span>Refresh</span>
-            </button>
-            <Link
-              href="/dashboard/super-admin/businesses?tab=add"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-[#FFFCF7] text-xs font-semibold rounded-md shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add Business</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* 2. NexaEdu-style Needs Attention Alert Strip */}
-        {(pendingCount > 0 || overdueCount > 0) && (
-          <div className="bg-[#FEF08A]/30 border border-[#FEF08A] rounded-lg px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 text-[#854D0E] font-medium">
-              <span className="w-2 h-2 rounded-full bg-[#E3A008] shrink-0 animate-ping" />
-              <span>
-                <strong>Platform Notice:</strong> You have {pendingCount} registration{pendingCount !== 1 ? "s" : ""} awaiting verification and {overdueCount} subscription invoice{overdueCount !== 1 ? "s" : ""} requiring payment.
-              </span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-[23px] font-semibold leading-tight tracking-[-0.035em] text-[#201D1B]">
+                Command Center
+              </h1>
+              <p className="mt-1 text-[12px] text-[#77716C]">
+                Platform operations, verification queues and tenant activity.
+              </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {pendingCount > 0 && (
-                <Link
-                  href="/dashboard/super-admin/businesses/pending"
-                  className="px-2.5 py-1 bg-[#854D0E] hover:bg-[#723B0A] text-[#FFFCF7] font-semibold rounded-md text-[11px] transition-colors"
-                >
-                  Review Pending ({pendingCount})
-                </Link>
-              )}
-              {overdueCount > 0 && (
-                <Link
-                  href="/dashboard/super-admin/revenue"
-                  className="px-2.5 py-1 bg-[#FFFCF7] hover:bg-[#F7F3EC] text-[#854D0E] border border-[#FEF08A] font-semibold rounded-md text-[11px] transition-colors"
-                >
-                  View Overdue ({overdueCount})
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* 3. Top 6 Compact KPI Cards (Matching NexaEdu layout) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {kpiCards.map((c, idx) => {
-            const Icon = c.icon;
-            return (
-              <Link
-                key={idx}
-                href={c.href}
-                className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] p-3 hover:border-[#6B2837] hover:bg-[#F7F3EC]/50 transition-colors flex items-center justify-between gap-2 group select-none shadow-xs"
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchDashboardData}
+                disabled={loading}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-white px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium text-[#71675E] truncate">{c.label}</p>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base font-bold text-[#292320] tracking-tight leading-none tabular-nums">
-                      {c.value}
-                    </span>
-                    <span
-                      className={`text-[10px] truncate ${
-                        c.subHighlight ? "text-[#6B2837] font-semibold" : "text-[#71675E]"
-                      }`}
-                    >
-                      {c.sub}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-[#71675E] group-hover:text-[#6B2837] transition-colors shrink-0">
-                  <Icon className="h-4 w-4" />
-                </div>
+                <RefreshIcon spinning={loading} />
+                {loading ? "Refreshing" : "Refresh"}
+              </button>
+              <Link
+                href="/dashboard/super-admin/notices/create"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-white px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+              >
+                <BroadcastIcon />
+                Broadcast notice
               </Link>
-            );
-          })}
-        </div>
-
-        {/* 4. Main 12-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Left Column (8 cols): Recent Registrations & Attention Tabs */}
-          <div className="lg:col-span-8 space-y-5">
-            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 flex flex-col justify-between">
-              {/* Tabs Row */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D8CEC1] pb-3">
-                <div className="flex items-center gap-5 text-xs font-semibold">
-                  <button
-                    onClick={() => setActiveTab("recent")}
-                    className={`pb-1 transition-colors cursor-pointer ${
-                      activeTab === "recent"
-                        ? "text-[#6B2837] border-b-2 border-[#6B2837] -mb-[13px]"
-                        : "text-[#71675E] hover:text-[#292320]"
-                    }`}
-                  >
-                    Recent Properties ({actionLists.recentBusinesses.length})
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab("approvals")}
-                    className={`pb-1 transition-colors cursor-pointer ${
-                      activeTab === "approvals"
-                        ? "text-[#6B2837] border-b-2 border-[#6B2837] -mb-[13px]"
-                        : "text-[#71675E] hover:text-[#292320]"
-                    }`}
-                  >
-                    Pending Approvals ({pendingCount})
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab("overdue")}
-                    className={`pb-1 transition-colors cursor-pointer ${
-                      activeTab === "overdue"
-                        ? "text-[#6B2837] border-b-2 border-[#6B2837] -mb-[13px]"
-                        : "text-[#71675E] hover:text-[#292320]"
-                    }`}
-                  >
-                    Overdue Invoices ({overdueCount})
-                  </button>
-                </div>
-
-                <Link
-                  href={
-                    activeTab === "recent"
-                      ? "/dashboard/super-admin/businesses"
-                      : activeTab === "approvals"
-                      ? "/dashboard/super-admin/businesses/pending"
-                      : "/dashboard/super-admin/revenue"
-                  }
-                  className="text-xs font-semibold text-[#6B2837] hover:underline self-start sm:self-auto"
-                >
-                  View all →
-                </Link>
-              </div>
-
-              {/* Tab 1: Recent Properties */}
-              {activeTab === "recent" && (
-                <div className="overflow-x-auto pt-3">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#F7F3EC] text-[#71675E] font-semibold border-b border-[#D8CEC1]">
-                        <th className="py-2.5 px-3">Property Name</th>
-                        <th className="py-2.5 px-3">Package Type</th>
-                        <th className="py-2.5 px-3">Owner</th>
-                        <th className="py-2.5 px-3">Plan</th>
-                        <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3 text-right">Registered</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#D8CEC1]">
-                      {actionLists.recentBusinesses.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-[#71675E]">
-                            No registered businesses found.
-                          </td>
-                        </tr>
-                      ) : (
-                        actionLists.recentBusinesses.map((b: any) => (
-                          <tr key={b.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                            <td className="py-2.5 px-3 font-semibold text-[#292320]">
-                              <Link
-                                href={`/dashboard/super-admin/businesses/${b.id}`}
-                                className="hover:text-[#6B2837] transition-colors"
-                              >
-                                {b.name}
-                              </Link>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E] font-medium">
-                                {b.packageType === "HOTEL" ? (
-                                  <BedDouble className="w-3 h-3 text-[#6B2837]" />
-                                ) : b.packageType === "BOTH" ? (
-                                  <Layers className="w-3 h-3 text-[#6B2837]" />
-                                ) : (
-                                  <UtensilsCrossed className="w-3 h-3 text-[#6B2837]" />
-                                )}
-                                {b.packageType}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-[#71675E]">{b.ownerName}</td>
-                            <td className="py-2.5 px-3 font-medium text-[#292320]">{b.plan}</td>
-                            <td className="py-2.5 px-3">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                  b.status === "ACTIVE"
-                                    ? "bg-[#DEF7EC] text-[#03543F] border border-[#BCF0DA]"
-                                    : "bg-[#FDE8E8] text-[#9C3232] border border-[#F8B4B4]"
-                                }`}
-                              >
-                                {b.status}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-right text-[#71675E] tabular-nums">
-                              {new Date(b.createdAt).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Tab 2: Pending Approvals */}
-              {activeTab === "approvals" && (
-                <div className="pt-3">
-                  {actionLists.urgentRegistrationRequests.length === 0 ? (
-                    <div className="text-center py-8 text-[#71675E]">
-                      <CheckCircle2 className="w-8 h-8 mx-auto text-[#03543F] mb-1.5" />
-                      <div className="font-bold text-[#292320] text-sm">All Clear</div>
-                      <div className="text-xs mt-0.5">No registration applications awaiting review.</div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {actionLists.urgentRegistrationRequests.map((req: any) => (
-                        <div
-                          key={req.id}
-                          className="p-3 bg-[#F7F3EC] rounded-md border border-[#D8CEC1] flex items-center justify-between text-xs"
-                        >
-                          <div>
-                            <div className="font-bold text-[#292320]">{req.businessName}</div>
-                            <div className="text-[11px] text-[#71675E] mt-0.5">
-                              Tracking: <span className="font-mono font-semibold">{req.trackingCode}</span> • Plan: {req.plan} • Package: {req.businessType}
-                            </div>
-                          </div>
-                          <Link
-                            href="/dashboard/super-admin/businesses/pending"
-                            className="px-3 py-1 bg-[#6B2837] text-white text-xs font-semibold rounded-md hover:bg-[#521E2A] transition-colors"
-                          >
-                            Review & Approve
-                          </Link>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab 3: Overdue Invoices */}
-              {activeTab === "overdue" && (
-                <div className="pt-3">
-                  {actionLists.overdueInvoicesList.length === 0 ? (
-                    <div className="text-center py-8 text-[#71675E]">
-                      <CheckCircle2 className="w-8 h-8 mx-auto text-[#03543F] mb-1.5" />
-                      <div className="font-bold text-[#292320] text-sm">Good Standing</div>
-                      <div className="text-xs mt-0.5">No platform subscription invoices are currently overdue.</div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {actionLists.overdueInvoicesList.map((inv: any) => (
-                        <div
-                          key={inv.id}
-                          className="p-3 bg-[#F7F3EC] rounded-md border border-[#D8CEC1] flex items-center justify-between text-xs"
-                        >
-                          <div>
-                            <div className="font-bold text-[#292320]">{inv.business?.name}</div>
-                            <div className="text-[11px] text-[#71675E] mt-0.5">
-                              Invoice #{inv.invoiceNumber} • Due date: {new Date(inv.dueDate).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold tabular-nums text-xs text-[#9C3232]">
-                              NPR {Number(inv.amount).toLocaleString()}
-                            </div>
-                            <Link
-                              href="/dashboard/super-admin/revenue"
-                              className="text-[11px] font-semibold text-[#6B2837] hover:underline"
-                            >
-                              Record settlement →
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <Link
+                href="/dashboard/super-admin/onboarding/register"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#76283D] bg-[#7B263A] px-3 text-[11px] font-semibold text-white transition-colors hover:border-[#5C1D2D] hover:bg-[#652033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/30"
+              >
+                <PlusIcon />
+                Register business
+              </Link>
             </div>
+          </div>
+        </header>
 
-            {/* Recent Administrative Activity Audit Log Table */}
-            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5">
-              <div className="flex items-center justify-between pb-3 border-b border-[#D8CEC1]">
-                <div>
-                  <h2 className="text-sm font-bold text-[#292320]">Recent Activity Audit Trail</h2>
-                  <p className="text-[11px] text-[#71675E]">Logged administrative actions, plan updates and security events</p>
-                </div>
-                <Link
-                  href="/dashboard/super-admin/activity-logs"
-                  className="text-xs font-semibold text-[#6B2837] hover:underline"
-                >
-                  View full log →
-                </Link>
+        {/* Platform metrics */}
+        <section aria-label="Platform metrics" className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <MetricCard
+            href="/dashboard/super-admin/businesses/pending"
+            label="Pending approvals"
+            value={pendingCount}
+            actionLabel={pendingCount > 0 ? "Needs review" : undefined}
+            tone="danger"
+          />
+          <MetricCard
+            href="/dashboard/super-admin/revenue"
+            label="Overdue invoices"
+            value={overdueCount}
+            actionLabel={overdueCount > 0 ? "Payment due" : undefined}
+            tone="danger"
+          />
+          <MetricCard
+            href="/dashboard/super-admin/businesses"
+            label="Active tenants"
+            value={overviewMetrics.activeBusinesses ?? 0}
+          />
+          <MetricCard
+            href="/dashboard/super-admin/revenue"
+            label="Monthly revenue"
+            value={formatRevenueK(Number(overviewMetrics.totalPlatformRevenue ?? 0))}
+          />
+        </section>
+
+        {/* Operational queues */}
+        <section aria-label="Operational queues" className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white xl:col-span-7">
+            <SectionHeader
+              title="Verification queue"
+              count={`${pendingCount} pending`}
+              href="/dashboard/super-admin/businesses/pending"
+              linkLabel="View applications"
+            />
+
+            {urgentRegistrationRequests.length === 0 ? (
+              <div className="px-4 py-7 text-center">
+                <p className="text-[12px] font-medium text-[#514B47]">
+                  {loading ? "Loading applications…" : "No pending applications"}
+                </p>
+                {!loading ? (
+                  <p className="mt-1 text-[11px] text-[#89837D]">New business registrations will appear here.</p>
+                ) : null}
               </div>
-
-              <div className="overflow-x-auto pt-2">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-[#F7F3EC] text-[#71675E] font-semibold border-b border-[#D8CEC1]">
-                      <th className="py-2 px-3">Action</th>
-                      <th className="py-2 px-3">Context Property</th>
-                      <th className="py-2 px-3">Admin</th>
-                      <th className="py-2 px-3 text-right">Time</th>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[650px] border-collapse text-left text-[11px]">
+                  <thead className="bg-[#FAF9F8] text-[#77716C]">
+                    <tr className="border-b border-[#ECE9E6]">
+                      <th className="px-3.5 py-2 font-medium">Business / Property</th>
+                      <th className="px-3 py-2 font-medium">Type &amp; plan</th>
+                      <th className="px-3 py-2 font-medium">Applicant</th>
+                      <th className="px-3 py-2 font-medium">Submitted</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#D8CEC1]">
-                    {actionLists.recentAuditActivity.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-6 text-center text-[#71675E]">
-                          No administrative actions recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      actionLists.recentAuditActivity.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                          <td className="py-2.5 px-3 font-mono font-medium text-[#6B2837]">{log.action}</td>
-                          <td className="py-2.5 px-3 text-[#71675E]">{log.business?.name || "Global"}</td>
-                          <td className="py-2.5 px-3 text-[#71675E]">
-                            {log.actor?.name || log.actor?.email || "Super admin"}
+                  <tbody className="divide-y divide-[#F0EEEB]">
+                    {urgentRegistrationRequests.map((req: any) => {
+                      const isApproving = approvingId === req.id;
+                      return (
+                        <tr key={req.id} className="transition-colors hover:bg-[#FCFAFA]">
+                          <td className="px-3.5 py-2.5">
+                            <div className="font-semibold text-[#292522]">{req.businessName}</div>
+                            <div className="mt-0.5 font-mono text-[10px] text-[#89837D]">
+                              {req.trackingCode}
+                            </div>
                           </td>
-                          <td className="py-2.5 px-3 text-right text-[#71675E] tabular-nums">
-                            {new Date(log.createdAt).toLocaleDateString()}
+                          <td className="px-3 py-2.5 text-[#514B47]">
+                            <div className="font-medium">{formatPlan(req.plan)}</div>
+                            <div className="mt-0.5 text-[10px] text-[#89837D]">
+                              {formatBusinessType(req.businessType)}
+                            </div>
+                          </td>
+                          <td className="max-w-[190px] px-3 py-2.5">
+                            <div className="truncate font-medium text-[#393430]">{req.ownerName || "-"}</div>
+                            <div className="mt-0.5 truncate text-[10px] text-[#89837D]">{req.ownerEmail || "-"}</div>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-[#625C57]">
+                            {formatDate(req.createdAt)}
+                          </td>
+                          <td className="whitespace-nowrap px-3.5 py-2.5 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              <Link
+                                href={`/dashboard/super-admin/businesses/pending?inspect=${req.id}`}
+                                className="inline-flex h-7 items-center rounded border border-[#DEDAD6] bg-white px-2.5 text-[10px] font-medium text-[#393430] transition-colors hover:bg-[#F7F6F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+                              >
+                                Inspect
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveRequest(req.id, req.businessName)}
+                                disabled={isApproving}
+                                className="inline-flex h-7 items-center rounded border border-[#76283D] bg-[#7B263A] px-2.5 text-[10px] font-semibold text-white transition-colors hover:bg-[#652033] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/30"
+                              >
+                                {isApproving ? "Approving…" : "Approve"}
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                      ))
-                    )}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Right Column (4 cols): Donut Chart + Support Desk + System Recovery */}
-          <div className="lg:col-span-4 space-y-5">
-            {/* Widget 1: Subscription Tier Distribution (Donut Chart matching NexaEdu) */}
-            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h2 className="text-sm font-bold text-[#292320]">Subscription Tiers</h2>
-                    <p className="text-[11px] text-[#71675E]">Plan distribution across properties</p>
-                  </div>
-                  <Link
-                    href="/dashboard/super-admin/subscriptions"
-                    className="text-xs font-semibold text-[#6B2837] hover:underline"
-                  >
-                    Plans →
-                  </Link>
-                </div>
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white xl:col-span-5">
+            <SectionHeader
+              title="Overdue subscriptions"
+              count={`${overdueCount} overdue`}
+              href="/dashboard/super-admin/revenue"
+              linkLabel="Billing center"
+              danger={overdueCount > 0}
+            />
 
-                <div className="flex items-center justify-between gap-4 pt-2">
-                  <div className="relative h-28 w-28 shrink-0">
-                    {mounted ? (
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                        <PieChart>
-                          <Pie
-                            data={analytics.planDistribution}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={34}
-                            outerRadius={48}
-                            paddingAngle={3}
-                            dataKey="value"
+            {overdueInvoicesList.length === 0 ? (
+              <div className="px-4 py-7 text-center">
+                <p className="text-[12px] font-medium text-[#514B47]">
+                  {loading ? "Loading invoices…" : "No overdue invoices"}
+                </p>
+                {!loading ? (
+                  <p className="mt-1 text-[11px] text-[#89837D]">There are no outstanding overdue subscriptions.</p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[540px] border-collapse text-left text-[11px]">
+                  <thead className="bg-[#FAF9F8] text-[#77716C]">
+                    <tr className="border-b border-[#ECE9E6]">
+                      <th className="px-3.5 py-2 font-medium">Business</th>
+                      <th className="px-3 py-2 font-medium">Invoice</th>
+                      <th className="px-3 py-2 font-medium">Amount</th>
+                      <th className="px-3 py-2 font-medium">Due date</th>
+                      <th className="px-3.5 py-2 text-right font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F0EEEB]">
+                    {overdueInvoicesList.map((inv: any) => (
+                      <tr key={inv.id} className="transition-colors hover:bg-[#FCFAFA]">
+                        <td className="px-3.5 py-2.5 font-semibold text-[#292522]">
+                          {inv.business?.name || "Unknown business"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 font-mono text-[10px] text-[#77716C]">
+                          {inv.invoiceNumber || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-[#B42318]">
+                          NPR {Number(inv.amount || 0).toLocaleString("en-NP")}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-[#514B47]">
+                          {formatDate(inv.dueDate)}
+                        </td>
+                        <td className="whitespace-nowrap px-3.5 py-2.5 text-right">
+                          <Link
+                            href="/dashboard/super-admin/revenue"
+                            className="inline-flex h-7 items-center rounded border border-[#76283D] bg-[#7B263A] px-2.5 text-[10px] font-semibold text-white transition-colors hover:bg-[#652033] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/30"
                           >
-                            {analytics.planDistribution.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value}% share`]} contentStyle={{ fontSize: 11, borderRadius: 6 }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full w-full bg-[#F7F3EC] rounded-full animate-pulse" />
-                    )}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-[9px] text-[#71675E] font-bold uppercase tracking-wider">Tiers</span>
-                      <span className="text-sm font-bold text-[#292320] leading-none mt-0.5">
-                        {analytics.planDistribution.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 flex-1 min-w-0 text-xs">
-                    {analytics.planDistribution.map((p: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                          <span className="text-[#71675E] font-medium truncate">{p.name}</span>
-                        </div>
-                        <span className="font-bold text-[#292320] tabular-nums">{p.value}%</span>
-                      </div>
+                            Record settlement
+                          </Link>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                </div>
+                  </tbody>
+                </table>
               </div>
+            )}
+          </div>
+        </section>
 
-              <div className="pt-3 mt-3 border-t border-[#D8CEC1] flex items-center justify-between text-xs">
-                <Link
-                  href="/dashboard/super-admin/subscriptions"
-                  className="font-semibold text-[#6B2837] hover:underline inline-flex items-center gap-1"
-                >
-                  Manage subscription plans →
-                </Link>
-              </div>
-            </div>
+        {/* Tenant directory and audit activity */}
+        <section aria-label="Tenant directory and recent activity" className="grid grid-cols-1 gap-3 2xl:grid-cols-12">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white 2xl:col-span-8">
+            <SectionHeader
+              title="Registered properties"
+              count={`${recentBusinesses.length} recent`}
+              href="/dashboard/super-admin/businesses"
+              linkLabel={`View directory (${overviewMetrics.totalBusinesses ?? 0})`}
+            />
 
-            {/* Widget 2: Support Desk Status Grid (matching NexaEdu) */}
-            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h2 className="text-sm font-bold text-[#292320]">Support Desk</h2>
-                    <p className="text-[11px] text-[#71675E]">Tickets & system health</p>
-                  </div>
-                  <Link
-                    href="/dashboard/super-admin/support"
-                    className="text-xs font-semibold text-[#6B2837] hover:underline"
-                  >
-                    Helpdesk →
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="p-2.5 rounded-lg border border-[#F8B4B4] bg-[#FDE8E8] flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#9C3232]">Open</span>
-                    <span className="text-sm font-bold text-[#9C3232] tabular-nums">
-                      {analytics.support.open}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-[#BCF0DA] bg-[#DEF7EC] flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#03543F]">In Progress</span>
-                    <span className="text-sm font-bold text-[#03543F] tabular-nums">
-                      {analytics.support.inProgress}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-[#FEF08A] bg-[#FEF08A]/30 flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#854D0E]">Pending User</span>
-                    <span className="text-sm font-bold text-[#854D0E] tabular-nums">
-                      {analytics.support.waiting}
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-[#292320]">Resolved</span>
-                    <span className="text-sm font-bold text-[#292320] tabular-nums">
-                      {analytics.support.resolved}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-3 p-2.5 rounded-lg bg-[#F7F3EC] border border-[#D8CEC1] flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#03543F] animate-pulse" />
-                    <span className="font-medium text-[#292320]">All services operational</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-[#71675E]">99.9% uptime</span>
-                </div>
-              </div>
-
-              <div className="pt-3 mt-3 border-t border-[#D8CEC1]">
-                <Link
-                  href="/dashboard/super-admin/monitoring"
-                  className="text-xs font-semibold text-[#6B2837] hover:underline inline-flex items-center gap-1"
-                >
-                  View system diagnostics →
-                </Link>
-              </div>
-            </div>
-
-            {/* Widget 3: Quick Navigation Access */}
-            <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-5">
-              <h2 className="text-sm font-bold text-[#292320]">Platform Quick Access</h2>
-
-              <div className="space-y-1 mt-3">
-                <Link
-                  href="/dashboard/super-admin/businesses"
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-[#F7F3EC] transition-colors text-xs text-[#292320]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Building2 className="h-4 w-4 text-[#71675E]" />
-                    <span>Review properties directory</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-[#71675E]" />
-                </Link>
-
-                <Link
-                  href="/dashboard/super-admin/modules"
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-[#F7F3EC] transition-colors text-xs text-[#292320]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Layers className="h-4 w-4 text-[#71675E]" />
-                    <span>Feature matrix &amp; overrides</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-[#71675E]" />
-                </Link>
-
-                <Link
-                  href="/dashboard/super-admin/reports"
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-[#F7F3EC] transition-colors text-xs text-[#292320]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <CreditCard className="h-4 w-4 text-[#71675E]" />
-                    <span>Financial reports &amp; exports</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-[#71675E]" />
-                </Link>
-
-                <Link
-                  href="/dashboard/super-admin/settings"
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-[#F7F3EC] transition-colors text-xs text-[#292320]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Settings className="h-4 w-4 text-[#71675E]" />
-                    <span>Platform settings &amp; maintenance</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-[#71675E]" />
-                </Link>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[790px] border-collapse text-left text-[11px]">
+                <thead className="bg-[#FAF9F8] text-[#77716C]">
+                  <tr className="border-b border-[#ECE9E6]">
+                    <th className="px-3.5 py-2 font-medium">Business / Property</th>
+                    <th className="px-3 py-2 font-medium">Type</th>
+                    <th className="px-3 py-2 font-medium">Owner</th>
+                    <th className="px-3 py-2 font-medium">Plan</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3.5 py-2 font-medium">Provisioned</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0EEEB]">
+                  {recentBusinesses.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-3.5 py-8 text-center text-[11px] text-[#89837D]">
+                        {loading ? "Loading registered properties…" : "No properties found."}
+                      </td>
+                    </tr>
+                  ) : (
+                    recentBusinesses.map((business: any) => (
+                      <tr key={business.id} className="transition-colors hover:bg-[#FCFAFA]">
+                        <td className="px-3.5 py-2.5">
+                          <Link
+                            href={`/dashboard/super-admin/businesses/${business.id}`}
+                            className="font-semibold text-[#292522] transition-colors hover:text-[#7B263A] focus-visible:outline-none focus-visible:underline"
+                          >
+                            {business.name}
+                          </Link>
+                          <span className="ml-1.5 font-mono text-[10px] text-[#99928C]">
+                            /{business.slug}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-[#514B47]">
+                          {formatPackageType(business.packageType)}
+                        </td>
+                        <td className="max-w-[150px] truncate px-3 py-2.5 text-[#514B47]">
+                          {business.ownerName || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-[#514B47]">
+                          {formatPlan(business.plan)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
+                              business.status === "ACTIVE"
+                                ? "bg-[#EAF7F0] text-[#067647]"
+                                : "bg-[#F3F1EF] text-[#68635F]"
+                            }`}
+                          >
+                            {business.status === "ACTIVE" ? "Active" : business.status || "Unknown"}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3.5 py-2.5 tabular-nums text-[#625C57]">
+                          {formatDate(business.createdAt)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="pt-2 text-xs text-[#71675E]">
-          RestroInn Hospitality OS • Multi-tenant management for hotels &amp; restaurants across Nepal
-        </div>
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white 2xl:col-span-4">
+            <SectionHeader
+              title="Recent activity"
+              count={`${Math.min(recentAuditActivity.length, 6)} events`}
+              href="/dashboard/super-admin/activity-logs"
+              linkLabel="Audit log"
+            />
+
+            <div className="divide-y divide-[#F0EEEB]">
+              {recentAuditActivity.length === 0 ? (
+                <div className="px-4 py-8 text-center text-[11px] text-[#89837D]">
+                  {loading ? "Loading recent activity…" : "No recent activity logged."}
+                </div>
+              ) : (
+                recentAuditActivity.slice(0, 6).map((log: any) => (
+                  <div
+                    key={log.id}
+                    className="flex min-h-[49px] items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-[#FCFAFA]"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[11px] font-medium text-[#393430]">
+                        {formatActionLabel(log.action)}
+                      </p>
+                      <p className="mt-0.5 truncate text-[10px] text-[#89837D]">
+                        {formatTargetName(log)}
+                      </p>
+                    </div>
+                    <time className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-[#89837D]">
+                      {formatDateShort(log.createdAt)}
+                    </time>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

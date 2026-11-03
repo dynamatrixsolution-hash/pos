@@ -5,36 +5,27 @@ import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
 import SuperAdminDashboard from "@/components/super-admin-dashboard";
 import {
-  TrendingUp,
-  DollarSign,
-  Boxes,
-  Users,
-  ShoppingCart,
-  AlertTriangle,
   ArrowRight,
-  Plus,
-  Package,
-  FileText,
+  BedDouble,
+  Coins,
   CreditCard,
-  MoreHorizontal,
-  ChevronDown,
+  Package,
+  Receipt,
   RefreshCw,
-  Store,
+  ShoppingCart,
+  Terminal,
+  TrendingUp,
+  UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
 import {
-  AreaChart,
   Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
 } from "recharts";
 
 interface DashboardMetrics {
@@ -76,51 +67,53 @@ interface TopProductMeta {
   revenue: number;
 }
 
-const COLORS = ["#0B3B30", "#126854", "#22C55E", "#38BDF8", "#94A3B8"];
+interface HospitalityStats {
+  rooms: {
+    total: number;
+    occupied: number;
+    vacant: number;
+    maintenance: number;
+  };
+  tables: {
+    total: number;
+    occupied: number;
+    available: number;
+  };
+  activeStays: number;
+}
+
+const CARD = "bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg shadow-none";
 
 export default function DashboardPage() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session } = useSession();
   const { currencySymbol } = useSettings();
   const userRole = (session?.user as any)?.role;
-  
+
   const [metrics, setMetrics] = React.useState<DashboardMetrics | null>(null);
   const [alerts, setAlerts] = React.useState<AlertMeta[]>([]);
   const [transactions, setTransactions] = React.useState<TransactionMeta[]>([]);
   const [topProducts, setTopProducts] = React.useState<TopProductMeta[]>([]);
   const [chartData, setChartData] = React.useState<any[]>([]);
-  const [categoryData, setCategoryData] = React.useState<any[]>([]);
-  const [branches, setBranches] = React.useState<any[]>([]);
-  const [activeBranchName, setActiveBranchName] = React.useState("Downtown Supermart");
-  
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [mounted, setMounted] = React.useState(false);
-  const [isSyncing, setIsSyncing] = React.useState(false);
-
-  // Compliance filter state & lists
-  const [range, setRange] = React.useState<string>("today");
   const [outOfStock, setOutOfStock] = React.useState<any[]>([]);
-  const [todayStats, setTodayStats] = React.useState<any>(null);
+  const [hospitalityStats, setHospitalityStats] = React.useState<HospitalityStats | null>(null);
+
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSyncing, setIsSyncing] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [range, setRange] = React.useState("today");
 
   const loadDashboard = React.useCallback(async () => {
     try {
-      const [dashRes, branchRes] = await Promise.all([
-        fetch(`/api/v1/reports/dashboard?range=${range}`),
-        fetch("/api/v1/branches?limit=50"),
-      ]);
+      const dashRes = await fetch(`/api/v1/reports/dashboard?range=${range}`);
       if (dashRes.ok) {
         const data = await dashRes.json();
-        setMetrics(data.metrics);
-        setAlerts(data.lowStockAlerts || []);
-        setTransactions(data.recentTransactions || []);
-        setTopProducts(data.topSellingProducts || []);
-        setChartData(data.salesChart || []);
-        setCategoryData(data.salesByCategory || []);
-        setOutOfStock(data.outOfStockProducts || []);
-        setTodayStats(data.todayStats || null);
-      }
-      if (branchRes.ok) {
-        const data = await branchRes.json();
-        setBranches(data.branches || []);
+        setMetrics(data.metrics || null);
+        setAlerts(Array.isArray(data.lowStockAlerts) ? data.lowStockAlerts : []);
+        setTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
+        setTopProducts(Array.isArray(data.topSellingProducts) ? data.topSellingProducts : []);
+        setChartData(Array.isArray(data.salesChart) ? data.salesChart : []);
+        setOutOfStock(Array.isArray(data.outOfStockProducts) ? data.outOfStockProducts : []);
+        if (data.hospitalityStats) setHospitalityStats(data.hospitalityStats);
       }
     } catch (err) {
       console.error("Failed to load dashboard metrics:", err);
@@ -130,21 +123,12 @@ export default function DashboardPage() {
   const handleSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    await loadDashboard();
-    setIsSyncing(false);
-  };
-
-  React.useEffect(() => {
-    if (branches.length > 0 && session?.user) {
-      const uBranchId = (session.user as any).branchId;
-      const matched = branches.find((b) => b.id === uBranchId);
-      if (matched) {
-        setActiveBranchName(matched.name);
-      } else if (branches.length > 0) {
-        setActiveBranchName(branches[0].name);
-      }
+    try {
+      await loadDashboard();
+    } finally {
+      setIsSyncing(false);
     }
-  }, [branches, session]);
+  };
 
   React.useEffect(() => {
     setMounted(true);
@@ -152,594 +136,675 @@ export default function DashboardPage() {
       setIsLoading(false);
       return;
     }
-    
-    async function initDashboard() {
+
+    let active = true;
+    const init = async () => {
       setIsLoading(true);
       await loadDashboard();
-      setIsLoading(false);
-    }
-    
-    if (sessionStatus !== "loading") {
-      initDashboard();
-    }
-  }, [sessionStatus, userRole, loadDashboard]);
+      if (active) setIsLoading(false);
+    };
 
+    init();
+    return () => {
+      active = false;
+    };
+  }, [loadDashboard, userRole]);
 
-
-  if (sessionStatus === "loading" || isLoading) {
+  if (!mounted || isLoading) {
     return (
-      <div className="space-y-6 max-w-[1600px] mx-auto pb-24 md:pb-6 animate-pulse px-4 md:px-0 mt-4 md:mt-0">
-        {/* Header Skeleton */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
-          <div>
-            <div className="h-8 w-48 bg-[#EEE7DD] rounded-md mb-2"></div>
-            <div className="h-4 w-32 bg-[#EEE7DD] rounded-md"></div>
-          </div>
-          <div className="flex gap-2">
-            <div className="h-10 w-40 bg-[#EEE7DD] rounded-md"></div>
-            <div className="h-10 w-10 bg-[#EEE7DD] rounded-md"></div>
-          </div>
+      <div className="mx-auto max-w-[1600px] animate-pulse space-y-4 pb-8" aria-label="Loading dashboard">
+        <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-4">
+          <div className="h-7 w-48 rounded-md bg-[#EEE7DD]" />
+          <div className="h-9 w-44 rounded-md bg-[#EEE7DD]" />
         </div>
-
-        {/* 5 Metric Cards Skeleton */}
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="bg-[#EEE7DD] border border-[#D8CEC1] p-5 rounded-lg h-[130px]"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-3">
+              <div className="h-4 w-1/2 rounded bg-[#EEE7DD]" />
+              <div className="h-7 w-3/4 rounded bg-[#EEE7DD]" />
+            </div>
           ))}
         </div>
-
-        {/* Mobile Metric Cards Skeleton */}
-        <div className="md:hidden grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-[#EEE7DD] rounded-lg h-[100px]"></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7]" />
           ))}
         </div>
-
-        {/* Charts and Lists Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-[#EEE7DD] rounded-lg h-[400px]"></div>
-          <div className="bg-[#EEE7DD] rounded-lg h-[400px]"></div>
-        </div>
-
-        {/* Bottom Section Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-[#EEE7DD] rounded-lg h-[300px]"></div>
-          ))}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr_1fr]">
+          <div className="h-80 rounded-lg bg-[#EEE7DD]" />
+          <div className="h-80 rounded-lg bg-[#EEE7DD]" />
         </div>
       </div>
     );
   }
 
-  if (userRole === "SUPER_ADMIN") {
-    return <SuperAdminDashboard />;
-  }
+  if (userRole === "SUPER_ADMIN") return <SuperAdminDashboard />;
 
-  // Dynamic Business Analytics
-  const aov = (metrics?.totalSales && metrics?.ordersCount) ? (metrics.totalSales / metrics.ordersCount) : 0;
-  const grossMargin = (metrics?.totalSales && metrics?.grossProfit) ? ((metrics.grossProfit / metrics.totalSales) * 100) : 0;
-  
-  const businessAnalytics = [
-    { label: "Average Order Value", value: `${currencySymbol}${aov.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "Real-time" },
-    { label: "Gross Margin", value: `${grossMargin.toFixed(1)}%`, trend: "Real-time" },
-    { label: "Total Purchases", value: `${currencySymbol}${(metrics?.totalPurchases || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "This Month" },
-    { label: "Total Expenses", value: `${currencySymbol}${(metrics?.totalExpenses || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, trend: "This Month" },
-  ];
+  const totalSalesVal = Number(metrics?.totalSales ?? 0);
+  const cogsVal = Number(metrics?.costOfGoodsSold ?? 0);
+  const expensesVal = Number(metrics?.totalExpenses ?? 0);
+  const netProfitVal = Number(metrics?.netProfit ?? 0);
+  const ordersCountVal = Number(metrics?.ordersCount ?? 0);
+  const netMargin = totalSalesVal > 0 ? ((netProfitVal / totalSalesVal) * 100).toFixed(1) : "0.0";
+  const cogsPct = totalSalesVal > 0 ? ((cogsVal / totalSalesVal) * 100).toFixed(1) : "0.0";
+  const hasActualSales = chartData.some((point) => Number(point?.sales ?? 0) > 0);
+  const stockItems = [...outOfStock, ...alerts].slice(0, 4);
+  const outOfStockIds = new Set(outOfStock.map((item) => item.id));
 
-  // Mini Sparkline Data
-  const sparklineData = chartData.length > 0 ? chartData.map(d => ({ value: d.sales })) : [{value: 0}, {value: 10}, {value: 5}, {value: 20}];
+  // Occupancy metrics
+  const roomsTotal = hospitalityStats?.rooms?.total ?? 0;
+  const roomsOccupied = hospitalityStats?.rooms?.occupied ?? 0;
+  const roomPct = roomsTotal > 0 ? Math.min(100, Math.round((roomsOccupied / roomsTotal) * 100)) : 0;
+
+  const tablesTotal = hospitalityStats?.tables?.total ?? 0;
+  const tablesOccupied = hospitalityStats?.tables?.occupied ?? 0;
+  const tablePct = tablesTotal > 0 ? Math.min(100, Math.round((tablesOccupied / tablesTotal) * 100)) : 0;
+
+  const formatAmount = (value: number | string | null | undefined) =>
+    `${currencySymbol}${Number(value ?? 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-24 md:pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex justify-between w-full sm:w-auto items-start sm:items-center">
-          <div>
-            <h1 className="text-2xl font-black text-[#292320] flex items-center gap-2">
-              Welcome back, {session?.user?.name?.split(" ")[0] || "Admin"}! 👋
-            </h1>
-            <p className="text-xs text-[#71675E] mt-1 font-medium">
-              Here's what's happening with your business today.
-            </p>
-          </div>
-          
-          {/* Mobile Sync Button (Icon Only) */}
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="sm:hidden flex items-center justify-center p-2.5 bg-[#6B2837] text-white hover:bg-[#541E2A] rounded-lg transition-all shadow-sm ml-4 shrink-0"
-          >
-            <RefreshCw className={`h-5 w-5 ${isSyncing ? "animate-spin" : ""}`} />
-          </button>
+    <main className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 pb-8 text-[#292320]">
+      {/* Header Bar */}
+      <header className="flex flex-col gap-3 border-b border-[#D8CEC1] pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#292320]">
+            Welcome, {session?.user?.name || "Owner"}
+          </h1>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 w-full sm:w-auto">
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="flex items-center px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#71675E] outline-none cursor-pointer"
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+          {/* Apple Segmented Period Control */}
+          <div
+            className="inline-flex p-1 bg-[#EEE7DD] rounded-lg border border-[#D8CEC1] text-xs font-semibold"
+            role="tablist"
+            aria-label="Period"
           >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="fiscalYear">Fiscal Year (Nepal)</option>
-          </select>
+            {[
+              { id: "today", label: "Today" },
+              { id: "week", label: "This week" },
+              { id: "month", label: "This month" },
+              { id: "fiscalYear", label: "Fiscal year" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={range === item.id}
+                onClick={() => setRange(item.id)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                  range === item.id
+                    ? "bg-[#FFFCF7] text-[#292320] border border-[#D8CEC1]"
+                    : "text-[#71675E] hover:text-[#292320]"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
           <button
+            type="button"
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#6B2837] text-white hover:bg-[#541E2A] rounded-lg text-xs font-bold transition-all shadow-sm"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-[#6B2837] px-3.5 text-xs font-semibold text-[#FFFCF7] hover:bg-[#541E2A] cursor-pointer disabled:opacity-60"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-            Sync Real-time Data
+            {isSyncing ? "Syncing" : "Sync"}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Mobile Only: Today's Summary & Quick Actions */}
-      <div className="md:hidden space-y-4">
-        <div className="bg-[#6B2837] text-white p-5 rounded-lg flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-[10px] font-bold text-white/70 uppercase">Today's Summary</div>
-              <div className="text-xs font-medium text-white/90">24 August 2024</div>
+      {/* 5 Key Metric Cards (Full Height, Colorful Apple Badges) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5" aria-label="Key metrics">
+        {/* Gross Sales */}
+        <Link
+          href="/dashboard/sales"
+          className={`${CARD} p-4 transition-all hover:border-[#16A34A] hover:bg-[#FCFDFB] group cursor-pointer flex flex-col justify-between min-h-[118px]`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-9 w-9 rounded-md bg-[#EAF5EE] border border-[#D1EAD8] text-[#16A34A] flex items-center justify-center shrink-0">
+              <TrendingUp className="h-4 w-4" />
             </div>
-            <div className="px-2 py-1 bg-[#FFFCF7]/10 rounded text-[10px] font-bold flex items-center">
-              Today <ChevronDown className="w-3 h-3 ml-1" />
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#EAF5EE] text-[#16A34A] border border-[#D1EAD8] tabular-nums">
+              {ordersCountVal} bills
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">Gross Sales</div>
+            <div className="mt-0.5 text-xl font-bold leading-tight tabular-nums text-[#292320] truncate">
+              {formatAmount(totalSalesVal)}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <div className="text-[10px] text-white/70 font-semibold mb-0.5">Sales</div>
-              <div className="text-lg font-black">{currencySymbol}{metrics?.totalSales?.toLocaleString('en-IN', { maximumFractionDigits: 0 }) ?? 0}</div>
-              <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 16.5%</div>
+        </Link>
+
+        {/* Net Profit */}
+        <Link
+          href="/dashboard/reports"
+          className={`${CARD} p-4 transition-all hover:border-[#6B2837] hover:bg-[#FDFBFC] group cursor-pointer flex flex-col justify-between min-h-[118px]`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-9 w-9 rounded-md bg-[#FDF2F4] border border-[#F8D2D9] text-[#6B2837] flex items-center justify-center shrink-0">
+              <Coins className="h-4 w-4" />
             </div>
-            <div>
-              <div className="text-[10px] text-white/70 font-semibold mb-0.5">Orders</div>
-              <div className="text-lg font-black">{metrics?.ordersCount ?? 0}</div>
-              <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 10.2%</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-white/70 font-semibold mb-0.5">Customers</div>
-              <div className="text-lg font-black">{metrics?.customersCount ?? 0}</div>
-              <div className="text-[8px] text-[#22C55E] mt-0.5 font-bold">↑ 8.1%</div>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border tabular-nums ${
+                netProfitVal < 0
+                  ? "bg-[#FDF2F2] text-[#DC2626] border-[#FBD5D5]"
+                  : "bg-[#FDF2F4] text-[#6B2837] border-[#F8D2D9]"
+              }`}
+            >
+              {netMargin}% net
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">Net Profit</div>
+            <div
+              className={`mt-0.5 text-xl font-bold leading-tight tabular-nums truncate ${
+                netProfitVal < 0 ? "text-[#DC2626]" : "text-[#292320]"
+              }`}
+            >
+              {formatAmount(netProfitVal)}
             </div>
           </div>
-        </div>
+        </Link>
 
-        <div>
-          <h3 className="text-sm font-bold mb-3 text-[#292320] px-1">Quick Actions</h3>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "New Sale", icon: Plus, href: "/dashboard/pos" },
-              { label: "Add Product", icon: Package, href: "/dashboard/products" },
-              { label: "Stock In", icon: Boxes, href: "/dashboard/inventory" },
-              { label: "Customer", icon: Users, href: "/dashboard/customers" },
-              { label: "Expenses", icon: CreditCard, href: "/dashboard/expenses" },
-              { label: "Reports", icon: FileText, href: "/dashboard/reports" },
-              { label: "Cash In/Out", icon: DollarSign, href: "/dashboard/sales" },
-              { label: "More", icon: MoreHorizontal, href: "#" },
-            ].map((action, i) => (
-              <Link key={i} href={action.href} className="flex flex-col items-center gap-1.5 p-3 bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] shadow-none hover:border-[#126854]/30 transition-colors">
-                <action.icon className="w-5 h-5 text-[#6B2837]" />
-                <span className="text-[9px] font-bold text-[#71675E] text-center leading-tight">{action.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Metric Cards (Desktop Only) */}
-      {metrics && (
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Card 1: Total Sales */}
-          <Link href="/dashboard/sales" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-emerald-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#71675E]">Total Sales</p>
-                  <h3 className="text-lg font-black text-[#292320]">
-                    {currencySymbol}{metrics.totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </h3>
-                </div>
-              </div>
+        {/* Live Hospitality Occupancy */}
+        <Link
+          href="/dashboard/hotel/rooms"
+          className={`${CARD} p-4 transition-all hover:border-[#2563EB] hover:bg-[#FAFCFE] group cursor-pointer flex flex-col justify-between min-h-[118px]`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-9 w-9 rounded-md bg-[#EFF6FF] border border-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
+              <BedDouble className="h-4 w-4" />
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-[10px] font-bold">
-                <span className="text-emerald-500 mr-1">↑ 8.4%</span>
-                <span className="text-[#71675E]">vs last month</span>
-              </div>
-              <div className="w-12 h-6">
-                {mounted && (
-                  <LineChart width={48} height={24} data={sparklineData}>
-                    <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
-              </div>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE] tabular-nums">
+              {roomPct}% rooms
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">Live Occupancy</div>
+            <div className="mt-0.5 text-xl font-bold leading-tight tabular-nums text-[#292320] truncate">
+              {roomsOccupied} / {roomsTotal} <span className="text-xs font-normal text-[#71675E]">rooms</span>
+            </div>
+          </div>
+        </Link>
+
+        {/* Cost of Goods Sold */}
+        <Link
+          href="/dashboard/inventory"
+          className={`${CARD} p-4 transition-all hover:border-[#D97706] hover:bg-[#FDFCF9] group cursor-pointer flex flex-col justify-between min-h-[118px]`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-9 w-9 rounded-md bg-[#FEF8EE] border border-[#FDE8CC] text-[#D97706] flex items-center justify-center shrink-0">
+              <Package className="h-4 w-4" />
+            </div>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF8EE] text-[#D97706] border border-[#FDE8CC] tabular-nums">
+              {cogsPct}% COGS
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">Stock Cost (COGS)</div>
+            <div className="mt-0.5 text-xl font-bold leading-tight tabular-nums text-[#292320] truncate">
+              {formatAmount(cogsVal)}
+            </div>
+          </div>
+        </Link>
+
+        {/* Operating Expenses */}
+        <Link
+          href="/dashboard/expenses"
+          className={`${CARD} p-4 transition-all hover:border-[#DC2626] hover:bg-[#FCF9F9] group cursor-pointer flex flex-col justify-between min-h-[118px]`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="h-9 w-9 rounded-md bg-[#FDF2F2] border border-[#FBD5D5] text-[#DC2626] flex items-center justify-center shrink-0">
+              <CreditCard className="h-4 w-4" />
+            </div>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDF2F2] text-[#DC2626] border border-[#FBD5D5] tabular-nums">
+              OpEx
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">Total Expenses</div>
+            <div className="mt-0.5 text-xl font-bold leading-tight tabular-nums text-[#292320] truncate">
+              {formatAmount(expensesVal)}
+            </div>
+          </div>
+        </Link>
+      </section>
+
+      {/* Quick Action Tiles Dock */}
+      <section aria-label="Quick access">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {/* Restaurant POS */}
+          <Link
+            href="/dashboard/restaurant/pos"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#D97706] hover:bg-[#FEF8EE]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#FEF8EE] border border-[#FDE8CC] text-[#D97706] flex items-center justify-center shrink-0">
+              <UtensilsCrossed className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Restaurant POS</div>
+              <div className="text-[10px] text-[#71675E] truncate">Tables & billing</div>
             </div>
           </Link>
 
-          {/* Card 2: COGS */}
-          <Link href="/dashboard/products" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-orange-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-orange-50 text-orange-50 flex items-center justify-center">
-                  <Boxes className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#71675E]">COGS (Stock Cost)</p>
-                  <h3 className="text-lg font-black text-[#292320]">
-                    {currencySymbol}{metrics.costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </h3>
-                </div>
-              </div>
+          {/* Rooms Tape Chart */}
+          <Link
+            href="/dashboard/hotel/rooms"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#2563EB] hover:bg-[#EFF6FF]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#EFF6FF] border border-[#DBEAFE] text-[#2563EB] flex items-center justify-center shrink-0">
+              <BedDouble className="h-4 w-4" />
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-[10px] font-bold">
-                <span className="text-red-500 mr-1">↓ 2.1%</span>
-                <span className="text-[#71675E]">inventory value sold</span>
-              </div>
-              <div className="w-12 h-6">
-                {mounted && (
-                  <LineChart width={48} height={24} data={sparklineData}>
-                    <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
-              </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Tape Chart</div>
+              <div className="text-[10px] text-[#71675E] truncate">Room rack & stays</div>
             </div>
           </Link>
 
-          {/* Card 3: Other Income */}
-          <Link href="/dashboard/payments" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-blue-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-blue-50 text-blue-50 flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#71675E]">Other Income</p>
-                  <h3 className="text-lg font-black text-[#292320]">
-                    {currencySymbol}{metrics.totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </h3>
-                </div>
-              </div>
+          {/* Guest Folios */}
+          <Link
+            href="/dashboard/hotel/folios"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#16A34A] hover:bg-[#EAF5EE]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#EAF5EE] border border-[#D1EAD8] text-[#16A34A] flex items-center justify-center shrink-0">
+              <Receipt className="h-4 w-4" />
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-[10px] font-bold">
-                <span className="text-[#71675E] bg-[#EEE7DD] px-1 py-0.5 rounded mr-1">0.0%</span>
-                <span className="text-[#71675E]">additional monthly inflow</span>
-              </div>
-              <div className="w-12 h-6">
-                {mounted && (
-                  <LineChart width={48} height={24} data={sparklineData}>
-                    <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
-              </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Guest Folios</div>
+              <div className="text-[10px] text-[#71675E] truncate">Billing & checkout</div>
             </div>
           </Link>
 
-          {/* Card 4: Expenses */}
-          <Link href="/dashboard/expenses" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-rose-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-rose-50 text-rose-50 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#71675E]">Expenses</p>
-                  <h3 className="text-lg font-black text-[#292320]">
-                    {currencySymbol}{metrics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </h3>
-                </div>
-              </div>
+          {/* Kitchen Display */}
+          <Link
+            href="/dashboard/restaurant/kds"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#6B2837] hover:bg-[#FDF2F4]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#FDF2F4] border border-[#F8D2D9] text-[#6B2837] flex items-center justify-center shrink-0">
+              <Terminal className="h-4 w-4" />
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-[10px] font-bold">
-                <span className="text-[#71675E] bg-[#EEE7DD] px-1 py-0.5 rounded mr-1">0.0%</span>
-                <span className="text-[#71675E]">outbound payments</span>
-              </div>
-              <div className="w-12 h-6">
-                {mounted && (
-                  <LineChart width={48} height={24} data={sparklineData}>
-                    <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
-              </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Kitchen (KDS)</div>
+              <div className="text-[10px] text-[#71675E] truncate">Live order stations</div>
             </div>
           </Link>
 
-          {/* Card 5: Net Profit */}
-          <Link href="/dashboard/reports" className="bg-[#FFFCF7] border border-[#D8CEC1] hover:border-red-500/20 hover:shadow-sm transition-all p-5 rounded-lg flex flex-col justify-between shadow-sm cursor-pointer">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-md bg-red-50 text-red-50 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-[#71675E]">Net Profit</p>
-                  <h3 className={`text-lg font-black ${metrics.netProfit < 0 ? 'text-red-600' : 'text-[#292320]'}`}>
-                    {currencySymbol}{metrics.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </h3>
-                </div>
-              </div>
+          {/* Purchases & Supply */}
+          <Link
+            href="/dashboard/purchases"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#7C3AED] hover:bg-[#F5F3FF]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#F5F3FF] border border-[#DDD6FE] text-[#7C3AED] flex items-center justify-center shrink-0">
+              <ShoppingCart className="h-4 w-4" />
             </div>
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center text-[10px] font-bold">
-                <span className="text-red-500 mr-1">↓ 12.0%</span>
-                <span className="text-[#71675E] truncate">margin {((metrics.netProfit / metrics.totalSales) * 100 || 0).toFixed(1)}%</span>
-              </div>
-              <div className="w-12 h-6">
-                {mounted && (
-                  <LineChart width={48} height={24} data={sparklineData}>
-                    <Line type="monotone" dataKey="value" stroke="#F43F5E" strokeWidth={2} dot={false} />
-                  </LineChart>
-                )}
-              </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Purchases</div>
+              <div className="text-[10px] text-[#71675E] truncate">Stock intake & POs</div>
+            </div>
+          </Link>
+
+          {/* Expenses */}
+          <Link
+            href="/dashboard/expenses"
+            className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#DC2626] hover:bg-[#FDF2F2]/30 group cursor-pointer min-h-[58px]`}
+          >
+            <div className="h-9 w-9 rounded-md bg-[#FDF2F2] border border-[#FBD5D5] text-[#DC2626] flex items-center justify-center shrink-0">
+              <CreditCard className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-[#292320] truncate">Expenses</div>
+              <div className="text-[10px] text-[#71675E] truncate">Vouchers & ledger</div>
             </div>
           </Link>
         </div>
-      )}
+      </section>
 
-      {/* Row 1: Charts & Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Sales Overview Chart (2/3) */}
-        <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col">
-          <h2 className="text-sm font-extrabold text-[#292320] mb-6">Sales Overview</h2>
-          <div className="h-72 w-full flex-1">
-            {mounted && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={288} minWidth={1} minHeight={1}>
-                <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorSalesFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#126854" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#126854" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8'}} tickFormatter={(v) => `${currencySymbol}${v > 1000 ? (v/1000).toFixed(0)+'K' : v}`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                    itemStyle={{ color: '#0B3B30', fontWeight: 'bold' }}
-                  />
-                  <Area type="monotone" dataKey="sales" name="Sales" stroke="#126854" strokeWidth={3} fillOpacity={1} fill="url(#colorSalesFill)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-[#71675E]">Loading chart data...</div>
-            )}
-          </div>
-        </div>
-
-        {/* Top Selling Products (1/3) */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-extrabold text-[#292320]">Top Selling Products</h2>
-            <Link href="/dashboard/products" className="text-[10px] font-bold text-[#6B2837] hover:underline">View All</Link>
-          </div>
-          
-          <div className="flex-1 space-y-4">
-            {topProducts.length === 0 ? (
-              <div className="text-center text-[#71675E] text-xs py-8">No products sold yet</div>
-            ) : (
-              topProducts.slice(0,5).map((p, i) => (
-                <div key={p.id} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#F7F3EC] border border-[#D8CEC1] flex items-center justify-center text-[#71675E] group-hover:bg-[#541E2A]/5 transition-colors">
-                      <Package className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-[#292320]">{p.name}</div>
-                      <div className="text-[9px] text-[#71675E] font-semibold">{p.sku}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs font-black text-[#292320]">{currencySymbol}{p.revenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
-                    <div className="text-[9px] text-[#71675E] font-medium">{p.quantitySold} units</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Row 2: Recent Orders & Donut & Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Recent Orders (1/3) */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-sm font-extrabold text-[#292320]">Recent Orders</h2>
-            <Link href="/dashboard/sales" className="text-[10px] font-bold text-[#71675E] flex items-center">
-              View All Orders <ChevronDown className="w-3 h-3 ml-1" />
-            </Link>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="flex text-[10px] font-bold text-[#71675E] border-b border-[#D8CEC1] pb-2">
-              <div className="flex-1">Order ID / Customer</div>
-              <div className="w-20 text-right">Amount</div>
-              <div className="w-24 text-right">Status</div>
-            </div>
-            {transactions.slice(0,5).map((tx) => (
-              <div key={tx.id} className="flex items-center text-xs py-1">
-                <div className="flex-1">
-                  <div className="font-bold text-[#292320]">{tx.customerName || "Walk-in Customer"}</div>
-                  <div className="text-[9px] text-[#71675E]">{tx.invoiceNumber}</div>
-                </div>
-                <div className="w-20 text-right font-black text-[#292320]">
-                  {currencySymbol}{tx.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </div>
-                <div className="w-24 flex justify-end">
-                  <span className={`px-2 py-1 rounded-md text-[9px] font-bold flex items-center justify-center ${
-                    tx.paymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                  }`}>
-                    {tx.paymentStatus === 'PAID' ? 'Completed' : 'Processing'}
-                  </span>
-                </div>
+      {/* Main Grid: Chart & Transactions Left, Capacity & Inventory Right */}
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(330px,1fr)]">
+        <div className="min-w-0 space-y-4">
+          {/* Revenue Chart */}
+          <section className={`${CARD} p-4 sm:p-5`} aria-label="Sales chart">
+            <div className="mb-4 flex items-center justify-between gap-3 border-b border-[#EEE7DD] pb-3">
+              <div>
+                <h2 className="text-base font-bold text-[#292320]">Sales Performance</h2>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="text-right">
+                <div className="text-base font-bold tabular-nums text-[#292320]">{formatAmount(totalSalesVal)}</div>
+              </div>
+            </div>
 
-        {/* Sales by Category (1/3) */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
-          <h2 className="text-sm font-extrabold text-[#292320] mb-4">Sales by Category</h2>
-          <div className="flex items-center h-48">
-            <div className="w-1/2 h-full relative">
-              {mounted && categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={65}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                  </PieChart>
+            {hasActualSales ? (
+              <div className="h-[240px] w-full min-w-0">
+                <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={240}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#16A34A" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#16A34A" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#EEE7DD" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#71675E" }}
+                      tickMargin={10}
+                    />
+                    <YAxis
+                      width={56}
+                      domain={[0, "auto"]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#71675E" }}
+                      tickFormatter={(value) => `${currencySymbol}${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => [formatAmount(value), "Sales"]}
+                      contentStyle={{
+                        backgroundColor: "#FFFCF7",
+                        borderColor: "#D8CEC1",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        boxShadow: "none",
+                        padding: "8px 12px",
+                      }}
+                      labelStyle={{ color: "#71675E", fontWeight: 600, marginBottom: 4 }}
+                      itemStyle={{ color: "#16A34A", fontWeight: 700 }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="sales"
+                      name="Sales"
+                      stroke="#16A34A"
+                      strokeWidth={2.5}
+                      fill="url(#salesGrad)"
+                      activeDot={{ r: 4, strokeWidth: 0, fill: "#16A34A" }}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-xs text-[#71675E]">No data</div>
-              )}
-              {categoryData.length > 0 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-black text-[#292320]">{currencySymbol}{metrics?.totalSales ? (metrics.totalSales/1000).toFixed(1)+'k' : '0'}</span>
-                  <span className="text-[8px] text-[#71675E] font-bold">Total Sales</span>
-                </div>
-              )}
+              </div>
+            ) : (
+              <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-[#D8CEC1] bg-[#FAF7F1] px-5 py-7 text-center">
+                <p className="text-sm font-semibold text-[#292320]">No sales recorded for this period</p>
+                <Link
+                  href="/dashboard/restaurant/pos"
+                  className="mt-3 inline-flex h-8 items-center rounded-md bg-[#6B2837] px-3.5 text-xs font-semibold text-[#FFFCF7] hover:bg-[#541E2A] cursor-pointer"
+                >
+                  Open Restaurant POS
+                </Link>
+              </div>
+            )}
+          </section>
+
+          {/* Recent Transactions Table */}
+          <section className={`${CARD} overflow-hidden`} aria-label="Recent transactions">
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEE7DD] px-4 py-3.5 sm:px-5">
+              <h2 className="text-sm font-bold text-[#292320]">Recent Transactions</h2>
+              <Link
+                href="/dashboard/sales"
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#6B2837] hover:underline cursor-pointer"
+              >
+                View ledger <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
-            <div className="w-1/2 pl-4 space-y-3">
-              {categoryData.length > 0 ? categoryData.map((cat, idx) => (
-                <div key={cat.name} className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                    <span className="font-semibold text-[#71675E] truncate max-w-[60px]" title={cat.name}>{cat.name}</span>
-                  </div>
-                  <span className="font-bold text-[#71675E] ml-1">{cat.value}%</span>
-                </div>
-              )) : (
-                <div className="text-xs text-[#71675E] text-center">No categories found</div>
-              )}
-            </div>
-          </div>
+
+            {transactions.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-[#71675E]">No transactions recorded for this period.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-[#F7F3EC] text-[11px] font-semibold uppercase tracking-wider text-[#71675E] border-b border-[#EEE7DD]">
+                      <th className="px-4 py-3">Invoice</th>
+                      <th className="px-4 py-3">Customer / Guest</th>
+                      <th className="px-4 py-3 text-right">Amount</th>
+                      <th className="px-4 py-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEE7DD]">
+                    {transactions.slice(0, 6).map((transaction) => {
+                      const name = transaction.customerName || "Walk-in Guest";
+                      const isPaid = transaction.paymentStatus === "PAID";
+                      const isPartial = transaction.paymentStatus === "PARTIAL";
+
+                      return (
+                        <tr key={transaction.id} className="transition-colors hover:bg-[#FAF7F1]">
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-[11px] font-semibold text-[#6B2837]">
+                            {transaction.invoiceNumber}
+                          </td>
+                          <td className="px-4 py-3 max-w-[220px] truncate font-semibold text-[#292320]">
+                            {name}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right font-bold tabular-nums text-[#292320]">
+                            {formatAmount(transaction.total)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border tabular-nums ${
+                                isPaid
+                                  ? "bg-[#EAF5EE] text-[#16A34A] border-[#D1EAD8]"
+                                  : isPartial
+                                  ? "bg-[#EFF6FF] text-[#2563EB] border-[#DBEAFE]"
+                                  : "bg-[#FEF8EE] text-[#D97706] border-[#FDE8CC]"
+                              }`}
+                            >
+                              {transaction.paymentStatus || "UNPAID"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
 
-        {/* Business Analytics (1/3) */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm">
-          <h2 className="text-sm font-extrabold text-[#292320] mb-6">Business Analytics</h2>
-          <div className="space-y-5">
-            {businessAnalytics.map((item, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#F7F3EC] flex items-center justify-center text-[#6B2837]">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-[#71675E]">{item.label}</div>
-                    <div className="text-xs font-black text-[#292320]">{item.value}</div>
-                  </div>
-                </div>
-                <div className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold">
-                  {item.trend}
-                </div>
+        {/* Aside: Occupancy Progress & Inventory Health */}
+        <aside className="min-w-0 space-y-4">
+          {/* Hospitality Occupancy Card with Apple Health Style Progress */}
+          <section className={`${CARD} p-4 sm:p-5`} aria-label="Occupancy and live floor capacity">
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEE7DD] pb-3">
+              <h2 className="text-sm font-bold text-[#292320]">Live Capacity</h2>
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <Link href="/dashboard/hotel/rooms" className="text-[#6B2837] hover:underline cursor-pointer">
+                  Rooms
+                </Link>
+                <span className="text-[#D8CEC1]">·</span>
+                <Link href="/dashboard/restaurant/tables" className="text-[#6B2837] hover:underline cursor-pointer">
+                  Tables
+                </Link>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* Row 3: Out of Stock & TodayStats widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Out of Stock Products (2/3 width) */}
-        <div className="lg:col-span-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-extrabold text-[#292320] flex items-center gap-2">
-                <AlertTriangle className="h-4.5 w-4.5 text-red-500" />
-                Out of Stock Products
-              </h2>
-              <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-black">
-                {outOfStock.length} Critical
-              </span>
             </div>
-            <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-              {outOfStock.length === 0 ? (
-                <div className="text-center text-[#71675E] text-xs py-8 font-medium">All products are fully in stock! 🎉</div>
-              ) : (
-                outOfStock.map((p) => (
-                  <div key={p.id} className="flex justify-between items-center bg-[#F7F3EC] p-2.5 rounded-md border border-[#D8CEC1] hover:bg-red-50/10 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-[#292320] block">{p.name}</span>
-                      <span className="text-[9px] font-medium text-[#71675E]">SKU: {p.sku || "N/A"} | Min Stock: {p.alertQuantity}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-extrabold text-red-500 bg-red-50 dark:bg-red-950/20 px-2.5 py-1 rounded-lg border border-red-100 dark:border-transparent">0 Stock</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Today's Sales & Daily Statistics (1/3 width) */}
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <h2 className="text-sm font-extrabold text-[#292320] mb-4 flex items-center gap-2">
-              <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
-              Today's Sales & Daily Stats
-            </h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-emerald-50/30 rounded-md border border-emerald-100/50">
-                <div>
-                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Today's Transactions</span>
-                  <span className="text-lg font-black text-[#292320]">{todayStats?.transactionsCount ?? 0} Bills</span>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <ShoppingCart className="h-4.5 w-4.5" />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-blue-50/30 rounded-md border border-blue-100/50">
-                <div>
-                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Today's Revenue</span>
-                  <span className="text-lg font-black text-[#292320]">{currencySymbol}{(todayStats?.revenue ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <DollarSign className="h-4.5 w-4.5" />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-[#F7F3EC]/30 rounded-md border border-[#D8CEC1]/50">
-                <div>
-                  <span className="text-[9px] font-bold text-[#71675E] block uppercase tracking-wider">Average Order Value</span>
-                  <span className="text-lg font-black text-[#292320]">
-                    {currencySymbol}
-                    {todayStats?.transactionsCount
-                      ? (todayStats.revenue / todayStats.transactionsCount).toLocaleString('en-IN', { maximumFractionDigits: 2 })
-                      : "0.00"}
+            <div className="pt-3.5 space-y-4">
+              {/* Rooms Occupancy Meter */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-[#292320]">
+                    <BedDouble className="h-3.5 w-3.5 text-[#2563EB]" /> Hotel Rooms
+                  </span>
+                  <span className="tabular-nums font-bold text-[#2563EB]">
+                    {roomsOccupied} / {roomsTotal} ({roomPct}%)
                   </span>
                 </div>
-                <div className="h-9 w-9 rounded-lg bg-[#EEE7DD] text-[#71675E] flex items-center justify-center">
-                  <TrendingUp className="h-4.5 w-4.5" />
+                {/* Visual Progress Track */}
+                <div className="mt-2 h-2.5 w-full rounded-full bg-[#EEE7DD] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#2563EB] transition-all duration-500"
+                    style={{ width: `${roomPct}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-[#71675E]">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#16A34A]" />
+                    Vacant: <strong className="text-[#292320] tabular-nums">{hospitalityStats?.rooms?.vacant ?? 0}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#D97706]" />
+                    Housekeeping: <strong className="text-[#292320] tabular-nums">{hospitalityStats?.rooms?.maintenance ?? 0}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Dining Tables Occupancy Meter */}
+              <div className="border-t border-[#EEE7DD] pt-3.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-[#292320]">
+                    <UtensilsCrossed className="h-3.5 w-3.5 text-[#16A34A]" /> Dining Tables
+                  </span>
+                  <span className="tabular-nums font-bold text-[#16A34A]">
+                    {tablesOccupied} / {tablesTotal} ({tablePct}%)
+                  </span>
+                </div>
+                {/* Visual Progress Track */}
+                <div className="mt-2 h-2.5 w-full rounded-full bg-[#EEE7DD] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#16A34A] transition-all duration-500"
+                    style={{ width: `${tablePct}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-[#71675E]">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#16A34A]" />
+                    Available: <strong className="text-[#292320] tabular-nums">{hospitalityStats?.tables?.available ?? 0}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
+                    Active Stays: <strong className="text-[#292320] tabular-nums">{hospitalityStats?.activeStays ?? 0}</strong>
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+
+            {/* Quick Action Navigation Buttons */}
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#EEE7DD] pt-3">
+              <Link
+                href="/dashboard/restaurant/tables"
+                className="h-8 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-semibold text-[#292320] hover:bg-[#EEE7DD] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                Floor Plan
+              </Link>
+              <Link
+                href="/dashboard/hotel/rooms"
+                className="h-8 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-semibold text-[#292320] hover:bg-[#EEE7DD] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                Tape Chart
+              </Link>
+              <Link
+                href="/dashboard/hotel/housekeeping"
+                className="h-8 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-semibold text-[#292320] hover:bg-[#EEE7DD] flex items-center justify-center transition-colors cursor-pointer"
+              >
+                Housekeeping
+              </Link>
+            </div>
+          </section>
+
+          {/* Inventory Health & Top Selling Products */}
+          <section className={`${CARD} overflow-hidden`} aria-label="Inventory health and top products">
+            <div className="flex items-center justify-between gap-3 border-b border-[#EEE7DD] px-4 py-3.5 sm:px-5">
+              <div>
+                <h2 className="text-sm font-bold text-[#292320]">Inventory Health</h2>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FDF2F2] text-[#DC2626] border border-[#FBD5D5]">
+                    {outOfStock.length} out of stock
+                  </span>
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF8EE] text-[#D97706] border border-[#FDE8CC]">
+                    {alerts.length} low stock
+                  </span>
+                </div>
+              </div>
+              <Link href="/dashboard/purchases" className="shrink-0 text-xs font-semibold text-[#6B2837] hover:underline cursor-pointer">
+                Restock
+              </Link>
+            </div>
+
+            {stockItems.length === 0 ? (
+              <div className="px-4 py-5 text-xs text-[#71675E] text-center">
+                All inventory quantities are currently within healthy limits.
+              </div>
+            ) : (
+              <div className="divide-y divide-[#EEE7DD]">
+                {stockItems.map((item) => {
+                  const quantity = Number(item.currentQuantity ?? 0);
+                  const isOutOfStock = outOfStockIds.has(item.id) || quantity <= 0;
+                  return (
+                    <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-semibold text-[#292320]">{item.name}</div>
+                        {item.sku && (
+                          <div className="font-mono text-[10px] text-[#71675E]">{item.sku}</div>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border tabular-nums ${
+                            isOutOfStock
+                              ? "bg-[#FDF2F2] text-[#DC2626] border-[#FBD5D5]"
+                              : "bg-[#FEF8EE] text-[#D97706] border-[#FDE8CC]"
+                          }`}
+                        >
+                          {quantity} {item.unit || "pcs"} {isOutOfStock ? "(0 left)" : `(min ${Number(item.alertQuantity ?? 0)})`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Top Products Subsection */}
+            <div className="border-y border-[#EEE7DD] bg-[#F7F3EC] px-4 py-2.5 sm:px-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#71675E]">Top-Selling Dishes</span>
+                <Link href="/dashboard/products" className="text-xs font-semibold text-[#6B2837] hover:underline cursor-pointer">
+                  Catalog
+                </Link>
+              </div>
+            </div>
+
+            {topProducts.length === 0 ? (
+              <div className="px-4 py-4 text-xs text-[#71675E] text-center">No product sales recorded for this period.</div>
+            ) : (
+              <div className="divide-y divide-[#EEE7DD]">
+                {topProducts.slice(0, 4).map((product, idx) => (
+                  <div key={product.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 border ${
+                          idx === 0
+                            ? "bg-[#FEF8EE] text-[#D97706] border-[#FDE8CC]"
+                            : "bg-[#EEE7DD] text-[#71675E] border-[#D8CEC1]"
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-semibold text-[#292320]">{product.name}</div>
+                        <div className="mt-0.5 text-[10px] text-[#71675E] tabular-nums">
+                          {Number(product.quantitySold ?? 0).toLocaleString("en-IN")} sold
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-xs font-bold tabular-nums text-[#292320]">
+                      {formatAmount(product.revenue)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }
-
+  

@@ -5,28 +5,20 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Building,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
+  Hourglass,
   Clock,
-  Search,
-  Eye,
-  Mail,
-  Phone,
-  Globe,
+  AlertTriangle,
   Calendar,
-  Layers,
+  Search,
+  RefreshCw,
   Check,
   X,
-  FileText,
-  Sliders,
-  RefreshCw,
-  ShieldCheck,
-  Building2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
+import { toast } from "@/components/toast";
 
 interface RequestItem {
   id: string;
@@ -42,7 +34,7 @@ interface RequestItem {
   plan: string;
   billingCycle: string;
   durationMonths: number;
-  selectedModules?: Record<string, boolean>;
+  selectedModules?: any;
   customLimits?: Record<string, number>;
   ownerName: string;
   ownerEmail: string;
@@ -59,36 +51,38 @@ export default function PendingApprovalsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "CHANGES_REQUESTED" | "APPROVED" | "REJECTED">("PENDING");
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [counts, setCounts] = useState({ total: 0, pending: 0, changesRequested: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(null);
 
-  // Modal Action Form States
-  const [actionType, setActionType] = useState<"APPROVE" | "REJECT" | "REQUEST_CHANGES" | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [adminNotes, setAdminNotes] = useState("");
-  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
-  const [actionError, setActionError] = useState("");
-  const [actionSuccess, setActionSuccess] = useState("");
+  // Action states
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionModal, setActionModal] = useState<{
+    request: RequestItem;
+    type: "APPROVE" | "REJECT" | "REQUEST_CHANGES";
+  } | null>(null);
+  const [modalReason, setModalReason] = useState("");
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/requests?status=${activeTab}&search=${encodeURIComponent(search)}`);
+      const res = await fetch(`/api/v1/super-admin/requests?status=PENDING&search=${encodeURIComponent(search)}`);
       if (res.ok) {
         const data = await res.json();
         setRequests(data.requests || []);
         if (data.counts) setCounts(data.counts);
+      } else {
+        throw new Error(`Server returned status ${res.status}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fetch registration requests error:", err);
+      toast.error(err.message || "Failed to load pending applications");
     } finally {
       setLoading(false);
     }
-  }, [activeTab, search]);
+  }, [search]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -100,31 +94,25 @@ export default function PendingApprovalsPage() {
     }
   }, [status, session, router, fetchRequests]);
 
-  const handleExecuteAction = async () => {
-    if (!selectedRequest || !actionType) return;
-    if ((actionType === "REJECT" || actionType === "REQUEST_CHANGES") && !rejectionReason.trim()) {
-      setActionError("A rationale/reason is mandatory for audit trail compliance.");
-      return;
-    }
-
-    setIsSubmittingAction(true);
-    setActionError("");
-    setActionSuccess("");
+  // Execute Approval / Rejection / Changes Requested
+  const handleExecuteAction = async (requestId: string, action: "APPROVE" | "REJECT" | "REQUEST_CHANGES", reasonText?: string) => {
+    setActionLoadingId(requestId);
 
     try {
       const endpoint =
-        actionType === "APPROVE"
-          ? `/api/v1/super-admin/requests/${selectedRequest.id}/approve`
-          : actionType === "REJECT"
-          ? `/api/v1/super-admin/requests/${selectedRequest.id}/reject`
-          : `/api/v1/super-admin/requests/${selectedRequest.id}/request-changes`;
+        action === "APPROVE"
+          ? `/api/v1/super-admin/requests/${requestId}/approve`
+          : action === "REJECT"
+          ? `/api/v1/super-admin/requests/${requestId}/reject`
+          : `/api/v1/super-admin/requests/${requestId}/request-changes`;
 
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reason: rejectionReason,
-          adminNotes,
+          action,
+          reason: reasonText || "Approved by Super Admin",
+          adminNotes: reasonText || "Approved by Super Admin",
         }),
       });
 
@@ -133,333 +121,268 @@ export default function PendingApprovalsPage() {
         throw new Error(data.error || "Failed to process approval action");
       }
 
-      setActionSuccess(
-        actionType === "APPROVE"
+      toast.success(
+        action === "APPROVE"
           ? `Application successfully approved! New business provisioned.`
-          : actionType === "REJECT"
-          ? `Application rejected.`
+          : action === "REJECT"
+          ? `Application has been rejected.`
           : `Requested modifications submitted to applicant.`
       );
 
-      setActionType(null);
-      setRejectionReason("");
-      setAdminNotes("");
+      setActionModal(null);
       setSelectedRequest(null);
-      fetchRequests();
-      setTimeout(() => setActionSuccess(""), 4000);
+      setModalReason("");
+      await fetchRequests();
     } catch (err: any) {
-      setActionError(err.message);
+      console.error(err);
+      toast.error(err.message || "Server error while processing request");
     } finally {
-      setIsSubmittingAction(false);
+      setActionLoadingId(null);
     }
   };
 
   const getExportOptions = (): ExportOptions => ({
-    filename: `pending-applications-${new Date().toISOString().split("T")[0]}`,
-    title: "Pending Business Applications Queue",
+    filename: `pending-verification-${new Date().toISOString().split("T")[0]}`,
+    title: "Pending Business Verification Queue",
     subtitle: "Onboarding verification applications awaiting platform approval",
-    dateRange: activeTab === "ALL" ? "All Applications" : `Status: ${activeTab}`,
+    dateRange: "Status: PENDING",
     columns: [
       { header: "Tracking Code", key: "trackingCode", width: 18 },
       { header: "Business Name", key: "businessName", width: 25 },
-      { header: "Type", key: "businessType", width: 14 },
+      { header: "Type", key: "businessType", width: 16 },
       { header: "Plan", key: "plan", width: 14 },
-      { header: "Billing Cycle", key: "billingCycle", width: 14 },
       { header: "Owner Name", key: "ownerName", width: 20 },
       { header: "Owner Email", key: "ownerEmail", width: 25 },
-      { header: "Phone", key: "phone", width: 16 },
-      { header: "Status", key: "status", width: 14 },
+      { header: "Region", key: "address", width: 20 },
+      { header: "Status", key: "status", width: 12 },
       { header: "Submitted", key: "createdAt", width: 14 },
     ],
     data: requests.map((r) => ({
       trackingCode: r.trackingCode,
       businessName: r.businessName,
-      businessType: r.businessType,
+      businessType: formatBusinessType(r.businessType),
       plan: r.plan,
-      billingCycle: r.billingCycle,
       ownerName: r.ownerName,
       ownerEmail: r.ownerEmail,
-      phone: r.phone || "N/A",
+      address: r.address || "N/A",
       status: r.status,
-      createdAt: new Date(r.createdAt).toISOString().split("T")[0],
+      createdAt: new Date(r.createdAt).toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
     })),
   });
 
+  function formatBusinessType(type: string) {
+    if (!type) return "Restaurant";
+    const u = type.toUpperCase();
+    if (u.includes("HOTEL") && (u.includes("REST") || u.includes("BOTH"))) return "Hotel & Restaurant";
+    if (u.includes("HOTEL") || u.includes("STAY")) return "Hotel & Resort";
+    if (u.includes("CAFE") || u.includes("BAKERY")) return "Cafe & Bakery";
+    return "Restaurant";
+  }
+
   return (
-    <div className="space-y-6 text-[#292320]">
-      {/* 1. Header with Breadcrumbs & Export */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FFFCF7] border border-[#D8CEC1]/80 p-5 rounded-lg">
+    <div className="space-y-2.5 pb-8 text-[#292320]">
+      {/* 1. Header (Ultra Clean, Minimalist) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1 border-b border-[#D8CEC1]">
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#71675E] font-medium mb-1">
-            <Link href="/dashboard/super-admin" className="hover:text-[#6B2837]">
-              Platform
-            </Link>
-            <span>/</span>
-            <Link href="/dashboard/super-admin/businesses" className="hover:text-[#6B2837]">
-              Businesses
-            </Link>
-            <span>/</span>
-            <span className="text-[#292320] font-semibold">Pending Approvals</span>
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-[#292320]">Pending Approvals</h1>
-          <p className="text-xs text-[#71675E] mt-0.5">
-            Review and verify incoming business onboarding applications across Nepal.
+          <h1 className="text-lg font-bold tracking-tight text-[#292320]">
+            Pending Verification
+          </h1>
+          <p className="text-[11px] text-[#71675E] mt-0.5">
+            Review and verify business registration applications across Nepal.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => fetchRequests()}
+            disabled={loading}
+            className="p-1.5 text-[#71675E] hover:text-[#292320] bg-[#FFFCF7] border border-[#D8CEC1] rounded-md hover:bg-[#EEE7DD] transition-colors cursor-pointer"
+            title="Refresh queue"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
           <ExportDropdown
             getExportOptions={getExportOptions}
-            buttonText="Export Applications"
+            buttonText="Export Data"
             variant="outline"
           />
         </div>
       </div>
 
-      {/* Sub-Menu Tabs matching Sidebar */}
-      <div className="flex border-b border-[#D8CEC1] gap-6 text-xs font-semibold overflow-x-auto">
-        <Link
-          href="/dashboard/super-admin/businesses"
-          className="pb-2.5 border-b-2 border-transparent text-[#71675E] hover:text-[#292320] whitespace-nowrap transition-colors"
-        >
-          All Businesses
-        </Link>
-        <Link
-          href="/dashboard/super-admin/businesses/pending"
-          className="pb-2.5 border-b-2 border-[#6B2837] text-[#6B2837] whitespace-nowrap"
-        >
-          Pending Approvals ({counts.pending})
-        </Link>
-        <Link
-          href="/dashboard/super-admin/businesses/expiring"
-          className="pb-2.5 border-b-2 border-transparent text-[#71675E] hover:text-[#292320] whitespace-nowrap transition-colors"
-        >
-          Expiring Subscriptions
-        </Link>
-      </div>
-
-      {/* 3. Feedback alerts */}
-      {actionSuccess && (
-        <div className="p-3 bg-emerald-50 text-emerald-800 text-xs rounded-md border border-emerald-200 flex items-center gap-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />
-          <span className="font-medium">{actionSuccess}</span>
-        </div>
-      )}
-
-      {actionError && (
-        <div className="p-3 bg-rose-50 text-rose-800 text-xs rounded-md border border-rose-200 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-          <span className="font-medium">{actionError}</span>
-        </div>
-      )}
-
-      {/* 4. Metric KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-4 rounded-lg">
-          <p className="text-[11px] font-semibold text-[#71675E] uppercase tracking-wider">Total Pending</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-[#6B2837] tabular-nums">{counts.pending}</span>
-            <span className="text-xs text-[#71675E]">Ready for review</span>
+      {/* 2. Slim Minimalist KPI Cards (Clean, compact ~48px height) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="py-2 px-3 rounded-md bg-[#FFFCF7] border border-[#D8CEC1]">
+          <div className="flex items-center justify-between text-[11px] text-[#71675E] font-medium">
+            <span>Total Pending</span>
+            <Hourglass className="h-3.5 w-3.5 text-amber-500" />
+          </div>
+          <div className="mt-0.5 text-lg font-bold tracking-tight text-[#292320] tabular-nums">
+            {counts.pending}
           </div>
         </div>
 
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-4 rounded-lg">
-          <p className="text-[11px] font-semibold text-[#71675E] uppercase tracking-wider">Changes Requested</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-amber-700 tabular-nums">{counts.changesRequested}</span>
-            <span className="text-xs text-[#71675E]">Awaiting tenant</span>
+        <div className="py-2 px-3 rounded-md bg-[#FFFCF7] border border-[#D8CEC1]">
+          <div className="flex items-center justify-between text-[11px] text-[#71675E] font-medium">
+            <span>Under Review</span>
+            <Clock className="h-3.5 w-3.5 text-emerald-600" />
+          </div>
+          <div className="mt-0.5 text-lg font-bold tracking-tight text-[#292320] tabular-nums">
+            {counts.changesRequested}
           </div>
         </div>
 
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-4 rounded-lg">
-          <p className="text-[11px] font-semibold text-[#71675E] uppercase tracking-wider">Approved</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-emerald-700 tabular-nums">{counts.approved}</span>
-            <span className="text-xs text-[#71675E]">Provisioned</span>
+        <div className="py-2 px-3 rounded-md bg-[#FFFCF7] border border-[#D8CEC1]">
+          <div className="flex items-center justify-between text-[11px] text-[#71675E] font-medium">
+            <span>High Priority</span>
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+          </div>
+          <div className="mt-0.5 text-lg font-bold tracking-tight text-[#292320] tabular-nums">
+            0
           </div>
         </div>
 
-        <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-4 rounded-lg">
-          <p className="text-[11px] font-semibold text-[#71675E] uppercase tracking-wider">Avg Review Time</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-[#292320] tabular-nums">1.2 hrs</span>
-            <span className="text-xs text-[#71675E]">Response speed</span>
+        <div className="py-2 px-3 rounded-md bg-[#FFFCF7] border border-[#D8CEC1]">
+          <div className="flex items-center justify-between text-[11px] text-[#71675E] font-medium">
+            <span>Avg. Review Time</span>
+            <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+          </div>
+          <div className="mt-0.5 text-lg font-bold tracking-tight text-[#292320] tabular-nums">
+            1.2 hrs
           </div>
         </div>
       </div>
 
-      {/* 5. Filter Toolbar */}
-      <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 p-4 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#71675E]" />
-          <input
-            type="text"
-            placeholder="Search by business name, tracking code, or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-xs text-[#292320] placeholder-[#71675E] focus:outline-none focus:ring-1 focus:ring-[#6B2837]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex bg-[#F7F3EC] border border-[#D8CEC1] p-0.5 rounded-md text-[11px] font-medium">
-            <button
-              onClick={() => setActiveTab("PENDING")}
-              className={`px-3 py-1 rounded cursor-pointer transition-colors ${
-                activeTab === "PENDING" ? "bg-[#6B2837] text-white font-semibold" : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              Pending ({counts.pending})
-            </button>
-            <button
-              onClick={() => setActiveTab("CHANGES_REQUESTED")}
-              className={`px-3 py-1 rounded cursor-pointer transition-colors ${
-                activeTab === "CHANGES_REQUESTED" ? "bg-[#6B2837] text-white font-semibold" : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              Changes Requested
-            </button>
-            <button
-              onClick={() => setActiveTab("APPROVED")}
-              className={`px-3 py-1 rounded cursor-pointer transition-colors ${
-                activeTab === "APPROVED" ? "bg-[#6B2837] text-white font-semibold" : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              Approved
-            </button>
-            <button
-              onClick={() => setActiveTab("ALL")}
-              className={`px-3 py-1 rounded cursor-pointer transition-colors ${
-                activeTab === "ALL" ? "bg-[#6B2837] text-white font-semibold" : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              All
-            </button>
-          </div>
-
-          <button
-            onClick={() => fetchRequests()}
-            title="Refresh list"
-            className="p-1.5 bg-[#F7F3EC] hover:bg-[#EEE7DD] border border-[#D8CEC1] text-[#71675E] hover:text-[#292320] rounded-md transition-colors cursor-pointer"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
-        </div>
+      {/* 3. Sleek Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-[#71675E]" />
+        <input
+          type="text"
+          placeholder="Search pending businesses by name, code or admin..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-8 pr-3 py-1.5 bg-[#FFFCF7] border border-[#D8CEC1] rounded-md text-xs text-[#292320] placeholder:text-[#71675E] focus:outline-none focus:border-[#6B2837] transition-all"
+        />
       </div>
 
-      {/* 6. Applications Table */}
-      <div className="bg-[#FFFCF7] border border-[#D8CEC1]/80 rounded-lg overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-[#D8CEC1]/80 flex justify-between items-center bg-[#F7F3EC]/50">
-          <h2 className="text-sm font-bold text-[#292320]">
-            Verification Queue
-            <span className="ml-2 text-xs font-normal text-[#71675E] tabular-nums">
-              ({requests.length} applications)
+      {/* 4. Main Content: Verification Queue Table Card */}
+      <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-md overflow-hidden">
+        {/* Table Card Header */}
+        <div className="py-2 px-3 border-b border-[#D8CEC1] flex items-center justify-between bg-[#FFFCF7]">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#292320]">
+            VERIFICATION QUEUE ({requests.length})
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] font-medium text-[#71675E]">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+              Pending
             </span>
-          </h2>
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+              Ready
+            </span>
+          </div>
         </div>
 
+        {/* Table Content */}
         {loading ? (
-          <div className="p-12 text-center space-y-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#6B2837] border-t-transparent mx-auto" />
-            <p className="text-xs text-[#71675E]">Loading queue...</p>
+          <div className="p-8 text-center text-xs text-[#71675E] flex items-center justify-center gap-2">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#6B2837]" />
+            <span>Loading verification queue...</span>
           </div>
         ) : requests.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <Building className="h-8 w-8 text-[#71675E] mx-auto opacity-50" />
-            <p className="text-xs font-semibold text-[#292320]">No applications in queue</p>
-            <p className="text-[11px] text-[#71675E]">
-              {activeTab === "PENDING"
-                ? "All pending registration applications have been reviewed."
-                : "No applications found matching the selected filter."}
+          /* Clean Empty State */
+          <div className="py-10 px-4 text-center">
+            <div className="h-10 w-10 rounded-full border border-emerald-300 bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+              <Check className="h-5 w-5 stroke-[2.5]" />
+            </div>
+            <h3 className="text-xs font-bold text-[#292320]">Verification queue is clear</h3>
+            <p className="text-[11px] text-[#71675E] mt-0.5">
+              No business applications currently require verification.
             </p>
+            <Link
+              href="/dashboard/super-admin/businesses"
+              className="inline-block mt-2 text-[11px] font-semibold text-[#6B2837] hover:underline"
+            >
+              View all businesses &rarr;
+            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC]/80 text-[#71675E] font-semibold uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-4">Business / Property</th>
-                  <th className="py-2.5 px-3">Type & Plan</th>
-                  <th className="py-2.5 px-3">Applicant / Admin</th>
-                  <th className="py-2.5 px-3">Submitted</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
+                <tr className="border-b border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold text-[10px] uppercase tracking-wider">
+                  <th className="py-2 px-3">Business / Property</th>
+                  <th className="py-2 px-3">Type</th>
+                  <th className="py-2 px-3">Region</th>
+                  <th className="py-2 px-3">Submitted</th>
+                  <th className="py-2 px-3">Admin Info</th>
+                  <th className="py-2 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#D8CEC1]/60">
+              <tbody className="divide-y divide-[#D8CEC1]/50">
                 {requests.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#F7F3EC]/40 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-[#292320] flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
-                        <span>{r.businessName}</span>
-                      </div>
-                      <div className="text-[11px] text-[#71675E] mt-0.5">
-                        <span>Code: {r.trackingCode}</span>
-                        {r.address && <span> • {r.address}</span>}
-                      </div>
+                  <tr key={r.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
+                    {/* Business Name & Code */}
+                    <td className="py-2 px-3">
+                      <span className="font-semibold text-xs text-[#292320]">{r.businessName}</span>
+                      <span className="text-[10px] text-[#71675E] font-mono ml-2">
+                        {r.trackingCode}
+                      </span>
                     </td>
 
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-[#292320]">{r.plan}</div>
-                      <div className="text-[10px] text-[#71675E] mt-0.5 uppercase tracking-wide">
-                        {r.businessType} • {r.billingCycle}
-                      </div>
+                    {/* Business Type */}
+                    <td className="py-2 px-3 whitespace-nowrap text-xs text-[#292320]">
+                      {formatBusinessType(r.businessType)}
                     </td>
 
-                    <td className="py-3 px-3">
-                      <div className="text-[#292320] font-medium">{r.ownerName}</div>
-                      <div className="text-[11px] text-[#71675E] mt-0.5 flex items-center gap-1">
-                        <Mail className="h-3 w-3 shrink-0" />
-                        <span className="truncate max-w-[150px]">{r.ownerEmail}</span>
-                      </div>
+                    {/* Region */}
+                    <td className="py-2 px-3 whitespace-nowrap text-xs text-[#71675E]">
+                      {r.address || "Nepal"}
                     </td>
 
-                    <td className="py-3 px-3 tabular-nums font-medium text-[#292320]">
-                      {new Date(r.createdAt).toLocaleDateString(undefined, {
+                    {/* Submitted Date */}
+                    <td className="py-2 px-3 whitespace-nowrap text-xs text-[#71675E] font-mono">
+                      {new Date(r.createdAt).toLocaleDateString("en-US", {
+                        day: "2-digit",
                         month: "short",
-                        day: "numeric",
                         year: "numeric",
                       })}
                     </td>
 
-                    <td className="py-3 px-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                          r.status === "PENDING"
-                            ? "bg-amber-50 text-amber-800 border-amber-200"
-                            : r.status === "APPROVED"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            : r.status === "CHANGES_REQUESTED"
-                            ? "bg-blue-50 text-blue-800 border-blue-200"
-                            : "bg-rose-50 text-rose-800 border-rose-200"
-                        }`}
-                      >
-                        {r.status.replace("_", " ")}
-                      </span>
+                    {/* Admin Contact */}
+                    <td className="py-2 px-3">
+                      <div className="text-xs text-[#292320] font-medium">{r.ownerName}</div>
+                      <div className="text-[10px] text-[#71675E] font-mono">
+                        {r.ownerEmail}
+                      </div>
                     </td>
 
-                    <td className="py-3 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    {/* Actions */}
+                    <td className="py-2 px-3 whitespace-nowrap text-right">
+                      <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => setSelectedRequest(r)}
-                          className="px-2.5 py-1 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-[#D8CEC1] text-[#292320] rounded text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1 text-[11px] font-medium text-[#292320] bg-[#FFFCF7] border border-[#D8CEC1] rounded hover:bg-[#EEE7DD] transition-colors cursor-pointer"
                         >
-                          <Eye className="h-3 w-3 text-[#6B2837]" />
                           Inspect
                         </button>
-                        {r.status === "PENDING" && (
-                          <button
-                            onClick={() => {
-                              setSelectedRequest(r);
-                              setActionType("APPROVE");
-                            }}
-                            className="px-2.5 py-1 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded text-[11px] font-semibold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                          >
+                        <button
+                          onClick={() => handleExecuteAction(r.id, "APPROVE")}
+                          disabled={actionLoadingId === r.id}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-white bg-[#6B2837] rounded hover:bg-[#521E2A] transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                        >
+                          {actionLoadingId === r.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
                             <Check className="h-3 w-3" />
-                            Approve
-                          </button>
-                        )}
+                          )}
+                          <span>Approve</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -468,139 +391,173 @@ export default function PendingApprovalsPage() {
             </table>
           </div>
         )}
+
+        {/* Minimalist Pagination Footer */}
+        <div className="py-2 px-3 border-t border-[#D8CEC1] flex items-center justify-between text-[11px] text-[#71675E] bg-[#FFFCF7]">
+          <div>
+            Showing {requests.length > 0 ? `1 to ${requests.length}` : "0"} of {requests.length}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              disabled
+              className="p-1 rounded border border-[#D8CEC1] text-[#71675E] opacity-50 cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </button>
+            <span className="px-1.5 py-0.5 font-medium text-[#292320]">Page 1 of 1</span>
+            <button
+              disabled
+              className="p-1 rounded border border-[#D8CEC1] text-[#71675E] opacity-50 cursor-not-allowed"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* MODAL: Review / Inspect / Action */}
+      {/* 5. Clean Inspection / Review Modal */}
       {selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-5 space-y-4 shadow-md text-[#292320] max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-[#D8CEC1] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-4 space-y-3 shadow-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
               <div>
-                <h3 className="text-sm font-bold text-[#292320]">Application Details</h3>
-                <p className="text-xs text-[#71675E] mt-0.5">
-                  Tracking Code: <span className="font-semibold text-[#292320]">{selectedRequest.trackingCode}</span>
-                </p>
+                <h3 className="text-sm font-bold text-[#292320]">{selectedRequest.businessName}</h3>
+                <p className="text-[11px] text-[#71675E] font-mono mt-0.5">Code: {selectedRequest.trackingCode}</p>
               </div>
               <button
-                onClick={() => {
-                  setSelectedRequest(null);
-                  setActionType(null);
-                }}
-                className="text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
+                onClick={() => setSelectedRequest(null)}
+                className="text-[#71675E] hover:text-[#292320] cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#D8CEC1]">
-                <p className="text-[10px] text-[#71675E] font-semibold uppercase">Business</p>
-                <p className="font-bold text-[#292320] mt-0.5">{selectedRequest.businessName}</p>
-                <p className="text-[11px] text-[#71675E]">Slug: {selectedRequest.slug}</p>
-                <p className="text-[11px] text-[#71675E]">Type: {selectedRequest.businessType}</p>
-              </div>
-
-              <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#D8CEC1]">
-                <p className="text-[10px] text-[#71675E] font-semibold uppercase">Applicant</p>
-                <p className="font-bold text-[#292320] mt-0.5">{selectedRequest.ownerName}</p>
-                <p className="text-[11px] text-[#71675E]">{selectedRequest.ownerEmail}</p>
-                <p className="text-[11px] text-[#71675E]">{selectedRequest.ownerPhone || "No phone provided"}</p>
-              </div>
-            </div>
-
-            <div className="bg-[#F7F3EC] p-3 rounded-md border border-[#D8CEC1] text-xs">
-              <p className="text-[10px] text-[#71675E] font-semibold uppercase">Subscription Requested</p>
-              <div className="flex items-center gap-3 mt-1 font-semibold text-[#292320]">
-                <span>Plan: {selectedRequest.plan}</span>
-                <span>•</span>
-                <span>Billing: {selectedRequest.billingCycle}</span>
-                <span>•</span>
-                <span>Duration: {selectedRequest.durationMonths} mo</span>
-              </div>
-            </div>
-
-            {/* Action form if actionType is selected */}
-            {actionType && (
-              <div className="p-3.5 bg-[#FAF2F4] border border-[#E8D7DA] rounded-md space-y-3">
-                <p className="text-xs font-bold text-[#6B2837]">
-                  {actionType === "APPROVE"
-                    ? "Confirm Business Provisioning"
-                    : actionType === "REJECT"
-                    ? "Reject Application"
-                    : "Request Modifications"}
-                </p>
-
-                {(actionType === "REJECT" || actionType === "REQUEST_CHANGES") && (
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                      Reason / Required Changes <span className="text-rose-600">*</span>
-                    </label>
-                    <textarea
-                      rows={3}
-                      required
-                      placeholder="Specify rationale for this decision..."
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      className="w-full p-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320]"
-                    />
-                  </div>
-                )}
-
+            <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 p-2.5 bg-[#F7F3EC] rounded border border-[#D8CEC1]">
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#71675E] uppercase mb-1">
-                    Internal Admin Notes (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Internal reference notes..."
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    className="w-full p-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded text-xs text-[#292320]"
-                  />
+                  <span className="text-[#71675E] block text-[10px]">Business Type</span>
+                  <strong className="text-[#292320] text-xs">{formatBusinessType(selectedRequest.businessType)}</strong>
                 </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setActionType(null)}
-                    className="px-3 py-1.5 border border-[#D8CEC1] text-xs font-semibold rounded bg-[#FFFCF7] text-[#292320] cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExecuteAction}
-                    disabled={isSubmittingAction}
-                    className="px-4 py-1.5 bg-[#6B2837] text-white text-xs font-semibold rounded hover:bg-[#521E2A] disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSubmittingAction ? "Processing..." : "Confirm & Execute"}
-                  </button>
+                <div>
+                  <span className="text-[#71675E] block text-[10px]">Requested Plan</span>
+                  <strong className="text-[#292320] text-xs">{selectedRequest.plan} ({selectedRequest.billingCycle})</strong>
+                </div>
+                <div>
+                  <span className="text-[#71675E] block text-[10px]">Region / Address</span>
+                  <span className="text-[#292320] text-xs">{selectedRequest.address || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-[#71675E] block text-[10px]">PAN / Tax Number</span>
+                  <span className="text-[#292320] text-xs">{selectedRequest.taxNumber || "Not provided"}</span>
                 </div>
               </div>
-            )}
 
-            {!actionType && selectedRequest.status === "PENDING" && (
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#D8CEC1]">
-                <button
-                  onClick={() => setActionType("REJECT")}
-                  className="px-3 py-1.5 border border-rose-300 text-rose-700 text-xs font-semibold rounded hover:bg-rose-50 cursor-pointer"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => setActionType("REQUEST_CHANGES")}
-                  className="px-3 py-1.5 border border-amber-300 text-amber-800 text-xs font-semibold rounded hover:bg-amber-50 cursor-pointer"
-                >
-                  Request Changes
-                </button>
-                <button
-                  onClick={() => setActionType("APPROVE")}
-                  className="px-4 py-1.5 bg-[#6B2837] text-white text-xs font-semibold rounded hover:bg-[#521E2A] cursor-pointer"
-                >
-                  Approve Application
-                </button>
+              <div className="p-2.5 bg-[#F7F3EC] rounded border border-[#D8CEC1] space-y-1">
+                <span className="text-[#71675E] block text-[10px] font-semibold uppercase">Owner Information</span>
+                <div className="flex justify-between">
+                  <span className="text-[#71675E]">Name:</span>
+                  <strong className="text-[#292320]">{selectedRequest.ownerName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#71675E]">Email:</span>
+                  <span className="text-[#292320] font-mono text-[11px]">{selectedRequest.ownerEmail}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#71675E]">Phone:</span>
+                  <span className="text-[#292320]">{selectedRequest.ownerPhone || selectedRequest.phone || "N/A"}</span>
+                </div>
               </div>
-            )}
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-1.5 border-t border-[#D8CEC1]">
+              <button
+                onClick={() => {
+                  const req = selectedRequest;
+                  setSelectedRequest(null);
+                  setActionModal({ request: req, type: "REJECT" });
+                }}
+                className="px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded hover:bg-rose-100 cursor-pointer"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => {
+                  const req = selectedRequest;
+                  setSelectedRequest(null);
+                  setActionModal({ request: req, type: "REQUEST_CHANGES" });
+                }}
+                className="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100 cursor-pointer"
+              >
+                Request Changes
+              </button>
+              <button
+                onClick={() => handleExecuteAction(selectedRequest.id, "APPROVE")}
+                disabled={actionLoadingId === selectedRequest.id}
+                className="px-3.5 py-1 text-xs font-semibold text-white bg-[#6B2837] rounded hover:bg-[#521E2A] cursor-pointer flex items-center gap-1"
+              >
+                {actionLoadingId === selectedRequest.id ? (
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                <span>Approve & Provision</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Action Reason Dialog (Reject or Request Changes) */}
+      {actionModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3 shadow-md">
+            <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
+              <h3 className="text-xs font-bold text-[#292320]">
+                {actionModal.type === "REJECT" ? "Reject Application" : "Request Changes"}
+              </h3>
+              <button
+                onClick={() => setActionModal(null)}
+                className="text-[#71675E] hover:text-[#292320] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-[#71675E]">
+              Provide a rationale for {actionModal.request.businessName}. This reason will be logged in the audit trail.
+            </p>
+
+            <textarea
+              value={modalReason}
+              onChange={(e) => setModalReason(e.target.value)}
+              placeholder="Enter review notes or reason..."
+              rows={2}
+              className="w-full p-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
+            />
+
+            <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-[#D8CEC1]">
+              <button
+                onClick={() => setActionModal(null)}
+                className="px-2.5 py-1 text-xs font-medium text-[#71675E] hover:text-[#292320] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  handleExecuteAction(
+                    actionModal.request.id,
+                    actionModal.type,
+                    modalReason.trim() || undefined
+                  )
+                }
+                disabled={!modalReason.trim() || actionLoadingId === actionModal.request.id}
+                className={`px-3 py-1 text-xs font-semibold rounded text-white cursor-pointer disabled:opacity-50 ${
+                  actionModal.type === "REJECT" ? "bg-rose-700 hover:bg-rose-800" : "bg-amber-700 hover:bg-amber-800"
+                }`}
+              >
+                Confirm {actionModal.type === "REJECT" ? "Rejection" : "Request"}
+              </button>
+            </div>
           </div>
         </div>
       )}

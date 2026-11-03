@@ -2,45 +2,51 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, ShieldAlert, Lock, UserCheck, ShieldCheck } from "lucide-react";
-import StatusGraphic from "@/components/status-graphic";
+import { ArrowLeft, Home, ShieldAlert, Lock, UserCheck, LogOut } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 export default function DashboardUnauthorizedPage() {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-6 text-[#292320]">
-      <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-        
-        {/* Left Column: Role Restriction Typography & CTAs */}
-        <div className="lg:col-span-7 space-y-6 text-left">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#FAF4ED] border border-[#B33432]/30 text-[#B33432] text-xs font-semibold">
-            <ShieldAlert className="w-3.5 h-3.5 text-[#B33432]" />
+    <div className="min-h-[75vh] flex items-center justify-center p-6 text-[#292320]">
+      <div className="max-w-xl w-full bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 sm:p-8 space-y-6 shadow-2xs">
+        {/* Header Badge */}
+        <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-4">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#B91C1C]/10 text-[#B91C1C] text-xs font-semibold">
+            <ShieldAlert className="w-4 h-4 text-[#B91C1C]" />
             <span>403 Forbidden • Access Restricted</span>
           </div>
+          <span className="text-[11px] font-mono text-[#71675E] uppercase tracking-wider">
+            RBAC Enforcement
+          </span>
+        </div>
 
-          <div className="space-y-2">
-            <h1 className="text-6xl sm:text-7xl font-extrabold tracking-tight text-[#B33432] tabular-nums">
-              403
-            </h1>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#292320]">
-              Access not authorized.
-            </h2>
+        {/* Content */}
+        <div className="space-y-3">
+          <div className="text-4xl font-extrabold tracking-tight text-[#292320] tabular-nums font-mono">
+            403
           </div>
-
-          <p className="text-sm text-[#71675E] leading-relaxed max-w-md">
-            Your authenticated role or staff terminal does not have clearance to view this module. If you require permission, ask your property manager or administrator to update your role permissions.
+          <h1 className="text-lg font-bold tracking-tight text-[#292320]">
+            Access Clearance Not Granted
+          </h1>
+          <p className="text-xs text-[#71675E] leading-relaxed">
+            Your current authenticated account role does not have permission to view or manage this specific module. If you believe this is in error, contact your property owner or platform administrator.
           </p>
+        </div>
 
-          <div className="p-3.5 rounded-lg bg-[#FFFCF7] border border-[#D8CEC1] text-xs text-[#71675E] space-y-1 max-w-md">
-            <div className="flex items-center gap-2 font-semibold text-[#292320]">
-              <Lock className="w-3.5 h-3.5 text-[#A77B38]" />
-              <span>Role-Based Access Control (RBAC) Active</span>
-            </div>
-            <p className="text-[11px] leading-relaxed">
-              Financial ledgers, staff audits, and terminal configuration require specific security grants (`OWNER`, `MANAGER`, or `ADMIN`).
-            </p>
+        {/* Security Grants Info Card */}
+        <div className="p-3.5 rounded-lg bg-[#F7F3EC] border border-[#D8CEC1] text-xs text-[#71675E] space-y-1.5">
+          <div className="flex items-center gap-1.5 font-semibold text-[#292320]">
+            <Lock className="w-3.5 h-3.5 text-[#6B2837]" />
+            <span>Security Policy Note</span>
           </div>
+          <p className="text-[11px] leading-relaxed">
+            Business management, financial ledgers, inventory audits, and terminal settings require valid role clearance (<code className="px-1 py-0.5 rounded bg-[#EEE7DD] text-[#292320] font-mono">OWNER</code>, <code className="px-1 py-0.5 rounded bg-[#EEE7DD] text-[#292320] font-mono">MANAGER</code>, or <code className="px-1 py-0.5 rounded bg-[#EEE7DD] text-[#292320] font-mono">SUPER_ADMIN</code>).
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EEE7DD]">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -48,7 +54,7 @@ export default function DashboardUnauthorizedPage() {
                   window.history.length > 1 ? window.history.back() : (window.location.href = "/dashboard");
                 }
               }}
-              className="px-4 py-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#EEE7DD] text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#EEE7DD] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Go Back</span>
@@ -56,21 +62,23 @@ export default function DashboardUnauthorizedPage() {
 
             <Link
               href="/dashboard"
-              className="px-5 py-2.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
+              className="px-3.5 py-1.5 rounded bg-[#6B2837] hover:bg-[#521E2A] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
             >
               <Home className="w-3.5 h-3.5" />
-              <span>Back to Dashboard</span>
+              <span>Workspace Dashboard</span>
             </Link>
           </div>
-        </div>
 
-        {/* Right Column: Reusable Status Graphic with 403 Lock Status */}
-        <div className="lg:col-span-5 flex items-center justify-center">
-          <StatusGraphic badgeText="403 lock" />
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            className="text-xs font-medium text-[#71675E] hover:text-[#B91C1C] flex items-center gap-1 cursor-pointer"
+          >
+            <LogOut className="w-3 h-3" />
+            <span>Switch Account</span>
+          </button>
         </div>
-
       </div>
     </div>
   );
 }
-

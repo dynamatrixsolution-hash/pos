@@ -63,8 +63,8 @@ export async function GET(request: Request) {
 
     const totalSales = salesAggregate._sum.total ? Number(salesAggregate._sum.total) : 0;
     const totalSalesCount = salesAggregate._count.id || 0;
-    const totalSalesTax = salesAggregate._sum.tax || 0;
-    const totalSalesDiscount = salesAggregate._sum.discount || 0;
+    const totalSalesTax = salesAggregate._sum.tax ? Number(salesAggregate._sum.tax) : 0;
+    const totalSalesDiscount = salesAggregate._sum.discount ? Number(salesAggregate._sum.discount) : 0;
 
     // Sales by Payment Method
     const salesPayments = await db.payment.groupBy({
@@ -174,8 +174,36 @@ export async function GET(request: Request) {
       },
     });
 
-    const costOfGoodsSold = saleItems.reduce((sum, item) => sum + item.quantity * Number(item.costPrice), 0);
-    const grossProfit = totalSales - costOfGoodsSold;
+    // Add settled restaurant orders to total sales
+    const settledRestaurantOrders = await db.restaurantOrder.findMany({
+      where: {
+        businessId: context.businessId,
+        createdAt: { gte: startDate, lte: endDate },
+        settlementStatus: "PAID",
+        ...(authorizedBranch ? { branchId: authorizedBranch } : {}),
+      },
+    });
+    const restaurantSalesTotal = settledRestaurantOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const combinedTotalSales = totalSales + restaurantSalesTotal;
+    const combinedTotalSalesCount = totalSalesCount + settledRestaurantOrders.length;
+
+    // Kitchen recipe consumption COGS
+    const kitchenConsumptions = await db.consumptionPosting.findMany({
+      where: {
+        businessId: context.businessId,
+        postedAt: { gte: startDate, lte: endDate },
+        ...(authorizedBranch ? { branchId: authorizedBranch } : {}),
+      },
+      include: { product: true },
+    });
+    const kitchenCogs = kitchenConsumptions.reduce(
+      (sum, c) => sum + Number(c.quantity) * Number(c.product?.costPrice || 0),
+      0
+    );
+
+    const retailCogs = saleItems.reduce((sum, item) => sum + item.quantity * Number(item.costPrice), 0);
+    const costOfGoodsSold = retailCogs + kitchenCogs;
+    const grossProfit = combinedTotalSales - costOfGoodsSold;
     const netProfit = grossProfit + totalIncome - totalExpenses;
 
     // 5. Product-wise sales summary
@@ -220,11 +248,15 @@ export async function GET(request: Request) {
       startDate,
       endDate,
       sales: {
-        total: totalSales,
-        count: totalSalesCount,
+        total: combinedTotalSales,
+        count: combinedTotalSalesCount,
         tax: totalSalesTax,
         discount: totalSalesDiscount,
         byPaymentMethod: salesByPaymentMethod,
+      },
+      restaurant: {
+        sales: restaurantSalesTotal,
+        cogs: kitchenCogs,
       },
       purchases: {
         total: totalPurchases,

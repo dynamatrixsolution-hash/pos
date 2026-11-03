@@ -3,6 +3,7 @@ import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
 import {
   routeOrderRoundToStations,
   getLiveKDSTickets,
+  getRecentServedTickets,
   KitchenRoutingError,
 } from "@/lib/services/kitchen-routing-service";
 import { z } from "zod";
@@ -21,8 +22,11 @@ export async function GET(req: Request) {
     const stationId = searchParams.get("stationId") || undefined;
     if (!branchId) return NextResponse.json({ error: "Branch ID required" }, { status: 400 });
 
-    const tickets = await getLiveKDSTickets(session.businessId, branchId, stationId);
-    return NextResponse.json({ tickets });
+    const [tickets, served] = await Promise.all([
+      getLiveKDSTickets(session.businessId, branchId, stationId),
+      getRecentServedTickets(session.businessId, branchId, stationId),
+    ]);
+    return NextResponse.json({ tickets, served });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to fetch kitchen tickets" }, { status: 500 });
   }

@@ -356,6 +356,43 @@ export async function GET(request: Request) {
       orders: todaySalesRes._count.id || 0,
     };
 
+    // 10. Hospitality and Floor snapshot
+    let rooms: any[] = [];
+    let tables: any[] = [];
+    let activeStaysCount = 0;
+    try {
+      [rooms, tables, activeStaysCount] = await Promise.all([
+        db.room.findMany({
+          where: { businessId: context.businessId, isActive: true },
+          select: { status: true },
+        }),
+        db.restaurantTable.findMany({
+          where: { businessId: context.businessId },
+          select: { status: true },
+        }),
+        (db as any).stay ? (db as any).stay.count({
+          where: { businessId: context.businessId, status: "CHECKED_IN" },
+        }) : 0,
+      ]);
+    } catch {
+      // safe fallback
+    }
+
+    const hospitalityStats = {
+      rooms: {
+        total: rooms.length,
+        occupied: rooms.filter((r: any) => r.status && r.status.includes("OCCUPIED")).length,
+        vacant: rooms.filter((r: any) => r.status && r.status.startsWith("VACANT")).length,
+        maintenance: rooms.filter((r: any) => r.status && (r.status.includes("DIRTY") || r.status.includes("MAINTENANCE") || r.status.includes("SERVICE"))).length,
+      },
+      tables: {
+        total: tables.length,
+        occupied: tables.filter((t: any) => t.status === "OCCUPIED" || t.status === "BILLED").length,
+        available: tables.filter((t: any) => t.status === "AVAILABLE").length,
+      },
+      activeStays: activeStaysCount,
+    };
+
     return NextResponse.json({
       metrics: {
         totalSales,
@@ -376,6 +413,7 @@ export async function GET(request: Request) {
       salesByCategory,
       outOfStockProducts,
       todayStats,
+      hospitalityStats,
     });
   } catch (error: unknown) {
     console.error("GET dashboard reports error:", error);

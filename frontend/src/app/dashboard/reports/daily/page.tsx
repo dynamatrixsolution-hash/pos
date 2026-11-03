@@ -45,6 +45,11 @@ interface DailyReportData {
   profit: number;
 }
 
+const num = (v: any) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
+
 export default function DailyReportsPage() {
   const { data: session } = useSession();
   const { currencySymbol, taxName } = useSettings();
@@ -128,13 +133,13 @@ export default function DailyReportsPage() {
     if (!reportData) return toast.warning("No data available");
     const sheetData = [
       { Metric: "Date", Value: dateStr },
-      { Metric: "Gross Sales", Value: reportData.sales.total },
-      { Metric: "Sales Discount", Value: reportData.sales.discount },
-      { Metric: "Sales Tax/VAT", Value: reportData.sales.tax },
-      { Metric: "Daily Restock Purchases", Value: reportData.purchases.total },
+      { Metric: "Gross Sales", Value: num(reportData.sales?.total) },
+      { Metric: "Sales Discount", Value: num(reportData.sales?.discount) },
+      { Metric: "Sales Tax/VAT", Value: num(reportData.sales?.tax) },
+      { Metric: "Daily Restock Purchases", Value: num(reportData.purchases?.total) },
       { Metric: "Collections (Sales Payments)", Value: reportData.sales.byPaymentMethod.reduce((acc: number, cur: any) => acc + cur.amount, 0) },
-      { Metric: "Expenses Disbursed", Value: reportData.expenses.total },
-      { Metric: "Net Daily Profit", Value: reportData.margins.netProfit },
+      { Metric: "Expenses Disbursed", Value: num(reportData.expenses?.total) },
+      { Metric: "Net Daily Profit", Value: num(reportData.margins?.netProfit) },
     ];
     const ws = XLSX.utils.json_to_sheet(sheetData);
     const wb = XLSX.utils.book_new();
@@ -167,15 +172,15 @@ export default function DailyReportsPage() {
     y += 7;
     doc.setFont("helvetica", "normal");
     const metrics = [
-      ["Gross Sales Revenue", `${currencySymbol}${reportData.sales.total.toFixed(2)}`],
+      ["Gross Sales Revenue", `${currencySymbol}${num(reportData.sales?.total).toFixed(2)}`],
       ["Sales Count", `${reportData.sales.count} invoices`],
-      ["Sales Discounts Billed", `${currencySymbol}${reportData.sales.discount.toFixed(2)}`],
-      [`Tax/VAT Collected`, `${currencySymbol}${reportData.sales.tax.toFixed(2)}`],
-      ["COGS (Cost of Sales)", `${currencySymbol}${reportData.margins.costOfGoodsSold.toFixed(2)}`],
-      ["Restock Purchases total", `${currencySymbol}${reportData.purchases.total.toFixed(2)}`],
-      ["Daily Expenses Logged", `${currencySymbol}${reportData.expenses.total.toFixed(2)}`],
-      ["Daily Other Incomes", `${currencySymbol}${reportData.income.total.toFixed(2)}`],
-      ["Net Daily Profit", `${currencySymbol}${reportData.margins.netProfit.toFixed(2)}`],
+      ["Sales Discounts Billed", `${currencySymbol}${num(reportData.sales?.discount).toFixed(2)}`],
+      [`Tax/VAT Collected`, `${currencySymbol}${num(reportData.sales?.tax).toFixed(2)}`],
+      ["COGS (Cost of Sales)", `${currencySymbol}${num(reportData.margins?.costOfGoodsSold).toFixed(2)}`],
+      ["Restock Purchases total", `${currencySymbol}${num(reportData.purchases?.total).toFixed(2)}`],
+      ["Daily Expenses Logged", `${currencySymbol}${num(reportData.expenses?.total).toFixed(2)}`],
+      ["Daily Other Incomes", `${currencySymbol}${num(reportData.income?.total).toFixed(2)}`],
+      ["Net Daily Profit", `${currencySymbol}${num(reportData.margins?.netProfit).toFixed(2)}`],
     ];
 
     metrics.forEach(([lbl, val]) => {
@@ -207,7 +212,7 @@ export default function DailyReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Sales</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.sales.total.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{num(reportData.sales?.total).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invoices Billed</span>
@@ -215,11 +220,11 @@ export default function DailyReportsPage() {
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Discounts Allowed</span>
-                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.sales.discount.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{num(reportData.sales?.discount).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">VAT Collected</span>
-                <h4 className="text-lg font-black text-[#2563EB] mt-1">{currencySymbol}{reportData.sales.tax.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-[#2563EB] mt-1">{currencySymbol}{num(reportData.sales?.tax).toFixed(2)}</h4>
               </div>
             </div>
 
@@ -251,7 +256,7 @@ export default function DailyReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Purchase Restocks</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.purchases.total.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{num(reportData.purchases?.total).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Purchase Orders Received</span>
@@ -271,7 +276,7 @@ export default function DailyReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Cash Collections</span>
-                <h4 className="text-lg font-black text-[#10b981] mt-1">{currencySymbol}{totalCollections.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-[#10b981] mt-1">{currencySymbol}{num(totalCollections).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Voucher Count</span>
@@ -291,7 +296,7 @@ export default function DailyReportsPage() {
                     <tr key={pm.method}>
                       <td className="py-2.5 px-3 font-semibold">{pm.method}</td>
                       <td className="py-2.5 px-3 text-right font-bold text-[#292320] dark:text-slate-200">
-                        {currencySymbol}{pm.amount.toFixed(2)}
+                        {currencySymbol}{num(pm.amount).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -307,7 +312,7 @@ export default function DailyReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Disbursed Cash Payments</span>
-                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.expenses.total.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{num(reportData.expenses?.total).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Disbursements Count</span>
@@ -326,7 +331,7 @@ export default function DailyReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daily Store Expenses</span>
-                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{reportData.expenses.total.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-red-500 mt-1">{currencySymbol}{num(reportData.expenses?.total).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Daily Voucher Count</span>
@@ -347,7 +352,7 @@ export default function DailyReportsPage() {
                     <tr key={ec.categoryId}>
                       <td className="py-2.5 px-3 font-semibold">{ec.categoryName}</td>
                       <td className="py-2.5 px-3 text-right font-bold text-red-500">
-                        {currencySymbol}{ec.amount.toFixed(2)}
+                        {currencySymbol}{num(ec.amount).toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -363,22 +368,24 @@ export default function DailyReportsPage() {
         );
 
       case "profit":
-        const profitMargin = reportData.sales.total > 0 ? (reportData.margins.netProfit / reportData.sales.total) * 100 : 0;
+        const totalSalesVal = num(reportData.sales?.total);
+        const netProfitVal = num(reportData.margins?.netProfit);
+        const profitMargin = totalSalesVal > 0 ? (netProfitVal / totalSalesVal) * 100 : 0;
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Gross Sales Revenue</span>
-                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{reportData.sales.total.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-foreground mt-1">{currencySymbol}{num(reportData.sales?.total).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cost of Goods Sold (COGS)</span>
-                <h4 className="text-lg font-black text-[#71675E] mt-1">{currencySymbol}{reportData.margins.costOfGoodsSold.toFixed(2)}</h4>
+                <h4 className="text-lg font-black text-[#71675E] mt-1">{currencySymbol}{num(reportData.margins?.costOfGoodsSold).toFixed(2)}</h4>
               </div>
               <div className="bg-[#F7F3EC] dark:bg-slate-900 border border-[#D8CEC1]/50 dark:border-slate-800 p-4 rounded-lg">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net Profit Margin</span>
                 <h4 className={`text-lg font-black mt-1 ${reportData.margins.netProfit >= 0 ? "text-[#10b981]" : "text-red-500"}`}>
-                  {currencySymbol}{reportData.margins.netProfit.toFixed(2)} ({profitMargin.toFixed(1)}%)
+                  {currencySymbol}{num(reportData.margins?.netProfit).toFixed(2)} ({profitMargin.toFixed(1)}%)
                 </h4>
               </div>
             </div>

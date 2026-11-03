@@ -133,6 +133,49 @@ export async function createOrAppendOrder(
       nextRoundNumber = 1;
     }
 
+    // 2.5 Automated Inventory Lockout: Verify raw ingredient stock for every item with an active recipe
+    for (const item of input.items) {
+      if (!item.menuItemId) continue;
+      const recipe = await tx.recipeVersion.findFirst({
+        where: {
+          businessId: input.businessId,
+          menuItemId: item.menuItemId,
+          isActive: true,
+        },
+        include: {
+          ingredients: {
+            include: { product: true },
+          },
+        },
+      });
+
+      if (recipe && recipe.ingredients.length > 0) {
+        const orderQty = new Prisma.Decimal(Math.max(1, Math.floor(item.quantity)));
+        for (const ing of recipe.ingredients) {
+          const needed = ing.quantity
+            .mul(orderQty)
+            .div(recipe.yieldQuantity)
+            .mul(new Prisma.Decimal(1).add(ing.wastagePercent.div(100)));
+
+          const stock = await tx.productStock.findFirst({
+            where: {
+              productId: ing.productId,
+              branchId: input.branchId,
+            },
+          });
+
+          const available = stock ? new Prisma.Decimal(stock.quantity.toString()) : new Prisma.Decimal(0);
+          if (available.lessThan(needed)) {
+            const prodName = ing.product?.name || "Raw ingredient";
+            throw new RestaurantOrderError(
+              `Cannot place order: '${prodName}' is out of stock (required: ${needed.toFixed(2)} ${ing.unit}, available: ${available.toFixed(2)} ${ing.unit}) for item '${item.itemName}'.`,
+              409
+            );
+          }
+        }
+      }
+    }
+
     // 3. Create the new OrderRound
     const orderRound = await tx.orderRound.create({
       data: {
@@ -152,69 +195,74 @@ export async function createOrAppendOrder(
     const createdLines = [];
 
     for (const item of input.items) {
-      const basePriceDec = money(item.basePrice);
-      const qty = Math.max(1, Math.floor(item.quantity));
+      try {
+        const basePriceDec = money(item.basePrice);
+        const qty = Math.max(1, Math.floor(item.quantity));
 
-      // Calculate modifiers delta
-      let modifiersDeltaTotal = new Prisma.Decimal(0);
-      const sanitizedModifiers = (item.appliedModifiers || []).map((m) => {
-        const delta = money(m.priceDelta);
-        modifiersDeltaTotal = addMoney(modifiersDeltaTotal, delta);
-        return {
-          modifierGroupId: m.modifierGroupId,
-          groupName: m.groupName,
-          optionId: m.optionId,
-          optionName: m.optionName,
-          priceDelta: delta.toString(),
-        };
-      });
-
-      const unitPrice = addMoney(basePriceDec, modifiersDeltaTotal);
-      const lineSubtotal = mulMoney(unitPrice, qty);
-
-      // Tax lookup if menuItemId present
-      let taxRate = new Prisma.Decimal(0);
-      if (item.menuItemId) {
-        const menuItem = await tx.menuItem.findFirst({
-          where: { id: item.menuItemId, businessId: input.businessId },
+        // Calculate modifiers delta
+        let modifiersDeltaTotal = new Prisma.Decimal(0);
+        const sanitizedModifiers = (item.appliedModifiers || []).map((m) => {
+          const delta = money(m.priceDelta);
+          modifiersDeltaTotal = addMoney(modifiersDeltaTotal, delta);
+          return {
+            modifierGroupId: m.modifierGroupId,
+            groupName: m.groupName,
+            optionId: m.optionId,
+            optionName: m.optionName,
+            priceDelta: delta.toString(),
+          };
         });
-        if (menuItem?.taxRate) {
-          taxRate = toDecimal(menuItem.taxRate);
+
+        const unitPrice = addMoney(basePriceDec, modifiersDeltaTotal);
+        const lineSubtotal = mulMoney(unitPrice, qty);
+
+        // Tax lookup if menuItemId present
+        let taxRate = new Prisma.Decimal(0);
+        if (item.menuItemId) {
+          const menuItem = await tx.menuItem.findFirst({
+            where: { id: item.menuItemId, businessId: input.businessId },
+          });
+          if (menuItem?.taxRate) {
+            taxRate = toDecimal(menuItem.taxRate);
+          }
         }
+
+        const lineTax = taxRate.isZero()
+          ? new Prisma.Decimal(0)
+          : money(divMoney(mulMoney(lineSubtotal, taxRate), 100));
+        const lineTotal = addMoney(lineSubtotal, lineTax);
+
+        roundSubtotal = addMoney(roundSubtotal, lineSubtotal);
+        roundTaxTotal = addMoney(roundTaxTotal, lineTax);
+
+        const line = await tx.orderLine.create({
+          data: {
+            businessId: input.businessId,
+            orderId: order.id,
+            roundId: orderRound.id,
+            menuItemId: item.menuItemId || null,
+            itemName: item.itemName,
+            basePrice: basePriceDec,
+            quantity: qty,
+            appliedModifiers: sanitizedModifiers,
+            unitPrice,
+            taxRate,
+            taxAmount: lineTax,
+            subtotal: lineSubtotal,
+            total: lineTotal,
+            notes: item.notes || null,
+            acceptanceStatus: "PENDING",
+            fulfillmentStatus: "QUEUED",
+            settlementStatus: "UNPAID",
+            version: 1,
+          },
+        });
+
+        createdLines.push(line);
+      } catch (lineErr) {
+        console.error("Failed to process item or create OrderLine:", lineErr);
+        throw lineErr;
       }
-
-      const lineTax = taxRate.isZero()
-        ? new Prisma.Decimal(0)
-        : money(divMoney(mulMoney(lineSubtotal, taxRate), 100));
-      const lineTotal = addMoney(lineSubtotal, lineTax);
-
-      roundSubtotal = addMoney(roundSubtotal, lineSubtotal);
-      roundTaxTotal = addMoney(roundTaxTotal, lineTax);
-
-      const line = await tx.orderLine.create({
-        data: {
-          businessId: input.businessId,
-          orderId: order.id,
-          roundId: orderRound.id,
-          menuItemId: item.menuItemId || null,
-          itemName: item.itemName,
-          basePrice: basePriceDec,
-          quantity: qty,
-          appliedModifiers: sanitizedModifiers,
-          unitPrice,
-          taxRate,
-          taxAmount: lineTax,
-          subtotal: lineSubtotal,
-          total: lineTotal,
-          notes: item.notes || null,
-          acceptanceStatus: "PENDING",
-          fulfillmentStatus: "QUEUED",
-          settlementStatus: "UNPAID",
-          version: 1,
-        },
-      });
-
-      createdLines.push(line);
     }
 
     // 5. Update Order totals & OCC version

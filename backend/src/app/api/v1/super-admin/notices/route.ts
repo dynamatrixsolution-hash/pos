@@ -108,9 +108,26 @@ export async function GET(request: Request) {
     // Fetch tenant businesses for target audience dropdown
     const businesses = await db.business.findMany({
       where: { slug: { not: "platform-admin" }, deletedAt: null },
-      select: { id: true, name: true, slug: true, type: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        subscription: {
+          select: {
+            plan: true,
+            packageType: true,
+          },
+        },
+      },
       orderBy: { name: "asc" },
     });
+
+    const formattedBusinesses = businesses.map((b) => ({
+      id: b.id,
+      name: b.name,
+      slug: b.slug,
+      type: b.subscription?.packageType || "RESTAURANT",
+    }));
 
     // Format notices for frontend table
     const formattedNotices = notices.map((n, idx) => {
@@ -219,7 +236,7 @@ export async function GET(request: Request) {
         engagementTrend,
         recentActivity,
       },
-      businesses,
+      businesses: formattedBusinesses,
     });
   } catch (error: any) {
     console.error("GET notices error:", error);

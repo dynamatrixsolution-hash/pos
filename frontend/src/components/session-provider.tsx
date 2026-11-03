@@ -36,5 +36,9 @@ if (typeof window !== "undefined") {
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  return <Provider>{children}</Provider>;
+  return (
+    <Provider refetchOnWindowFocus={false} refetchWhenOffline={false}>
+      {children}
+    </Provider>
+  );
 }

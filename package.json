@@ -20,6 +20,8 @@
     "restro:init": "node scripts/restro-env.mjs init",
     "restro:db": "node scripts/restro-env.mjs db",
     "restro:migrate": "node scripts/restro-env.mjs migrate",
+    "restro:push": "node scripts/restro-env.mjs push",
+    "restro:seed": "node scripts/restro-env.mjs seed",
     "restro:dev": "node scripts/restro-env.mjs dev",
     "typecheck": "tsc -p backend/tsconfig.json --noEmit --incremental false && tsc -p frontend/tsconfig.json --noEmit --incremental false"
   },

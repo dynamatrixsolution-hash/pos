@@ -570,6 +570,98 @@ export async function PUT(
       return NextResponse.json({ message: "Support ticket marked resolved." });
     }
 
+    // 10. UPDATE BUSINESS PROFILE, BRANDING LOGO & DETAILS
+    if (action === "UPDATE_PROFILE") {
+      const {
+        name,
+        slug,
+        logo,
+        email,
+        phone,
+        address,
+        currency,
+        taxNumber,
+        businessType,
+      } = payload;
+
+      if (!name || !name.trim()) {
+        return NextResponse.json({ error: "Business name cannot be empty" }, { status: 400 });
+      }
+
+      const trimmedSlug = slug ? slug.trim().toLowerCase() : business.slug;
+      if (trimmedSlug !== business.slug) {
+        const existingWithSlug = await db.business.findUnique({
+          where: { slug: trimmedSlug },
+        });
+        if (existingWithSlug && existingWithSlug.id !== id) {
+          return NextResponse.json({ error: `Slug '${trimmedSlug}' is already taken by another business.` }, { status: 400 });
+        }
+      }
+
+      const beforeState = {
+        name: business.name,
+        slug: business.slug,
+        logo: business.logo,
+        email: business.email,
+        phone: business.phone,
+        address: business.address,
+        currency: business.currency,
+      };
+
+      const existingSettings = (business.settings as any) || {};
+      const newSettings = {
+        ...existingSettings,
+        businessType: businessType || existingSettings.businessType || "RESTAURANT",
+        logo: logo !== undefined ? (logo ? logo.trim() : null) : business.logo,
+      };
+
+      const existingTax = (business.taxConfig as any) || {};
+      const newTaxConfig = {
+        ...existingTax,
+        taxNumber: taxNumber !== undefined ? (taxNumber ? taxNumber.trim() : null) : existingTax.taxNumber,
+      };
+
+      const updated = await db.business.update({
+        where: { id },
+        data: {
+          name: name.trim(),
+          slug: trimmedSlug,
+          logo: logo !== undefined ? (logo && logo.trim() ? logo.trim() : null) : business.logo,
+          email: email && email.trim() ? email.trim() : null,
+          phone: phone && phone.trim() ? phone.trim() : null,
+          address: address && address.trim() ? address.trim() : null,
+          currency: currency || business.currency,
+          settings: newSettings,
+          taxConfig: newTaxConfig,
+        },
+      });
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "BUSINESS_PROFILE_UPDATED",
+        targetType: "BUSINESS",
+        targetId: id,
+        businessId: id,
+        reason: "Administrative update of business identity, contact details, and branding logo",
+        beforeState,
+        afterState: {
+          name: updated.name,
+          slug: updated.slug,
+          logo: updated.logo,
+          email: updated.email,
+          phone: updated.phone,
+          address: updated.address,
+          currency: updated.currency,
+        },
+      });
+
+      return NextResponse.json({
+        message: "Business profile and branding updated successfully.",
+        business: updated,
+      });
+    }
+
     return NextResponse.json({ error: "Action not recognized" }, { status: 400 });
   } catch (error: any) {
     console.error("PUT business action error:", error);
@@ -610,4 +702,27 @@ export async function DELETE(
     console.error("DELETE business error:", error);
     return NextResponse.json({ error: "Failed to delete business" }, { status: 500 });
   }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  let bodyData: any = {};
+  try {
+    bodyData = await request.json();
+  } catch {
+    bodyData = {};
+  }
+
+  const syntheticRequest = new Request(request.url, {
+    method: "PUT",
+    headers: request.headers,
+    body: JSON.stringify({
+      action: "UPDATE_PROFILE",
+      payload: bodyData,
+    }),
+  });
+
+  return PUT(syntheticRequest, context);
 }

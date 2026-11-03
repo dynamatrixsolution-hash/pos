@@ -8,7 +8,16 @@ export async function GET(request: Request) {
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get("action");
+    const businessId = searchParams.get("businessId");
+
+    const where: any = {};
+    if (action && action !== "ALL") where.action = action;
+    if (businessId && businessId !== "ALL") where.businessId = businessId;
+
     const logs = await db.platformAuditLog.findMany({
+      where,
       include: {
         actor: {
           select: { id: true, name: true, email: true, role: true },
@@ -18,7 +27,7 @@ export async function GET(request: Request) {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: 200,
     });
 
     const formattedLogs = logs.map((log) => ({
@@ -44,4 +53,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch platform activity logs" }, { status: 500 });
   }
 }
-
