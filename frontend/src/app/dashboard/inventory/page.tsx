@@ -1,18 +1,17 @@
-import InventoryClient from "./inventory-client";
+import React, { Suspense } from "react";
+import { InventoryContainer } from "@/features/inventory/presentation/InventoryContainer";
 
 export default function InventoryPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-6 rounded-lg">
-        <div>
-          <h1 className="text-xl font-bold">Inventory Management</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Track stock levels, valuations, and manually adjust stock quantities.
-          </p>
+    <Suspense
+      fallback={
+        <div className="py-16 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-3 border-[#6B2837] border-t-transparent" />
+          <p className="text-xs font-semibold text-[#71675E] mt-2">Loading Inventory System...</p>
         </div>
-      </div>
-
-      <InventoryClient />
-    </div>
+      }
+    >
+      <InventoryContainer />
+    </Suspense>
   );
 }

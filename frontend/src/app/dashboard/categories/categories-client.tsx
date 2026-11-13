@@ -5,6 +5,7 @@ import { Notify } from "@/lib/notify";
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Loader2, Layers, Tag, Ruler, AlertTriangle, Info } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
+import { apiClient } from "@/core/api/api-client";
 
 type Category = { id: string; name: string; _count?: { products: number } };
 type Subcategory = { id: string; name: string; categoryId: string; category?: { id: string; name: string }; _count?: { products: number } };
@@ -69,21 +70,23 @@ export default function CategoriesClient() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/v1/${activeTab}`);
-      if (!res.ok) throw new Error("Failed to fetch data");
-      const data = await res.json();
-      if (activeTab === "categories") setCategories(data);
-      else if (activeTab === "subcategories") {
-        setSubcategories(data);
-        // Also fetch categories so user can assign parent category in modal
-        const catRes = await fetch("/api/v1/categories");
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          setCategories(catData);
-        }
+      if (activeTab === "categories") {
+        const data = await apiClient.product.getCategories();
+        setCategories(data);
+      } else if (activeTab === "subcategories") {
+        const [scData, catData] = await Promise.all([
+          apiClient.product.getSubcategories(),
+          apiClient.product.getCategories()
+        ]);
+        setSubcategories(scData);
+        setCategories(catData);
+      } else {
+        const data = await apiClient.product.getUnits();
+        setUnits(data);
       }
-      else setUnits(data);
-    } catch (err: any) { Notify.failure(err.message); } finally {
+    } catch (err: any) {
+      Notify.failure(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -148,31 +151,27 @@ export default function CategoriesClient() {
     setError('');
 
     try {
-      const url = editingId 
-        ? `/api/v1/${activeTab}/${editingId}` 
-        : `/api/v1/${activeTab}`;
-      
-      const method = editingId ? "PUT" : "POST";
-
       const bodyData: any = { name: formName };
       if (activeTab === "subcategories") {
         bodyData.categoryId = formCategoryId;
       }
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyData),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save");
+      if (activeTab === "categories") {
+        if (editingId) await apiClient.product.updateCategory(editingId, bodyData);
+        else await apiClient.product.createCategory(bodyData);
+      } else if (activeTab === "subcategories") {
+        if (editingId) await apiClient.product.updateSubcategory(editingId, bodyData);
+        else await apiClient.product.createSubcategory(bodyData);
+      } else {
+        if (editingId) await apiClient.product.updateUnit(editingId, bodyData);
+        else await apiClient.product.createUnit(bodyData);
       }
 
       await fetchData();
       closeModal();
-    } catch (err: any) { Notify.failure(err.message); } finally {
+    } catch (err: any) {
+      Notify.failure(err.message);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -184,11 +183,10 @@ export default function CategoriesClient() {
       `Are you sure you want to permanently delete this ${label}? This action cannot be undone.`,
       async () => {
         try {
-          const res = await fetch(`/api/v1/${activeTab}/${id}`, { method: "DELETE" });
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Failed to delete");
-          }
+          if (activeTab === "categories") await apiClient.product.deleteCategory(id);
+          else if (activeTab === "subcategories") await apiClient.product.deleteSubcategory(id);
+          else await apiClient.product.deleteUnit(id);
+
           await fetchData();
           setAlertModal((prev) => ({ ...prev, open: false }));
         } catch (err: any) {

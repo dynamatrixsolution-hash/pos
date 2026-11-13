@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
-import { addMoney, money } from "@/lib/services/decimal-math";
+import { addMoney, money, subMoney } from "@/lib/services/decimal-math";
 import { createAuditEvent } from "@/lib/audit-event";
 import {
   HotelError,
@@ -8,6 +8,7 @@ import {
   withHotelTransaction,
 } from "@/lib/services/room-availability-service";
 import { revokeGuestAccessForStay } from "@/lib/services/guest-portal-service";
+import { recalculateFolioTotals } from "@/lib/services/folio-service";
 
 export interface CheckOutStayInput {
   businessId: string;
@@ -39,6 +40,7 @@ export async function checkOutStay(
       );
     }
 
+    // Fetch all folios for this stay
     const folios = await tx.guestFolio.findMany({
       where: {
         businessId: input.businessId,
@@ -46,16 +48,95 @@ export async function checkOutStay(
       },
     });
 
+    // Recalculate folio totals to ensure they are fresh before validation
+    const refreshedFolios = [];
+    for (const folio of folios) {
+      if (folio.status !== "CLOSED") {
+        const refreshed = await recalculateFolioTotals(
+          tx,
+          input.businessId,
+          folio.id
+        );
+        refreshedFolios.push(refreshed);
+      } else {
+        refreshedFolios.push(folio);
+      }
+    }
+
+    // If a settle amount is provided, apply it as payment allocations to open folios
+    const settleAmountDec =
+      input.settleAmount !== undefined ? money(input.settleAmount) : money(0);
+    let remainingSettle = settleAmountDec;
+
+    if (Number(remainingSettle) > 0) {
+      // Sort folios with positive balance first so we pay them off
+      const unpaidFolios = refreshedFolios
+        .filter(
+          (f) => f.status !== "CLOSED" && Number(f.balance) > 0
+        )
+        .sort((a, b) => Number(b.balance) - Number(a.balance));
+
+      for (const folio of unpaidFolios) {
+        if (Number(remainingSettle) <= 0) break;
+
+        const folioBalance = money(folio.balance);
+        // Pay up to the folio's remaining balance
+        const payAmount =
+          Number(remainingSettle) >= Number(folioBalance)
+            ? folioBalance
+            : remainingSettle;
+
+        await tx.folioSettlementAllocation.create({
+          data: {
+            businessId: input.businessId,
+            branchId: folio.branchId,
+            folioId: folio.id,
+            stayId: stay.id,
+            paymentMethod: "CASH",
+            amount: payAmount,
+            status: "APPLIED",
+            notes: "Final settlement at check-out",
+            allocatedById: input.actorId ?? null,
+          },
+        });
+
+        remainingSettle = subMoney(remainingSettle, payAmount);
+      }
+
+      // Recalculate folio totals again after applying settlements
+      for (let i = 0; i < refreshedFolios.length; i++) {
+        if (refreshedFolios[i].status !== "CLOSED") {
+          refreshedFolios[i] = await recalculateFolioTotals(
+            tx,
+            input.businessId,
+            refreshedFolios[i].id
+          );
+        }
+      }
+    }
+
+    // Re-read stay after recalculateFolioTotals may have synced its totals
+    const freshStay = await tx.stay.findFirst({
+      where: { id: input.stayId, businessId: input.businessId },
+    });
+    const stayTotalAmount = freshStay
+      ? freshStay.totalAmount
+      : stay.totalAmount;
+    const stayPaidAmount = freshStay ? freshStay.paidAmount : stay.paidAmount;
+
     const newPaidAmount =
       input.settleAmount !== undefined
-        ? addMoney(stay.paidAmount, money(input.settleAmount))
-        : stay.paidAmount;
+        ? addMoney(stayPaidAmount, money(input.settleAmount))
+        : stayPaidAmount;
 
-    const hasUnpaidFolio = folios.some((f) => Number(f.balance) > 0);
+    // Check if any folio still has a positive balance after settlements
+    const hasUnpaidFolio = refreshedFolios.some(
+      (f) => f.status !== "CLOSED" && Number(f.balance) > 0
+    );
 
     if (
       input.enforceSettlement === true &&
-      (hasUnpaidFolio || Number(newPaidAmount) < Number(stay.totalAmount))
+      (hasUnpaidFolio || Number(newPaidAmount) < Number(stayTotalAmount))
     ) {
       throw new HotelError(
         "Cannot check out stay with unresolved folio balance",
@@ -67,7 +148,7 @@ export async function checkOutStay(
     const now = new Date();
 
     // Close any OPEN or SETTLING GuestFolio that has zero (or negative) balance
-    for (const folio of folios) {
+    for (const folio of refreshedFolios) {
       if (
         (folio.status === "OPEN" || folio.status === "SETTLING") &&
         Number(folio.balance) <= 0

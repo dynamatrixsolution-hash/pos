@@ -7,6 +7,31 @@ const unitSchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const unit = await db.unit.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+    });
+
+    if (!unit) {
+      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ unit });
+  } catch (error: any) {
+    console.error("GET unit error:", error);
+    return NextResponse.json({ error: "Failed to fetch unit" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -61,6 +86,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update unit" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

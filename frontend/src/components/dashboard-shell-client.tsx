@@ -7,7 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearCaches } from "@/lib/cache-utils";
+import { apiClient } from "@/core/api/api-client";
 import { navigationConfig, NavItem, Role } from "@/lib/nav-config";
+import { OpenShiftModal } from "@/components/shifts/open-shift-modal";
 import {
   LogOut,
   Bell,
@@ -57,6 +59,9 @@ interface UserMeta {
   role: string;
   branchId: string | null;
 }
+
+// Feature flag: auto-logout after inactivity. Off for now; flip to true to re-enable.
+const ENABLE_INACTIVITY_AUTO_LOGOUT = false;
 
 interface BranchMeta {
   id: string;
@@ -182,10 +187,10 @@ export default function DashboardShellClient({
   const totalNotificationsCount = notifications ? notifications.length + unreadBroadcasts.length : unreadBroadcasts.length;
 
   React.useEffect(() => {
-    fetch("/api/v1/notifications/broadcasts")
-      .then((res) => (res.ok ? res.json() : { broadcasts: [] }))
+    apiClient.settings
+      .getBroadcasts()
       .then((data) => {
-        if (Array.isArray(data.broadcasts)) {
+        if (Array.isArray(data?.broadcasts)) {
           setBroadcastsList(data.broadcasts);
         }
       })
@@ -198,6 +203,31 @@ export default function DashboardShellClient({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
   const [logoutLoading, setLogoutLoading] = React.useState(false);
 
+  // Active cashier shift state for Appbar
+  const [activeShift, setActiveShift] = React.useState<any>(null);
+  const [openShiftModalOpen, setOpenShiftModalOpen] = React.useState(false);
+
+  const fetchActiveShift = React.useCallback(async () => {
+    if (user.role === "SUPER_ADMIN") return;
+    try {
+      const res = await fetch("/api/v1/shifts/current");
+      const data = await res.json();
+      if (res.ok && data.hasActiveShift) {
+        setActiveShift(data.shift);
+      } else {
+        setActiveShift(null);
+      }
+    } catch {
+      setActiveShift(null);
+    }
+  }, [user.role]);
+
+  React.useEffect(() => {
+    fetchActiveShift();
+    const interval = setInterval(fetchActiveShift, 25000);
+    return () => clearInterval(interval);
+  }, [fetchActiveShift]);
+
   // Inactivity tracking state
   const [showInactivityWarning, setShowInactivityWarning] = React.useState(false);
   const [inactivityCountdown, setInactivityCountdown] = React.useState(30);
@@ -206,7 +236,7 @@ export default function DashboardShellClient({
   const [quickNavOpen, setQuickNavOpen] = React.useState(false);
   const [headerSearchQuery, setHeaderSearchQuery] = React.useState("");
   const [searchResults, setSearchResults] = React.useState<{
-    products: Array<{ id: string; name: string; sku: string; sellingPrice: number }>;
+    products: Array<{ id: string; name: string; sku: string; sellingPrice: number | string }>;
     customers: Array<{ id: string; name: string; phone: string }>;
     suppliers: Array<{ id: string; name: string; phone: string }>;
   }>({ products: [], customers: [], suppliers: [] });
@@ -216,15 +246,15 @@ export default function DashboardShellClient({
 
   const frequentServices = React.useMemo(() => [
     {
-      name: "POS Invoice Terminal",
-      desc: "Process sales, print receipts, apply discounts",
-      href: "/dashboard/pos",
+      name: "Restaurant POS Terminal",
+      desc: "Process table, takeaway & delivery orders and settle bills",
+      href: "/dashboard/restaurant/pos?view=menu",
       icon: ShoppingCart,
       color: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
     },
     {
-      name: "Product Catalog",
-      desc: "Manage item master, prices, subcategories",
+      name: "Menu Management",
+      desc: "Manage restaurant menu dishes, prices, categories & recipes",
       href: "/dashboard/products",
       icon: Package,
       color: "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
@@ -265,8 +295,10 @@ export default function DashboardShellClient({
   }, []);
 
   // Inactivity tracking (5 minutes auto-logout with 30 seconds warning modal)
+  // Disabled for now. Set ENABLE_INACTIVITY_AUTO_LOGOUT to true to re-enable.
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!ENABLE_INACTIVITY_AUTO_LOGOUT) return;
 
     const resetTimer = () => {
       lastActivityRef.current = Date.now();
@@ -321,11 +353,8 @@ export default function DashboardShellClient({
     const delayDebounce = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await fetch(`/api/v1/search?q=${encodeURIComponent(headerSearchQuery)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSearchResults(data);
-        }
+        const data = await apiClient.settings.search(headerSearchQuery);
+        setSearchResults(data);
       } catch (err) {
         console.error("Search failed:", err);
       } finally {
@@ -487,7 +516,7 @@ export default function DashboardShellClient({
     );
   };
 
-    const isPosRoute = pathname === "/dashboard/pos";
+    const isPosRoute = pathname === "/dashboard/pos" || pathname === "/dashboard/restaurant/pos";
     const isChatRoute = pathname.startsWith("/dashboard/super-admin/chat") || pathname.startsWith("/dashboard/super-admin/messages");
   const [posSidebarOpen, setPosSidebarOpen] = React.useState(false);
   const [posNavbarOpen, setPosNavbarOpen] = React.useState(true);
@@ -516,12 +545,28 @@ export default function DashboardShellClient({
   const [activeBranch, setActiveBranch] = React.useState<BranchMeta | null>(
     branches.find((b) => b.id === user.branchId) || branches[0] || null
   );
+
+  const [businessType, setBusinessType] = React.useState<string>("BOTH");
+
+  React.useEffect(() => {
+    apiClient.settings
+      .getSettings()
+      .then((data) => {
+        if (data?.settings?.businessType) {
+          setBusinessType(data.settings.businessType.toUpperCase());
+        }
+      })
+      .catch(() => {});
+  }, []);
   
-  // Filter navigation by user role and active features
+  // Filter navigation by user role, active features and business type
   const effectiveRoleStr = user.role === "ADMIN" ? "OWNER" : user.role;
   const userRole = (effectiveRoleStr as Role) || "CASHIER";
   const allowedNavigation = React.useMemo(() => {
     const isOwner = userRole === "OWNER";
+    const isHotelOnly = businessType === "HOTEL";
+    const isRestaurantOnly = businessType === "RESTAURANT" || businessType === "CAFE";
+
     const coreFeatures = [
       "Inventory",
       "Purchases",
@@ -537,7 +582,14 @@ export default function DashboardShellClient({
       .filter((item) => {
         // 1. Role check
         if (!item.roles.includes(userRole)) return false;
-        // 2. Plan feature check: OWNER always retains full core operational access
+
+        // 2. Business Type checks:
+        // Pure restaurant does not show Hotel & Stays
+        if (isRestaurantOnly && item.title === "Hotel & Stays") return false;
+        // Pure hotel does not show Tables & Cabins or Generate Menu QR
+        if (isHotelOnly && (item.title === "Tables & Cabins" || item.title === "Generate Menu QR")) return false;
+
+        // 3. Plan feature check: OWNER always retains full core operational access
         if (isOwner && item.feature && coreFeatures.includes(item.feature)) {
           return true;
         }
@@ -547,6 +599,15 @@ export default function DashboardShellClient({
         return true;
       })
       .map((item) => {
+        if (item.title === "Restaurant" && isHotelOnly) {
+          return {
+            ...item,
+            title: "Room Service",
+            children: (item.children || [])
+              .filter((c) => c.title !== "Table Status")
+              .map((c) => (c.title === "Restaurant POS" ? { ...c, title: "Room Service POS" } : c)),
+          };
+        }
         if (item.children) {
           return {
             ...item,
@@ -565,7 +626,7 @@ export default function DashboardShellClient({
         }
         return item;
       });
-  }, [userRole, features]);
+  }, [userRole, features, businessType]);
 
   const searchItems = React.useMemo(() => {
     const items: Array<{ name: string; href: string; parent?: string }> = [];
@@ -597,65 +658,129 @@ export default function DashboardShellClient({
 
   const handleMarkAllNotificationsRead = () => setNotifications([]);
 
+  const [currentSearch, setCurrentSearch] = React.useState("");
+  React.useEffect(() => {
+    const syncCurrentSearch = () => {
+      if (typeof window !== "undefined") {
+        setCurrentSearch(window.location.search);
+      }
+    };
+    syncCurrentSearch();
+    window.addEventListener("popstate", syncCurrentSearch);
+    window.addEventListener("urlchange", syncCurrentSearch);
+    return () => {
+      window.removeEventListener("popstate", syncCurrentSearch);
+      window.removeEventListener("urlchange", syncCurrentSearch);
+    };
+  }, [pathname]);
+
+  const isNavHrefActive = React.useCallback(
+    (href?: string) => {
+      if (!href) return false;
+      const [basePath, queryStr] = href.split("?");
+      if (pathname !== basePath) return false;
+      if (!queryStr) return true;
+      const targetParams = new URLSearchParams(queryStr);
+      const activeParams = new URLSearchParams(currentSearch);
+      for (const [key, val] of targetParams.entries()) {
+        const currentVal = activeParams.get(key);
+        if (currentVal !== val) {
+          // Default view on /dashboard/restaurant/pos is "tables" when no ?view= is in URL
+          if (basePath === "/dashboard/restaurant/pos" && key === "view" && !currentVal && val === "tables") {
+            continue;
+          }
+          return false;
+        }
+      }
+      return true;
+    },
+    [pathname, currentSearch]
+  );
+
   const renderNavItem = (item: NavItem, isMobile = false) => {
-    const isActive = item.href ? pathname === item.href : false;
-    const hasActiveChild = item.children?.some(child => pathname === child.href);
+    const isActive = isNavHrefActive(item.href);
+    const hasActiveChild = item.children?.some((child) => isNavHrefActive(child.href) || (child.href && pathname === child.href.split("?")[0]));
     const Icon = item.icon;
-    const isExpanded = expandedMenus[item.title] || hasActiveChild;
+    const isExpanded = expandedMenus[item.title] !== undefined ? expandedMenus[item.title] : Boolean(hasActiveChild);
 
     if (item.children) {
-      // Filter children by role
       const allowedChildren = item.children.filter((child) => child.roles.includes(userRole));
       if (allowedChildren.length === 0) return null;
 
       return (
-        <div key={item.title} className="mb-1.5">
+        <div key={item.title} className="mb-1">
           <button
+            type="button"
             onClick={() => toggleMenu(item.title)}
-            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-lg text-xs font-bold transition-all duration-200 group cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-colors duration-150 group cursor-pointer ${
               hasActiveChild
-                ? "bg-[#6B2837] text-white shadow-sm shadow-[#6B2837]/20" 
-                : "text-slate-300 hover:bg-[#6B2837]/50 hover:text-white"
+                ? "bg-[#2E2125] text-[#FFFCF7] border border-[#4A343B]"
+                : "text-[#DFD6CB] hover:bg-[#2B2023] hover:text-[#FFFCF7] border border-transparent"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <Icon className={`h-4.5 w-4.5 ${hasActiveChild ? "text-[#A77B38]" : "text-[#71675E] group-hover:text-white"}`} />
-              {item.title}
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  hasActiveChild
+                    ? "bg-[#6B2837] text-[#FFFCF7]"
+                    : "bg-[#2A2023] text-[#B5A89B] group-hover:bg-[#35282C] group-hover:text-[#FFFCF7]"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+              <span className="truncate">{item.title}</span>
             </div>
-            <motion.div
-              animate={{ rotate: isExpanded ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronRight className="h-3.5 w-3.5 text-[#71675E] group-hover:text-white" />
-            </motion.div>
+            <ChevronRight
+              className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+                isExpanded
+                  ? "rotate-90 text-[#D4A56A]"
+                  : "text-[#8E8074] group-hover:text-[#DFD6CB]"
+              }`}
+            />
           </button>
-          
-          <AnimatePresence>
+
+          <AnimatePresence initial={false}>
             {isExpanded && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="pl-6 pr-2 py-1.5 space-y-1 border-l border-[#3B2D31] ml-5 mt-1">
+                <div className="ml-6 pl-3 pr-1 py-1 mt-1 space-y-0.5 border-l border-[#3B2D31]">
                   {allowedChildren.map((child) => {
-                    const isChildActive = pathname === child.href;
+                    const isChildActive = isNavHrefActive(child.href);
                     const ChildIcon = child.icon;
                     return (
                       <Link
                         key={child.title}
                         href={child.href!}
-                        onClick={() => isMobile && setMobileMenuOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-[11px] font-bold transition-all duration-200 ${
+                        onClick={() => {
+                          if (child.href?.includes("?")) {
+                            setCurrentSearch("?" + child.href.split("?")[1]);
+                          } else {
+                            setCurrentSearch("");
+                          }
+                          if (isMobile) setMobileMenuOpen(false);
+                        }}
+                        className={`flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-xs transition-colors duration-150 ${
                           isChildActive
-                            ? "bg-[#6B2837] text-white"
-                            : "text-[#71675E] hover:text-white hover:bg-[#FFFCF7]/10"
+                            ? "bg-[#6B2837] text-[#FFFCF7] font-semibold border border-[#853547]"
+                            : "text-[#BFB2A4] hover:text-[#FFFCF7] hover:bg-[#2B2023] font-medium border border-transparent"
                         }`}
                       >
-                        <ChildIcon className="h-3.5 w-3.5" />
-                        {child.title}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ChildIcon
+                            className={`h-3.5 w-3.5 shrink-0 ${
+                              isChildActive ? "text-[#FFFCF7]" : "text-[#9A8C80]"
+                            }`}
+                          />
+                          <span className="truncate">{child.title}</span>
+                        </div>
+                        {isChildActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#E5B97F] shrink-0" />
+                        )}
                       </Link>
                     );
                   })}
@@ -672,19 +797,59 @@ export default function DashboardShellClient({
       <Link
         key={item.title}
         href={item.href!}
-        onClick={() => isMobile && setMobileMenuOpen(false)}
-        className={`flex items-center justify-between px-3.5 py-3 rounded-lg text-xs font-bold transition-all duration-200 group mb-1.5 ${
+        onClick={() => {
+          if (item.href?.includes("?")) {
+            setCurrentSearch("?" + item.href.split("?")[1]);
+          } else {
+            setCurrentSearch("");
+          }
+          if (isMobile) setMobileMenuOpen(false);
+        }}
+        className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-colors duration-150 group mb-1 ${
           isActive
-            ? "bg-[#6B2837] hover:bg-[#541E2A] text-white shadow-sm shadow-[#6B2837]/25"
-            : "text-slate-300 hover:bg-[#FFFCF7]/10 hover:text-white"
+            ? "bg-[#6B2837] text-[#FFFCF7] border border-[#853547]"
+            : "text-[#DFD6CB] hover:bg-[#2B2023] hover:text-[#FFFCF7] border border-transparent"
         }`}
       >
-        <div className="flex items-center gap-3">
-          <Icon className={`h-4.5 w-4.5 ${isActive ? "text-white" : "text-[#71675E] group-hover:text-white"}`} />
-          {item.title}
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+              isActive
+                ? "bg-[#541E2A] text-[#FFFCF7]"
+                : "bg-[#2A2023] text-[#B5A89B] group-hover:bg-[#35282C] group-hover:text-[#FFFCF7]"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="truncate">{item.title}</span>
         </div>
+        {isActive && (
+          <span className="w-1.5 h-1.5 rounded-full bg-[#E5B97F] shrink-0" />
+        )}
       </Link>
     );
+  };
+
+  const renderGroupedNavigation = (isMobile = false) => {
+    let lastGroup: string | undefined = undefined;
+    return allowedNavigation.map((item, idx) => {
+      const showGroupHeader = item.group && item.group !== lastGroup;
+      lastGroup = item.group;
+      return (
+        <React.Fragment key={item.title}>
+          {showGroupHeader && (
+            <div
+              className={`px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#9A8C80] select-none ${
+                idx === 0 ? "pt-0.5" : "pt-3.5 mt-2 border-t border-[#322529]"
+              }`}
+            >
+              {item.group}
+            </div>
+          )}
+          {renderNavItem(item, isMobile)}
+        </React.Fragment>
+      );
+    });
   };
 
   return (
@@ -757,26 +922,51 @@ export default function DashboardShellClient({
           </div>
         </aside>
       ) : (
-        <aside className={`hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#241C1E] border-r border-[#3B2D31] no-print ${isPosRoute && !posSidebarOpen ? "w-0 overflow-hidden" : "w-64"}`}>
-          <div className="h-16 flex items-center justify-between px-6 border-b border-[#3B2D31] bg-[#241C1E]">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-              <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
-                RestroInn
-              </span>
+        <aside className="hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#1F1719] border-r border-[#33262A] no-print w-64">
+          <div className="h-16 flex items-center justify-between px-5 border-b border-[#33262A] bg-[#1F1719]">
+            <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
+              <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0 border border-[#3B2D31]" />
+              <div className="min-w-0">
+                <div className="font-bold text-[#FFFCF7] tracking-tight text-sm leading-tight truncate">
+                  RestroInn
+                </div>
+                <div className="text-[10px] text-[#9A8C80] font-medium leading-tight truncate mt-0.5">
+                  {businessType === "HOTEL"
+                    ? "Hotel & Stays Suite"
+                    : businessType === "RESTAURANT" || businessType === "CAFE"
+                    ? "Restaurant & POS"
+                    : "Hospitality & POS Suite"}
+                </div>
+              </div>
             </Link>
           </div>
-          <nav className="flex-1 overflow-y-auto px-4 py-6">
-            {allowedNavigation.map((item) => renderNavItem(item))}
+          <nav className="flex-1 overflow-y-auto px-3 py-4">
+            {renderGroupedNavigation(false)}
           </nav>
-          <div className="p-4 border-t border-[#3B2D31] bg-[#241C1E]">
-            <button
-              onClick={() => setLogoutConfirmOpen(true)}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </button>
+          <div className="p-3 border-t border-[#33262A] bg-[#1A1315]">
+            <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-[#261C1F] border border-[#36282C]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-md bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center font-bold text-[11px] shrink-0">
+                  {user.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#FFFCF7] truncate leading-tight">
+                    {user.name}
+                  </div>
+                  <div className="text-[10px] text-[#9A8C80] font-medium uppercase tracking-wider truncate leading-tight mt-0.5">
+                    {activeBranch?.name || user.role}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLogoutConfirmOpen(true)}
+                title="Sign Out"
+                className="p-1.5 rounded-md text-[#C8BCAE] hover:text-red-300 hover:bg-red-500/15 transition-colors cursor-pointer shrink-0"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </aside>
       )}
@@ -999,7 +1189,9 @@ export default function DashboardShellClient({
                                       <div className="text-[#292320] dark:text-slate-200 font-extrabold">{p.name}</div>
                                       <div className="text-[9px] text-[#71675E]">SKU: {p.sku || "GENERIC"}</div>
                                     </div>
-                                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">Rs. {p.sellingPrice.toFixed(2)}</span>
+                                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                      Rs. {Number(p.sellingPrice || 0).toFixed(2)}
+                                    </span>
                                   </Link>
                                 ))}
                               </div>
@@ -1109,6 +1301,35 @@ export default function DashboardShellClient({
               </div>
             )}
             {/* Theme switcher removed */}
+
+            {/* Cashier Shift Status Pill in Appbar (Next to Notification Icons) */}
+            {user.role !== "SUPER_ADMIN" && (
+              <div className="shrink-0">
+                {activeShift ? (
+                  <Link
+                    href="/dashboard/shifts"
+                    className="h-8 px-2.5 rounded-md border border-[#2D6A4F]/40 bg-[#2D6A4F]/10 hover:bg-[#2D6A4F]/20 text-xs font-semibold text-[#2D6A4F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs select-none"
+                    title={`Active Shift: #${activeShift.shiftNumber} (${activeShift.register?.name || "Counter"}). Click to view shift.`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
+                    <span className="font-mono font-bold text-xs">{activeShift.shiftNumber}</span>
+                    <span className="hidden xl:inline text-[11px] text-[#2D6A4F]/80">
+                      ({activeShift.register?.name || "Counter"})
+                    </span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setOpenShiftModalOpen(true)}
+                    className="h-8 px-3 rounded-md border border-[#B45309]/50 bg-[#B45309]/10 hover:bg-[#B45309]/20 text-xs font-bold text-[#B45309] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs select-none"
+                    title="No active cashier shift! Click to open shift and start billing."
+                  >
+                    <Coins className="h-3.5 w-3.5 text-[#B45309]" />
+                    <span>Open Shift</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="relative">
               <button
@@ -1225,15 +1446,15 @@ export default function DashboardShellClient({
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-900/60 p-1 rounded-md transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-900/60 p-1.5 rounded-lg border border-[#D8CEC1]/70 bg-[#FFFCF7] transition-all cursor-pointer shadow-2xs select-none"
               >
-                <div className="h-8 w-8 rounded-full bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#2563EB]/25 dark:text-purple-400 flex items-center justify-center font-extrabold text-xs select-none">
+                <div className="h-8 w-8 rounded-full bg-[#6B2837] text-white flex items-center justify-center font-extrabold text-xs select-none shadow-2xs">
                   {user.name.slice(0, 2).toUpperCase()}
                 </div>
-                <div className="hidden lg:block text-left">
-                  <div className="text-xs font-extrabold text-[#292320] dark:text-slate-200">{user.name}</div>
-                  <div className="text-[9px] text-[#71675E] dark:text-[#71675E] tracking-wider uppercase font-bold">
-                    {user.role}
+                <div className="hidden lg:block text-left pr-1">
+                  <div className="text-xs font-bold text-[#292320] leading-tight">{user.name}</div>
+                  <div className="text-[10px] text-[#71675E] tracking-wider uppercase font-bold leading-tight">
+                    {user.role ? user.role.replace("_", " ") : "User"}
                   </div>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 text-[#71675E] hidden lg:block" />
@@ -1241,29 +1462,78 @@ export default function DashboardShellClient({
               {profileDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setProfileDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-150 dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-sm z-50 p-1.5">
-                    <div className="px-3 py-2 border-b border-[#D8CEC1] dark:border-slate-800 text-left">
-                      <div className="text-xs font-bold text-[#292320] dark:text-slate-200">{user.name}</div>
-                      <div className="text-[10px] text-slate-450 dark:text-[#71675E] truncate mt-0.5">{user.email}</div>
+                  <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-xl z-50 p-2 animate-in slide-in-from-top-2 fade-in duration-150 text-left">
+                    {/* User Identity Card */}
+                    <div className="p-3 rounded-lg bg-[#F7F3EC] dark:bg-slate-800/60 border border-[#D8CEC1]/60 flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-[#6B2837] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                        {user.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-[#292320] dark:text-slate-200 truncate">{user.name}</div>
+                        <div className="text-[10px] text-[#71675E] truncate">{user.email}</div>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#6B2837]/10 text-[#6B2837] uppercase tracking-wider">
+                            {user.role ? user.role.replace("_", " ") : "User"}
+                          </span>
+                          {activeBranch && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-[#EEE7DD] text-[#71675E] truncate max-w-[100px]">
+                              {activeBranch.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <Link
-                      href="/dashboard/profile"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-xs text-[#292320] dark:text-slate-350 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 rounded-md mt-1.5 font-bold transition-colors cursor-pointer"
-                    >
-                      <User className="h-4 w-4 text-[#71675E]" />
-                      My Profile
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        setLogoutConfirmOpen(true);
-                      }}
-                      className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md mt-1 font-bold transition-colors cursor-pointer"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
-                    </button>
+
+                    {/* Quick Profile Navigation */}
+                    <div className="py-2 space-y-0.5">
+                      <Link
+                        href="/dashboard/profile"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs text-[#292320] hover:bg-[#F7F3EC] rounded-lg font-semibold transition-colors cursor-pointer"
+                      >
+                        <User className="h-4 w-4 text-[#71675E]" />
+                        <span>My Profile</span>
+                      </Link>
+
+                      {user.role !== "SUPER_ADMIN" && (
+                        <Link
+                          href="/dashboard/shifts"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs text-[#292320] hover:bg-[#F7F3EC] rounded-lg font-semibold transition-colors cursor-pointer"
+                        >
+                          <Clock className="h-4 w-4 text-[#71675E]" />
+                          <span>Cash Register & Shifts</span>
+                        </Link>
+                      )}
+
+                      {["OWNER", "MANAGER", "SUPER_ADMIN"].includes(user.role) && (
+                        <Link
+                          href="/dashboard/settings"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs text-[#292320] hover:bg-[#F7F3EC] rounded-lg font-semibold transition-colors cursor-pointer"
+                        >
+                          <SlidersHorizontal className="h-4 w-4 text-[#71675E]" />
+                          <span>Business Settings</span>
+                        </Link>
+                      )}
+                    </div>
+
+                    {/* Sign Out Action Button */}
+                    <div className="pt-2 border-t border-[#D8CEC1]/70 dark:border-slate-800">
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          setLogoutConfirmOpen(true);
+                        }}
+                        className="flex items-center justify-between w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg font-bold transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <LogOut className="h-4 w-4 text-red-600 group-hover:translate-x-0.5 transition-transform" />
+                          <span>Sign Out</span>
+                        </div>
+                        <span className="text-[10px] text-red-500/70 font-normal">End Session</span>
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -1364,34 +1634,59 @@ export default function DashboardShellClient({
                 </>
               ) : (
                 <>
-                  <div className="h-16 flex items-center justify-between px-6 border-b border-[#3B2D31]">
-                    <Link href="/dashboard" className="flex items-center gap-3">
-                      <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-                      <span className="font-black text-white dark:text-slate-100 tracking-tight text-sm">
-                        RestroInn
-                      </span>
+                  <div className="h-16 flex items-center justify-between px-5 border-b border-[#33262A]">
+                    <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 min-w-0">
+                      <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0 border border-[#3B2D31]" />
+                      <div className="min-w-0">
+                        <div className="font-bold text-[#FFFCF7] tracking-tight text-sm leading-tight truncate">
+                          RestroInn
+                        </div>
+                        <div className="text-[10px] text-[#9A8C80] font-medium leading-tight truncate mt-0.5">
+                          {businessType === "HOTEL"
+                            ? "Hotel & Stays Suite"
+                            : businessType === "RESTAURANT" || businessType === "CAFE"
+                            ? "Restaurant & POS"
+                            : "Hospitality & POS Suite"}
+                        </div>
+                      </div>
                     </Link>
                     <button
                       onClick={() => setMobileMenuOpen(false)}
-                      className="p-1 rounded-md text-[#71675E] hover:bg-[#FFFCF7]/10 hover:text-white"
+                      className="p-1.5 rounded-md text-[#B5A89B] hover:bg-[#2B2023] hover:text-[#FFFCF7]"
                     >
-                      <X className="h-6 w-6" />
+                      <X className="h-5 w-5" />
                     </button>
                   </div>
-                  <nav className="flex-1 overflow-y-auto px-4 py-6">
-                    {allowedNavigation.map((item) => renderNavItem(item, true))}
+                  <nav className="flex-1 overflow-y-auto px-3 py-4">
+                    {renderGroupedNavigation(true)}
                   </nav>
-                  <div className="p-4 border-t border-[#3B2D31]">
-                    <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setLogoutConfirmOpen(true);
-                      }}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-red-400 hover:bg-red-500/10 font-bold transition-colors cursor-pointer"
-                    >
-                      <LogOut className="h-5 w-5" />
-                      Logout
-                    </button>
+                  <div className="p-3 border-t border-[#33262A] bg-[#1A1315]">
+                    <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-[#261C1F] border border-[#36282C]">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-md bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center font-bold text-[11px] shrink-0">
+                          {user.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-[#FFFCF7] truncate leading-tight">
+                            {user.name}
+                          </div>
+                          <div className="text-[10px] text-[#9A8C80] font-medium uppercase tracking-wider truncate leading-tight mt-0.5">
+                            {activeBranch?.name || user.role}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setLogoutConfirmOpen(true);
+                        }}
+                        title="Sign Out"
+                        className="p-1.5 rounded-md text-[#C8BCAE] hover:text-red-300 hover:bg-red-500/15 transition-colors cursor-pointer shrink-0"
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -1490,6 +1785,19 @@ export default function DashboardShellClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Global Open Shift Modal Triggered from Appbar */}
+      {user.role !== "SUPER_ADMIN" && (
+        <OpenShiftModal
+          isOpen={openShiftModalOpen}
+          onClose={() => setOpenShiftModalOpen(false)}
+          onShiftOpened={(shift) => {
+            setActiveShift(shift);
+            setOpenShiftModalOpen(false);
+          }}
+          cashierName={user.name}
+        />
       )}
 
       <ToastContainer />

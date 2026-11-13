@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import { clearCaches } from "@/lib/cache-utils";
 import { Notify } from "@/lib/notify";
+import { apiClient } from "@/core/api/api-client";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -84,26 +85,19 @@ function LoginForm() {
       const deviceId = getDeviceId();
       const deviceName = getDeviceName();
 
-      const checkRes = await fetch("/api/v1/auth/device-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: data.email,
-          deviceId,
-          deviceName,
-        }),
+      const checkData = await apiClient.auth.checkDevice({
+        email: data.email,
+        deviceId,
+        deviceName,
       });
 
-      if (checkRes.ok) {
-        const checkData = await checkRes.json();
-        if (checkData.success === false) {
-          Notify.failure(
-            checkData.message ||
-              "Unauthorized device. This account is locked to another terminal. Please contact your administrator."
-          );
-          setIsLoading(false);
-          return;
-        }
+      if (checkData?.success === false) {
+        Notify.failure(
+          checkData.message ||
+            "Unauthorized device. This account is locked to another terminal. Please contact your administrator."
+        );
+        setIsLoading(false);
+        return;
       }
 
       const res = await signIn("credentials", {

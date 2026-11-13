@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Notify } from "@/lib/notify";
+import { apiClient } from "@/core/api/api-client";
 
 interface RegistrationRequestData {
   id: string;
@@ -83,13 +84,10 @@ function StatusContent() {
     setFetchError(null);
 
     try {
-      const param = requestId ? `id=${requestId}` : `code=${trackingCode}`;
-      const res = await fetch(`/api/v1/auth/register-request?${param}`);
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Registration request not found.");
-      }
+      const json = await apiClient.auth.getRegisterRequestStatus({
+        id: requestId || undefined,
+        code: trackingCode || undefined,
+      });
 
       setRequestData(json.request);
       setEditForm({
@@ -133,19 +131,10 @@ function StatusContent() {
     setIsSubmittingEdit(true);
 
     try {
-      const res = await fetch("/api/v1/auth/register-request", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: requestData.id,
-          ...editForm,
-        }),
+      await apiClient.auth.updateRegisterRequest({
+        id: requestData.id,
+        ...editForm,
       });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Failed to update request.");
-      }
 
       Notify.success("Your changes have been resubmitted for admin review.");
       setIsEditOpen(false);

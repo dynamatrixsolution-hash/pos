@@ -73,17 +73,17 @@ export async function GET(request: Request) {
         category: p.category?.name || "Uncategorized",
         unit: p.unit?.name || "Units",
         quantity,
-        costPrice: p.costPrice,
-        sellingPrice: p.sellingPrice,
+        costPrice: costPriceNum,
+        sellingPrice: sellingPriceNum,
         costValue,
         sellingValue,
         margin,
         marginValue,
         marginPercent: costPriceNum > 0 ? ((margin / costPriceNum) * 100).toFixed(2) : "0",
         stocks: p.productStocks.map((s) => ({
-          branch: s.branch.name,
-          quantity: s.quantity,
-          value: s.quantity * costPriceNum,
+          branch: s.branch?.name || "Main Branch",
+          quantity: Number(s.quantity || 0),
+          value: Number(s.quantity || 0) * costPriceNum,
         })),
       });
 

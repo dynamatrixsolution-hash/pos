@@ -10,7 +10,7 @@ export default async function Page() {
 
   const role = (session.user as any)?.role || "CASHIER";
   if (role === "CASHIER") {
-    redirect("/dashboard/pos");
+    redirect("/dashboard/restaurant/pos?view=menu");
   } else {
     redirect("/dashboard");
   }

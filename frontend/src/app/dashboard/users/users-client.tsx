@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface UserItem {
   id: string;
@@ -31,7 +32,20 @@ const userSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Minimum 6 characters").optional().or(z.literal("")),
   phone: z.string().optional().nullable(),
-  role: z.enum(["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER", "ACCOUNTANT", "STOREKEEPER", "SALESPERSON", "DELIVERY"]),
+  role: z.enum([
+    "SUPER_ADMIN",
+    "OWNER",
+    "MANAGER",
+    "FRONT_DESK",
+    "CASHIER",
+    "WAITER",
+    "KITCHEN",
+    "HOUSEKEEPING",
+    "ACCOUNTANT",
+    "STOREKEEPER",
+    "SALESPERSON",
+    "DELIVERY",
+  ]),
   branchId: z.string().optional().nullable(),
 });
 
@@ -63,17 +77,11 @@ export default function UsersClient() {
     setLoading(true);
     try {
       const [uRes, bRes] = await Promise.all([
-        fetch(`/api/v1/users?search=${search}`),
-        fetch("/api/v1/branches")
+        apiClient.users.getUsers({ search: search || undefined }),
+        apiClient.settings.getBranches()
       ]);
-      if (uRes.ok) {
-        const data = await uRes.json();
-        setUsers(data.users || []);
-      }
-      if (bRes.ok) {
-        const bData = await bRes.json();
-        setBranches(bData);
-      }
+      setUsers(uRes.users || []);
+      setBranches(bRes.branches || []);
     } catch (err) {
       console.error("Fetch users error:", err);
     } finally {
@@ -89,7 +97,8 @@ export default function UsersClient() {
     setSubmitError('');
 
     if (!editingUser && !data.password) {
-      Notify.failure("Password is required for new employee account"); setSubmitError("Password is required for new employee account");
+      Notify.failure("Password is required for new employee account");
+      setSubmitError("Password is required for new employee account");
       return;
     }
     
@@ -101,18 +110,10 @@ export default function UsersClient() {
     };
 
     try {
-      const url = editingUser ? `/api/v1/users/${editingUser.id}` : "/api/v1/users";
-      const method = editingUser ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const resData = await res.json();
-        throw new Error(resData.error || `Failed to ${editingUser ? "update" : "create"} user`);
+      if (editingUser) {
+        await apiClient.users.updateUser(editingUser.id, payload);
+      } else {
+        await apiClient.users.createUser(payload);
       }
 
       setIsModalOpen(false);
@@ -141,15 +142,7 @@ export default function UsersClient() {
     }
 
     try {
-      const res = await fetch(`/api/v1/users/${user.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to delete user");
-      }
-
+      await apiClient.users.deleteUser(user.id);
       fetchData();
       toast.success(`Employee ${user.name} has been deleted.`);
     } catch (err: any) {
@@ -164,8 +157,18 @@ export default function UsersClient() {
         return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       case "MANAGER":
         return "bg-primary/10 text-primary border-primary/20";
+      case "FRONT_DESK":
+        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
       case "CASHIER":
-        return "bg-secondary text-foreground border-border";
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+      case "WAITER":
+        return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+      case "KITCHEN":
+        return "bg-orange-500/10 text-orange-500 border-orange-500/20";
+      case "HOUSEKEEPING":
+        return "bg-cyan-500/10 text-cyan-500 border-cyan-500/20";
+      case "ACCOUNTANT":
+        return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20";
       default:
         return "bg-muted text-muted-foreground border-border";
     }
@@ -354,11 +357,14 @@ export default function UsersClient() {
                     {...register("role")}
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    <option value="CASHIER">CASHIER (POS Only)</option>
-                    <option value="MANAGER">MANAGER</option>
-                    <option value="STOREKEEPER">STOREKEEPER</option>
-                    <option value="ACCOUNTANT">ACCOUNTANT</option>
-                    <option value="OWNER">OWNER</option>
+                    <option value="OWNER">OWNER (Full Business Access)</option>
+                    <option value="MANAGER">MANAGER (Operations & F&B)</option>
+                    <option value="FRONT_DESK">FRONT_DESK (Hotel Reception & Check-In)</option>
+                    <option value="CASHIER">CASHIER (POS & Settlement Desk)</option>
+                    <option value="WAITER">WAITER (Restaurant Tables & Stewards)</option>
+                    <option value="KITCHEN">KITCHEN (Chef & Kitchen Display System)</option>
+                    <option value="HOUSEKEEPING">HOUSEKEEPING (Room Turnover & Cleaning)</option>
+                    <option value="ACCOUNTANT">ACCOUNTANT (Audit, Ledgers & CBMS Tax)</option>
                   </select>
                 </div>
 

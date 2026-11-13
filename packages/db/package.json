@@ -7,8 +7,8 @@
   "scripts": {
     "generate": "npx prisma@6.19.3 generate",
     "build": "npm run generate",
-    "migrate": "npx prisma@6.19.3 migrate dev",
-    "seed": "npx prisma@6.19.3 db seed"
+    "migrate": "node ../../scripts/restro-env.mjs push",
+    "seed": "node ../../scripts/restro-env.mjs seed"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

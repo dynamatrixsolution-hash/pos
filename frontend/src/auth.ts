@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
+import { verifyPasswordSecurely, verifyDummyPassword } from "@/lib/security";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -33,6 +34,8 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
         });
 
         if (!user || !user.isActive || user.deletedAt) {
+          // Timing-attack mitigation: equalize response timing
+          await verifyDummyPassword(password);
           return null;
         }
 
@@ -43,8 +46,8 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
           // For now, let them log in, but middleware will restrict access
         }
 
-        // Verify password hash
-        const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+        // Verify password hash securely with pepper support
+        const passwordsMatch = await verifyPasswordSecurely(password, user.passwordHash);
         if (!passwordsMatch) {
           return null;
         }

@@ -59,17 +59,20 @@ export async function GET(request: Request) {
         const isExpiringSoon = b.expiryDate && b.expiryDate > now && b.expiryDate <= thirtyDaysFromNow;
         const daysToExpiry = b.expiryDate ? Math.ceil((b.expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)) : null;
 
+        const qty = Number(b.quantity || 0);
+        const cost = Number(b.costPrice || 0);
+        const sell = Number(b.sellingPrice || 0);
         return {
           id: b.id,
           productId: b.product?.id,
           productName: b.product?.name,
           sku: b.product?.sku || "N/A",
           batchNumber: b.batchNumber,
-          branchName: b.branch?.name,
-          quantity: b.quantity,
-          costPrice: b.costPrice || 0,
-          sellingPrice: b.sellingPrice || 0,
-          totalValue: (b.quantity || 0) * (b.costPrice || 0),
+          branchName: b.branch?.name || "Main Branch",
+          quantity: qty,
+          costPrice: cost,
+          sellingPrice: sell,
+          totalValue: qty * cost,
           expiryDate: b.expiryDate,
           isExpired,
           isExpiringSoon,

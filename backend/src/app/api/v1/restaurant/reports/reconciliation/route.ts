@@ -289,6 +289,11 @@ export async function GET(req: Request) {
         deliveryCod: deliveryReceivables,
         roomFolios: roomFolioReceivables,
       },
+      deliveryReceivables,
+      roomFolioReceivables: roomFolioReceivables.map((r) => ({
+        ...r,
+        diningBalance: r.restaurantCharges,
+      })),
       cogsBreakdown,
     });
   } catch (error: any) {
@@ -335,6 +340,16 @@ export async function POST(req: Request) {
       const payDec = new Prisma.Decimal(parsed.amount.toString());
       const newBalance = new Prisma.Decimal(supplier.balance.toString()).sub(payDec);
 
+      const fallbackBranch =
+        session.branchId ||
+        (await db.branch.findFirst({ where: { businessId: session.businessId }, select: { id: true } }))?.id;
+
+      const validMethod = ["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"].includes(
+        parsed.paymentMethod
+      )
+        ? (parsed.paymentMethod as any)
+        : "CASH";
+
       await db.$transaction(async (tx) => {
         await tx.supplier.update({
           where: { id: supplier.id },
@@ -352,6 +367,23 @@ export async function POST(req: Request) {
             description: parsed.notes || `Supplier payment via ${parsed.paymentMethod}`,
           },
         });
+
+        if (fallbackBranch) {
+          await tx.payment.create({
+            data: {
+              businessId: session.businessId,
+              branchId: fallbackBranch,
+              userId: session.userId,
+              supplierId: supplier.id,
+              amount: payDec,
+              method: validMethod,
+              type: "SENT",
+              reference: parsed.reference || "VOUCHER-PAY",
+              source: "STAFF_RECORDED",
+              remarks: parsed.notes || `Supplier payout to ${supplier.name}`,
+            },
+          });
+        }
       });
 
       return NextResponse.json({
@@ -372,14 +404,61 @@ export async function POST(req: Request) {
         ? new Prisma.Decimal(parsed.paidAmount.toString())
         : order.totalAmount;
 
-      await db.restaurantOrder.update({
-        where: { id: order.id },
-        data: {
-          settlementStatus: "PAID",
-          fulfillmentStatus: "SERVED",
-          paidAmount: amountToPay,
-          notes: `${order.notes || ""}\n[COD REMITTED: Cash collected from delivery rider]`,
-        },
+      await db.$transaction(async (tx) => {
+        await tx.restaurantOrder.update({
+          where: { id: order.id },
+          data: {
+            settlementStatus: "PAID",
+            fulfillmentStatus: "SERVED",
+            paidAmount: amountToPay,
+            notes: `${order.notes || ""}\n[COD REMITTED: Cash collected from delivery rider]`,
+          },
+        });
+
+        // Also mirror into Sale & Payment if not already recorded
+        const existingSale = await tx.sale.findFirst({
+          where: {
+            businessId: session.businessId,
+            OR: [
+              { invoiceNumber: order.orderNumber },
+              { notes: { contains: `[ORDER_ID:${order.id}]` } },
+            ],
+          },
+        });
+
+        if (!existingSale) {
+          const sale = await tx.sale.create({
+            data: {
+              businessId: session.businessId,
+              branchId: order.branchId,
+              userId: session.userId,
+              invoiceNumber: order.orderNumber,
+              status: "COMPLETED",
+              subtotal: order.subtotal,
+              discount: order.discountTotal,
+              tax: order.taxTotal,
+              total: order.totalAmount,
+              paidAmount: amountToPay,
+              paymentStatus: "PAID",
+              notes: `[ORDER_ID:${order.id}] [DELIVERY COD] ${order.notes || ""}`.trim(),
+            },
+          });
+
+          await tx.payment.create({
+            data: {
+              businessId: session.businessId,
+              branchId: order.branchId,
+              userId: session.userId,
+              saleId: sale.id,
+              amount: amountToPay,
+              method: "CASH",
+              type: "RECEIVED",
+              reference: order.orderNumber,
+              source: "STAFF_RECORDED",
+              remarks: `Delivery COD remitted (${order.orderNumber})`,
+            },
+          });
+        }
       });
 
       return NextResponse.json({

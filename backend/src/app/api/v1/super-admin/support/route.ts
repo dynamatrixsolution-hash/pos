@@ -240,7 +240,7 @@ export async function PUT(request: Request) {
 
       conversationList.push({
         id: `msg-${Date.now()}`,
-        senderName: context.name || "Platform Support",
+        senderName: (context as any).name || "Platform Support",
         role: "SUPER_ADMIN",
         message: replyMessage.trim(),
         createdAt: new Date().toISOString(),

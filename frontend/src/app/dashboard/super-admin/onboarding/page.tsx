@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiClient } from "@/core/api/api-client";
 import {
   Rocket,
   Search,
@@ -84,21 +85,20 @@ export default function SuperAdminOnboardingPipelinePage() {
     try {
       let filterParam = activeFilter;
       if (activeFilter === "IN_PROGRESS") {
-        filterParam = "ALL"; // we will filter in-progress clientside or via API
+        filterParam = "ALL";
       }
 
-      const res = await fetch(
-        `/api/v1/super-admin/onboarding?status=${filterParam}&search=${encodeURIComponent(search)}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        let list: OnboardingRegistration[] = data.registrations || [];
-        if (activeFilter === "IN_PROGRESS") {
-          list = list.filter((r) => r.status === "PENDING" || r.status === "CHANGES_REQUESTED");
-        }
-        setRegistrations(list);
-        if (data.counts) setCounts(data.counts);
+      const data = await apiClient.superAdmin.getOnboardingRequests({
+        status: filterParam !== "ALL" ? filterParam : undefined,
+        search: search.trim() || undefined,
+      });
+
+      let list: OnboardingRegistration[] = data.registrations || [];
+      if (activeFilter === "IN_PROGRESS") {
+        list = list.filter((r) => r.status === "PENDING" || r.status === "CHANGES_REQUESTED");
       }
+      setRegistrations(list);
+      if (data.counts) setCounts(data.counts);
     } catch (err) {
       console.error("Fetch onboarding pipeline error:", err);
     } finally {

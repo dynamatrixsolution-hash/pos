@@ -56,7 +56,7 @@ export async function GET(
           supplierId: null,
           branchId: inc.branchId,
           userId: inc.userId,
-          amount: inc.amount,
+          amount: Number(inc.amount || 0),
           method: "CASH",
           reference: inc.reference,
           receiptNumber: inc.reference || `INC-${inc.id.slice(0, 8).toUpperCase()}`,
@@ -90,7 +90,7 @@ export async function GET(
           supplierId: null,
           branchId: exp.branchId,
           userId: exp.userId,
-          amount: exp.amount,
+          amount: Number(exp.amount || 0),
           method: "CASH",
           reference: exp.reference,
           receiptNumber: exp.reference || `EXP-${exp.id.slice(0, 8).toUpperCase()}`,
@@ -108,7 +108,10 @@ export async function GET(
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    return NextResponse.json(payment);
+    return NextResponse.json({
+      ...payment,
+      amount: Number(payment.amount || 0),
+    });
   } catch (error: any) {
     return NextResponse.json({ error: "Failed to fetch payment details" }, { status: error instanceof CommerceError ? error.status : 500 });
   }

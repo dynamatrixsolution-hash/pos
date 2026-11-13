@@ -82,12 +82,12 @@ export async function GET(request: Request) {
         items.push({
           id: b.id,
           type: "EXPIRED",
-          productName: b.product.name,
-          sku: b.product.sku || "N/A",
+          productName: b.product?.name || "Unknown Product",
+          sku: b.product?.sku || "N/A",
           batchNumber: b.batchNumber,
-          branch: b.branch.name,
-          quantity: b.quantity,
-          value: b.quantity * (Number(b.costPrice) || 0),
+          branch: b.branch?.name || "Main Branch",
+          quantity: Number(b.quantity || 0),
+          value: Number(b.quantity || 0) * (Number(b.costPrice) || 0),
           expiryDate: b.expiryDate,
           daysExpired,
           details: `Expired ${daysExpired} days ago`,
@@ -100,12 +100,12 @@ export async function GET(request: Request) {
         items.push({
           id: b.id,
           type: "EXPIRING_SOON",
-          productName: b.product.name,
-          sku: b.product.sku || "N/A",
+          productName: b.product?.name || "Unknown Product",
+          sku: b.product?.sku || "N/A",
           batchNumber: b.batchNumber,
-          branch: b.branch.name,
-          quantity: b.quantity,
-          value: b.quantity * (Number(b.costPrice) || 0),
+          branch: b.branch?.name || "Main Branch",
+          quantity: Number(b.quantity || 0),
+          value: Number(b.quantity || 0) * (Number(b.costPrice) || 0),
           expiryDate: b.expiryDate,
           daysToExpiry,
           details: `Expires in ${daysToExpiry} days`,
@@ -153,3 +153,92 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch damage & expiry data" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const body = await request.json();
+    const { productId, branchId: reqBranchId, batchId, quantity, type = "DAMAGE", reason, notes } = body;
+
+    if (!productId || !quantity || Number(quantity) <= 0) {
+      return NextResponse.json(
+        { error: "Product ID and a positive quantity are required" },
+        { status: 400 }
+      );
+    }
+
+    const branchId = reqBranchId || context.branchId;
+    if (!branchId) {
+      return NextResponse.json({ error: "Branch ID is required" }, { status: 400 });
+    }
+
+    const qtyNumber = Number(quantity);
+
+    // Verify product exists and belongs to business
+    const product = await db.product.findFirst({
+      where: { id: productId, businessId: context.businessId, deletedAt: null },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      // Find current stock
+      const stock = await tx.productStock.findUnique({
+        where: { productId_branchId: { productId, branchId } },
+      });
+
+      const currentQty = stock ? Number(stock.quantity) : 0;
+      if (currentQty < qtyNumber) {
+        throw new Error(`Insufficient stock to write off. Available: ${currentQty}, Requested: ${qtyNumber}`);
+      }
+
+      const updatedStock = await tx.productStock.update({
+        where: { productId_branchId: { productId, branchId } },
+        data: { quantity: currentQty - qtyNumber },
+      });
+
+      // If batch specified, also reduce batch quantity
+      if (batchId) {
+        const batch = await tx.batch.findFirst({
+          where: { id: batchId, productId, branchId, deletedAt: null },
+        });
+        if (batch) {
+          await tx.batch.update({
+            where: { id: batchId },
+            data: { quantity: Math.max(0, Number(batch.quantity) - qtyNumber) },
+          });
+        }
+      }
+
+      // Record audit log
+      const auditLog = await tx.auditLog.create({
+        data: {
+          businessId: context.businessId,
+          userId: context.userId,
+          action: "DAMAGE_EXPIRY_WRITEOFF",
+          module: "INVENTORY",
+          details: `Written off ${qtyNumber} units of "${product.name}" as ${type}. Reason: ${reason || notes || "Unusable/Expired stock"}. Qty adjusted: ${qtyNumber}`,
+        },
+      });
+
+      return { updatedStock, auditLog };
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully wrote off ${qtyNumber} units of ${product.name}`,
+      result,
+    }, { status: 201 });
+  } catch (error: any) {
+    console.error("POST damage & expiry error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to record damage/expiry write-off" },
+      { status: 400 }
+    );
+  }
+}
+

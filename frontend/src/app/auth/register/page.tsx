@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Notify } from "@/lib/notify";
+import { apiClient } from "@/core/api/api-client";
 
 interface FormData {
   businessName: string;
@@ -149,17 +150,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/v1/auth/register-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        const detailMsg = typeof json.details === "string" ? json.details : json.details ? JSON.stringify(json.details) : "";
-        throw new Error(json.error ? `${json.error}${detailMsg ? `: ${detailMsg}` : ""}` : "Failed to submit registration request.");
-      }
+      const json = await apiClient.auth.registerRequest(formData);
 
       Notify.success("Workspace registration request submitted successfully!");
       router.push(`/auth/register/status?id=${json.request.id}&code=${json.request.trackingCode}`);

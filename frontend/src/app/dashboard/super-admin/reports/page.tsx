@@ -17,6 +17,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 type TimePeriod = "day" | "week" | "month" | "year" | "all";
 type ReportCategory = "revenue" | "businesses" | "support" | "audit";
@@ -76,13 +77,8 @@ export default function PlatformReportsPage() {
   const loadReport = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/reports?period=${period}`);
-      if (res.ok) {
-        const json = await res.json();
-        setReportData(json);
-      } else {
-        toast.error("Failed to load reports data");
-      }
+      const json = await apiClient.superAdmin.getReports({ period });
+      setReportData(json);
     } catch (err: any) {
       console.error("Failed to load reports:", err);
       toast.error(err.message || "Network error loading reports");

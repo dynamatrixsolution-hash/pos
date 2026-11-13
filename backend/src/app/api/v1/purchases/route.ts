@@ -16,7 +16,7 @@ const purchaseItemSchema = z.object({
 
 const purchaseCreateSchema = z.object({
   supplierId: z.string().uuid(),
-  branchId: z.string().uuid(),
+  branchId: z.string().uuid().optional().nullable(),
   invoiceNumber: z.string().optional().nullable().or(z.literal("")),
   items: z.array(purchaseItemSchema).min(1, "At least one item is required in the purchase order"),
   subtotal: z.number().nonnegative(),
@@ -38,6 +38,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const supplierId = searchParams.get("supplierId");
   let branchId = searchParams.get("branchId") || context.branchId;
+  const search = searchParams.get("search") || "";
+  const startDateStr = searchParams.get("startDate");
+  const endDateStr = searchParams.get("endDate");
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
@@ -51,6 +54,32 @@ export async function GET(request: Request) {
 
     if (supplierId) where.supplierId = supplierId;
     if (branchId) where.branchId = branchId;
+
+    if (startDateStr || endDateStr) {
+      where.createdAt = {};
+      if (startDateStr) {
+        const start = new Date(startDateStr);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          where.createdAt.gte = start;
+        }
+      }
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          where.createdAt.lte = end;
+        }
+      }
+    }
+
+    if (search.trim()) {
+      where.OR = [
+        { invoiceNumber: { contains: search.trim(), mode: "insensitive" } },
+        { notes: { contains: search.trim(), mode: "insensitive" } },
+        { supplier: { name: { contains: search.trim(), mode: "insensitive" } } },
+      ];
+    }
 
     const [purchases, totalCount] = await Promise.all([
       db.purchase.findMany({
@@ -118,11 +147,13 @@ export async function POST(request: Request) {
 
     const payload = result.data;
     requireStaff(context, true);
-    await checkBranch(context, payload.branchId);
+    if (payload.branchId) {
+      await checkBranch(context, payload.branchId);
+    }
 
     // Run the complete purchase intake pipeline inside a transaction
     const purchaseResult = await serializable(async (tx) => {
-      await resolveBranch(tx, context, payload.branchId);
+      const targetBranchId = await resolveBranch(tx, context, payload.branchId);
       // 1. Fetch Business Settings to retrieve custom prefix
       const business = await tx.business.findUnique({
         where: { id: context.businessId },
@@ -187,7 +218,7 @@ export async function POST(request: Request) {
 
         // Increment Branch-wise Stock levels
         const stock = await tx.productStock.findUnique({
-          where: { productId_branchId: { productId: item.productId, branchId: payload.branchId } },
+          where: { productId_branchId: { productId: item.productId, branchId: targetBranchId } },
         });
 
         if (stock) {
@@ -199,7 +230,7 @@ export async function POST(request: Request) {
           await tx.productStock.create({
             data: {
               productId: item.productId,
-              branchId: payload.branchId,
+              branchId: targetBranchId,
               quantity: item.quantity,
             },
           });
@@ -213,7 +244,7 @@ export async function POST(request: Request) {
           const batch = await tx.batch.findFirst({
             where: {
               productId: item.productId,
-              branchId: payload.branchId,
+              branchId: targetBranchId,
               batchNumber: item.batchNumber,
               deletedAt: null,
             },
@@ -235,7 +266,7 @@ export async function POST(request: Request) {
             await tx.batch.create({
               data: {
                 productId: item.productId,
-                branchId: payload.branchId,
+                branchId: targetBranchId,
                 batchNumber: item.batchNumber,
                 quantity: item.quantity,
                 costPrice: item.price,
@@ -272,7 +303,7 @@ export async function POST(request: Request) {
       const purchase = await tx.purchase.create({
         data: {
           businessId: context.businessId,
-          branchId: payload.branchId,
+          branchId: targetBranchId,
           supplierId: payload.supplierId,
           userId: context.userId,
           purchaseNumber,
@@ -335,7 +366,7 @@ export async function POST(request: Request) {
             businessId: context.businessId,
             purchaseId: purchase.id,
             supplierId: payload.supplierId,
-            branchId: payload.branchId, userId: context.userId, type: "SENT", source: "STAFF_RECORDED",
+            branchId: targetBranchId, userId: context.userId, type: "SENT", source: "STAFF_RECORDED",
             amount: settlement.paidAmount,
             method: payload.paymentMethod,
             reference: payload.paymentReference || `PO Pay against ${purchaseNumber}`,
@@ -349,8 +380,8 @@ export async function POST(request: Request) {
           businessId: context.businessId,
           userId: context.userId,
           role: context.role,
-          branchId: payload.branchId,
-          warehouseId: payload.branchId,
+          branchId: targetBranchId,
+          warehouseId: targetBranchId,
           action: "CREATE",
           module: "PURCHASE",
           details: `Processed purchase invoice ${purchaseNumber}. Total: $${payload.total}, Paid: $${payload.paidAmount}`,

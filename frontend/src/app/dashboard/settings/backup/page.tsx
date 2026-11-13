@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiClient } from "@/core/api/api-client";
 
 interface BackupMetadata {
   filename: string; sizeBytes: number; timestamp: string; tables: Record<string, number>; checksum: string;
 }
 async function fetchSnapshots(): Promise<BackupMetadata[]> {
-  const response = await fetch("/api/v1/settings/backup");
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Unable to list snapshots");
+  const data = await apiClient.settings.getBackups();
   return data;
 }
 export default function BackupRestorePage() {
@@ -23,9 +22,7 @@ export default function BackupRestorePage() {
   async function create() {
     setBusy(true);
     try {
-      const response = await fetch("/api/v1/settings/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "backup" }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Snapshot failed");
+      const data = await apiClient.settings.triggerBackup({ action: "backup" });
       setMessage(data.message);
       setBackups(await fetchSnapshots());
     } catch (error) { setMessage(error instanceof Error ? error.message : "Snapshot failed"); }

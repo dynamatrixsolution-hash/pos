@@ -19,6 +19,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface RequestItem {
   id: string;
@@ -68,14 +69,13 @@ export default function PendingApprovalsPage() {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/requests?status=PENDING&search=${encodeURIComponent(search)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data.requests || []);
-        if (data.counts) setCounts(data.counts);
-      } else {
-        throw new Error(`Server returned status ${res.status}`);
-      }
+      const data = await apiClient.superAdmin.getRequests({
+        status: "PENDING",
+        search: search.trim() || undefined,
+      });
+
+      setRequests(data.requests || []);
+      if (data.counts) setCounts(data.counts);
     } catch (err: any) {
       console.error("Fetch registration requests error:", err);
       toast.error(err.message || "Failed to load pending applications");
@@ -99,26 +99,18 @@ export default function PendingApprovalsPage() {
     setActionLoadingId(requestId);
 
     try {
-      const endpoint =
-        action === "APPROVE"
-          ? `/api/v1/super-admin/requests/${requestId}/approve`
-          : action === "REJECT"
-          ? `/api/v1/super-admin/requests/${requestId}/reject`
-          : `/api/v1/super-admin/requests/${requestId}/request-changes`;
+      const payload = {
+        action,
+        reason: reasonText || "Approved by Super Admin",
+        adminNotes: reasonText || "Approved by Super Admin",
+      };
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          reason: reasonText || "Approved by Super Admin",
-          adminNotes: reasonText || "Approved by Super Admin",
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to process approval action");
+      if (action === "APPROVE") {
+        await apiClient.superAdmin.approveRequest(requestId, payload);
+      } else if (action === "REJECT") {
+        await apiClient.superAdmin.rejectRequest(requestId, payload);
+      } else {
+        await apiClient.superAdmin.requestChanges(requestId, payload);
       }
 
       toast.success(

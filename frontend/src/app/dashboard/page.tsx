@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
 import SuperAdminDashboard from "@/components/super-admin-dashboard";
+import { apiClient } from "@/core/api/api-client";
 import {
   ArrowRight,
   BedDouble,
@@ -104,17 +105,14 @@ export default function DashboardPage() {
 
   const loadDashboard = React.useCallback(async () => {
     try {
-      const dashRes = await fetch(`/api/v1/reports/dashboard?range=${range}`);
-      if (dashRes.ok) {
-        const data = await dashRes.json();
-        setMetrics(data.metrics || null);
-        setAlerts(Array.isArray(data.lowStockAlerts) ? data.lowStockAlerts : []);
-        setTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
-        setTopProducts(Array.isArray(data.topSellingProducts) ? data.topSellingProducts : []);
-        setChartData(Array.isArray(data.salesChart) ? data.salesChart : []);
-        setOutOfStock(Array.isArray(data.outOfStockProducts) ? data.outOfStockProducts : []);
-        if (data.hospitalityStats) setHospitalityStats(data.hospitalityStats);
-      }
+      const data = await apiClient.reports.getDashboardMetrics({ range });
+      setMetrics(data.metrics || null);
+      setAlerts(Array.isArray(data.lowStockAlerts) ? data.lowStockAlerts : []);
+      setTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
+      setTopProducts(Array.isArray(data.topSellingProducts) ? data.topSellingProducts : []);
+      setChartData(Array.isArray(data.salesChart) ? data.salesChart : []);
+      setOutOfStock(Array.isArray(data.outOfStockProducts) ? data.outOfStockProducts : []);
+      if (data.hospitalityStats) setHospitalityStats(data.hospitalityStats);
     } catch (err) {
       console.error("Failed to load dashboard metrics:", err);
     }
@@ -145,8 +143,12 @@ export default function DashboardPage() {
     };
 
     init();
+    const poll = setInterval(() => {
+      if (active) loadDashboard();
+    }, 15000);
     return () => {
       active = false;
+      clearInterval(poll);
     };
   }, [loadDashboard, userRole]);
 
@@ -188,7 +190,15 @@ export default function DashboardPage() {
   const netMargin = totalSalesVal > 0 ? ((netProfitVal / totalSalesVal) * 100).toFixed(1) : "0.0";
   const cogsPct = totalSalesVal > 0 ? ((cogsVal / totalSalesVal) * 100).toFixed(1) : "0.0";
   const hasActualSales = chartData.some((point) => Number(point?.sales ?? 0) > 0);
-  const stockItems = [...outOfStock, ...alerts].slice(0, 4);
+  const seenStockIds = new Set<string>();
+  const stockItems: typeof outOfStock = [];
+  for (const item of [...outOfStock, ...alerts]) {
+    if (item?.id && !seenStockIds.has(item.id)) {
+      seenStockIds.add(item.id);
+      stockItems.push(item);
+      if (stockItems.length >= 4) break;
+    }
+  }
   const outOfStockIds = new Set(outOfStock.map((item) => item.id));
 
   // Occupancy metrics
@@ -381,7 +391,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {/* Restaurant POS */}
           <Link
-            href="/dashboard/restaurant/pos"
+            href="/dashboard/restaurant/pos?view=menu"
             className={`${CARD} p-3 flex items-center gap-3 transition-all hover:border-[#D97706] hover:bg-[#FEF8EE]/30 group cursor-pointer min-h-[58px]`}
           >
             <div className="h-9 w-9 rounded-md bg-[#FEF8EE] border border-[#FDE8CC] text-[#D97706] flex items-center justify-center shrink-0">
@@ -503,7 +513,10 @@ export default function DashboardPage() {
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 11, fill: "#71675E" }}
-                      tickFormatter={(value) => `${currencySymbol}${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`}
+                      tickFormatter={(value) => {
+                        const valNum = Number(value || 0);
+                        return `${currencySymbol}${valNum >= 1000 ? `${(valNum / 1000).toFixed(0)}k` : valNum}`;
+                      }}
                     />
                     <Tooltip
                       formatter={(value: any) => [formatAmount(value), "Sales"]}
@@ -534,7 +547,7 @@ export default function DashboardPage() {
               <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed border-[#D8CEC1] bg-[#FAF7F1] px-5 py-7 text-center">
                 <p className="text-sm font-semibold text-[#292320]">No sales recorded for this period</p>
                 <Link
-                  href="/dashboard/restaurant/pos"
+                  href="/dashboard/restaurant/pos?view=menu"
                   className="mt-3 inline-flex h-8 items-center rounded-md bg-[#6B2837] px-3.5 text-xs font-semibold text-[#FFFCF7] hover:bg-[#541E2A] cursor-pointer"
                 >
                   Open Restaurant POS
@@ -737,7 +750,7 @@ export default function DashboardPage() {
                   const quantity = Number(item.currentQuantity ?? 0);
                   const isOutOfStock = outOfStockIds.has(item.id) || quantity <= 0;
                   return (
-                    <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                    <div key={`stock-${item.id}`} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
                       <div className="min-w-0">
                         <div className="truncate text-xs font-semibold text-[#292320]">{item.name}</div>
                         {item.sku && (

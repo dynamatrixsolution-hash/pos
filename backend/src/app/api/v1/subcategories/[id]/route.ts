@@ -8,6 +8,36 @@ const subcategoryUpdateSchema = z.object({
   categoryId: z.string().uuid("Invalid category ID").optional(),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const subcategory = await db.subcategory.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+      include: {
+        category: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!subcategory) {
+      return NextResponse.json({ error: "Subcategory not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ subcategory });
+  } catch (error: any) {
+    console.error("GET subcategory error:", error);
+    return NextResponse.json({ error: "Failed to fetch subcategory" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -60,6 +90,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update subcategory" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

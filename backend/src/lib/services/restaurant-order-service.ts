@@ -32,9 +32,10 @@ export interface OrderItemInput {
 export interface CreateOrAppendOrderInput {
   businessId: string;
   branchId: string;
+  orderId?: string | null;
   tableSessionId?: string | null;
   tableId?: string | null;
-  orderType?: string; // DINE_IN, TAKEAWAY, BAR_WALK_IN
+  orderType?: string; // DINE_IN, TAKEAWAY, BAR_WALK_IN, DELIVERY
   items: OrderItemInput[];
   notes?: string;
   actorId?: string;
@@ -43,6 +44,7 @@ export interface CreateOrAppendOrderInput {
 export interface UpdateLineStatusInput {
   businessId: string;
   lineId: string;
+  quantity?: number;
   acceptanceStatus?: "PENDING" | "ACCEPTED" | "REJECTED";
   fulfillmentStatus?: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
   settlementStatus?: "UNPAID" | "PARTIAL" | "PAID" | "REFUNDED";
@@ -50,6 +52,13 @@ export interface UpdateLineStatusInput {
   voidReason?: string;
   actorId?: string;
   expectedVersion?: number;
+}
+
+export interface CancelOrderInput {
+  businessId: string;
+  orderId: string;
+  reason?: string;
+  actorId?: string;
 }
 
 function generateOrderNumber(): string {
@@ -76,8 +85,28 @@ export async function createOrAppendOrder(
     let order: any = null;
     let nextRoundNumber = 1;
 
-    // 1. If tableSessionId is provided, check session state and find existing open order
-    if (input.tableSessionId) {
+    // 1. If orderId is provided (e.g. appending a round to an existing order), look it up directly
+    if (input.orderId) {
+      order = await tx.restaurantOrder.findFirst({
+        where: { id: input.orderId, businessId: input.businessId },
+        include: {
+          rounds: { orderBy: { roundNumber: "desc" } },
+        },
+      });
+
+      if (!order) {
+        throw new RestaurantOrderError("Order not found", 404);
+      }
+
+      if (order.settlementStatus === "PAID") {
+        throw new RestaurantOrderError("Cannot add rounds to a fully settled and paid order", 400);
+      }
+
+      if (order.rounds.length > 0) {
+        nextRoundNumber = order.rounds[0].roundNumber + 1;
+      }
+    } else if (input.tableSessionId) {
+      // 1b. If tableSessionId is provided, check session state and find existing open order
       const session = await tx.tableSession.findFirst({
         where: { id: input.tableSessionId, businessId: input.businessId },
       });
@@ -354,6 +383,32 @@ export async function updateLineStatus(
       version: { increment: 1 },
     };
 
+    // If quantity update is requested
+    if (input.quantity !== undefined) {
+      const newQty = Math.max(0, input.quantity);
+      if (newQty === 0) {
+        dataToUpdate.acceptanceStatus = "REJECTED";
+        dataToUpdate.fulfillmentStatus = "CANCELLED";
+        dataToUpdate.rejectionReason = input.rejectionReason || input.voidReason || "Quantity reduced to 0 (Item cancelled)";
+        dataToUpdate.voidReason = input.voidReason || input.rejectionReason || "Quantity reduced to 0 (Item cancelled)";
+      } else {
+        const unitPrice = line.unitPrice;
+        const lineSubtotal = mulMoney(unitPrice, newQty);
+        const lineTax = mulMoney(lineSubtotal, divMoney(line.taxRate, 100));
+        const lineTotal = addMoney(lineSubtotal, lineTax);
+        dataToUpdate.quantity = newQty;
+        dataToUpdate.subtotal = lineSubtotal;
+        dataToUpdate.taxAmount = lineTax;
+        dataToUpdate.total = lineTotal;
+
+        // Also update ticket lines
+        await tx.kitchenTicketLine.updateMany({
+          where: { orderLineId: line.id },
+          data: { quantity: newQty },
+        });
+      }
+    }
+
     if (input.acceptanceStatus) {
       dataToUpdate.acceptanceStatus = input.acceptanceStatus;
       if (input.rejectionReason) {
@@ -382,6 +437,71 @@ export async function updateLineStatus(
       data: dataToUpdate,
     });
 
+    // If line is now CANCELLED or REJECTED, cancel any corresponding KitchenTicketLine
+    if (
+      updatedLine.acceptanceStatus === "REJECTED" ||
+      updatedLine.fulfillmentStatus === "CANCELLED"
+    ) {
+      await tx.kitchenTicketLine.updateMany({
+        where: { orderLineId: line.id },
+        data: { status: "CANCELLED" },
+      });
+
+      const affectedTickets = await tx.kitchenTicketLine.findMany({
+        where: { orderLineId: line.id },
+        select: { ticketId: true },
+      });
+
+      for (const tRef of affectedTickets) {
+        const remainingActive = await tx.kitchenTicketLine.count({
+          where: { ticketId: tRef.ticketId, status: { not: "CANCELLED" } },
+        });
+        if (remainingActive === 0) {
+          await tx.kitchenTicket.update({
+            where: { id: tRef.ticketId },
+            data: { status: "CANCELLED" },
+          });
+        }
+      }
+    }
+
+    // Recalculate Order totals (excluding cancelled and rejected items)
+    const activeLines = await tx.orderLine.findMany({
+      where: {
+        orderId: line.orderId,
+        acceptanceStatus: { not: "REJECTED" },
+        fulfillmentStatus: { not: "CANCELLED" },
+      },
+    });
+
+    const newSubtotal = activeLines.reduce(
+      (acc, l) => addMoney(acc, l.subtotal),
+      new Prisma.Decimal(0)
+    );
+    const newTaxTotal = activeLines.reduce(
+      (acc, l) => addMoney(acc, l.taxAmount),
+      new Prisma.Decimal(0)
+    );
+    const newTotal = activeLines.reduce(
+      (acc, l) => addMoney(acc, l.total),
+      new Prisma.Decimal(0)
+    );
+
+    const isEntireOrderCancelled = activeLines.length === 0;
+
+    await tx.restaurantOrder.update({
+      where: { id: line.orderId },
+      data: {
+        subtotal: newSubtotal,
+        taxTotal: newTaxTotal,
+        totalAmount: newTotal,
+        ...(isEntireOrderCancelled
+          ? { fulfillmentStatus: "CANCELLED", acceptanceStatus: "REJECTED" }
+          : {}),
+        version: { increment: 1 },
+      },
+    });
+
     // Audit Event
     await createAuditEvent(
       {
@@ -393,12 +513,14 @@ export async function updateLineStatus(
         entityId: line.id,
         reason: input.rejectionReason || input.voidReason,
         oldValue: {
+          quantity: line.quantity,
           acceptanceStatus: line.acceptanceStatus,
           fulfillmentStatus: line.fulfillmentStatus,
           settlementStatus: line.settlementStatus,
           version: line.version,
         },
         newValue: {
+          quantity: updatedLine.quantity,
           acceptanceStatus: updatedLine.acceptanceStatus,
           fulfillmentStatus: updatedLine.fulfillmentStatus,
           settlementStatus: updatedLine.settlementStatus,
@@ -416,6 +538,123 @@ export async function updateLineStatus(
   }
   return await db.$transaction(runner, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  });
+}
+
+/**
+ * Cancels an entire Restaurant Order (e.g. table walked out, order entered by mistake).
+ * Voids all active lines, cancels kitchen tickets, recalculates order status,
+ * and releases the table session if no other active orders remain.
+ */
+export async function cancelRestaurantOrder(input: CancelOrderInput) {
+  return await db.$transaction(async (tx) => {
+    const order = await tx.restaurantOrder.findFirst({
+      where: { id: input.orderId, businessId: input.businessId },
+      include: { rounds: true, orderLines: true },
+    });
+
+    if (!order) {
+      throw new RestaurantOrderError("Order not found", 404);
+    }
+
+    if (order.settlementStatus === "PAID") {
+      throw new RestaurantOrderError("Cannot cancel an order that has already been paid and settled", 400);
+    }
+
+    const cancelReason = input.reason?.trim() || "Order cancelled by staff";
+
+    // 1. Mark all order lines as CANCELLED & REJECTED
+    await tx.orderLine.updateMany({
+      where: { orderId: order.id },
+      data: {
+        acceptanceStatus: "REJECTED",
+        fulfillmentStatus: "CANCELLED",
+        rejectionReason: cancelReason,
+        voidReason: cancelReason,
+      },
+    });
+
+    // 2. Mark all rounds as CANCELLED
+    await tx.orderRound.updateMany({
+      where: { orderId: order.id },
+      data: { status: "CANCELLED" },
+    });
+
+    // 3. Mark all KitchenTickets & KitchenTicketLines as CANCELLED
+    await tx.kitchenTicket.updateMany({
+      where: { orderId: order.id },
+      data: { status: "CANCELLED" },
+    });
+    await tx.kitchenTicketLine.updateMany({
+      where: { ticket: { orderId: order.id } },
+      data: { status: "CANCELLED" },
+    });
+
+    // 4. Update order itself to CANCELLED with 0 running balance
+    const updatedOrder = await tx.restaurantOrder.update({
+      where: { id: order.id },
+      data: {
+        acceptanceStatus: "REJECTED",
+        fulfillmentStatus: "CANCELLED",
+        subtotal: new Prisma.Decimal(0),
+        taxTotal: new Prisma.Decimal(0),
+        totalAmount: new Prisma.Decimal(0),
+        notes: order.notes ? `${order.notes} [CANCELLED: ${cancelReason}]` : `[CANCELLED: ${cancelReason}]`,
+        version: { increment: 1 },
+      },
+    });
+
+    // 5. If this was a dine-in table order, release table session if no other active orders exist
+    if (order.tableId) {
+      const otherActiveOrders = await tx.restaurantOrder.count({
+        where: {
+          tableId: order.tableId,
+          businessId: input.businessId,
+          id: { not: order.id },
+          settlementStatus: { not: "PAID" },
+          fulfillmentStatus: { not: "CANCELLED" },
+        },
+      });
+
+      if (otherActiveOrders === 0) {
+        if (order.tableSessionId) {
+          await tx.tableSession.update({
+            where: { id: order.tableSessionId },
+            data: { status: "CLOSED", closedAt: new Date() },
+          });
+        }
+        await tx.restaurantTable.update({
+          where: { id: order.tableId },
+          data: { status: "AVAILABLE", currentSessionId: null },
+        });
+      }
+    }
+
+    // 6. Audit Event
+    await createAuditEvent(
+      {
+        businessId: input.businessId,
+        branchId: order.branchId,
+        userId: input.actorId,
+        action: "RESTAURANT_ORDER_CANCELLED",
+        entity: "RestaurantOrder",
+        entityId: order.id,
+        reason: cancelReason,
+        oldValue: {
+          fulfillmentStatus: order.fulfillmentStatus,
+          settlementStatus: order.settlementStatus,
+          totalAmount: order.totalAmount.toString(),
+        },
+        newValue: {
+          fulfillmentStatus: "CANCELLED",
+          settlementStatus: order.settlementStatus,
+          totalAmount: "0.00",
+        },
+      },
+      tx
+    );
+
+    return updatedOrder;
   });
 }
 

@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 
@@ -86,11 +87,7 @@ export default function RevenuePaymentsPage() {
   const loadRevenueData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/super-admin/revenue");
-      if (!res.ok) {
-        throw new Error("Failed to load revenue and billing data");
-      }
-      const data = await res.json();
+      const data = await apiClient.superAdmin.getRevenueMetrics();
       setInvoices(data.invoices || []);
       setPayments(data.transactionLogs || data.payments || []);
       if (data.revenueMetrics) {
@@ -120,22 +117,13 @@ export default function RevenuePaymentsPage() {
 
     try {
       setIsSubmittingSettlement(true);
-      const res = await fetch("/api/v1/super-admin/revenue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoiceId: settlingInvoice.id,
-          amount: Number(settlingInvoice.amount),
-          paymentMethod: settlementMethod,
-          reference: settlementRef || `SETTLE-${Date.now().toString().slice(-6)}`,
-          notes: settlementNotes || "Settled by Super Admin",
-        }),
+      const resJson = await apiClient.superAdmin.recordRevenueSettlement({
+        invoiceId: settlingInvoice.id,
+        amount: Number(settlingInvoice.amount),
+        paymentMethod: settlementMethod,
+        reference: settlementRef || `SETTLE-${Date.now().toString().slice(-6)}`,
+        notes: settlementNotes || "Settled by Super Admin",
       });
-
-      const resJson = await res.json();
-      if (!res.ok) {
-        throw new Error(resJson.error || "Failed to record settlement");
-      }
 
       toast.success(resJson.message || "Invoice settled successfully.");
       setSettlingInvoice(null);

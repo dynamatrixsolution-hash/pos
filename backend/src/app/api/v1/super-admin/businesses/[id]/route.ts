@@ -685,7 +685,14 @@ export async function DELETE(
       return NextResponse.json({ error: "Business not found" }, { status: 404 });
     }
 
-    await db.business.delete({ where: { id } });
+    // Soft delete to protect financial audit trails and compliance ledgers
+    await db.business.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        status: "TERMINATED",
+      },
+    });
 
     await logPlatformAudit({
       actorId: context.userId,
@@ -693,7 +700,7 @@ export async function DELETE(
       action: "BUSINESS_DELETED",
       targetType: "BUSINESS",
       targetId: id,
-      reason: `Permanently deleted business ${business.name} (id: ${id}) from the platform.`,
+      reason: `Terminated and soft-deleted business ${business.name} (id: ${id}) from the platform.`,
       beforeState: { name: business.name, slug: business.slug },
     });
 

@@ -13,6 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface BroadcastItem {
   id: string;
@@ -78,11 +79,7 @@ export default function NotificationsCenterPage() {
   const fetchData = React.useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/super-admin/notifications");
-      if (!res.ok) {
-        throw new Error(`Failed to load notification broadcasts (HTTP ${res.status})`);
-      }
-      const data = await res.json();
+      const data = await apiClient.superAdmin.getNotifications();
       setBroadcasts(data.broadcasts || []);
       setBusinesses(data.businesses || []);
       if (data.stats) setStats(data.stats);
@@ -154,23 +151,14 @@ export default function NotificationsCenterPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch("/api/v1/super-admin/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          body: body.trim(),
-          targetRole,
-          targetProperty,
-          imageUrl: imageUrl.trim() || undefined,
-          channels,
-        }),
+      const result = await apiClient.superAdmin.broadcastNotification({
+        title: title.trim(),
+        body: body.trim(),
+        targetRole,
+        targetProperty,
+        imageUrl: imageUrl.trim() || undefined,
+        channels,
       });
-
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to dispatch broadcast");
-      }
 
       toast.success(result.message || "Broadcast successfully sent to recipients!");
       // Reset form

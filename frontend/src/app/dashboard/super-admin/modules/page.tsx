@@ -26,6 +26,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 
@@ -129,22 +130,16 @@ export default function ModuleControlCenterPage() {
   const fetchModulesData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/super-admin/modules");
-      if (res.ok) {
-        const data = await res.json();
-        setModules(data.modules || []);
-        if (data.kpis) setKpis(data.kpis);
-        if (data.categories) setCategories(data.categories);
-        if (data.tenants && data.tenants.length > 0) {
-          setTenants(data.tenants);
-          if (!selectedTenantId) {
-            setSelectedTenantId(data.tenants[0].id);
-            setTenantModules(data.tenants[0].enabledModules || []);
-          }
+      const data = await apiClient.superAdmin.getModules();
+      setModules(data.modules || []);
+      if (data.kpis) setKpis(data.kpis);
+      if (data.categories) setCategories(data.categories);
+      if (data.tenants && data.tenants.length > 0) {
+        setTenants(data.tenants);
+        if (!selectedTenantId) {
+          setSelectedTenantId(data.tenants[0].id);
+          setTenantModules(data.tenants[0].enabledModules || []);
         }
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load modules");
       }
     } catch {
       toast.error("Network connection error loading modules.");
@@ -185,19 +180,12 @@ export default function ModuleControlCenterPage() {
   const handleToggleModuleActive = async (module: ModuleItem) => {
     const nextState = !module.isActive;
     try {
-      const res = await fetch("/api/v1/super-admin/modules", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "GLOBAL_MATRIX",
-          code: module.code,
-          updates: { isActive: nextState },
-          reason: `${nextState ? "Enabled" : "Disabled"} module ${module.code} globally`,
-        }),
+      await apiClient.superAdmin.updateModule({
+        mode: "GLOBAL_MATRIX",
+        code: module.code,
+        updates: { isActive: nextState },
+        reason: `${nextState ? "Enabled" : "Disabled"} module ${module.code} globally`,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to toggle module status");
 
       setModules((prev) =>
         prev.map((m) => (m.code === module.code ? { ...m, isActive: nextState } : m))
@@ -215,19 +203,12 @@ export default function ModuleControlCenterPage() {
   ) => {
     const nextVal = !module[planKey];
     try {
-      const res = await fetch("/api/v1/super-admin/modules", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "GLOBAL_MATRIX",
-          code: module.code,
-          updates: { [planKey]: nextVal },
-          reason: `Toggled ${planKey} to ${nextVal} for ${module.code}`,
-        }),
+      await apiClient.superAdmin.updateModule({
+        mode: "GLOBAL_MATRIX",
+        code: module.code,
+        updates: { [planKey]: nextVal },
+        reason: `Toggled ${planKey} to ${nextVal} for ${module.code}`,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update plan inclusion");
 
       setModules((prev) =>
         prev.map((m) => (m.code === module.code ? { ...m, [planKey]: nextVal } : m))
@@ -247,23 +228,16 @@ export default function ModuleControlCenterPage() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/super-admin/modules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newModuleName.trim(),
-          code: newModuleCode.trim(),
-          category: newModuleCategory,
-          description: newModuleDesc.trim() || "Hospitality feature module",
-          starter: newStarter,
-          standard: newStandard,
-          pro: newPro,
-          enterprise: newEnterprise,
-        }),
+      const data = await apiClient.superAdmin.createModule({
+        name: newModuleName.trim(),
+        code: newModuleCode.trim(),
+        category: newModuleCategory,
+        description: newModuleDesc.trim() || "Hospitality feature module",
+        starter: newStarter,
+        standard: newStandard,
+        pro: newPro,
+        enterprise: newEnterprise,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create module");
 
       setShowAddModuleModal(false);
       setNewModuleName("");
@@ -299,19 +273,12 @@ export default function ModuleControlCenterPage() {
     if (!selectedTenantId) return;
     setIsSavingTenant(true);
     try {
-      const res = await fetch("/api/v1/super-admin/modules", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "TENANT_OVERRIDE",
-          businessId: selectedTenantId,
-          enabledModules: tenantModules,
-          reason: "Updated property-specific feature modules",
-        }),
+      await apiClient.superAdmin.updateModule({
+        mode: "TENANT_OVERRIDE",
+        businessId: selectedTenantId,
+        enabledModules: tenantModules,
+        reason: "Updated property-specific feature modules",
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save property module overrides");
 
       setTenants((prev) =>
         prev.map((t) => (t.id === selectedTenantId ? { ...t, enabledModules: tenantModules } : t))

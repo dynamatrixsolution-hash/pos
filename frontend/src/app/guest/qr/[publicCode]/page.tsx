@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { formatNPR, toCents, fromCents } from "@/lib/currency";
+import { DeterministicQrMatrixSvg } from "@/components/qr-matrix-svg";
+import { apiClient } from "@/core/api/api-client";
 import {
   UtensilsCrossed,
   Clock,
@@ -27,7 +29,90 @@ import {
   ChevronRight,
   Send,
   LogOut,
+  Share2,
+  QrCode,
+  Copy,
+  Users,
+  Search,
+  SlidersHorizontal,
+  Flame,
+  Heart,
+  Award,
+  Info,
+  Soup,
+  Coffee,
+  Fish,
+  Drumstick,
+  Pizza,
+  Sandwich,
+  CakeSlice,
 } from "lucide-react";
+
+// Resolve a real uploaded image (menu item first, then linked product). Returns null when none.
+function getItemImage(item: {
+  name: string;
+  imageUrl?: string | null;
+  product?: { image?: string | null } | null;
+}): string | null {
+  const own = item.imageUrl?.trim();
+  if (own) return own;
+  const fromProduct = item.product?.image?.trim();
+  if (fromProduct) return fromProduct;
+  return null;
+}
+
+// Pick a food icon from the dish name, used when no photo is uploaded or the photo fails to load.
+function getFoodIcon(name: string) {
+  const n = (name || "").toLowerCase();
+  if (/(tea|chai|coffee|latte|espresso|lassi|juice|drink|beverage|spritz|soda|mocktail)/.test(n)) return Coffee;
+  if (/(momo|dumpling|soup|thukpa|broth|jhol)/.test(n)) return Soup;
+  if (/(fish|trout|prawn|shrimp|seafood)/.test(n)) return Fish;
+  if (/(chicken|mutton|wings|drumstick|sekuwa|choila|meat|lamb)/.test(n)) return Drumstick;
+  if (/(pizza)/.test(n)) return Pizza;
+  if (/(burger|sandwich|wrap|roll)/.test(n)) return Sandwich;
+  if (/(cake|dessert|sweet|kheer|ice cream|brownie)/.test(n)) return CakeSlice;
+  return UtensilsCrossed;
+}
+
+function FoodImage({
+  item,
+  className = "",
+  iconClassName = "w-6 h-6",
+}: {
+  item: { name: string; imageUrl?: string | null; product?: { image?: string | null } | null };
+  className?: string;
+  iconClassName?: string;
+}) {
+  const src = getItemImage(item);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (!src || failed) {
+    const Icon = getFoodIcon(item.name);
+    return (
+      <div
+        className={`w-full h-full flex items-center justify-center bg-[#EEE7DD] text-[#A77B38] ${className}`}
+        aria-label={item.name}
+      >
+        <Icon className={iconClassName} strokeWidth={1.5} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={item.name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={`w-full h-full object-cover ${className}`}
+    />
+  );
+}
 
 type GuestTab = "MENU" | "TRACKER" | "SERVICES" | "BILL";
 
@@ -72,6 +157,12 @@ interface MenuItem {
   dietaryTags?: string[] | null;
   allergens?: string[] | null;
   isAvailable?: boolean;
+  product?: {
+    id: string;
+    image?: string | null;
+    category?: { id: string; name: string } | null;
+    subcategory?: { id: string; name: string } | null;
+  } | null;
   modifierGroups?: ModifierGroupLink[];
 }
 
@@ -119,7 +210,19 @@ interface QrLocationPublicData {
     tableNumber: string;
     capacity?: number;
     floorName?: string | null;
+    status?: "AVAILABLE" | "OCCUPIED" | "BILLED" | "RESERVED" | string;
     hasActiveSession: boolean;
+    isSettled?: boolean;
+    isSettling?: boolean;
+    pinRequired?: boolean;
+    isBilledLocked?: boolean;
+    activeOrder?: {
+      orderNumber: string;
+      totalAmount: string;
+      settlementStatus: string;
+      fulfillmentStatus: string;
+      createdAt: string;
+    } | null;
   } | null;
 }
 
@@ -225,8 +328,18 @@ export default function GuestQrPortalPage() {
     return Array.isArray(raw) ? raw[0] : raw || "";
   }, [params]);
 
+  const searchParams = useSearchParams();
+  const joinParam = useMemo(() => {
+    return searchParams?.get("join") || searchParams?.get("pin") || null;
+  }, [searchParams]);
+
   const storageKey = useMemo(
     () => (publicCode ? `restro_guest_token_${publicCode}` : ""),
+    [publicCode]
+  );
+
+  const grantStorageKey = useMemo(
+    () => (publicCode ? `restro_guest_grant_${publicCode}` : ""),
     [publicCode]
   );
 
@@ -242,6 +355,7 @@ export default function GuestQrPortalPage() {
 
   // Guest Session & Verification state
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [grantToken, setGrantToken] = useState<string | null>(null);
   const [guestDisplayName, setGuestDisplayName] = useState<string | null>(null);
   const [scopes, setScopes] = useState<string[]>([]);
   const [folioSummary, setFolioSummary] = useState<GuestFolioSummary | null>(null);
@@ -255,6 +369,16 @@ export default function GuestQrPortalPage() {
   const [verifying, setVerifying] = useState<boolean>(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
+  // Table Session PIN & Companion Sharing state
+  const [tablePin, setTablePin] = useState<string | null>(null);
+  const [showTablePinModal, setShowTablePinModal] = useState<boolean>(false);
+  const [tablePinInput, setTablePinInput] = useState<string>("");
+  const [tablePinError, setTablePinError] = useState<string | null>(null);
+  const [tableAlertSent, setTableAlertSent] = useState<boolean>(false);
+  const [sendingTurnoverAlert, setSendingTurnoverAlert] = useState<boolean>(false);
+  const [showGroupShareModal, setShowGroupShareModal] = useState<boolean>(false);
+  const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
+
   // Cart & Item Customization Modal state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
@@ -264,6 +388,12 @@ export default function GuestQrPortalPage() {
   const [customItemQty, setCustomItemQty] = useState<number>(1);
   const [customItemNotes, setCustomItemNotes] = useState<string>("");
   const [submittingOrder, setSubmittingOrder] = useState<boolean>(false);
+
+  // Modern UI Search, Favorites & Dish Detail Modal Tabs (from sample UI)
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState<boolean>(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [customModalTab, setCustomModalTab] = useState<"CUSTOMIZE" | "INGREDIENTS" | "CHEF_NOTE">("CUSTOMIZE");
 
   // Service Requests & Cooldown Timer state
   const [serviceNote, setServiceNote] = useState<string>("");
@@ -275,6 +405,9 @@ export default function GuestQrPortalPage() {
     null
   );
   const [refreshingData, setRefreshingData] = useState<boolean>(false);
+
+  const isRoomQr = qrLocation?.locationType === "ROOM";
+  const isVerified = Boolean(sessionToken);
 
   const showBanner = useCallback(
     (text: string, type: "success" | "error" | "info" = "success") => {
@@ -288,16 +421,28 @@ export default function GuestQrPortalPage() {
 
   // Reset all private occupant state immediately on 401 / checkout / revocation
   const clearPrivateSessionState = useCallback(() => {
-    if (typeof window !== "undefined" && storageKey) {
-      sessionStorage.removeItem(storageKey);
+    if (typeof window !== "undefined") {
+      if (storageKey) sessionStorage.removeItem(storageKey);
+      if (grantStorageKey) sessionStorage.removeItem(grantStorageKey);
     }
     setSessionToken(null);
+    setGrantToken(null);
     setGuestDisplayName(null);
     setScopes([]);
     setFolioSummary(null);
     setOrders([]);
     setLocalServiceRequests([]);
-  }, [storageKey]);
+    setTablePin(null);
+  }, [storageKey, grantStorageKey]);
+
+  // Direct Companion Share URL (embedded in screen QR code and WhatsApp share)
+  const companionShareUrl = useMemo(() => {
+    if (typeof window === "undefined" || !publicCode) return "";
+    const base = `${window.location.origin}/guest/qr/${encodeURIComponent(publicCode)}`;
+    const joinVal = grantToken || tablePin || sessionToken;
+    if (!joinVal) return base;
+    return `${base}?join=${encodeURIComponent(joinVal)}`;
+  }, [publicCode, grantToken, tablePin, sessionToken]);
 
   // Validate and hydrate session state from token
   const fetchGuestSessionData = useCallback(
@@ -305,23 +450,12 @@ export default function GuestQrPortalPage() {
       if (!tokenToUse) return false;
       try {
         if (!silent) setRefreshingData(true);
-        const res = await fetch("/api/v1/guest/session", {
-          headers: {
-            "x-guest-session-token": tokenToUse,
-          },
-          cache: "no-store",
-        });
+        const data = await apiClient.guest.getSession(tokenToUse);
 
-        if (res.status === 401 || res.status === 403) {
-          // Occupant checked out or session expired — wipe all private state immediately!
-          clearPrivateSessionState();
-          return false;
-        }
-
-        if (!res.ok) return false;
-
-        const data = await res.json();
         setSessionToken(tokenToUse);
+        if (data.tablePin || data.session?.tablePin) {
+          setTablePin(data.tablePin || data.session?.tablePin);
+        }
         const grantScopes: string[] = Array.isArray(data.grant?.scopes)
           ? data.grant.scopes
           : [];
@@ -355,33 +489,52 @@ export default function GuestQrPortalPage() {
     [clearPrivateSessionState]
   );
 
-  // Initial load: Resolve public QR location & check sessionStorage token
+  // Initial load: Resolve public QR location with instant Browser Caching & SWR Revalidation
   useEffect(() => {
     if (!publicCode) return;
 
     let isMounted = true;
+    const cacheKey = `guest_qr_cache_${publicCode}`;
+
+    // 1. Instant Cache Hydration from Browser Storage (0ms instant render)
+    if (typeof window !== "undefined") {
+      try {
+        const rawCached = localStorage.getItem(cacheKey);
+        if (rawCached) {
+          const parsed = JSON.parse(rawCached);
+          if (parsed?.qrLocation && Array.isArray(parsed?.menus)) {
+            setQrLocation(parsed.qrLocation);
+            setMenus(parsed.menus);
+            setLoadingInitial(false); // Render immediately from browser cache!
+          }
+        }
+      } catch {}
+    }
+
     async function initPortal() {
       try {
-        setLoadingInitial(true);
         setFatalError(null);
 
-        const qrRes = await fetch(`/api/v1/guest/qr/${encodeURIComponent(publicCode)}`, {
-          cache: "no-store",
-        });
-
-        if (!qrRes.ok) {
-          const errData = await qrRes.json().catch(() => ({}));
-          throw new Error(
-            errData.error || "This QR plaque is inactive or could not be recognized."
-          );
-        }
-
-        const qrData = await qrRes.json();
+        const qrData = await apiClient.guest.getPublicQr(publicCode);
         if (!isMounted) return;
 
         setQrLocation(qrData.qrLocation);
         const loadedMenus: MenuCatalog[] = qrData.menus || [];
         setMenus(loadedMenus);
+
+        // Save fresh response into browser localStorage cache
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                qrLocation: qrData.qrLocation,
+                menus: loadedMenus,
+                cachedAt: Date.now(),
+              })
+            );
+          } catch {}
+        }
 
         // Check existing session token in sessionStorage
         const savedToken =
@@ -389,8 +542,48 @@ export default function GuestQrPortalPage() {
             ? sessionStorage.getItem(storageKey)
             : null;
 
+        const savedGrant =
+          typeof window !== "undefined" && grantStorageKey
+            ? sessionStorage.getItem(grantStorageKey)
+            : null;
+
+        if (savedGrant) {
+          setGrantToken(savedGrant);
+        }
+
         if (savedToken) {
           await fetchGuestSessionData(savedToken, true);
+        } else if (joinParam) {
+          // Frictionless companion join via shared companion QR or link
+          try {
+            const cleanJoin = joinParam.trim();
+            const joinData = await apiClient.guest.verify({
+              publicCode,
+              joinToken: cleanJoin,
+              verificationCode: cleanJoin.length === 4 ? cleanJoin : undefined,
+            });
+
+            const token = joinData.sessionToken;
+            if (token && typeof window !== "undefined" && storageKey) {
+              sessionStorage.setItem(storageKey, token);
+            }
+            if (joinData.grantToken) {
+              setGrantToken(joinData.grantToken);
+              if (typeof window !== "undefined" && grantStorageKey) {
+                sessionStorage.setItem(grantStorageKey, joinData.grantToken);
+              }
+            }
+            if (joinData.tablePin) {
+              setTablePin(joinData.tablePin);
+            }
+            await fetchGuestSessionData(token, false);
+            showBanner(
+              `🎉 Joined Table ${qrData.qrLocation?.table?.tableNumber || ""}! You can now order together.`,
+              "success"
+            );
+          } catch {
+            clearPrivateSessionState();
+          }
         } else {
           clearPrivateSessionState();
         }
@@ -409,7 +602,37 @@ export default function GuestQrPortalPage() {
     return () => {
       isMounted = false;
     };
-  }, [publicCode, storageKey, fetchGuestSessionData, clearPrivateSessionState]);
+  }, [
+    publicCode,
+    storageKey,
+    grantStorageKey,
+    joinParam,
+    fetchGuestSessionData,
+    clearPrivateSessionState,
+    showBanner,
+  ]);
+
+  // Real-time auto-poll table status when waiting for previous party's bill settlement
+  useEffect(() => {
+    if (isVerified || !publicCode || qrLocation?.locationType === "ROOM") return;
+    if (qrLocation?.table?.isSettled) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await apiClient.guest.getPublicQr(publicCode);
+        if (data.qrLocation) {
+          setQrLocation(data.qrLocation);
+          if (data.qrLocation.table?.isSettled) {
+            showBanner("✨ Previous bill settled! Table is now ready for your order.", "success");
+          }
+        }
+      } catch {
+        // silent poll failure
+      }
+    }, 7000);
+
+    return () => clearInterval(interval);
+  }, [isVerified, publicCode, qrLocation?.locationType, qrLocation?.table?.isSettled, showBanner]);
 
   // Cooldown countdown tick every 1 second
   useEffect(() => {
@@ -441,9 +664,6 @@ export default function GuestQrPortalPage() {
     return () => clearInterval(interval);
   }, [sessionToken, activeTab, fetchGuestSessionData]);
 
-  const isRoomQr = qrLocation?.locationType === "ROOM";
-  const isVerified = Boolean(sessionToken);
-
   // Flatten all sections across active menus
   const allSections = useMemo(() => {
     const list: MenuSection[] = [];
@@ -461,6 +681,37 @@ export default function GuestQrPortalPage() {
     if (selectedSectionId === "ALL") return allSections;
     return allSections.filter((s) => s.id === selectedSectionId);
   }, [allSections, selectedSectionId]);
+
+  // Filtered sections by course AND real-time search query
+  const filteredSections = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let base = visibleSections;
+    if (!q) return base;
+    return base
+      .map((sec) => ({
+        ...sec,
+        items: sec.items.filter(
+          (it) =>
+            it.name.toLowerCase().includes(q) ||
+            (it.description && it.description.toLowerCase().includes(q)) ||
+            (it.dietaryTags && it.dietaryTags.some((t) => t.toLowerCase().includes(q)))
+        ),
+      }))
+      .filter((sec) => sec.items.length > 0);
+  }, [visibleSections, searchQuery]);
+
+  // Featured Popular Picks (horizontal carousel matching sample image)
+  const popularItems = useMemo(() => {
+    const all: MenuItem[] = [];
+    for (const s of allSections) {
+      for (const it of s.items) {
+        if (!all.some((x) => x.id === it.id)) {
+          all.push(it);
+        }
+      }
+    }
+    return all.slice(0, 8);
+  }, [allSections]);
 
   // Cart totals
   const cartSummary = useMemo(() => {
@@ -490,23 +741,11 @@ export default function GuestQrPortalPage() {
       setVerifying(true);
       setVerifyError(null);
 
-      const res = await fetch("/api/v1/guest/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          publicCode,
-          guestLastName: verifyLastName.trim() || undefined,
-          guestPhoneLast4: verifyPhoneLast4.trim() || undefined,
-        }),
+      const data = await apiClient.guest.verify({
+        publicCode,
+        guestLastName: verifyLastName.trim() || undefined,
+        guestPhoneLast4: verifyPhoneLast4.trim() || undefined,
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Could not verify guest details. Please check your registered last name or phone digits."
-        );
-      }
 
       const token = data.sessionToken;
       if (token && typeof window !== "undefined" && storageKey) {
@@ -528,53 +767,159 @@ export default function GuestQrPortalPage() {
     }
   };
 
-  // Automatically enroll Table QR session if not yet enrolled
-  const ensureTableSessionToken = useCallback(async (): Promise<string | null> => {
-    if (sessionToken) return sessionToken;
-    if (!publicCode || isRoomQr) return null;
+  // Verify Table PIN for companions or occupied table
+  const handleVerifyTablePin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!publicCode) return;
+    const cleanPin = tablePinInput.trim();
+    if (cleanPin.length !== 4) {
+      setTablePinError("Please enter the 4-digit Dining PIN.");
+      return;
+    }
 
     try {
       setVerifying(true);
-      const res = await fetch("/api/v1/guest/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicCode }),
+      setTablePinError(null);
+      const data = await apiClient.guest.verify({
+        publicCode,
+        verificationCode: cleanPin,
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Unable to start table ordering session.");
-      }
 
       const token = data.sessionToken;
       if (token && typeof window !== "undefined" && storageKey) {
         sessionStorage.setItem(storageKey, token);
       }
-      await fetchGuestSessionData(token, true);
-      return token;
+      if (data.grantToken) {
+        setGrantToken(data.grantToken);
+        if (typeof window !== "undefined" && grantStorageKey) {
+          sessionStorage.setItem(grantStorageKey, data.grantToken);
+        }
+      }
+      if (data.tablePin || data.session?.tablePin) {
+        setTablePin(data.tablePin || data.session?.tablePin);
+      }
+      setShowTablePinModal(false);
+      setTablePinInput("");
+      await fetchGuestSessionData(token, false);
+      if (cart.length > 0) {
+        setIsCartOpen(true);
+      }
+      showBanner(
+        `Verified! You have joined Table ${qrLocation?.table?.tableNumber || ""}'s dining order.`,
+        "success"
+      );
     } catch (err: any) {
-      showBanner(err.message || "Could not start table session", "error");
-      return null;
+      setTablePinError(err.message || "Failed to verify PIN");
     } finally {
       setVerifying(false);
     }
-  }, [sessionToken, publicCode, isRoomQr, storageKey, fetchGuestSessionData, showBanner]);
+  };
 
-  // Open item modal or quick-add if no modifier groups
+  // Alert staff when a new party is seated but the previous bill is unsettled
+  const handleAlertStaffTurnover = async () => {
+    if (!publicCode || sendingTurnoverAlert) return;
+    try {
+      setSendingTurnoverAlert(true);
+      await apiClient.guest.createServiceRequest({
+        publicCode,
+        requestType: "WAITER_CALL",
+        notes: `[Table Turnover Needed] New guests seated at Table ${qrLocation?.table?.tableNumber || ""}. Previous party has left but bill is unsettled. Please settle & reset table.`,
+        priority: "URGENT",
+      });
+
+      setTableAlertSent(true);
+      showBanner("Staff has been alerted! A server will reset this table shortly.", "success");
+    } catch (err: any) {
+      showBanner(err.message || "Could not alert staff. Please call a server directly.", "error");
+    } finally {
+      setSendingTurnoverAlert(false);
+    }
+  };
+
+  // Re-check table status (after staff clears / resets table)
+  const handleRefreshTableStatus = async () => {
+    if (!publicCode) return;
+    try {
+      setRefreshingData(true);
+      const qrData = await apiClient.guest.getPublicQr(publicCode);
+      setQrLocation(qrData.qrLocation);
+      if (qrData.menus) setMenus(qrData.menus);
+      if (qrData.qrLocation?.table?.status === "AVAILABLE") {
+        showBanner("Table is now reset and available! You can place your order.", "success");
+        setTableAlertSent(false);
+      } else {
+        showBanner("Table status checked.", "info");
+      }
+    } catch {
+      showBanner("Could not check table status.", "error");
+    } finally {
+      setRefreshingData(false);
+    }
+  };
+
+  // Automatically enroll Table QR session if not yet enrolled
+  const ensureTableSessionToken = useCallback(
+    async (pin?: string): Promise<string | null> => {
+      if (sessionToken) return sessionToken;
+      if (!publicCode || isRoomQr) return null;
+
+      try {
+        setVerifying(true);
+        const data = await apiClient.guest.verify({
+          publicCode,
+          verificationCode: pin?.trim() || undefined,
+        });
+
+        const token = data.sessionToken;
+        if (token && typeof window !== "undefined" && storageKey) {
+          sessionStorage.setItem(storageKey, token);
+        }
+        if (data.grantToken) {
+          setGrantToken(data.grantToken);
+          if (typeof window !== "undefined" && grantStorageKey) {
+            sessionStorage.setItem(grantStorageKey, data.grantToken);
+          }
+        }
+        if (data.tablePin || data.session?.tablePin) {
+          setTablePin(data.tablePin || data.session?.tablePin);
+        }
+        await fetchGuestSessionData(token, true);
+        return token;
+      } catch (err: any) {
+        showBanner(err.message || "Could not start table session", "error");
+        return null;
+      } finally {
+        setVerifying(false);
+      }
+    },
+    [sessionToken, publicCode, isRoomQr, storageKey, grantStorageKey, fetchGuestSessionData, showBanner]
+  );
+
+  // Open item detail / customization screen (matching sample Screen 2 & 3)
   const handleSelectMenuItem = (item: MenuItem) => {
-    const hasModifiers =
+    setCustomizingItem(item);
+    setSelectedModOptionIds([]);
+    setCustomItemQty(1);
+    setCustomItemNotes("");
+    setCustomModalTab("CUSTOMIZE");
+  };
+
+  // Quick 1-tap add from card (if no required modifier options)
+  const handleQuickAddMenuItem = (e: React.MouseEvent, item: MenuItem) => {
+    e.stopPropagation();
+    const hasRequiredModifiers =
       Array.isArray(item.modifierGroups) &&
       item.modifierGroups.some(
-        (mg) => mg.modifierGroup?.options && mg.modifierGroup.options.length > 0
+        (mg) =>
+          mg.modifierGroup?.isRequired ||
+          ((mg.modifierGroup?.minSelect ?? 0) > 0)
       );
 
-    if (hasModifiers) {
-      setCustomizingItem(item);
-      setSelectedModOptionIds([]);
-      setCustomItemQty(1);
-      setCustomItemNotes("");
+    if (hasRequiredModifiers) {
+      handleSelectMenuItem(item);
     } else {
       addItemToCart(item, 1, [], "");
+      showBanner(`Added ${item.name} to tray!`, "success");
     }
   };
 
@@ -652,6 +997,23 @@ export default function GuestQrPortalPage() {
         setShowVerifyModal(true);
         return;
       } else {
+        if (
+          qrLocation?.table?.isBilledLocked ||
+          qrLocation?.table?.isSettling ||
+          qrLocation?.table?.status === "BILLED"
+        ) {
+          showBanner("Table bill payment is currently in progress. Additional orders are locked.", "error");
+          return;
+        }
+        if (
+          qrLocation?.table?.pinRequired ||
+          qrLocation?.table?.status === "OCCUPIED" ||
+          !qrLocation?.table?.isSettled
+        ) {
+          setIsCartOpen(false);
+          setShowTablePinModal(true);
+          return;
+        }
         activeToken = await ensureTableSessionToken();
         if (!activeToken) return;
       }
@@ -670,28 +1032,7 @@ export default function GuestQrPortalPage() {
         })),
       };
 
-      const res = await fetch("/api/v1/guest/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-guest-session-token": activeToken,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401 || res.status === 403) {
-        clearPrivateSessionState();
-        setIsCartOpen(false);
-        if (isRoomQr) setShowVerifyModal(true);
-        throw new Error(
-          data.error || "Your guest session has expired. Please verify your room again."
-        );
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to submit order.");
-      }
+      await apiClient.guest.createOrder(payload, activeToken);
 
       setCart([]);
       setOrderNotes("");
@@ -751,47 +1092,18 @@ export default function GuestQrPortalPage() {
       setSendingRequestType(requestType);
       const idempotencyKey = `${publicCode}-${requestType}-${Math.floor(Date.now() / 15000)}`;
 
-      const res = await fetch("/api/v1/guest/service-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(activeToken ? { "x-guest-session-token": activeToken } : {}),
-          "Idempotency-Key": idempotencyKey,
-        },
-        body: JSON.stringify({
+      const data = await apiClient.guest.createServiceRequest(
+        {
           sessionToken: activeToken || undefined,
           publicCode,
           requestType,
           notes: (customNotes ?? serviceNote).trim() || undefined,
           priority: requestType === "CHECKOUT_REQUEST" ? "HIGH" : "NORMAL",
           idempotencyKey,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 429 || data.code === "RATE_LIMIT_EXCEEDED") {
-        // Parse seconds from message or default to 180s (3 minutes)
-        const match = String(data.error || "").match(/(\d+)\s*seconds/i);
-        const waitSec = match ? Math.min(180, Math.max(10, Number(match[1]))) : 180;
-        setCooldowns((prev) => ({ ...prev, [requestType]: waitSec }));
-        showBanner(
-          data.error ||
-            `Request throttled (1 call per 3 minutes). Please wait ${waitSec}s.`,
-          "info"
-        );
-        return;
-      }
-
-      if (res.status === 401 || res.status === 403) {
-        clearPrivateSessionState();
-        if (isRoomQr) setShowVerifyModal(true);
-        throw new Error(data.error || "Please verify your room stay to request services.");
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || "Could not send service request.");
-      }
+        },
+        activeToken || undefined,
+        idempotencyKey
+      );
 
       if (data.serviceRequest) {
         setLocalServiceRequests((prev) => {
@@ -883,98 +1195,102 @@ export default function GuestQrPortalPage() {
     : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
 
   return (
-    <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614]">
-      <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-[#D8CEC1] bg-[#F7F3EC] relative pb-24">
-        {/* Sticky Top Hospitality Header */}
-        <header className="sticky top-0 z-30 bg-[#1A1614] text-[#F7F3EC] px-4 py-3.5 border-b border-[#A77B38]/40">
+    <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614] flex justify-center">
+      <div className="w-full max-w-lg min-h-screen flex flex-col border-x border-[#EEE7DD] bg-[#FFFCF7] relative pb-24 shadow-2xs">
+        {/* Sticky Mobile Hospitality Header: Restaurant Name on Left, Table + Search + Waiter on Right */}
+        <header className="sticky top-0 z-30 bg-[#FFFCF7]/95 backdrop-blur-md px-4 py-2.5 border-b border-[#EEE7DD] shadow-2xs">
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] uppercase tracking-widest text-[#D4AF37] font-semibold truncate">
-                  {qrLocation.branch?.name || "Hospitality Portal"}
-                </span>
-              </div>
-              <h1 className="text-base font-bold tracking-tight text-[#FFFCF7] truncate">
+            {/* Top Left: Restaurant Name */}
+            <div className="min-w-0 pr-1">
+              <h1 className="text-sm font-extrabold tracking-tight text-[#292320] truncate">
                 {qrLocation.business.name}
               </h1>
+              {qrLocation.branch?.name && (
+                <p className="text-[10px] uppercase font-bold tracking-wider text-[#A77B38] truncate">
+                  {qrLocation.branch.name}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {qrLocation.business.googleReviewUrl && (
-                <a
-                  href={qrLocation.business.googleReviewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold bg-[#A77B38]/20 text-[#F3E5AB] border border-[#A77B38]/40 hover:bg-[#A77B38]/30 transition"
-                >
-                  <Star className="w-3.5 h-3.5 fill-[#D4AF37] text-[#D4AF37]" />
-                  Review
-                </a>
-              )}
-
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#6B2837] text-white border border-[#A77B38]/40 shadow-sm">
+            {/* Top Right: Table Name + Search Icon + Notification/Waiter Bell */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD] shadow-2xs">
                 {isRoomQr ? (
-                  <BedDouble className="w-3.5 h-3.5 text-[#F3E5AB]" />
+                  <BedDouble className="w-3.5 h-3.5 text-[#6B2837]" />
                 ) : (
-                  <Store className="w-3.5 h-3.5 text-[#F3E5AB]" />
+                  <Store className="w-3.5 h-3.5 text-[#6B2837]" />
                 )}
-                {locationBadgeText}
+                <span>{locationBadgeText}</span>
               </span>
+
+              {/* Search Icon Trigger (Opens Recommended Food Search Modal) */}
+              <button
+                type="button"
+                onClick={() => setIsSearchModalOpen(true)}
+                className="w-9 h-9 rounded-full bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer"
+                title="Search Food"
+              >
+                <Search className="w-4 h-4 text-[#292320]" />
+              </button>
+
+              {/* Notification / Call Waiter Bell Button */}
+              <button
+                type="button"
+                disabled={sendingRequestType === "WAITER_CALL" || (cooldowns["WAITER_CALL"] || 0) > 0}
+                onClick={() => handleTriggerServiceRequest("WAITER_CALL")}
+                className="w-9 h-9 rounded-full bg-white border border-[#EEE7DD] flex items-center justify-center text-[#6B2837] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer disabled:opacity-50 relative"
+                title="Call Waiter"
+              >
+                <Bell className="w-4 h-4" />
+                {(cooldowns["WAITER_CALL"] || 0) > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#A77B38]" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Sub-bar: Verification / Session Privacy Status */}
-          <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-            {isRoomQr ? (
-              isVerified ? (
+          {/* Sub-strip ONLY when Table is busy/settling or verified host actions */}
+          {(!isRoomQr && (qrLocation.table?.isSettling || qrLocation.table?.status === "BILLED" || isVerified)) && (
+            <div className="mt-2 pt-1.5 border-t border-[#EEE7DD] flex items-center justify-between text-xs">
+              {isVerified ? (
                 <div className="flex items-center justify-between w-full">
-                  <span className="inline-flex items-center gap-1.5 text-[#E2F1E8] font-medium">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    Verified Stay: <strong className="text-white">{guestDisplayName}</strong>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-[#292320] font-medium">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Table {qrLocation.table?.tableNumber} Active
+                    {tablePin && (
+                      <span className="px-1.5 py-0.5 rounded bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD] font-mono font-bold text-[10px]">
+                        PIN: {tablePin}
+                      </span>
+                    )}
                   </span>
-                  <button
-                    type="button"
-                    onClick={clearPrivateSessionState}
-                    className="inline-flex items-center gap-1 text-[11px] text-[#D6CEC2] hover:text-white underline"
-                  >
-                    <LogOut className="w-3 h-3" /> Lock
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowGroupShareModal(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#6B2837] text-white font-bold text-[11px] hover:bg-[#541E2A] transition cursor-pointer"
+                    >
+                      <Users className="w-3 h-3" />
+                      <span>Invite</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between w-full gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-[#E6DEC8]">
-                    <Lock className="w-3.5 h-3.5 text-[#D4AF37]" />
-                    Browse menu freely or verify stay for room service & bill
+                  <span className="text-amber-800 font-semibold text-[11px] flex items-center gap-1">
+                    <Clock className="w-3 h-3 animate-spin" />
+                    Table busy • Bill settlement in progress
                   </span>
                   <button
                     type="button"
-                    onClick={() => setShowVerifyModal(true)}
-                    className="px-2.5 py-1 rounded-md bg-[#A77B38] text-white font-semibold text-[11px] shrink-0 hover:bg-[#8E672D] transition"
+                    onClick={handleRefreshTableStatus}
+                    className="px-2 py-0.5 rounded bg-amber-600 text-white font-semibold text-[10px]"
                   >
-                    Unlock Room
+                    Refresh
                   </button>
                 </div>
-              )
-            ) : (
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[#D6CEC2] text-[11px]">
-                  {isVerified
-                    ? `Active Dining Session • ${guestDisplayName}`
-                    : "Scan-to-Order • Direct Waiter & Kitchen Link"}
-                </span>
-                {!isVerified && (
-                  <button
-                    type="button"
-                    onClick={() => ensureTableSessionToken()}
-                    disabled={verifying}
-                    className="px-2.5 py-0.5 rounded bg-[#A77B38] text-white font-semibold text-[11px]"
-                  >
-                    {verifying ? "Starting..." : "Start Table Ordering"}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* Floating Toast Notification */}
@@ -1029,169 +1345,217 @@ export default function GuestQrPortalPage() {
                 </div>
               )}
 
-              {/* Table QR workflow notice */}
-              {!isRoomQr && (
-                <div className="rounded-xl bg-[#F5EFE6] border border-[#E2D9C8] px-3.5 py-2.5 flex items-start gap-2.5">
-                  <UtensilsCrossed className="w-4 h-4 text-[#6B2837] shrink-0 mt-0.5" />
-                  <p className="text-xs text-[#4A433E] leading-relaxed">
-                    Orders are sent to your waiter/cashier terminal for instant confirmation before
-                    kitchen preparation.
-                  </p>
-                </div>
-              )}
+              {/* =========================================================
+                  CLEAN MINIMALIST MENU FEED (FOOD FIRST)
+                 ========================================================= */}
+              <div className="space-y-4">
+                {/* Popular Dishes Carousel */}
+                {!searchQuery && popularItems.length > 0 && (
+                  <div className="space-y-2 pt-0.5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-[#292320] uppercase tracking-wider">
+                        Popular Dishes
+                      </h3>
+                    </div>
 
-              {/* Quick 1-Tap Waiter Call Strip */}
-              <div className="bg-white rounded-xl p-3 border border-[#E6DEC8] shadow-sm flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
-                    <Bell className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-[#1E1B18]">Need immediate assistance?</p>
-                    <p className="text-[11px] text-[#6E655F]">
-                      {(cooldowns["WAITER_CALL"] || 0) > 0
-                        ? `Waiter notified • Cooldown ${formatCooldown(cooldowns["WAITER_CALL"])}`
-                        : "Summon a server or room attendant in one tap"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={
-                    sendingRequestType === "WAITER_CALL" || (cooldowns["WAITER_CALL"] || 0) > 0
-                  }
-                  onClick={() => handleTriggerServiceRequest("WAITER_CALL")}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#6B2837] text-white disabled:opacity-50 hover:bg-[#561F2B] transition shrink-0"
-                >
-                  {(cooldowns["WAITER_CALL"] || 0) > 0
-                    ? formatCooldown(cooldowns["WAITER_CALL"])
-                    : sendingRequestType === "WAITER_CALL"
-                    ? "Calling..."
-                    : "Call Waiter"}
-                </button>
-              </div>
+                    <div className="flex gap-3 overflow-x-auto pb-1.5 no-scrollbar -mx-4 px-4">
+                      {popularItems.map((item) => {
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleSelectMenuItem(item)}
+                            className="w-38 sm:w-42 shrink-0 bg-white rounded-xl p-2.5 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer space-y-1.5"
+                          >
+                            <div className="relative aspect-4/3 rounded-lg overflow-hidden bg-[#EEE7DD]">
+                              <FoodImage item={item} iconClassName="w-8 h-8" />
+                              {item.prepTimeMinutes ? (
+                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 text-[9px] text-[#292320] font-bold tabular-nums">
+                                  {item.prepTimeMinutes}m
+                                </div>
+                              ) : null}
+                            </div>
 
-              {/* Section / Category Filter Pills */}
-              {allSections.length > 0 && (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSectionId("ALL")}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-                      selectedSectionId === "ALL"
-                        ? "bg-[#6B2837] text-white shadow-sm"
-                        : "bg-white text-[#4A433E] border border-[#E2D9C8] hover:bg-[#F5EFE6]"
-                    }`}
-                  >
-                    All Courses
-                  </button>
-                  {allSections.map((sec) => (
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-bold text-[#292320] truncate">
+                                {item.name}
+                              </h4>
+                              <div className="flex items-center justify-between pt-0.5">
+                                <span className="text-xs font-extrabold text-[#6B2837] tabular-nums">
+                                  {formatNPR(item.basePrice)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                  className="w-5 h-5 rounded bg-[#6B2837] text-white flex items-center justify-center hover:bg-[#541E2A] transition cursor-pointer shadow-2xs"
+                                  title="Add"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Horizontal Category Nav Chips */}
+                {allSections.length > 1 && (
+                  <div id="catalog-courses-scroll" className="sticky top-[53px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7]/95 backdrop-blur-md border-b border-[#EEE7DD]">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSectionId("ALL")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                          selectedSectionId === "ALL"
+                            ? "bg-[#6B2837] text-white shadow-2xs"
+                            : "bg-white text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
+                        }`}
+                      >
+                        All
+                      </button>
+                      {allSections.map((sec) => (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => setSelectedSectionId(sec.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                            selectedSectionId === sec.id
+                              ? "bg-[#6B2837] text-white shadow-2xs"
+                              : "bg-white text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
+                          }`}
+                        >
+                          {sec.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Search indicator pill if active search from top header */}
+                {searchQuery && (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0] border border-[#EEE7DD] text-xs">
+                    <span className="text-[#292320]">
+                      Showing results for: <span className="font-bold text-[#6B2837]">&quot;{searchQuery}&quot;</span>
+                    </span>
                     <button
-                      key={sec.id}
                       type="button"
-                      onClick={() => setSelectedSectionId(sec.id)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-                        selectedSectionId === sec.id
-                          ? "bg-[#6B2837] text-white shadow-sm"
-                          : "bg-white text-[#4A433E] border border-[#E2D9C8] hover:bg-[#F5EFE6]"
-                      }`}
+                      onClick={() => setSearchQuery("")}
+                      className="text-[#71675E] hover:text-[#292320] font-semibold text-[11px] underline cursor-pointer"
                     >
-                      {sec.name}
+                      Clear
                     </button>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* Menu Sections & High-Contrast Porcelain Item Cards */}
-              {visibleSections.length === 0 ? (
-                <div className="bg-white rounded-2xl p-8 text-center border border-[#E6DEC8]">
-                  <UtensilsCrossed className="w-8 h-8 text-[#A77B38] mx-auto mb-2" />
-                  <p className="text-sm font-bold text-[#1E1B18]">Menu Currently Updating</p>
-                  <p className="text-xs text-[#6E655F] mt-1">
-                    Please tap &ldquo;Call Waiter&rdquo; above for today&apos;s chef specials.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {visibleSections.map((section) => (
-                    <section key={section.id} className="space-y-3">
-                      <div className="border-b border-[#E2D9C8] pb-1.5">
-                        <h2 className="text-sm font-extrabold uppercase tracking-wider text-[#6B2837]">
-                          {section.name}
-                        </h2>
-                        {section.description && (
-                          <p className="text-xs text-[#6E655F] mt-0.5">{section.description}</p>
-                        )}
-                      </div>
+                {filteredSections.length === 0 ? (
+                  <div className="bg-white rounded-xl p-8 text-center border border-[#EEE7DD] space-y-2">
+                    <UtensilsCrossed className="w-8 h-8 text-[#A77B38] mx-auto" />
+                    <p className="text-sm font-bold text-[#292320]">No dishes found</p>
+                    <p className="text-xs text-[#71675E]">
+                      Try picking another category or clear your search.
+                    </p>
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="px-3.5 py-1.5 rounded-lg bg-[#6B2837] text-white text-xs font-bold cursor-pointer"
+                      >
+                        Clear Search
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {filteredSections.map((section) => (
+                      <section key={section.id} className="space-y-2.5">
+                        <div className="flex items-center justify-between pb-1 border-b border-[#EEE7DD]">
+                          <h2 className="text-xs font-bold uppercase tracking-wider text-[#6B2837]">
+                            {section.name}
+                          </h2>
+                          <span className="text-[10px] font-semibold text-[#71675E]">
+                            {section.items.length} {section.items.length === 1 ? "item" : "items"}
+                          </span>
+                        </div>
 
-                      <div className="space-y-2.5">
-                        {section.items.map((item) => {
-                          const tags = Array.isArray(item.dietaryTags) ? item.dietaryTags : [];
-                          const hasMods =
-                            Array.isArray(item.modifierGroups) &&
-                            item.modifierGroups.some(
-                              (mg) =>
-                                mg.modifierGroup?.options && mg.modifierGroup.options.length > 0
-                            );
+                        <div className="space-y-2.5">
+                          {section.items.map((item) => {
+                            const tags = Array.isArray(item.dietaryTags) ? item.dietaryTags : [];
+                            const hasMods =
+                              Array.isArray(item.modifierGroups) &&
+                              item.modifierGroups.some(
+                                (mg) =>
+                                  mg.modifierGroup?.options &&
+                                  mg.modifierGroup.options.length > 0
+                              );
 
-                          return (
-                            <div
-                              key={item.id}
-                              className="bg-white rounded-2xl p-3.5 border border-[#E6DEC8] shadow-sm flex items-start justify-between gap-3 hover:border-[#A77B38] transition"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h3 className="text-sm font-bold text-[#1E1B18]">{item.name}</h3>
-                                  {tags.map((tag) => (
-                                    <span
-                                      key={tag}
-                                      className="inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider bg-[#EFE9DF] text-[#6B2837] border border-[#D8CEC1]"
-                                    >
-                                      {tag}
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => handleSelectMenuItem(item)}
+                                className="bg-white rounded-xl p-3 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
+                              >
+                                <div className="flex-1 min-w-0 space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h3 className="text-xs sm:text-sm font-bold text-[#292320] leading-snug group-hover:text-[#6B2837] transition">
+                                      {item.name}
+                                    </h3>
+                                    {tags.map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD]"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+
+                                  {item.description && (
+                                    <p className="text-[11px] text-[#71675E] line-clamp-2 leading-relaxed">
+                                      {item.description}
+                                    </p>
+                                  )}
+
+                                  <div className="flex items-center gap-2 pt-0.5">
+                                    <span className="text-xs sm:text-sm font-extrabold text-[#6B2837] tabular-nums">
+                                      {formatNPR(item.basePrice)}
                                     </span>
-                                  ))}
+                                    {item.prepTimeMinutes ? (
+                                      <span className="inline-flex items-center gap-0.5 text-[10px] text-[#71675E] font-medium">
+                                        <Clock className="w-3 h-3 text-[#A77B38]" />
+                                        <span>{item.prepTimeMinutes}m</span>
+                                      </span>
+                                    ) : null}
+                                    {hasMods && (
+                                      <span className="text-[10px] font-medium text-[#A77B38]">
+                                        • Customizable
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
-                                {item.description && (
-                                  <p className="text-xs text-[#6E655F] mt-1 line-clamp-2">
-                                    {item.description}
-                                  </p>
-                                )}
-
-                                <div className="flex items-center gap-3 mt-2.5">
-                                  <span className="text-sm font-extrabold text-[#6B2837]">
-                                    {formatNPR(item.basePrice)}
-                                  </span>
-                                  {item.prepTimeMinutes && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-[#6E655F]">
-                                      <Clock className="w-3 h-3 text-[#A77B38]" />
-                                      {item.prepTimeMinutes}m prep
-                                    </span>
-                                  )}
-                                  {hasMods && (
-                                    <span className="text-[10px] font-semibold text-[#A77B38] bg-[#FAF6F0] px-2 py-0.5 rounded border border-[#E6DEC8]">
-                                      Customizable
-                                    </span>
-                                  )}
+                                {/* Thumbnail Image or Food Icon with Quick Add Button */}
+                                <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-lg overflow-hidden bg-[#FAF6F0] shrink-0 border border-[#EEE7DD]">
+                                  <FoodImage item={item} iconClassName="w-7 h-7" />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                    className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-[#6B2837] text-white flex items-center justify-center hover:bg-[#541E2A] transition cursor-pointer shadow-xs"
+                                    title="Add to tray"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleSelectMenuItem(item)}
-                                className="px-3 py-2 rounded-xl bg-[#FAF6F0] hover:bg-[#6B2837] text-[#6B2837] hover:text-white border border-[#6B2837]/30 font-bold text-xs inline-flex items-center gap-1 transition shrink-0 self-center"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                Add
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              )}
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1662,8 +2026,154 @@ export default function GuestQrPortalPage() {
           )}
 
           {/* =========================================================
-              TAB 4: ROOM BILL & FOLIO REVIEW (BILL - Room QR only)
+              TAB 4: TABLE BILL REVIEW (BILL - Table QR)
              ========================================================= */}
+          {activeTab === "BILL" && !isRoomQr && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-extrabold text-[#292320]">
+                    Table {qrLocation.table?.tableNumber || ""} Bill
+                  </h2>
+                  <p className="text-xs text-[#71675E]">
+                    Real-time order summary & dining charges
+                  </p>
+                </div>
+                {sessionToken && (
+                  <button
+                    type="button"
+                    onClick={() => fetchGuestSessionData(sessionToken, false)}
+                    disabled={refreshingData}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-[#EEE7DD] text-xs font-bold text-[#6B2837] cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshingData ? "animate-spin" : ""}`} />
+                    Sync
+                  </button>
+                )}
+              </div>
+
+              {orders.length === 0 ? (
+                <div className="bg-white rounded-2xl p-8 text-center border border-[#EEE7DD] space-y-2">
+                  <Receipt className="w-8 h-8 text-[#A77B38] mx-auto" />
+                  <p className="text-sm font-bold text-[#292320]">No Orders Placed Yet</p>
+                  <p className="text-xs text-[#71675E]">
+                    Add items from the menu to see your table bill here.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("MENU")}
+                    className="px-4 py-2 rounded-xl bg-[#6B2837] text-white text-xs font-bold mt-2 cursor-pointer"
+                  >
+                    Browse Menu
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Total Amount Due Card */}
+                  {(() => {
+                    const totalBillCents = orders.reduce(
+                      (acc, ord) => acc + toCents(ord.totalAmount),
+                      0
+                    );
+                    return (
+                      <div className="rounded-2xl bg-[#6B2837] text-[#FFFCF7] p-5 border border-[#8B3547] shadow-md space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#F3E5AB]">
+                            Table {qrLocation.table?.tableNumber} Total
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-white/15 text-[10px] font-bold">
+                            {orders.length} {orders.length === 1 ? "Order" : "Orders"}
+                          </span>
+                        </div>
+                        <div className="text-2xl font-black tabular-nums">
+                          {formatNPR(fromCents(totalBillCents))}
+                        </div>
+                        <p className="text-[11px] text-[#FFFCF7]/80">
+                          Taxes and restaurant service charge included where applicable.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Orders Breakdown */}
+                  {orders.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="bg-white rounded-2xl p-4 border border-[#EEE7DD] shadow-xs space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-2">
+                        <div>
+                          <p className="text-xs font-bold text-[#292320]">
+                            Order #{ord.orderNumber}
+                          </p>
+                          <p className="text-[10px] text-[#71675E]">
+                            {new Date(ord.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD]">
+                          {ord.settlementStatus}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {ord.rounds.flatMap((r) => r.lines).map((line) => (
+                          <div
+                            key={line.id}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="text-[#292320]">
+                              {line.quantity}x {line.itemName}
+                            </span>
+                            <span className="font-bold text-[#292320] tabular-nums">
+                              {formatNPR(line.total)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-[#EEE7DD] flex items-center justify-between text-xs font-bold">
+                        <span className="text-[#71675E]">Subtotal</span>
+                        <span className="text-[#6B2837] tabular-nums">
+                          {formatNPR(ord.totalAmount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* 1-Tap Bill Settlement Request */}
+                  <div className="rounded-2xl bg-white border border-[#EEE7DD] p-4 shadow-xs space-y-2.5">
+                    <p className="text-xs font-bold text-[#292320]">
+                      Ready to settle payment?
+                    </p>
+                    <p className="text-xs text-[#71675E] leading-relaxed">
+                      Tap below to alert your waiter or cashier to bring the final tax invoice to your table.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={
+                        sendingRequestType === "BILL_REQUEST" ||
+                        (cooldowns["BILL_REQUEST"] || 0) > 0
+                      }
+                      onClick={() => handleTriggerServiceRequest("BILL_REQUEST")}
+                      className="w-full py-3 rounded-xl bg-[#6B2837] text-white font-bold text-xs shadow-sm hover:bg-[#541E2A] transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      <span>
+                        {(cooldowns["BILL_REQUEST"] || 0) > 0
+                          ? `Bill Requested (${formatCooldown(cooldowns["BILL_REQUEST"])})`
+                          : sendingRequestType === "BILL_REQUEST"
+                          ? "Calling Staff..."
+                          : "Request Physical Bill at Table"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === "BILL" && isRoomQr && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1908,14 +2418,14 @@ export default function GuestQrPortalPage() {
 
         {/* Floating Cart Bar (when items in cart on MENU tab) */}
         {cartSummary.count > 0 && (
-          <div className="fixed bottom-16 left-0 right-0 z-30 max-w-md mx-auto px-4">
+          <div className="fixed bottom-16 left-0 right-0 z-30 max-w-lg mx-auto px-4">
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="w-full py-3 px-4 rounded-2xl bg-[#6B2837] text-white shadow-xl border border-[#A77B38]/50 flex items-center justify-between"
+              className="w-full py-3 px-4 rounded-xl bg-[#6B2837] text-white shadow-lg border border-[#A77B38]/50 flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-white text-[#6B2837] font-extrabold text-xs flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-white text-[#6B2837] font-extrabold text-xs flex items-center justify-center">
                   {cartSummary.count}
                 </span>
                 <span className="text-xs font-bold">View Order Tray</span>
@@ -1928,186 +2438,246 @@ export default function GuestQrPortalPage() {
           </div>
         )}
 
-        {/* Sticky Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-md mx-auto bg-white border-t border-[#E6DEC8] shadow-lg px-2 py-1.5">
-          <div
-            className={`grid ${isRoomQr ? "grid-cols-4" : "grid-cols-3"} gap-1`}
-          >
+        {/* Sticky Bottom Navigation Bar (Preserved brand tabs with clean styling) */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7]/95 backdrop-blur-md border-t border-[#EEE7DD] shadow-xs px-2 py-1">
+          <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
               onClick={() => setActiveTab("MENU")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition ${
+              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
                 activeTab === "MENU"
                   ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#6E655F] hover:text-[#1E1B18]"
+                  : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
               <UtensilsCrossed className="w-4 h-4 mb-0.5" />
-              Menu
+              <span>Menu</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("TRACKER")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition relative ${
+              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition relative cursor-pointer ${
                 activeTab === "TRACKER"
                   ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#6E655F] hover:text-[#1E1B18]"
+                  : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
               <ChefHat className="w-4 h-4 mb-0.5" />
-              Tracker
+              <span>Tracker</span>
               {orders.length > 0 && (
-                <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-[#A77B38]" />
+                <span className="absolute top-1 right-3.5 w-2 h-2 rounded-full bg-[#A77B38] animate-pulse" />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("SERVICES")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition ${
+              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
                 activeTab === "SERVICES"
                   ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#6E655F] hover:text-[#1E1B18]"
+                  : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
               <Bell className="w-4 h-4 mb-0.5" />
-              Services
+              <span>Services</span>
             </button>
 
-            {isRoomQr && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("BILL")}
-                className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition ${
-                  activeTab === "BILL"
-                    ? "text-[#6B2837] bg-[#FAF6F0]"
-                    : "text-[#6E655F] hover:text-[#1E1B18]"
-                }`}
-              >
-                <Receipt className="w-4 h-4 mb-0.5" />
-                Room Bill
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab("BILL")}
+              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                activeTab === "BILL"
+                  ? "text-[#6B2837] bg-[#FAF6F0]"
+                  : "text-[#71675E] hover:text-[#292320]"
+              }`}
+            >
+              <Receipt className="w-4 h-4 mb-0.5" />
+              <span>{isRoomQr ? "Room Bill" : "Table Bill"}</span>
+            </button>
           </div>
         </nav>
 
         {/* =========================================================
-            MODAL: ITEM MODIFIER SELECTOR
+            MODAL: DISH DETAIL & CUSTOMIZATION (RESPONSIVE & CLEAN)
            ========================================================= */}
-        {customizingItem && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-0 sm:p-4">
-            <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
-              <div className="flex items-start justify-between gap-2 border-b border-[#F0EAE0] pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-[#1E1B18]">{customizingItem.name}</h3>
-                  <p className="text-xs font-bold text-[#6B2837]">
-                    Base Price: {formatNPR(customizingItem.basePrice)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCustomizingItem(null)}
-                  className="p-1 rounded-lg text-[#6E655F] hover:text-[#1E1B18]"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+        {customizingItem && (() => {
+          const curBaseCents = toCents(customizingItem.basePrice);
+          const curModsCents = (customizingItem.modifierGroups || []).reduce((acc, mg) => {
+            const selectedInGroup = (mg.modifierGroup?.options || []).filter((o) =>
+              selectedModOptionIds.includes(o.id)
+            );
+            return acc + selectedInGroup.reduce((sum, opt) => sum + toCents(opt.priceDelta), 0);
+          }, 0);
+          const curTotalCents = (curBaseCents + curModsCents) * customItemQty;
 
-              {(customizingItem.modifierGroups || []).map((link) => {
-                const group = link.modifierGroup;
-                if (!group || !group.options || group.options.length === 0) return null;
-                return (
-                  <div key={group.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#1E1B18]">
-                        {group.displayName || group.name}
+          return (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-[#D8CEC1]">
+                {/* Hero Dish Image or Food Icon */}
+                <div className="relative aspect-16/9 w-full overflow-hidden bg-[#FAF6F0] shrink-0 border-b border-[#EEE7DD]">
+                  <FoodImage item={customizingItem} iconClassName="w-12 h-12" />
+                  <button
+                    type="button"
+                    onClick={() => setCustomizingItem(null)}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-[#292320] hover:bg-white transition shadow-sm cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Content Body */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="text-base sm:text-lg font-bold text-[#292320]">
+                        {customizingItem.name}
+                      </h2>
+                      <span className="text-base font-extrabold text-[#6B2837] tabular-nums shrink-0">
+                        {formatNPR(customizingItem.basePrice)}
                       </span>
-                      <span className="text-[10px] text-[#6E655F]">Optional Add-ons</span>
                     </div>
-                    <div className="space-y-1.5">
-                      {group.options.map((opt) => {
-                        const checked = selectedModOptionIds.includes(opt.id);
-                        return (
-                          <label
-                            key={opt.id}
-                            className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer ${
-                              checked
-                                ? "border-[#6B2837] bg-[#FAF6F0] font-semibold"
-                                : "border-[#E6DEC8] bg-white"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setSelectedModOptionIds((prev) =>
-                                    prev.includes(opt.id)
-                                      ? prev.filter((id) => id !== opt.id)
-                                      : [...prev, opt.id]
-                                  );
-                                }}
-                                className="accent-[#6B2837]"
-                              />
-                              <span>{opt.name}</span>
-                            </div>
-                            {toCents(opt.priceDelta) > 0 && (
-                              <span className="text-[#6B2837] font-bold">
-                                +{formatNPR(opt.priceDelta)}
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
+                    {customizingItem.description && (
+                      <p className="text-xs text-[#71675E] leading-relaxed mt-1">
+                        {customizingItem.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Real Culinary Metrics from Database */}
+                  <div className="grid grid-cols-3 gap-2 py-1">
+                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
+                      <Clock className="w-4 h-4 text-[#A77B38] mx-auto" />
+                      <p className="text-xs font-bold text-[#292320]">
+                        {customizingItem.prepTimeMinutes || 15} mins
+                      </p>
+                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Prep Time</p>
+                    </div>
+
+                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
+                      <ChefHat className="w-4 h-4 text-[#6B2837] mx-auto" />
+                      <p className="text-xs font-bold text-[#292320] truncate">
+                        {customizingItem.product?.category?.name || "Kitchen"}
+                      </p>
+                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Category</p>
+                    </div>
+
+                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
+                      <UtensilsCrossed className="w-4 h-4 text-emerald-600 mx-auto" />
+                      <p className="text-xs font-bold text-[#292320] truncate">
+                        {customizingItem.product?.subcategory?.name || "Fresh"}
+                      </p>
+                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Course</p>
                     </div>
                   </div>
-                );
-              })}
 
-              <div>
-                <label className="block text-xs font-bold text-[#1E1B18] mb-1">
-                  Special Preparation Notes
-                </label>
-                <input
-                  type="text"
-                  value={customItemNotes}
-                  onChange={(e) => setCustomItemNotes(e.target.value)}
-                  placeholder="e.g., Less spicy, no cilantro..."
-                  className="w-full px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
-                />
-              </div>
+                  {/* Modifiers & Options */}
+                  {Array.isArray(customizingItem.modifierGroups) &&
+                    customizingItem.modifierGroups.map((link) => {
+                      const group = link.modifierGroup;
+                      if (!group || !group.options || group.options.length === 0) return null;
+                      return (
+                        <div key={group.id} className="space-y-2 pt-2 border-t border-[#EEE7DD]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#292320]">
+                              {group.displayName || group.name}
+                            </span>
+                            <span className="text-[10px] text-[#71675E]">
+                              {group.isRequired ? "Required" : "Optional"}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {group.options.map((opt) => {
+                              const checked = selectedModOptionIds.includes(opt.id);
+                              return (
+                                <label
+                                  key={opt.id}
+                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                                    checked
+                                      ? "border-[#6B2837] bg-[#FAF6F0] font-semibold text-[#292320]"
+                                      : "border-[#EEE7DD] bg-white text-[#292320] hover:bg-[#FAF6F0]/50"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        setSelectedModOptionIds((prev) =>
+                                          prev.includes(opt.id)
+                                            ? prev.filter((id) => id !== opt.id)
+                                            : [...prev, opt.id]
+                                        );
+                                      }}
+                                      className="accent-[#6B2837] w-4 h-4 rounded"
+                                    />
+                                    <span>{opt.name}</span>
+                                  </div>
+                                  {toCents(opt.priceDelta) > 0 && (
+                                    <span className="text-[#6B2837] font-bold tabular-nums">
+                                      +{formatNPR(opt.priceDelta)}
+                                    </span>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
 
-              <div className="flex items-center justify-between pt-2 border-t border-[#F0EAE0]">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCustomItemQty((q) => Math.max(1, q - 1))}
-                    className="w-8 h-8 rounded-lg bg-[#FAF6F0] border border-[#E2D9C8] flex items-center justify-center"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="text-sm font-bold">{customItemQty}</span>
-                  <button
-                    type="button"
-                    onClick={() => setCustomItemQty((q) => q + 1)}
-                    className="w-8 h-8 rounded-lg bg-[#FAF6F0] border border-[#E2D9C8] flex items-center justify-center"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  {/* Cooking / Preparation Notes */}
+                  <div className="space-y-1.5 pt-2 border-t border-[#EEE7DD]">
+                    <label className="block text-xs font-bold text-[#292320]">
+                      Special Instructions
+                    </label>
+                    <input
+                      type="text"
+                      value={customItemNotes}
+                      onChange={(e) => setCustomItemNotes(e.target.value)}
+                      placeholder="e.g. Less spicy, no coriander, extra sauce..."
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-[#EEE7DD] text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                    />
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleConfirmCustomItem}
-                  className="px-5 py-2.5 rounded-xl bg-[#6B2837] text-white font-bold text-xs shadow"
-                >
-                  Add to Order Tray
-                </button>
+                {/* Footer Action Bar */}
+                <div className="p-3.5 bg-white border-t border-[#EEE7DD] flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 bg-[#FAF6F0] p-1 rounded-lg border border-[#EEE7DD]">
+                    <button
+                      type="button"
+                      onClick={() => setCustomItemQty((q) => Math.max(1, q - 1))}
+                      className="w-7 h-7 rounded bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs font-bold w-5 text-center tabular-nums text-[#292320]">
+                      {customItemQty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomItemQty((q) => q + 1)}
+                      className="w-7 h-7 rounded bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmCustomItem}
+                    className="flex-1 py-2.5 px-4 rounded-lg bg-[#6B2837] text-white font-bold text-xs hover:bg-[#541E2A] transition flex items-center justify-between cursor-pointer shadow-xs"
+                  >
+                    <span>Add to Tray</span>
+                    <span className="tabular-nums font-extrabold">
+                      {formatNPR(fromCents(curTotalCents))}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* =========================================================
             MODAL: CART DRAWER & SUBMIT ORDER
@@ -2211,6 +2781,8 @@ export default function GuestQrPortalPage() {
                         ? "Submitting Order..."
                         : isRoomQr && !isVerified
                         ? "Verify Room & Submit Order"
+                        : !isVerified && (qrLocation?.table?.pinRequired || qrLocation?.table?.status === "OCCUPIED" || !qrLocation?.table?.isSettled)
+                        ? "Enter PIN & Place Order"
                         : "Submit Order"}
                     </button>
                   </div>
@@ -2300,6 +2872,354 @@ export default function GuestQrPortalPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+        {/* =========================================================
+            MODAL: TABLE DINING PIN VERIFICATION & ANTI-PRANK GUARD
+           ========================================================= */}
+        {showTablePinModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl border border-[#D8CEC1] space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#FAF6F0] border border-[#D8CEC1] flex items-center justify-center text-[#6B2837]">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#1E1B18]">
+                      Join Table {qrLocation.table?.tableNumber || ""}
+                    </h3>
+                    <p className="text-[11px] text-[#6E655F]">
+                      Active dining session in progress
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTablePinModal(false)}
+                  className="text-[#8C827A] hover:text-[#1E1B18]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {qrLocation.table?.isBilledLocked || qrLocation.table?.isSettling || qrLocation.table?.status === "BILLED" ? (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
+                    <p className="font-bold">Bill settlement is in progress</p>
+                    <p>The previous bill at Table {qrLocation.table?.tableNumber || ""} is being settled by our cashier. Please wait a moment or alert our staff below if you are a new guest.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAlertStaffTurnover}
+                    disabled={sendingTurnoverAlert}
+                    className="w-full py-2.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#541E2A] transition cursor-pointer"
+                  >
+                    {sendingTurnoverAlert ? "Alerting Server..." : "🔔 We Are New Guests (Reset Table)"}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleVerifyTablePin} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#1E1B18] mb-1">
+                      Enter 4-Digit Dining PIN
+                    </label>
+                    <p className="text-[11px] text-[#71675E] mb-2">
+                      Table {qrLocation.table?.tableNumber || ""} has an active dining session. Enter the table&apos;s 4-digit PIN to place your order.
+                    </p>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      value={tablePinInput}
+                      onChange={(e) => setTablePinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="e.g. 4821"
+                      className="w-full px-3 py-2.5 text-center font-mono font-bold text-lg tracking-widest rounded-xl bg-[#FAF6F0] border border-[#D8CEC1] focus:outline-none focus:border-[#6B2837]"
+                    />
+                  </div>
+
+                  {tablePinError && (
+                    <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 font-medium">
+                      {tablePinError}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAlertStaffTurnover}
+                      disabled={sendingTurnoverAlert}
+                      className="text-[11px] font-semibold text-[#6B2837] hover:underline cursor-pointer"
+                    >
+                      {tableAlertSent ? "Server Alerted ✓" : "Previous guests left?"}
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowTablePinModal(false)}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold text-[#6E655F]"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={verifying || tablePinInput.length !== 4}
+                        className="px-4 py-2 rounded-xl bg-[#6B2837] text-white text-xs font-bold shadow hover:bg-[#541E2A] disabled:opacity-50 cursor-pointer"
+                      >
+                        {verifying ? "Verifying..." : "Verify & Order"}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+        {/* =========================================================
+            MODAL: INVITE TABLE COMPANIONS (GROUP ORDERING)
+           ========================================================= */}
+        {showGroupShareModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-[#FFFCF7] w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-[#D8CEC1] space-y-4">
+              <div className="flex items-start justify-between pb-2 border-b border-[#EEE7DD]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-[#EEE7DD] text-[#6B2837] flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#292320]">
+                      Invite Table Companions
+                    </h3>
+                    <p className="text-[11px] text-[#71675E]">
+                      Table {qrLocation.table?.tableNumber || ""} • Group Ordering
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGroupShareModal(false)}
+                  className="text-[#71675E] hover:text-[#292320] p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-center space-y-3">
+                <p className="text-xs text-[#71675E] leading-relaxed">
+                  Friends at your table can scan this QR code with their phone camera to start ordering dishes together:
+                </p>
+
+                {/* ISO Standard Companion QR Code */}
+                <div className="inline-block p-3.5 bg-white rounded-xl border border-[#D8CEC1] shadow-xs">
+                  <DeterministicQrMatrixSvg value={companionShareUrl} size={180} />
+                  <p className="text-[10px] text-[#71675E] font-medium mt-2">
+                    Point camera at this screen to join instantly
+                  </p>
+                </div>
+
+                {/* 1-Tap Share / WhatsApp / Copy Link */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (typeof navigator !== "undefined" && navigator.share) {
+                        try {
+                          await navigator.share({
+                            title: `Order Together at Table ${qrLocation.table?.tableNumber || ""}`,
+                            text: `Join our dining table ${qrLocation.table?.tableNumber || ""} at ${qrLocation.business.name} to order dishes!`,
+                            url: companionShareUrl,
+                          });
+                          return;
+                        } catch {
+                          // fallback to copy
+                        }
+                      }
+                      if (typeof navigator !== "undefined" && navigator.clipboard) {
+                        await navigator.clipboard.writeText(companionShareUrl);
+                        setCopiedShareLink(true);
+                        setTimeout(() => setCopiedShareLink(false), 2500);
+                        showBanner("Invite link copied! Share it in your WhatsApp / Messenger chat.", "success");
+                      }
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#541E2A] transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    {copiedShareLink ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                        <span>Invite Link Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-4 h-4" />
+                        <span>Share Invite (WhatsApp / Chat)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Fallback 4-digit PIN */}
+                {tablePin && (
+                  <div className="pt-2 border-t border-[#EEE7DD] text-center">
+                    <span className="text-[11px] text-[#71675E]">Or enter 4-digit PIN manually: </span>
+                    <span className="font-mono font-bold text-sm text-[#292320] px-2 py-0.5 rounded bg-[#EEE7DD]">
+                      {tablePin}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowGroupShareModal(false)}
+                className="w-full py-2 rounded-xl bg-[#EEE7DD] text-[#292320] text-xs font-semibold hover:bg-[#D8CEC1] transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================
+            MODAL: MOBILE SEARCH & CHEF FOOD RECOMMENDATIONS
+           ========================================================= */}
+        {isSearchModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-start p-0 sm:p-4">
+            <div className="bg-[#FFFCF7] w-full max-w-md mx-auto sm:rounded-3xl min-h-screen sm:min-h-0 sm:max-h-[88vh] flex flex-col shadow-2xl border border-[#D8CEC1]">
+              {/* Search Header Bar */}
+              <div className="p-3.5 border-b border-[#EEE7DD] bg-white sm:rounded-t-3xl flex items-center gap-2">
+                <div className="relative flex-1 flex items-center">
+                  <Search className="w-4 h-4 text-[#71675E] absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search dishes, momos, curries..."
+                    className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-[#FAF6F0] border border-[#EEE7DD] text-xs sm:text-sm text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 text-[#71675E] hover:text-[#292320] p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchModalOpen(false)}
+                  className="px-3 py-2 text-xs font-bold text-[#6B2837] hover:bg-[#FAF6F0] rounded-xl transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Search Content Body */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {searchQuery.trim() ? (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-[#71675E]">
+                      Search Results ({filteredSections.flatMap((s) => s.items).length})
+                    </p>
+                    {filteredSections.flatMap((s) => s.items).length === 0 ? (
+                      <div className="text-center py-8 text-xs text-[#71675E] space-y-1">
+                        <UtensilsCrossed className="w-6 h-6 text-[#A77B38] mx-auto mb-1" />
+                        <p className="font-bold text-[#292320]">No dishes found</p>
+                        <p>Try searching with another keyword or explore chef picks.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredSections.flatMap((s) => s.items).map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setIsSearchModalOpen(false);
+                              handleSelectMenuItem(item);
+                            }}
+                            className="p-3 rounded-xl bg-white border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-[#EEE7DD]">
+                                <FoodImage item={item} iconClassName="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-[#292320] truncate">
+                                  {item.name}
+                                </h4>
+                                <p className="text-[11px] text-[#6B2837] font-extrabold tabular-nums">
+                                  {formatNPR(item.basePrice)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleQuickAddMenuItem(e, item)}
+                              className="px-2.5 py-1.5 rounded-lg bg-[#6B2837] text-white text-xs font-bold shrink-0 cursor-pointer"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#292320] flex items-center gap-1.5">
+                        <Flame className="w-4 h-4 text-[#A77B38]" />
+                        Best Food Recommended by Chef
+                      </span>
+                      <span className="text-[10px] text-[#A77B38] font-bold">Popular</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {popularItems.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setIsSearchModalOpen(false);
+                            handleSelectMenuItem(item);
+                          }}
+                          className="p-3 rounded-xl bg-white border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[#EEE7DD]">
+                              <FoodImage item={item} iconClassName="w-6 h-6" />
+                            </div>
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-bold text-[#292320] truncate">
+                                  {item.name}
+                                </h4>
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                  4.9
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-[#71675E] line-clamp-1">
+                                {item.description || "Fresh handcrafted recipe"}
+                              </p>
+                              <p className="text-xs text-[#6B2837] font-extrabold tabular-nums">
+                                {formatNPR(item.basePrice)}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => handleQuickAddMenuItem(e, item)}
+                            className="px-3 py-1.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#541E2A] transition shrink-0 cursor-pointer shadow-xs"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -85,23 +85,23 @@ export async function GET(request: Request) {
       });
 
       sales.forEach((sale) => {
-        const totalQty = sale.saleItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalQty = sale.saleItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         movements.push({
           id: sale.id,
           type: "SALE",
           date: sale.createdAt,
           reference: sale.invoiceNumber,
-          branch: sale.branch.name,
+          branch: sale.branch?.name || "Main Branch",
           customer: sale.customer?.name || "Walk-in",
-          user: sale.user.name,
+          user: sale.user?.name || "Cashier",
           items: sale.saleItems.map((i) => ({
-            product: i.product.name,
-            sku: i.product.sku,
-            quantity: i.quantity,
-            price: i.price,
+            product: i.product?.name || "Product",
+            sku: i.product?.sku || "N/A",
+            quantity: Number(i.quantity || 0),
+            price: Number(i.price || 0),
           })),
           totalQuantity: totalQty,
-          totalAmount: sale.total,
+          totalAmount: Number(sale.total || 0),
         });
       });
     }
@@ -128,23 +128,23 @@ export async function GET(request: Request) {
       });
 
       purchases.forEach((purchase) => {
-        const totalQty = purchase.purchaseItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalQty = purchase.purchaseItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         movements.push({
           id: purchase.id,
           type: "PURCHASE",
           date: purchase.createdAt,
           reference: purchase.purchaseNumber,
-          branch: purchase.branch.name,
-          supplier: purchase.supplier.name,
-          user: purchase.user.name,
+          branch: purchase.branch?.name || "Main Branch",
+          supplier: purchase.supplier?.name || "Supplier",
+          user: purchase.user?.name || "Staff",
           items: purchase.purchaseItems.map((i) => ({
-            product: i.product.name,
-            sku: i.product.sku,
-            quantity: i.quantity,
-            price: i.price,
+            product: i.product?.name || "Product",
+            sku: i.product?.sku || "N/A",
+            quantity: Number(i.quantity || 0),
+            price: Number(i.price || 0),
           })),
           totalQuantity: totalQty,
-          totalAmount: purchase.total,
+          totalAmount: Number(purchase.total || 0),
         });
       });
     }
@@ -173,18 +173,18 @@ export async function GET(request: Request) {
       });
 
       transfers.forEach((transfer) => {
-        const totalQty = transfer.items.reduce((sum, item) => sum + item.quantity, 0);
+        const totalQty = transfer.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         movements.push({
           id: transfer.id,
           type: "TRANSFER",
           date: transfer.createdAt,
           reference: `TRN-${transfer.id.slice(0, 8)}`,
-          fromBranch: transfer.sourceBranch.name,
-          toBranch: transfer.targetBranch.name,
+          fromBranch: transfer.sourceBranch?.name || "Source Branch",
+          toBranch: transfer.targetBranch?.name || "Target Branch",
           items: transfer.items.map((i) => ({
-            product: i.product.name,
-            sku: i.product.sku,
-            quantity: i.quantity,
+            product: i.product?.name || "Product",
+            sku: i.product?.sku || "N/A",
+            quantity: Number(i.quantity || 0),
           })),
           totalQuantity: totalQty,
           status: transfer.status,

@@ -125,7 +125,7 @@ export interface FolioSettlementTenderInput {
 
 export interface SettleGuestFolioInput {
   businessId: string;
-  branchId: string;
+  branchId?: string | null;
   folioId: string;
   tenders: FolioSettlementTenderInput[];
   actorId?: string;
@@ -259,8 +259,8 @@ export async function recalculateFolioTotals(
 
   if (hasFolioActivity) {
     const netStayTotal = subMoney(stayCharges, stayCredits);
-    await tx.stay.update({
-      where: { id: folio.stayId },
+    await tx.stay.updateMany({
+      where: { id: folio.stayId, businessId },
       data: {
         ...(Number(stayCharges) > 0 || Number(stayCredits) > 0
           ? { totalAmount: netStayTotal }

@@ -66,7 +66,10 @@ export async function GET(request: Request) {
     });
 
     const stocks = (products as any[]).map((p) => {
-      const totalQty = p.productStocks.reduce((sum: number, s: any) => sum + s.quantity, 0);
+      const totalQty = p.productStocks.reduce((sum: number, s: any) => sum + Number(s.quantity || 0), 0);
+      const costPrice = Number(p.costPrice || 0);
+      const sellingPrice = Number(p.sellingPrice || 0);
+      const alertQuantity = Number(p.alertQuantity || 0);
       return {
         id: p.id,
         name: p.name,
@@ -75,16 +78,16 @@ export async function GET(request: Request) {
         category: p.category?.name || "N/A",
         brand: p.brand?.name || "N/A",
         unit: p.unit?.name || "Units",
-        costPrice: p.costPrice,
-        sellingPrice: p.sellingPrice,
-        alertQuantity: p.alertQuantity,
+        costPrice,
+        sellingPrice,
+        alertQuantity,
         totalQuantity: totalQty,
-        value: totalQty * p.costPrice,
-        status: totalQty === 0 ? "OUT_OF_STOCK" : totalQty <= p.alertQuantity ? "LOW_STOCK" : "IN_STOCK",
+        value: totalQty * costPrice,
+        status: totalQty === 0 ? "OUT_OF_STOCK" : totalQty <= alertQuantity ? "LOW_STOCK" : "IN_STOCK",
         branchStocks: p.productStocks.map((s: any) => ({
           branchId: s.branchId,
-          branchName: s.branch?.name,
-          quantity: s.quantity,
+          branchName: s.branch?.name || "Main Branch",
+          quantity: Number(s.quantity || 0),
         })),
       };
     });
@@ -93,7 +96,7 @@ export async function GET(request: Request) {
       stocks,
       branches,
       totalProducts: stocks.length,
-      totalValue: stocks.reduce((sum, s) => sum + s.value, 0),
+      totalValue: stocks.reduce((sum, s) => sum + Number(s.value || 0), 0),
     });
   } catch (error: any) {
     console.error("GET current stock error:", error);

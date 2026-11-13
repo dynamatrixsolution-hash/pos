@@ -215,6 +215,43 @@ export async function reversePayment(
     },
   });
 
+  // 3b. Update active cashier shift if this was a received payment
+  if (payment.type === "RECEIVED") {
+    const activeShift = await tx.cashierShift.findFirst({
+      where: {
+        businessId: params.businessId,
+        status: "OPEN",
+        ...(payment.shiftId ? { id: payment.shiftId } : { branchId: payment.branchId }),
+      },
+    });
+    if (activeShift) {
+      const amtNum = Number(payment.amount);
+      const isCash = String(payment.method).toUpperCase() === "CASH";
+      if (isCash) {
+        await tx.cashierShift.update({
+          where: { id: activeShift.id },
+          data: {
+            cashRefunds: { increment: amtNum },
+            expectedCash: { decrement: amtNum },
+          },
+        });
+      }
+      await tx.shiftTransaction.create({
+        data: {
+          businessId: params.businessId,
+          branchId: payment.branchId,
+          shiftId: activeShift.id,
+          saleId: payment.saleId || null,
+          paymentId: payment.id,
+          transactionType: "REFUND",
+          paymentMethod: payment.method,
+          amount: payment.amount,
+          cashEffect: new Prisma.Decimal(isCash ? -amtNum : 0),
+        },
+      });
+    }
+  }
+
   // 4. Record AuditEvent
   await createAuditEvent(
     {
@@ -248,7 +285,9 @@ export async function createRefund(
     throw new PaymentLedgerError("Refund amount must be strictly positive", 400);
   }
 
-  return await tx.refund.create({
+  const refundMethod = (params.method || "CASH").toUpperCase();
+
+  const refund = await tx.refund.create({
     data: {
       businessId: params.businessId,
       branchId: params.branchId,
@@ -256,9 +295,66 @@ export async function createRefund(
       saleId: params.saleId || undefined,
       customerId: params.customerId || undefined,
       amount,
-      method: params.method || "CASH",
+      method: refundMethod,
       reason: params.reason,
       createdById: params.createdById || undefined,
     },
   });
+
+  // Link refund to active shift on this branch if open
+  const activeShift = await tx.cashierShift.findFirst({
+    where: {
+      businessId: params.businessId,
+      branchId: params.branchId,
+      status: "OPEN",
+    },
+    orderBy: { startTime: "desc" },
+  });
+
+  if (activeShift) {
+    const amtNum = Number(amount);
+    const isCash = refundMethod === "CASH";
+    const refundPayment = await tx.payment.create({
+      data: {
+        businessId: params.businessId,
+        branchId: params.branchId,
+        userId: params.createdById || activeShift.cashierId,
+        customerId: params.customerId || null,
+        saleId: params.saleId || null,
+        amount,
+        method: refundMethod,
+        source: "STAFF_RECORDED",
+        type: "SENT",
+        reference: `REFUND-${refund.id.slice(0, 8)}`,
+        notes: params.reason,
+        shiftId: activeShift.id,
+      },
+    });
+
+    if (isCash) {
+      await tx.cashierShift.update({
+        where: { id: activeShift.id },
+        data: {
+          cashRefunds: { increment: amtNum },
+          expectedCash: { decrement: amtNum },
+        },
+      });
+    }
+
+    await tx.shiftTransaction.create({
+      data: {
+        businessId: params.businessId,
+        branchId: params.branchId,
+        shiftId: activeShift.id,
+        saleId: params.saleId || null,
+        paymentId: refundPayment.id,
+        transactionType: "REFUND",
+        paymentMethod: refundMethod,
+        amount,
+        cashEffect: new Prisma.Decimal(isCash ? -amtNum : 0),
+      },
+    });
+  }
+
+  return refund;
 }

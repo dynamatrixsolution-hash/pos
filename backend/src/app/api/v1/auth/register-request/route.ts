@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limiter";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 function generateTrackingCode(): string {
   const year = new Date().getFullYear();
-  const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const randomChars = crypto.randomBytes(3).toString("hex").toUpperCase();
   return `REQ-${year}-${randomChars}`;
 }
 
@@ -33,6 +35,9 @@ const registerRequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimitError = enforceRateLimit(request, "auth:register-request", 10, 15 * 60);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const result = registerRequestSchema.safeParse(body);

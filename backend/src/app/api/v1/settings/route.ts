@@ -154,3 +154,67 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  const OWNER_ROLES = ["SUPER_ADMIN", "OWNER"];
+  if (!OWNER_ROLES.includes(context.role)) {
+    return roleErrorResponse();
+  }
+
+  try {
+    const existing = await db.business.findUnique({
+      where: { id: context.businessId },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Business not found" }, { status: 404 });
+    }
+
+    const currentTax = (existing.taxConfig as any) || { taxName: "VAT", rate: 13 };
+    const currentMeta = (existing.settings as any) || {};
+
+    const body = await request.json();
+    const partialSchema = settingsSchema.partial();
+    const result = partialSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: result.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const data = result.data;
+    const { name, phone, email, address, currency, taxName, taxRate, ...metaSettings } = data;
+
+    const newTaxName = taxName !== undefined ? taxName : currentTax.taxName || "VAT";
+    const newTaxRate = taxRate !== undefined ? taxRate : (currentTax.rate ?? 13);
+
+    const mergedSettings = {
+      ...currentMeta,
+      ...metaSettings,
+    };
+
+    const updatedBusiness = await db.business.update({
+      where: { id: context.businessId },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(phone !== undefined && { phone }),
+        ...(email !== undefined && { email }),
+        ...(address !== undefined && { address }),
+        ...(currency !== undefined && { currency }),
+        taxConfig: { taxName: newTaxName, rate: newTaxRate },
+        settings: mergedSettings,
+      },
+    });
+
+    return NextResponse.json(updatedBusiness);
+  } catch (error: any) {
+    console.error("PATCH business settings error:", error);
+    return NextResponse.json({ error: "Failed to patch settings" }, { status: 500 });
+  }
+}
+

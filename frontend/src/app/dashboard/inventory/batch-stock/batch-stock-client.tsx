@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { Search, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 export default function BatchStockClient() {
   const { currencySymbol } = useSettings();
+  const num = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
   const [batches, setBatches] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [expiringSoon, setExpiringSoon] = useState(false);
@@ -16,16 +21,12 @@ export default function BatchStockClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (search) query.append("search", search);
-        if (expiringSoon) query.append("expiringSoon", "true");
-
-        const res = await fetch(`/api/v1/inventory/batch-stock?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setBatches(data.batches);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getBatchStock({
+          search: search || undefined,
+          expiringSoon: expiringSoon || undefined,
+        });
+        setBatches(data.batches || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch batch stock error:", err);
       } finally {
@@ -55,7 +56,7 @@ export default function BatchStockClient() {
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Value</div>
-          <div className="text-2xl font-black">{currencySymbol}{summary.totalValue.toFixed(2)}</div>
+          <div className="text-2xl font-black tabular-nums">{currencySymbol}{num(summary.totalValue).toFixed(2)}</div>
         </div>
       </div>
 
@@ -115,9 +116,9 @@ export default function BatchStockClient() {
                     <td className="py-3 px-2 font-mono font-bold">{batch.batchNumber}</td>
                     <td className="py-3 px-2 text-muted-foreground">{batch.branchName}</td>
                     <td className="py-3 px-2 text-right font-bold">{batch.quantity}</td>
-                    <td className="py-3 px-2 text-right">{currencySymbol}{batch.costPrice.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-right text-primary font-medium">{currencySymbol}{batch.sellingPrice.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-right font-bold">{currencySymbol}{batch.totalValue.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right font-mono tabular-nums">{currencySymbol}{num(batch.costPrice).toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right text-primary font-medium font-mono tabular-nums">{currencySymbol}{num(batch.sellingPrice).toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right font-bold font-mono tabular-nums">{currencySymbol}{num(batch.totalValue).toFixed(2)}</td>
                     <td className="py-3 px-2 text-muted-foreground">
                       {batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString() : "N/A"}
                     </td>

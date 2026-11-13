@@ -302,7 +302,11 @@ export async function getStays(
     where: {
       businessId: input.businessId,
       ...(input.branchId ? { branchId: input.branchId } : {}),
-      ...(input.status ? { status: input.status } : {}),
+      ...(input.status
+        ? input.status === "ACTIVE" || input.status === "CHECKED_IN"
+          ? { status: { in: ["ACTIVE", "CHECKED_IN"] } }
+          : { status: input.status }
+        : {}),
       ...(input.roomId ? { roomId: input.roomId } : {}),
     },
     include: {

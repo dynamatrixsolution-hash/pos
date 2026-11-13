@@ -27,6 +27,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface AuditHistoryItem {
   id: string;
@@ -103,17 +104,12 @@ export default function PlatformSettingsPage() {
       if (!isSilent && !hasLoadedRef.current) setLoading(true);
       else setReloading(true);
 
-      const res = await fetch("/api/v1/super-admin/settings");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.settings?.GENERAL_CONFIG) setGeneralConfig(data.settings.GENERAL_CONFIG);
-        if (data.settings?.SUBSCRIPTION_DEFAULTS) setSubDefaults(data.settings.SUBSCRIPTION_DEFAULTS);
-        if (data.settings?.GATEWAY_SETTINGS) setGatewaySettings(data.settings.GATEWAY_SETTINGS);
-        if (data.settings?.MAINTENANCE_MODE) setMaintenanceMode(data.settings.MAINTENANCE_MODE);
-        if (data.recentAudits) setRecentAudits(data.recentAudits);
-      } else {
-        throw new Error("Failed to load settings");
-      }
+      const data = await apiClient.superAdmin.getPlatformSettings();
+      if (data.settings?.GENERAL_CONFIG) setGeneralConfig(data.settings.GENERAL_CONFIG);
+      if (data.settings?.SUBSCRIPTION_DEFAULTS) setSubDefaults(data.settings.SUBSCRIPTION_DEFAULTS);
+      if (data.settings?.GATEWAY_SETTINGS) setGatewaySettings(data.settings.GATEWAY_SETTINGS);
+      if (data.settings?.MAINTENANCE_MODE) setMaintenanceMode(data.settings.MAINTENANCE_MODE);
+      if (data.recentAudits) setRecentAudits(data.recentAudits);
     } catch (err: any) {
       toast.error(err.message || "Failed to load platform settings");
     } finally {
@@ -155,18 +151,11 @@ export default function PlatformSettingsPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/v1/super-admin/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: pendingKey,
-          value: pendingValue,
-          reason: auditReason.trim(),
-        }),
+      await apiClient.superAdmin.updatePlatformSettings({
+        key: pendingKey,
+        value: pendingValue,
+        reason: auditReason.trim(),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update configuration");
 
       setAuditModalOpen(false);
       toast.success(`${pendingLabel} saved and audit logged successfully`);

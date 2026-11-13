@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 export default function DamageExpiryClient() {
   const { currencySymbol } = useSettings();
+  const num = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
   const [items, setItems] = useState<any[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -15,15 +20,11 @@ export default function DamageExpiryClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (typeFilter) query.append("type", typeFilter);
-
-        const res = await fetch(`/api/v1/inventory/damage-expiry?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setItems(data.items);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getDamageExpiry({
+          type: typeFilter || undefined,
+        });
+        setItems(data.items || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch damage & expiry error:", err);
       } finally {
@@ -59,7 +60,7 @@ export default function DamageExpiryClient() {
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Loss Value</div>
-          <div className="text-2xl font-black">{currencySymbol}{summary.totalValue.toFixed(2)}</div>
+          <div className="text-2xl font-black tabular-nums">{currencySymbol}{num(summary.totalValue).toFixed(2)}</div>
         </div>
       </div>
 
@@ -110,7 +111,7 @@ export default function DamageExpiryClient() {
                     <div className="text-xs">
                       <span className="font-bold">{item.quantity} units</span>
                       {item.value && (
-                        <span className="ml-4 text-muted-foreground">Value: {currencySymbol}{item.value.toFixed(2)}</span>
+                        <span className="ml-4 text-muted-foreground tabular-nums">Value: {currencySymbol}{num(item.value).toFixed(2)}</span>
                       )}
                     </div>
                   </div>

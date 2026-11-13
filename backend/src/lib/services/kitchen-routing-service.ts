@@ -122,7 +122,13 @@ export async function routeOrderRoundToStations(
           include: { table: true },
         },
         lines: {
-          include: { menuItem: true },
+          include: {
+            menuItem: {
+              include: {
+                product: { select: { categoryId: true } },
+              },
+            },
+          },
         },
       },
     });
@@ -168,10 +174,18 @@ export async function routeOrderRoundToStations(
       let targetStationId = defaultStation.id;
 
       if (line.menuItemId) {
-        // Direct item route
+        // Direct item route first, then category fallback route
         const itemRoute = routes.find((r) => r.menuItemId === line.menuItemId);
         if (itemRoute) {
           targetStationId = itemRoute.stationId;
+        } else {
+          const catId = line.menuItem?.product?.categoryId;
+          if (catId) {
+            const catRoute = routes.find((r) => !r.menuItemId && r.categoryId === catId);
+            if (catRoute) {
+              targetStationId = catRoute.stationId;
+            }
+          }
         }
       }
 
@@ -475,11 +489,26 @@ export async function getLiveKDSTickets(
     include: {
       station: true,
       order: {
-        include: { table: true },
+        include: {
+          table: {
+            include: { floor: true },
+          },
+        },
       },
       round: true,
       lines: {
-        include: { orderLine: true },
+        include: {
+          orderLine: {
+            include: {
+              menuItem: {
+                select: {
+                  id: true,
+                  prepTimeMinutes: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { createdAt: "asc" },
@@ -505,11 +534,26 @@ export async function getRecentServedTickets(
     include: {
       station: true,
       order: {
-        include: { table: true },
+        include: {
+          table: {
+            include: { floor: true },
+          },
+        },
       },
       round: true,
       lines: {
-        include: { orderLine: true },
+        include: {
+          orderLine: {
+            include: {
+              menuItem: {
+                select: {
+                  id: true,
+                  prepTimeMinutes: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { updatedAt: "desc" },

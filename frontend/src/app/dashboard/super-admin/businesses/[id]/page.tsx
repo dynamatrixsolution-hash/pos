@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 import {
   ArrowLeft,
   Building,
@@ -213,11 +214,7 @@ export default function BusinessDetailPage() {
   const fetchBusinessData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`);
-      if (!res.ok) {
-        throw new Error("Failed to load business details");
-      }
-      const data = await res.json();
+      const data = await apiClient.superAdmin.getBusinessById(businessId);
       setBusiness(data.business);
 
       if (data.business.subscription) {
@@ -266,26 +263,20 @@ export default function BusinessDetailPage() {
     }
     setSavingProfile(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_PROFILE",
-          payload: {
-            name: profileForm.name.trim(),
-            slug: profileForm.slug.trim().toLowerCase(),
-            logo: profileForm.logo.trim() || null,
-            email: profileForm.email.trim() || null,
-            phone: profileForm.phone.trim() || null,
-            address: profileForm.address.trim() || null,
-            currency: profileForm.currency,
-            businessType: profileForm.businessType,
-            taxNumber: profileForm.taxNumber.trim() || null,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update business profile");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "UPDATE_PROFILE",
+        payload: {
+          name: profileForm.name.trim(),
+          slug: profileForm.slug.trim().toLowerCase(),
+          logo: profileForm.logo.trim() || null,
+          email: profileForm.email.trim() || null,
+          phone: profileForm.phone.trim() || null,
+          address: profileForm.address.trim() || null,
+          currency: profileForm.currency,
+          businessType: profileForm.businessType,
+          taxNumber: profileForm.taxNumber.trim() || null,
+        },
+      }, "PUT");
 
       toast.success("Business profile & branding updated successfully");
       setIsEditProfileOpen(false);
@@ -316,16 +307,10 @@ export default function BusinessDetailPage() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "SUSPEND",
-          payload: { reason: suspendReason.trim() },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to suspend account");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "SUSPEND",
+        payload: { reason: suspendReason.trim() },
+      }, "PUT");
 
       toast.success("Account suspended successfully. Active tenant sessions terminated.");
       setSuspendModalOpen(false);
@@ -342,16 +327,10 @@ export default function BusinessDetailPage() {
   const handleActivate = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "ACTIVATE",
-          payload: { reason: "Account reactivated by platform administration" },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reactivate account");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "ACTIVATE",
+        payload: { reason: "Account reactivated by platform administration" },
+      }, "PUT");
 
       toast.success("Account reactivated successfully.");
       fetchBusinessData();
@@ -370,24 +349,18 @@ export default function BusinessDetailPage() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_SUBSCRIPTION",
-          payload: {
-            plan: editPlan,
-            packageType: editPackage,
-            billingCycle: editBillingCycle,
-            enabledModules: editModules,
-            userLimit: Number(editUserLimit),
-            branchLimit: Number(editBranchLimit),
-            reason: editReason.trim(),
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update subscription");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "UPDATE_SUBSCRIPTION",
+        payload: {
+          plan: editPlan,
+          packageType: editPackage,
+          billingCycle: editBillingCycle,
+          enabledModules: editModules,
+          userLimit: Number(editUserLimit),
+          branchLimit: Number(editBranchLimit),
+          reason: editReason.trim(),
+        },
+      }, "PUT");
 
       toast.success("Subscription & module entitlements updated.");
       setSubEditModalOpen(false);
@@ -413,23 +386,17 @@ export default function BusinessDetailPage() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "RECORD_PAYMENT",
-          payload: {
-            invoiceId: selectedInvoice.id,
-            amount: paymentAmount,
-            paymentMethod,
-            reference: paymentRef,
-            notes: paymentNotes,
-            reason: paymentReason.trim(),
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to record payment");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "RECORD_PAYMENT",
+        payload: {
+          invoiceId: selectedInvoice.id,
+          amount: paymentAmount,
+          paymentMethod,
+          reference: paymentRef,
+          notes: paymentNotes,
+          reason: paymentReason.trim(),
+        },
+      }, "PUT");
 
       toast.success("SaaS subscription payment recorded.");
       setPaymentModalOpen(false);
@@ -450,16 +417,10 @@ export default function BusinessDetailPage() {
   const handleDispatchPasswordReset = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "DISPATCH_PASSWORD_RESET",
-          payload: { reason: "Super Admin generated owner password reset invitation link" },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to generate reset link");
+      const data = await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "DISPATCH_PASSWORD_RESET",
+        payload: { reason: "Super Admin generated owner password reset invitation link" },
+      }, "PUT");
 
       setResetInviteUrl(data.inviteUrl);
       toast.success(data.message || "Password reset invitation generated.");
@@ -478,16 +439,10 @@ export default function BusinessDetailPage() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "REVOKE_SESSIONS",
-          payload: { reason: "Security access recovery: administrative session termination" },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to revoke sessions");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "REVOKE_SESSIONS",
+        payload: { reason: "Security access recovery: administrative session termination" },
+      }, "PUT");
 
       toast.success("All tenant sessions revoked successfully.");
       fetchBusinessData();
@@ -506,21 +461,15 @@ export default function BusinessDetailPage() {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "ADD_SUPPORT_NOTE",
-          payload: {
-            title: noteTitle.trim(),
-            content: noteContent.trim(),
-            priority: notePriority,
-            category: noteCategory,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to log note");
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "ADD_SUPPORT_NOTE",
+        payload: {
+          title: noteTitle.trim(),
+          content: noteContent.trim(),
+          priority: notePriority,
+          category: noteCategory,
+        },
+      }, "PUT");
 
       toast.success("Internal support note logged.");
       setNoteModalOpen(false);

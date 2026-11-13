@@ -22,22 +22,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // If no device is currently registered, bind this device on first login if under limits
+    // OWNER and SUPER_ADMIN users should bypass device-locking block and auto-update their binding
+    // to prevent administrative lockouts (e.g. from switching HTTP/HTTPS protocols, clearing storage, etc.)
+    if (user.role === "OWNER" || user.role === "SUPER_ADMIN") {
+      if (user.allowedDeviceId !== deviceId) {
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            allowedDeviceId: deviceId,
+            deviceName: deviceName || "Admin Workstation",
+          },
+        });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // If no device is currently registered for this staff user, bind this device on first login if under limits
     if (!user.allowedDeviceId) {
       const limits = await getBusinessLimits(user.businessId);
       if (limits) {
-        const deviceCount = await db.user.count({
+        // Query registered staff devices (excluding administrative roaming accounts)
+        const staffWithDevices = await db.user.findMany({
           where: {
             businessId: user.businessId,
             allowedDeviceId: { not: null },
             deletedAt: null,
+            role: { notIn: ["OWNER", "SUPER_ADMIN"] },
           },
+          select: { allowedDeviceId: true },
         });
-        if (deviceCount >= limits.devices) {
+
+        const distinctDevices = new Set(
+          staffWithDevices.map((s) => s.allowedDeviceId).filter(Boolean)
+        );
+
+        // Allow sharing of an already registered counter terminal
+        const isDeviceAlreadyRegistered = distinctDevices.has(deviceId);
+
+        const allowedDevicesCount = Math.max(Number(limits.devices) || 1, Number(limits.users) || 1);
+
+        if (!isDeviceAlreadyRegistered && distinctDevices.size >= allowedDevicesCount) {
           return NextResponse.json({
             success: false,
             error: "DEVICE_LIMIT_REACHED",
-            message: `Terminal device registration limit reached for your business. Your plan allows a maximum of ${limits.devices} registered devices. Please upgrade your subscription or contact support.`,
+            message: `Terminal device registration limit reached for your business. Your plan allows a maximum of ${allowedDevicesCount} registered devices. Please upgrade your subscription or contact support.`,
           });
         }
       }
@@ -46,7 +74,7 @@ export async function POST(request: Request) {
         where: { id: user.id },
         data: {
           allowedDeviceId: deviceId,
-          deviceName: deviceName || "Unknown Device",
+          deviceName: deviceName || "POS Terminal",
         },
       });
 
@@ -55,19 +83,6 @@ export async function POST(request: Request) {
 
     // Verify if the device matches
     if (user.allowedDeviceId === deviceId) {
-      return NextResponse.json({ success: true });
-    }
-
-    // OWNER and SUPER_ADMIN users should bypass device-locking block and auto-update their binding
-    // to prevent administrative lockouts (e.g. from switching HTTP/HTTPS protocols, clearing storage, etc.)
-    if (user.role === "OWNER" || user.role === "SUPER_ADMIN") {
-      await db.user.update({
-        where: { id: user.id },
-        data: {
-          allowedDeviceId: deviceId,
-          deviceName: deviceName || "Unknown Device",
-        },
-      });
       return NextResponse.json({ success: true });
     }
 

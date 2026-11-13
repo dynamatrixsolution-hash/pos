@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 function RefreshIcon({ spinning = false }: { spinning?: boolean }) {
   return (
@@ -121,12 +122,7 @@ export default function SuperAdminDashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/super-admin/dashboard");
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || "Failed to load platform overview");
-      }
-      const json = await res.json();
+      const json = await apiClient.superAdmin.getDashboard();
       setData(json);
     } catch (err: any) {
       toast.error(err.message || "Failed to load command center data");
@@ -143,19 +139,11 @@ export default function SuperAdminDashboardPage() {
   const handleApproveRequest = async (requestId: string, businessName: string) => {
     try {
       setApprovingId(requestId);
-      const res = await fetch(`/api/v1/super-admin/requests/${requestId}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "APPROVE",
-          reason: "Approved from Command Center",
-          adminNotes: "Approved from Command Center",
-        }),
+      await apiClient.superAdmin.approveRequest(requestId, {
+        action: "APPROVE",
+        reason: "Approved from Command Center",
+        adminNotes: "Approved from Command Center",
       });
-      const resJson = await res.json();
-      if (!res.ok) {
-        throw new Error(resJson.error || "Failed to approve application");
-      }
       toast.success(`"${businessName}" successfully approved and provisioned.`);
       await fetchDashboardData();
     } catch (err: any) {

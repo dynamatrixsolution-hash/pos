@@ -3,7 +3,19 @@
  * Defines permissions and restrictions for each role
  */
 
-export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
+export type Role =
+  | "SUPER_ADMIN"
+  | "OWNER"
+  | "MANAGER"
+  | "FRONT_DESK"
+  | "CASHIER"
+  | "WAITER"
+  | "KITCHEN"
+  | "HOUSEKEEPING"
+  | "ACCOUNTANT"
+  | "STOREKEEPER"
+  | "SALESPERSON"
+  | "DELIVERY";
 
 export interface Permission {
   resource: string;
@@ -16,6 +28,33 @@ export interface RolePermissions {
 
 // Define what each role can access and do
 export const rolePermissions: RolePermissions = {
+  WAITER: [
+    { resource: "restaurant", actions: ["create", "view", "update"] }, // Table orders, rounds & session service
+    { resource: "pos", actions: ["create", "view"] },
+    { resource: "products", actions: ["view"] },
+    { resource: "customers", actions: ["view", "create"] },
+  ],
+  KITCHEN: [
+    { resource: "restaurant", actions: ["view", "update"] }, // Kitchen Display (KDS) & bump bars
+    { resource: "products", actions: ["view"] },
+  ],
+  FRONT_DESK: [
+    { resource: "hotel", actions: ["create", "view", "update"] }, // Room reservations, checkin, checkout, folios
+    { resource: "customers", actions: ["create", "view", "update"] },
+    { resource: "payments", actions: ["create", "view"] },
+    { resource: "pilot", actions: ["view"] },
+  ],
+  HOUSEKEEPING: [
+    { resource: "hotel", actions: ["view", "update"] }, // Room cleaning, inspection, maintenance status
+  ],
+  ACCOUNTANT: [
+    { resource: "reports", actions: ["view"] }, // Financial, tax, CBMS reports
+    { resource: "expenses", actions: ["create", "view", "update"] },
+    { resource: "payments", actions: ["view", "create"] },
+    { resource: "sales", actions: ["view"] },
+    { resource: "purchases", actions: ["view"] },
+    { resource: "shifts", actions: ["view"] },
+  ],
   CASHIER: [
     { resource: "pos", actions: ["create", "view"] }, // POS Billing
     { resource: "restaurant", actions: ["create", "view", "update"] }, // Restaurant POS & Tables
@@ -24,6 +63,7 @@ export const rolePermissions: RolePermissions = {
     { resource: "products", actions: ["create", "view"] }, // View and add products
     { resource: "customers", actions: ["view", "create"] }, // View and register customers
     { resource: "sales", actions: ["view"] }, // View sales history
+    { resource: "shifts", actions: ["create", "view", "update"] }, // Cash Register & Shifts
   ],
   MANAGER: [
     // All services but limited to assigned warehouse
@@ -43,6 +83,7 @@ export const rolePermissions: RolePermissions = {
     { resource: "sales", actions: ["view"] },
     { resource: "branches", actions: ["view"] }, // View only
     { resource: "users", actions: ["view"] }, // View only users in their branch
+    { resource: "shifts", actions: ["create", "view", "update", "delete"] },
   ],
   OWNER: [
     // All services
@@ -63,6 +104,7 @@ export const rolePermissions: RolePermissions = {
     { resource: "branches", actions: ["create", "view", "update", "delete"] }, // Full branch management
     { resource: "users", actions: ["create", "view", "update", "delete"] },
     { resource: "settings", actions: ["view", "update"] },
+    { resource: "shifts", actions: ["create", "view", "update", "delete"] },
   ],
   SUPER_ADMIN: [
     // View-only for strategic data
@@ -70,12 +112,45 @@ export const rolePermissions: RolePermissions = {
     { resource: "users", actions: ["view"] }, // View users (employees)
     { resource: "reports", actions: ["view"] }, // View statistics/reports
     { resource: "dashboard", actions: ["view"] }, // Super admin dashboard
+    { resource: "shifts", actions: ["view"] },
   ],
 };
 
 // Define accessible resource patterns for each role
-export const accessibleResources = {
+export const accessibleResources: Record<string, string[]> = {
+  WAITER: [
+    "/dashboard/restaurant",
+    "/dashboard/restaurant/tables",
+    "/dashboard/restaurant/pos",
+    "/dashboard/restaurant/menu",
+  ],
+  KITCHEN: [
+    "/dashboard/restaurant/kds",
+    "/dashboard/restaurant/menu",
+  ],
+  FRONT_DESK: [
+    "/dashboard/hotel",
+    "/dashboard/hotel/rooms",
+    "/dashboard/hotel/stays",
+    "/dashboard/hotel/folios",
+    "/dashboard/hotel/guest-services",
+    "/dashboard/hotel/pilot-ops",
+    "/dashboard/customers",
+  ],
+  HOUSEKEEPING: [
+    "/dashboard/hotel/rooms",
+    "/dashboard/hotel/maintenance",
+  ],
+  ACCOUNTANT: [
+    "/dashboard/reports",
+    "/dashboard/expenses",
+    "/dashboard/sales",
+    "/dashboard/purchases",
+    "/dashboard/payments",
+    "/dashboard/shifts",
+  ],
   CASHIER: [
+    "/dashboard/shifts",
     "/dashboard/pos",
     "/dashboard/restaurant",
     "/dashboard/hotel",
@@ -87,6 +162,7 @@ export const accessibleResources = {
   ],
   MANAGER: [
     "/dashboard",
+    "/dashboard/shifts",
     "/dashboard/pos",
     "/dashboard/restaurant",
     "/dashboard/hotel",
@@ -104,6 +180,7 @@ export const accessibleResources = {
   ],
   OWNER: [
     "/dashboard",
+    "/dashboard/shifts",
     "/dashboard/pos",
     "/dashboard/restaurant",
     "/dashboard/hotel",
@@ -123,6 +200,7 @@ export const accessibleResources = {
   ],
   SUPER_ADMIN: [
     "/dashboard",
+    "/dashboard/shifts",
     "/dashboard/super-admin",
     "/dashboard/branches",
     "/dashboard/users",

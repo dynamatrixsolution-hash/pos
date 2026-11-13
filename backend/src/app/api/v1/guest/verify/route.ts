@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAndCreateGuestSession } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
+import { enforceRateLimit } from "@/lib/rate-limiter";
 import { z } from "zod";
 
 const verifyGuestSchema = z.object({
@@ -8,10 +9,14 @@ const verifyGuestSchema = z.object({
   guestLastName: z.string().optional().nullable(),
   guestPhoneLast4: z.string().optional().nullable(),
   verificationCode: z.string().optional().nullable(),
+  joinToken: z.string().optional().nullable(),
   deviceFingerprint: z.string().optional().nullable(),
 });
 
 export async function POST(req: Request) {
+  const rateLimitError = enforceRateLimit(req, "guest:verify", 15, 60);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await req.json();
     const parsed = verifyGuestSchema.parse(body);

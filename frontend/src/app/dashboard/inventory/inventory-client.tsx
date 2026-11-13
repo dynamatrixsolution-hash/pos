@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import { Search, AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Box, Store, BarChart3, Layers, Zap, TrendingUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 type InventoryItem = {
   id: string;
@@ -36,6 +37,11 @@ const INVENTORY_SECTIONS = [
   { id: "movement-history", label: "History", icon: "📜" },
 ];
 
+const num = (v: any) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
+
 export default function InventoryClient() {
   const { data: session } = useSession();
   const { currencySymbol } = useSettings();
@@ -62,12 +68,12 @@ export default function InventoryClient() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/inventory?search=${search}&lowStock=${lowStockOnly}`);
-      if (res.ok) {
-        const data = await res.json();
-        setInventory(data.inventory);
-        setMetrics(data.metrics);
-      }
+      const data = await apiClient.inventory.getInventory({
+        search: search || undefined,
+        lowStock: lowStockOnly || undefined,
+      });
+      setInventory(data.inventory);
+      setMetrics(data.metrics);
     } catch (err) {
       console.error("Fetch inventory error:", err);
     } finally {
@@ -100,22 +106,13 @@ export default function InventoryClient() {
     }
 
     try {
-      const res = await fetch("/api/v1/inventory/adjust", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: selectedProduct?.id,
-          branchId,
-          type: data.type,
-          quantity: Number(data.quantity),
-          notes: data.notes,
-        }),
+      await apiClient.inventory.adjustStock({
+        productId: selectedProduct?.id || "",
+        branchId,
+        type: data.type,
+        quantity: Number(data.quantity),
+        notes: data.notes || undefined,
       });
-
-      if (!res.ok) {
-        const resData = await res.json();
-        throw new Error(resData.error || "Adjustment failed");
-      }
 
       setIsModalOpen(false);
       fetchData();
@@ -133,7 +130,7 @@ export default function InventoryClient() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-card border border-border rounded-md p-5 flex flex-col justify-center relative overflow-hidden">
               <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Valuation</div>
-              <div className="text-2xl font-black">{currencySymbol}{metrics.totalValuation.toFixed(2)}</div>
+              <div className="text-2xl font-black tabular-nums">{currencySymbol}{num(metrics.totalValuation).toFixed(2)}</div>
               <Store className="absolute right-4 bottom-4 h-12 w-12 text-primary/10" />
             </div>
             <div className="bg-card border border-border rounded-md p-5 flex flex-col justify-center relative overflow-hidden">
@@ -204,8 +201,8 @@ export default function InventoryClient() {
                             {item.categoryName}
                           </span>
                         </td>
-                        <td className="py-3 px-2 text-right font-medium">{currencySymbol}{item.costPrice.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-primary">{currencySymbol}{item.sellingPrice.toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-medium tabular-nums">{currencySymbol}{num(item.costPrice).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-primary tabular-nums">{currencySymbol}{num(item.sellingPrice).toFixed(2)}</td>
                         <td className="py-3 px-2 text-center">
                           <span className="text-muted-foreground">{item.alertQuantity} {item.unitName}</span>
                         </td>

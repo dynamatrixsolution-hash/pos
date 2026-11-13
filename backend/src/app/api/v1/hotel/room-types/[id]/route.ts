@@ -19,6 +19,41 @@ const updateRoomTypeSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSessionContext();
+    if (!session) return authErrorResponse();
+
+    const { id } = await params;
+    const roomType = await (await import("@/lib/db")).db.roomType.findFirst({
+      where: {
+        id,
+        businessId: session.businessId,
+        isActive: true,
+      },
+      include: {
+        rooms: {
+          where: { isActive: true },
+        },
+      },
+    });
+
+    if (!roomType) {
+      return NextResponse.json({ error: "Room type not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ roomType });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch room type" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -59,6 +94,8 @@ export async function PATCH(
     );
   }
 }
+
+export const PUT = PATCH;
 
 export async function DELETE(
   req: Request,

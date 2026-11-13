@@ -72,7 +72,11 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      customers,
+      customers: customers.map((c) => ({
+        ...c,
+        balance: Number(c.balance || 0),
+        creditLimit: Number(c.creditLimit || 0),
+      })),
       pagination: {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limit),

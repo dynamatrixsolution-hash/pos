@@ -302,12 +302,26 @@ export async function deleteFloor(
     );
   }
 
-  // Check if historical inactive tables exist
+  // Count active hotel rooms on this floor
+  const activeRoomCount = await client.room.count({
+    where: { floorId, businessId, isActive: true },
+  });
+  if (activeRoomCount > 0) {
+    throw new FloorTableError(
+      `Cannot delete floor "${floor.name}": it contains ${activeRoomCount} active room(s). Reassign or delete rooms first.`,
+      409
+    );
+  }
+
+  // Check if historical inactive tables or rooms exist
   const totalTables = await client.restaurantTable.count({
     where: { floorId, businessId },
   });
+  const totalRooms = await client.room.count({
+    where: { floorId, businessId },
+  });
 
-  if (totalTables > 0) {
+  if (totalTables > 0 || totalRooms > 0) {
     await client.floor.update({
       where: { id: floorId },
       data: { isActive: false },
@@ -421,6 +435,32 @@ export async function getTables(
               status: true,
               openedAt: true,
               openedById: true,
+              notes: true,
+              restaurantOrders: {
+                where: { settlementStatus: { not: "PAID" }, fulfillmentStatus: { not: "CANCELLED" } },
+                select: {
+                  id: true,
+                  orderNumber: true,
+                  totalAmount: true,
+                  rounds: {
+                    orderBy: { roundNumber: "asc" },
+                    select: {
+                      id: true,
+                      roundNumber: true,
+                      status: true,
+                      lines: {
+                        select: {
+                          id: true,
+                          itemName: true,
+                          quantity: true,
+                          total: true,
+                          unitPrice: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         }

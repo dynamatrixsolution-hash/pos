@@ -167,6 +167,57 @@ export async function POST(request: Request) {
         }
       }
 
+      // 5b. If cash refund is issued or original sale was paid in cash, update active shift cashRefunds & expectedCash
+      const refundMethod = String((body as any).refundMethod || (sale.paymentStatus === "PAID" && !sale.customerId ? "CASH" : "CREDIT")).toUpperCase();
+      if (refundMethod === "CASH") {
+        const activeShift = await tx.cashierShift.findFirst({
+          where: {
+            businessId: context.businessId,
+            branchId: sale.branchId,
+            status: "OPEN",
+          },
+          orderBy: { startTime: "desc" },
+        });
+        if (activeShift) {
+          const refundPayment = await tx.payment.create({
+            data: {
+              businessId: context.businessId,
+              branchId: sale.branchId,
+              userId: context.userId,
+              customerId: sale.customerId || null,
+              saleId: sale.id,
+              amount: total,
+              method: "CASH",
+              source: "STAFF_RECORDED",
+              type: "SENT",
+              reference: noteNumber,
+              notes: `Cash refund for Credit Note ${noteNumber}: ${reason}`,
+              shiftId: activeShift.id,
+            },
+          });
+          await tx.cashierShift.update({
+            where: { id: activeShift.id },
+            data: {
+              cashRefunds: { increment: total },
+              expectedCash: { decrement: total },
+            },
+          });
+          await tx.shiftTransaction.create({
+            data: {
+              businessId: context.businessId,
+              branchId: sale.branchId,
+              shiftId: activeShift.id,
+              saleId: sale.id,
+              paymentId: refundPayment.id,
+              transactionType: "REFUND",
+              paymentMethod: "CASH",
+              amount: total,
+              cashEffect: -total,
+            },
+          });
+        }
+      }
+
       // 6. Write Audit Log
       await tx.auditLog.create({
         data: {

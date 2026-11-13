@@ -87,7 +87,15 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ entries });
+    const safeEntries = entries.map((entry) => ({
+      ...entry,
+      quantity: Number(entry.quantity || 0),
+      purchaseRate: Number(entry.purchaseRate || 0),
+      sellingPrice: Number(entry.sellingPrice || 0),
+      totalValue: Number(entry.totalValue || 0),
+    }));
+
+    return NextResponse.json({ entries: safeEntries });
   } catch (error: any) {
     console.error("GET opening stock error:", error);
     return NextResponse.json({ error: "Failed to fetch opening stock entries" }, { status: error instanceof CommerceError ? error.status : 500 });

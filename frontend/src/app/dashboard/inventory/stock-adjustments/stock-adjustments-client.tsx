@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { apiClient } from "@/core/api/api-client";
 
 export default function StockAdjustmentsClient() {
   const [adjustments, setAdjustments] = useState<any[]>([]);
@@ -14,16 +15,12 @@ export default function StockAdjustmentsClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (typeFilter) query.append("type", typeFilter);
-        query.append("days", days.toString());
-
-        const res = await fetch(`/api/v1/inventory/adjustments-history?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setAdjustments(data.adjustments);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getAdjustmentsHistory({
+          type: typeFilter || undefined,
+          days,
+        });
+        setAdjustments(data.adjustments || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch adjustments error:", err);
       } finally {

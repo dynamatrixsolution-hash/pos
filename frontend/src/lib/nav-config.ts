@@ -38,6 +38,7 @@ import {
   Rocket,
   MessageSquare,
   BellRing,
+  BookOpen,
 } from "lucide-react";
 
 export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
@@ -49,41 +50,48 @@ export interface NavItem {
   roles: Role[];
   feature?: string;
   permission?: string;
+  group?: string;
   children?: NavItem[];
 }
 
 /**
  * Navigation Configuration with Role-Based Access
  * 
- * CASHIER: POS Billing, Products, Sales History, Inventory, Customers
- * MANAGER: All services (limited to assigned warehouse)
- * OWNER: All services + Branch management + User management
- * SUPER_ADMIN: Dashboard, Business Management, Subscription Management, Revenue & Payments, Users, Support, Activity Logs, Platform Settings, Monitoring
+ * Order:
+ * 1. Dashboard
+ * 2. Restaurant (Table Status, Restaurant POS, Kitchen Display)
+ * 3. Hotel & Stays (if hotel enabled)
+ * 4. Menu Management (/dashboard/products)
+ * 5. Tables & Cabins (/dashboard/restaurant/tables)
+ * 6. Generate Menu QR (/dashboard/restaurant/qr)
+ * 7. Remaining back-office & administration sections
  */
 export const navigationConfig: NavItem[] = [
-  // Dashboard - Available to Manager, Owner, Super Admin
+  // 1. Dashboard - Available to Manager, Owner, Super Admin
   {
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
     roles: ["SUPER_ADMIN", "OWNER", "MANAGER"],
+    group: "Operations",
   },
 
-  // Restaurant Dining - Available to Cashier, Manager, Owner
+  // 2. Restaurant Operations (Table Status, POS & KDS)
   {
     title: "Restaurant",
     icon: UtensilsCrossed,
     roles: ["OWNER", "MANAGER", "CASHIER"],
+    group: "Operations",
     children: [
       {
-        title: "Tables and Floors",
-        href: "/dashboard/restaurant/tables",
+        title: "Table Status",
+        href: "/dashboard/restaurant/pos?view=tables",
         icon: Store,
         roles: ["OWNER", "MANAGER", "CASHIER"],
       },
       {
         title: "Restaurant POS",
-        href: "/dashboard/restaurant/pos",
+        href: "/dashboard/restaurant/pos?view=menu",
         icon: ShoppingCart,
         roles: ["OWNER", "MANAGER", "CASHIER"],
       },
@@ -96,14 +104,24 @@ export const navigationConfig: NavItem[] = [
     ],
   },
 
-  // Hotel & Stays - Available to Cashier, Manager, Owner
+  // 2b. Cash Register & Shift Management
+  {
+    title: "Cash Registers & Shifts",
+    href: "/dashboard/shifts",
+    icon: DollarSign,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    group: "Operations",
+  },
+
+  // 3. Hotel & Stays - Available to Cashier, Manager, Owner (hidden when restaurant-only)
   {
     title: "Hotel & Stays",
     icon: BedDouble,
     roles: ["OWNER", "MANAGER", "CASHIER"],
+    group: "Operations",
     children: [
       {
-        title: "Room Rack & Tape Chart",
+        title: "Rooms & Floor Manager",
         href: "/dashboard/hotel/rooms",
         icon: BedDouble,
         roles: ["OWNER", "MANAGER", "CASHIER"],
@@ -133,7 +151,7 @@ export const navigationConfig: NavItem[] = [
         roles: ["OWNER", "MANAGER", "CASHIER"],
       },
       {
-        title: "Guest QR & Service Desk",
+        title: "Guest QR & Self-Order Stand",
         href: "/dashboard/hotel/qr-portal",
         icon: QrCode,
         roles: ["OWNER", "MANAGER", "CASHIER"],
@@ -148,31 +166,42 @@ export const navigationConfig: NavItem[] = [
     ],
   },
 
-  // POS Billing - Available to Cashier, Manager, Owner
+  // 4. Menu Management (formerly Products) - Cashier, Manager, Owner
   {
-    title: "POS Billing",
-    href: "/dashboard/pos",
-    icon: ShoppingCart,
-    roles: ["OWNER", "MANAGER", "CASHIER"],
-    feature: "POS Billing",
-  },
-
-  // Products - Cashier, Manager, Owner (Cashier has view-only access)
-  {
-    title: "Products",
+    title: "Menu Management",
     href: "/dashboard/products",
-    icon: Package,
+    icon: BookOpen,
     roles: ["OWNER", "MANAGER", "CASHIER"],
     feature: "Products",
+    group: "Dining & Menu",
   },
 
-  // Category & Unit - Manager and above
+  // 5. Tables & Cabins - Direct on Sidebar
+  {
+    title: "Tables & Cabins",
+    href: "/dashboard/restaurant/tables",
+    icon: Store,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    group: "Dining & Menu",
+  },
+
+  // 6. Generate Menu QR - Direct on Sidebar
+  {
+    title: "Generate Menu QR",
+    href: "/dashboard/restaurant/qr",
+    icon: QrCode,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    group: "Dining & Menu",
+  },
+
+  // 7. Remaining Sections: Category & Unit - Manager and above
   {
     title: "Category & Unit",
     href: "/dashboard/categories",
     icon: Layers,
     roles: ["OWNER", "MANAGER"],
     feature: "Products",
+    group: "Dining & Menu",
   },
 
   // Purchase - Manager and above
@@ -182,14 +211,16 @@ export const navigationConfig: NavItem[] = [
     icon: ShoppingCart,
     roles: ["OWNER", "MANAGER"],
     feature: "Purchases",
+    group: "Inventory & Finance",
   },
 
   // Inventory - Cashier, Manager, Owner
   {
     title: "Inventory",
-    icon: Store,
+    icon: Boxes,
     roles: ["OWNER", "MANAGER", "CASHIER"],
     feature: "Inventory",
+    group: "Inventory & Finance",
     children: [
       {
         title: "Overview",
@@ -261,6 +292,7 @@ export const navigationConfig: NavItem[] = [
     icon: Users,
     roles: ["OWNER", "MANAGER", "CASHIER"],
     feature: "Customers",
+    group: "Inventory & Finance",
   },
 
   // Suppliers - Manager and above
@@ -270,6 +302,7 @@ export const navigationConfig: NavItem[] = [
     icon: Truck,
     roles: ["OWNER", "MANAGER"],
     feature: "Suppliers",
+    group: "Inventory & Finance",
   },
 
   // Payments - Manager, Owner
@@ -278,6 +311,7 @@ export const navigationConfig: NavItem[] = [
     icon: CreditCard,
     roles: ["OWNER", "MANAGER"],
     feature: "Payments",
+    group: "Inventory & Finance",
     children: [
       {
         title: "Payment Received",
@@ -300,6 +334,7 @@ export const navigationConfig: NavItem[] = [
     icon: BarChart3,
     roles: ["OWNER", "MANAGER"],
     feature: "Reports",
+    group: "Inventory & Finance",
     children: [
       {
         title: "Daily Reports",
@@ -352,6 +387,7 @@ export const navigationConfig: NavItem[] = [
     icon: Receipt,
     roles: ["OWNER", "MANAGER"],
     feature: "Expenses",
+    group: "Inventory & Finance",
   },
 
   // Sales History - Cashier view
@@ -361,6 +397,7 @@ export const navigationConfig: NavItem[] = [
     icon: History,
     roles: ["CASHIER"],
     feature: "POS Billing",
+    group: "Inventory & Finance",
   },
 
   // Branches Management - Owner only
@@ -370,6 +407,7 @@ export const navigationConfig: NavItem[] = [
     icon: GitBranch,
     roles: ["OWNER"],
     feature: "Multi Branch",
+    group: "Administration",
   },
 
   // Users & Roles - Owner only (SUPER_ADMIN removed)
@@ -377,6 +415,7 @@ export const navigationConfig: NavItem[] = [
     title: "Users & Roles",
     icon: Shield,
     roles: ["OWNER"],
+    group: "Administration",
     children: [
       {
         title: "User List",
@@ -418,18 +457,21 @@ export const navigationConfig: NavItem[] = [
     href: "/dashboard/users",
     icon: Users,
     roles: ["MANAGER"],
+    group: "Administration",
   },
   {
     title: "Subscription",
     href: "/dashboard/subscriptions",
     icon: CreditCard,
     roles: ["OWNER"],
+    group: "Administration",
   },
   {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,
     roles: ["OWNER", "MANAGER"],
+    group: "Administration",
   },
 
   // ==========================================

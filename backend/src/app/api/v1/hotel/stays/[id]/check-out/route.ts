@@ -33,6 +33,7 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (error: any) {
+    console.error("[CheckOut Error]:", error);
     if (error instanceof HotelError || error?.name === "HotelError" || typeof error?.statusCode === "number") {
       return NextResponse.json(
         { error: error.message, code: error.code },

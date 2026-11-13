@@ -20,6 +20,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface AuditLogItem {
   id: string;
@@ -52,9 +53,7 @@ export default function ActivityLogsPage() {
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/super-admin/activity-logs");
-      if (!res.ok) throw new Error("Failed to load platform activity logs");
-      const data = await res.json();
+      const data = await apiClient.superAdmin.getActivityLogs();
       setLogs(data.logs || []);
     } catch (err: any) {
       toast.error(err.message || "Failed to load activity logs");

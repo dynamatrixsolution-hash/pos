@@ -21,6 +21,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface PlatformUser {
   id: string;
@@ -93,29 +94,23 @@ export default function SuperAdminUsersPage() {
   const fetchUsersData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (search.trim()) params.set("search", search.trim());
-      if (roleFilter !== "ALL") params.set("role", roleFilter);
-      if (businessFilter !== "ALL") params.set("businessId", businessFilter);
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      const data = await apiClient.superAdmin.getSuperAdminUsers({
+        search: search.trim() || undefined,
+        role: roleFilter,
+        businessId: businessFilter,
+        status: statusFilter,
+      });
 
-      const res = await fetch(`/api/v1/super-admin/users?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-        if (data.businesses) setBusinesses(data.businesses);
-        if (data.counts) {
-          setCounts({
-            total: data.counts.total ?? 0,
-            active: data.counts.active ?? 0,
-            pendingInvites: data.counts.pendingInvites ?? 0,
-            businessOwners: data.counts.businessOwners ?? data.counts.institutionAdmins ?? 0,
-            suspended: data.counts.suspended ?? 0,
-          });
-        }
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load user accounts");
+      setUsers(data.users || []);
+      if (data.businesses) setBusinesses(data.businesses);
+      if (data.counts) {
+        setCounts({
+          total: data.counts.total ?? 0,
+          active: data.counts.active ?? 0,
+          pendingInvites: data.counts.pendingInvites ?? 0,
+          businessOwners: data.counts.businessOwners ?? data.counts.institutionAdmins ?? 0,
+          suspended: data.counts.suspended ?? 0,
+        });
       }
     } catch {
       toast.error("Network connection error loading users.");
@@ -151,17 +146,10 @@ export default function SuperAdminUsersPage() {
   // Toggle user status
   const handleToggleUser = async (user: PlatformUser) => {
     try {
-      const res = await fetch("/api/v1/super-admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "TOGGLE_STATUS",
-          userId: user.id,
-        }),
+      const data = await apiClient.superAdmin.manageUser({
+        action: "TOGGLE_STATUS",
+        userId: user.id,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update user status");
 
       toast.success(data.message || "User status updated.");
       fetchUsersData();
@@ -173,17 +161,10 @@ export default function SuperAdminUsersPage() {
   // Reset user password
   const handleResetPassword = async (user: PlatformUser) => {
     try {
-      const res = await fetch("/api/v1/super-admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "RESET_PASSWORD",
-          userId: user.id,
-        }),
+      const data = await apiClient.superAdmin.manageUser({
+        action: "RESET_PASSWORD",
+        userId: user.id,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reset password");
 
       setResetPasswordUser(user);
       setTempPasswordResult(data.tempPassword);
@@ -203,20 +184,13 @@ export default function SuperAdminUsersPage() {
 
     setIsSubmittingNewLogin(true);
     try {
-      const res = await fetch("/api/v1/super-admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "GENERATE_LOGIN",
-          businessId: newLoginBusinessId,
-          name: newLoginName,
-          email: newLoginEmail,
-          role: newLoginRole,
-        }),
+      const data = await apiClient.superAdmin.manageUser({
+        action: "GENERATE_LOGIN",
+        businessId: newLoginBusinessId,
+        name: newLoginName,
+        email: newLoginEmail,
+        role: newLoginRole,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to generate login");
 
       setShowGenerateLoginModal(false);
       setNewLoginName("");

@@ -7,6 +7,39 @@ const categorySchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const category = await db.category.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+      include: {
+        subcategories: {
+          where: { deletedAt: null },
+        },
+        _count: {
+          select: { products: { where: { deletedAt: null } } },
+        },
+      },
+    });
+
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ category });
+  } catch (error: any) {
+    console.error("GET category error:", error);
+    return NextResponse.json({ error: "Failed to fetch category" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -66,6 +99,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

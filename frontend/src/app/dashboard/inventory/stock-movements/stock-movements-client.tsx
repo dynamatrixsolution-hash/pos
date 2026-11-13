@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { ArrowDownRight, ArrowUpRight, Repeat2, Search } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 export default function StockMovementsClient() {
   const { currencySymbol } = useSettings();
+  const num = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
   const [movements, setMovements] = useState<any[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [days, setDays] = useState(30);
@@ -16,16 +21,12 @@ export default function StockMovementsClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (typeFilter) query.append("type", typeFilter);
-        query.append("days", days.toString());
-
-        const res = await fetch(`/api/v1/inventory/stock-movements?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMovements(data.movements);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getStockMovements({
+          type: typeFilter || undefined,
+          days,
+        });
+        setMovements(data.movements || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch movements error:", err);
       } finally {
@@ -121,7 +122,7 @@ export default function StockMovementsClient() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-foreground">{currencySymbol}{movement.total.toFixed(2)}</div>
+                    <div className="text-sm font-bold text-foreground tabular-nums">{currencySymbol}{num(movement.total).toFixed(2)}</div>
                     <div className="text-[10px] text-muted-foreground">{movement.user}</div>
                     <div className="text-[10px] text-muted-foreground">
                       {new Date(movement.date).toLocaleDateString()}

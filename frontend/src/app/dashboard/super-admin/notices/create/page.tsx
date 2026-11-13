@@ -24,6 +24,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface TenantBusiness {
   id: string;
@@ -77,11 +78,8 @@ export default function CreateNoticePage() {
 
   const fetchTenantBusinesses = async () => {
     try {
-      const res = await fetch("/api/v1/super-admin/notices");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.businesses) setBusinesses(data.businesses);
-      }
+      const data = await apiClient.superAdmin.getNotices();
+      if (data.businesses) setBusinesses(data.businesses);
     } catch (err) {
       console.error("Failed to fetch tenant businesses:", err);
     }
@@ -145,14 +143,7 @@ export default function CreateNoticePage() {
             : null,
       };
 
-      const res = await fetch("/api/v1/super-admin/notices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create announcement notice");
+      await apiClient.superAdmin.createNotice(payload);
 
       toast.success(isDraft ? "Draft saved successfully!" : "Notice broadcasted successfully!");
       setTimeout(() => {

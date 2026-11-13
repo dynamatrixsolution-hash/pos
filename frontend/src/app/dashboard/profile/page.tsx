@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useSession } from "next-auth/react";
 import { User, Phone, Mail, Lock, Shield, Save, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { apiClient } from "@/core/api/api-client";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -60,16 +61,11 @@ export default function ProfilePage() {
   const loadProfile = React.useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/users/profile");
-      if (res.ok) {
-        const data = await res.json();
-        setValue("name", data.name);
-        setValue("phone", data.phone || "");
-        setUserEmail(data.email);
-        setUserRole(data.role);
-      } else {
-        setErrorMsg("Failed to load user profile details.");
-      }
+      const data = await apiClient.users.getProfile();
+      setValue("name", data.name);
+      setValue("phone", data.phone || "");
+      setUserEmail(data.email);
+      setUserRole(data.role);
     } catch (err) {
       console.error(err);
       setErrorMsg("Error connecting to server.");
@@ -87,34 +83,24 @@ export default function ProfilePage() {
     setSuccessMsg(null);
     setErrorMsg(null);
     try {
-      const res = await fetch("/api/v1/users/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          phone: data.phone || null,
-          password: data.password || null,
-        }),
+      const updatedUser = await apiClient.users.updateProfile({
+        name: data.name,
+        phone: data.phone || null,
+        password: data.password || null,
       });
 
-      if (res.ok) {
-        const updatedUser = await res.json();
-        setSuccessMsg("Profile settings updated successfully!");
-        
-        // Clear password fields
-        setValue("password", "");
-        setValue("confirmPassword", "");
-        
-        // Sync name change to active session state instantly
-        await update({
-          name: updatedUser.name,
-        });
-      } else {
-        const errJson = await res.json();
-        setErrorMsg(errJson.error || "Failed to update profile settings.");
-      }
-    } catch (err) {
-      setErrorMsg("Network error. Please try again.");
+      setSuccessMsg("Profile settings updated successfully!");
+      
+      // Clear password fields
+      setValue("password", "");
+      setValue("confirmPassword", "");
+      
+      // Sync name change to active session state instantly
+      await update({
+        name: updatedUser.name,
+      });
+    } catch (err: any) {
+      setErrorMsg(err.message || "Network error. Please try again.");
     } finally {
       setSaving(false);
     }

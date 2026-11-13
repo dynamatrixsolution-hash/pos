@@ -37,8 +37,16 @@ export async function GET(req: Request) {
 
     const ordersResult = await getGuestOrdersAndTracking(sessionToken);
 
+    const tablePin = validation.tableSession
+      ? (validation.tableSession.notes?.match(/\[PIN:(\d{4})\]/i)?.[1] ?? null)
+      : null;
+
     return NextResponse.json({
-      session: validation.session,
+      session: {
+        ...validation.session,
+        tablePin,
+      },
+      tablePin,
       grant: validation.grant,
       qrLocation: validation.qrLocation,
       folioSummary,

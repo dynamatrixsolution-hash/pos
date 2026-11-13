@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limiter";
+import { pepperPassword } from "@/lib/security";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -14,6 +16,9 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const rateLimitError = enforceRateLimit(request, "auth:register", 10, 15 * 60);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const result = registerSchema.safeParse(body);
@@ -49,9 +54,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash the password
+    // Hash the password with pepper
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(pepperPassword(password), salt);
 
     // Perform transaction
     const transaction = await db.$transaction(async (tx) => {

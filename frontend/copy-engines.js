@@ -12,9 +12,29 @@ if (fs.existsSync(srcDir)) {
   let copiedCount = 0;
   files.forEach((file) => {
     if (file.endsWith(".node")) {
-      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
-      console.log(`Copied ${file} to frontend/client directory.`);
-      copiedCount++;
+      const srcPath = path.join(srcDir, file);
+      const destPath = path.join(destDir, file);
+      try {
+        if (fs.existsSync(destPath)) {
+          const srcStat = fs.statSync(srcPath);
+          const destStat = fs.statSync(destPath);
+          if (srcStat.size === destStat.size) {
+            console.log(`${file} already up to date in frontend/client directory.`);
+            copiedCount++;
+            return;
+          }
+        }
+        fs.copyFileSync(srcPath, destPath);
+        console.log(`Copied ${file} to frontend/client directory.`);
+        copiedCount++;
+      } catch (err) {
+        if (err.code === "EBUSY") {
+          console.warn(`Warning: ${file} is currently locked by a running process, skipping copy.`);
+          copiedCount++;
+        } else {
+          throw err;
+        }
+      }
     }
   });
   if (copiedCount === 0) {

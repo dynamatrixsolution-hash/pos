@@ -54,9 +54,9 @@ export async function GET(request: Request) {
         visibleStocks = p.productStocks.filter((s) => s.branchId === userBranchId);
       }
 
-      const totalQuantity = visibleStocks.reduce((sum, stock) => sum + stock.quantity, 0);
-      const isLowStock = totalQuantity <= p.alertQuantity;
-      const valuation = totalQuantity * Number(p.costPrice);
+      const totalQuantity = visibleStocks.reduce((sum, stock) => sum + Number(stock.quantity || 0), 0);
+      const isLowStock = totalQuantity <= Number(p.alertQuantity || 0);
+      const valuation = totalQuantity * Number(p.costPrice || 0);
 
       return {
         id: p.id,
@@ -65,16 +65,16 @@ export async function GET(request: Request) {
         barcode: p.barcode || "N/A",
         categoryName: p.category?.name || "Uncategorized",
         unitName: p.unit?.name || "Units",
-        costPrice: p.costPrice,
-        sellingPrice: p.sellingPrice,
-        alertQuantity: p.alertQuantity,
+        costPrice: Number(p.costPrice || 0),
+        sellingPrice: Number(p.sellingPrice || 0),
+        alertQuantity: Number(p.alertQuantity || 0),
         totalQuantity,
         isLowStock,
         valuation,
         stocks: visibleStocks.map((s) => ({
           branchId: s.branchId,
-          branchName: s.branch.name,
-          quantity: s.quantity,
+          branchName: s.branch?.name || "Main Branch",
+          quantity: Number(s.quantity || 0),
         })),
       };
     });
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     }
 
     // Summary metrics
-    const totalValuation = inventory.reduce((sum, item) => sum + item.valuation, 0);
+    const totalValuation = inventory.reduce((sum, item) => sum + Number(item.valuation || 0), 0);
     const lowStockCount = inventory.filter((item) => item.isLowStock).length;
     const totalItems = inventory.length;
 
@@ -114,3 +114,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
   }
 }
+
+export { POST } from "./adjust/route";
+

@@ -21,6 +21,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface ConversationMessage {
   id: string;
@@ -100,19 +101,11 @@ export default function SupportTicketsPage() {
   const loadTickets = async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams();
-      if (statusFilter !== "ALL") q.set("status", statusFilter);
-      if (priorityFilter !== "ALL") q.set("priority", priorityFilter);
-      if (categoryFilter !== "ALL") q.set("category", categoryFilter);
-
-      const res = await fetch(`/api/v1/super-admin/support?${q.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTickets(data.tickets || []);
-        if (data.metrics) setMetrics(data.metrics);
-      } else {
-        toast.error("Failed to load support tickets");
-      }
+      const data = await apiClient.superAdmin.getSupportTickets({
+        status: statusFilter !== "ALL" ? statusFilter : undefined,
+      });
+      setTickets(data.tickets || []);
+      if (data.metrics) setMetrics(data.metrics);
     } catch (err: any) {
       console.error("Failed to load support tickets:", err);
       toast.error(err.message || "Failed to load support tickets");
@@ -139,20 +132,13 @@ export default function SupportTicketsPage() {
 
     setUpdating(true);
     try {
-      const res = await fetch("/api/v1/super-admin/support", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedTicket.id,
-          status: newStatus,
-          assignedTo: assignedAdmin.trim() || undefined,
-          replyMessage: replyMessage.trim(),
-          reason: auditReason.trim() || `Replied to ticket #${selectedTicket.ticketNumber}`,
-        }),
+      const data = await apiClient.superAdmin.updateSupportTicket({
+        id: selectedTicket.id,
+        status: newStatus,
+        assignedTo: assignedAdmin.trim() || undefined,
+        replyMessage: replyMessage.trim(),
+        reason: auditReason.trim() || `Replied to ticket #${selectedTicket.ticketNumber}`,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send reply");
 
       toast.success("Reply dispatched to ticket conversation.");
       setReplyMessage("");
@@ -172,19 +158,12 @@ export default function SupportTicketsPage() {
 
     setUpdating(true);
     try {
-      const res = await fetch("/api/v1/super-admin/support", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: selectedTicket.id,
-          status: targetStatus,
-          assignedTo: assignedAdmin.trim() || undefined,
-          reason: `Status updated to ${targetStatus}`,
-        }),
+      const data = await apiClient.superAdmin.updateSupportTicket({
+        id: selectedTicket.id,
+        status: targetStatus,
+        assignedTo: assignedAdmin.trim() || undefined,
+        reason: `Status updated to ${targetStatus}`,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update status");
 
       toast.success(`Ticket status updated to ${targetStatus}`);
       setNewStatus(targetStatus);

@@ -36,9 +36,8 @@ export async function GET(request: Request) {
       start.setHours(0, 0, 0, 0);
     } else if (range === "fiscalYear") {
       if (useNepali) {
-        // Nepal Fiscal Year starts on Shrawan 1 (approx July 16) and ends on Ashadh 31 (approx July 15 next year)
         const currentYear = start.getFullYear();
-        const currentMonth = start.getMonth(); // 0-indexed: July is 6
+        const currentMonth = start.getMonth();
         const currentDate = start.getDate();
 
         if (currentMonth > 6 || (currentMonth === 6 && currentDate >= 16)) {
@@ -49,84 +48,150 @@ export async function GET(request: Request) {
           end = new Date(currentYear, 6, 15, 23, 59, 59, 999);
         }
       } else {
-        // Calendar Year
         const currentYear = start.getFullYear();
         start = new Date(currentYear, 0, 1, 0, 0, 0, 0);
         end = new Date(currentYear, 11, 31, 23, 59, 59, 999);
       }
     } else {
-      // Default to today
       start.setHours(0, 0, 0, 0);
     }
 
-    // 1. Total Sales (current month)
-    const salesAggregate = await db.sale.aggregate({
+    // Fetch completed Sales in period (to check which RestaurantOrders are already mirrored)
+    const completedSalesInPeriod = await db.sale.findMany({
       where: {
         businessId: context.businessId,
-        branchId,
+        ...(branchId ? { branchId } : {}),
         status: "COMPLETED",
+        deletedAt: null,
         createdAt: { gte: start, lte: end },
       },
-      _sum: {
+      select: {
+        id: true,
+        invoiceNumber: true,
         total: true,
         discount: true,
         tax: true,
+        notes: true,
+        createdAt: true,
       },
     });
 
-    const totalSales = salesAggregate._sum.total ? Number(salesAggregate._sum.total) : 0;
+    const mirroredOrderIds = new Set<string>();
+    const mirroredOrderNums = new Set<string>();
+    for (const s of completedSalesInPeriod) {
+      mirroredOrderNums.add(s.invoiceNumber);
+      const match = s.notes?.match(/\[ORDER_ID:([^\]]+)\]/);
+      if (match?.[1]) mirroredOrderIds.add(match[1]);
+    }
 
-    // 2. Total Purchases (current month)
+    // Fetch settled RestaurantOrders in period (matched by updatedAt or createdAt)
+    const settledRestaurantOrders = await db.restaurantOrder.findMany({
+      where: {
+        businessId: context.businessId,
+        ...(branchId ? { branchId } : {}),
+        settlementStatus: "PAID",
+        fulfillmentStatus: { not: "CANCELLED" },
+        OR: [
+          { updatedAt: { gte: start, lte: end } },
+          { createdAt: { gte: start, lte: end } },
+        ],
+      },
+      include: {
+        table: true,
+        orderLines: {
+          where: {
+            fulfillmentStatus: { not: "CANCELLED" },
+            acceptanceStatus: { not: "REJECTED" },
+          },
+          include: {
+            menuItem: {
+              include: {
+                section: true,
+                product: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const unmirroredSettledOrders = settledRestaurantOrders.filter(
+      (ro) => !mirroredOrderIds.has(ro.id) && !mirroredOrderNums.has(ro.orderNumber)
+    );
+
+    const getOrderRevenue = (ro: any) => {
+      const paid = Number(ro.paidAmount || 0);
+      const tot = Number(ro.totalAmount || 0);
+      if (paid > 0) return paid;
+      if (tot > 0) return tot;
+      if (Array.isArray(ro.orderLines)) {
+        return ro.orderLines.reduce(
+          (acc: number, l: any) => acc + Number(l.total || Number(l.unitPrice || l.basePrice || 0) * l.quantity),
+          0
+        );
+      }
+      return 0;
+    };
+
+    const salesTableTotal = completedSalesInPeriod.reduce(
+      (sum, s) => sum + Number(s.total || 0),
+      0
+    );
+    const restaurantUnmirroredTotal = unmirroredSettledOrders.reduce(
+      (sum, ro) => sum + getOrderRevenue(ro),
+      0
+    );
+
+    const totalSales = salesTableTotal + restaurantUnmirroredTotal;
+
+    // 2. Total Purchases
     const purchasesAggregate = await db.purchase.aggregate({
       where: {
         businessId: context.businessId,
-        branchId,
+        ...(branchId ? { branchId } : {}),
         status: "RECEIVED",
         createdAt: { gte: start, lte: end },
       },
-      _sum: {
-        total: true,
-      },
+      _sum: { total: true },
     });
+    const totalPurchases = purchasesAggregate._sum.total
+      ? Number(purchasesAggregate._sum.total)
+      : 0;
 
-    const totalPurchases = purchasesAggregate._sum.total ? Number(purchasesAggregate._sum.total) : 0;
-
-    // 3. Total Expenses (current month)
+    // 3. Total Expenses
     const expensesAggregate = await db.expense.aggregate({
       where: {
         businessId: context.businessId,
-        branchId,
+        ...(branchId ? { branchId } : {}),
         createdAt: { gte: start, lte: end },
       },
-      _sum: {
-        amount: true,
-      },
+      _sum: { amount: true },
     });
+    const totalExpenses = expensesAggregate._sum.amount
+      ? Number(expensesAggregate._sum.amount)
+      : 0;
 
-    const totalExpenses = expensesAggregate._sum.amount ? Number(expensesAggregate._sum.amount) : 0;
-
-    // 3b. Total Income (current month)
+    // 3b. Total Income
     const incomeAggregate = await db.income.aggregate({
       where: {
         businessId: context.businessId,
-        branchId,
+        ...(branchId ? { branchId } : {}),
         createdAt: { gte: start, lte: end },
       },
-      _sum: {
-        amount: true,
-      },
+      _sum: { amount: true },
     });
+    const totalIncome = incomeAggregate._sum.amount
+      ? Number(incomeAggregate._sum.amount)
+      : 0;
 
-    const totalIncome = incomeAggregate._sum.amount ? Number(incomeAggregate._sum.amount) : 0;
-
-    // 4. Calculate Net Profit: Sales Revenue - Cost of Goods Sold (COGS) - Expenses + Income
-    // Fetch all completed sales items for this month to calculate COGS
+    // 4. Calculate COGS & Profit from both SaleItems and unmirrored RestaurantOrder lines
     const saleItems = await db.saleItem.findMany({
       where: {
         sale: {
           businessId: context.businessId,
-          branchId,
+          ...(branchId ? { branchId } : {}),
           status: "COMPLETED",
+          deletedAt: null,
           createdAt: { gte: start, lte: end },
         },
       },
@@ -135,10 +200,32 @@ export async function GET(request: Request) {
         quantity: true,
         costPrice: true,
         total: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            category: { select: { name: true } },
+          },
+        },
       },
     });
 
-    const costOfGoodsSold = saleItems.reduce((sum: number, item: any) => sum + item.quantity * Number(item.costPrice), 0);
+    const saleItemsCogs = saleItems.reduce(
+      (sum: number, item: any) => sum + Number(item.quantity) * Number(item.costPrice || 0),
+      0
+    );
+    const restaurantLinesCogs = unmirroredSettledOrders.reduce((sum, ro) => {
+      return (
+        sum +
+        ro.orderLines.reduce((lSum, l) => {
+          const unitCost = Number(l.menuItem?.product?.costPrice || 0);
+          return lSum + l.quantity * unitCost;
+        }, 0)
+      );
+    }, 0);
+
+    const costOfGoodsSold = saleItemsCogs + restaurantLinesCogs;
     const grossProfit = totalSales - costOfGoodsSold;
     const netProfit = grossProfit + totalIncome - totalExpenses;
 
@@ -163,7 +250,10 @@ export async function GET(request: Request) {
 
     const lowStockAlerts = products
       .map((prod: any) => {
-        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
+        const branchStock = prod.productStocks.reduce(
+          (sum: number, s: { quantity: number }) => sum + s.quantity,
+          0
+        );
         return {
           id: prod.id,
           name: prod.name,
@@ -176,108 +266,209 @@ export async function GET(request: Request) {
       .filter((prod: any) => prod.currentQuantity <= prod.alertQuantity)
       .slice(0, 5);
 
-    // 6. Top Selling Products (business-wide or branch-wide)
-    const productQuantityMap: Record<string, { quantity: number; total: number }> = {};
-    saleItems.forEach((item: any) => {
-      if (!productQuantityMap[item.productId]) {
-        productQuantityMap[item.productId] = { quantity: 0, total: 0 };
-      }
-      productQuantityMap[item.productId].quantity += item.quantity;
-      productQuantityMap[item.productId].total += item.total;
-    });
+    // 6. Top Selling Products / Dishes (Combine SaleItems + RestaurantOrder Lines)
+    const dishStatsMap: Record<
+      string,
+      { id: string; name: string; sku: string; quantitySold: number; revenue: number }
+    > = {};
 
-    const topSalesItems = Object.entries(productQuantityMap)
-      .map(([productId, metrics]) => ({
-        productId,
-        _sum: metrics,
-      }))
-      .sort((a, b) => b._sum.quantity - a._sum.quantity)
+    for (const item of saleItems) {
+      const key = item.product?.name || item.productId;
+      if (!dishStatsMap[key]) {
+        dishStatsMap[key] = {
+          id: item.productId,
+          name: item.product?.name || "Menu Item",
+          sku: item.product?.sku || "",
+          quantitySold: 0,
+          revenue: 0,
+        };
+      }
+      dishStatsMap[key].quantitySold += Number(item.quantity || 0);
+      dishStatsMap[key].revenue += Number(item.total || 0);
+    }
+
+    for (const ro of unmirroredSettledOrders) {
+      for (const line of ro.orderLines) {
+        const key = line.itemName || line.menuItemId || line.id;
+        if (!dishStatsMap[key]) {
+          dishStatsMap[key] = {
+            id: line.menuItemId || line.id,
+            name: line.itemName,
+            sku: line.menuItem?.product?.sku || "",
+            quantitySold: 0,
+            revenue: 0,
+          };
+        }
+        const lineRev =
+          Number(line.total || 0) > 0
+            ? Number(line.total)
+            : Number(line.unitPrice || line.basePrice || 0) * line.quantity;
+        dishStatsMap[key].quantitySold += Number(line.quantity || 0);
+        dishStatsMap[key].revenue += lineRev;
+      }
+    }
+
+    const topSellingProducts = Object.values(dishStatsMap)
+      .sort((a, b) => b.quantitySold - a.quantitySold || b.revenue - a.revenue)
       .slice(0, 5);
 
-    const topProductIds = topSalesItems.map((item: any) => item.productId);
-    const topProductsMetadata = await db.product.findMany({
-      where: { id: { in: topProductIds } },
-      select: { id: true, name: true, sku: true },
-    });
+    // 7. Recent Transactions (Combine Sales + Live/Settled Restaurant POS Orders)
+    const [recentSales, recentRestaurantOrders] = await Promise.all([
+      db.sale.findMany({
+        where: {
+          businessId: context.businessId,
+          ...(branchId ? { branchId } : {}),
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          total: true,
+          status: true,
+          paymentStatus: true,
+          notes: true,
+          createdAt: true,
+          customer: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+      }),
+      db.restaurantOrder.findMany({
+        where: {
+          businessId: context.businessId,
+          ...(branchId ? { branchId } : {}),
+          fulfillmentStatus: { not: "CANCELLED" },
+        },
+        include: {
+          table: true,
+          orderLines: {
+            where: {
+              fulfillmentStatus: { not: "CANCELLED" },
+              acceptanceStatus: { not: "REJECTED" },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 8,
+      }),
+    ]);
 
-    const topSellingProducts = topSalesItems.map((item: any) => {
-      const meta = topProductsMetadata.find((p: any) => p.id === item.productId);
-      return {
-        id: item.productId,
-        name: meta?.name || "Unknown Item",
-        sku: meta?.sku || "",
-        quantitySold: item._sum.quantity || 0,
-        revenue: item._sum.total || 0,
-      };
-    });
+    const recentMirroredIds = new Set<string>();
+    const recentMirroredNums = new Set<string>();
+    for (const s of recentSales) {
+      recentMirroredNums.add(s.invoiceNumber);
+      const m = s.notes?.match(/\[ORDER_ID:([^\]]+)\]/);
+      if (m?.[1]) recentMirroredIds.add(m[1]);
+    }
 
-    // 7. Recent Transactions (last 5 sales)
-    const recentSales = await db.sale.findMany({
-      where: {
-        businessId: context.businessId,
-        branchId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        total: true,
-        status: true,
-        paymentStatus: true,
-        createdAt: true,
-        customer: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
+    const combinedTransactions = [
+      ...recentSales.map((s: any) => {
+        const originMatch = s.notes?.match(/\[(Table [^\]]+|DINE_IN|TAKEAWAY|DELIVERY)\]/i);
+        const originLabel = originMatch?.[1] ? ` (${originMatch[1]})` : "";
+        return {
+          id: s.id,
+          invoiceNumber: s.invoiceNumber,
+          customerName: `${s.customer?.name || "Walk-in Guest"}${originLabel}`,
+          total: Number(s.total || 0),
+          status: s.status,
+          paymentStatus: s.paymentStatus,
+          createdAt: s.createdAt,
+        };
+      }),
+      ...recentRestaurantOrders
+        .filter((ro) => !recentMirroredIds.has(ro.id) && !recentMirroredNums.has(ro.orderNumber))
+        .map((ro) => {
+          const tableLabel = ro.table?.tableNumber
+            ? `Table ${ro.table.tableNumber}`
+            : ro.orderType === "TAKEAWAY"
+            ? "Takeaway Order"
+            : ro.orderType === "DELIVERY"
+            ? "Delivery Order"
+            : "Restaurant POS";
+          return {
+            id: ro.id,
+            invoiceNumber: ro.orderNumber,
+            customerName: tableLabel,
+            total: getOrderRevenue(ro),
+            status: ro.fulfillmentStatus,
+            paymentStatus: ro.settlementStatus,
+            createdAt: ro.updatedAt || ro.createdAt,
+          };
+        }),
+    ]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 6);
 
-    const recentTransactions = recentSales.map((s: any) => ({
-      id: s.id,
-      invoiceNumber: s.invoiceNumber,
-      customerName: s.customer?.name || "Walk-in Customer",
-      total: s.total,
-      status: s.status,
-      paymentStatus: s.paymentStatus,
-      createdAt: s.createdAt,
-    }));
-
-    // 8. Sales Chart Data for the Last 7 Days
+    // 8. Sales Chart Data for the Last 7 Days (Sales + Unmirrored Settled RestaurantOrders)
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const start = new Date(d.setHours(0, 0, 0, 0));
-      const end = new Date(d.setHours(23, 59, 59, 999));
+      const dayStart = new Date(d.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(d.setHours(23, 59, 59, 999));
 
-      const dailySales = await db.sale.aggregate({
-        where: {
-          businessId: context.businessId,
-          branchId,
-          status: "COMPLETED",
-          createdAt: { gte: start, lte: end },
-        },
-        _sum: {
-          total: true,
-        },
-      });
+      const [daySalesList, dayRestOrders] = await Promise.all([
+        db.sale.findMany({
+          where: {
+            businessId: context.businessId,
+            ...(branchId ? { branchId } : {}),
+            status: "COMPLETED",
+            deletedAt: null,
+            createdAt: { gte: dayStart, lte: dayEnd },
+          },
+          select: { invoiceNumber: true, total: true, notes: true },
+        }),
+        db.restaurantOrder.findMany({
+          where: {
+            businessId: context.businessId,
+            ...(branchId ? { branchId } : {}),
+            settlementStatus: "PAID",
+            fulfillmentStatus: { not: "CANCELLED" },
+            updatedAt: { gte: dayStart, lte: dayEnd },
+          },
+          include: {
+            orderLines: {
+              where: {
+                fulfillmentStatus: { not: "CANCELLED" },
+                acceptanceStatus: { not: "REJECTED" },
+              },
+            },
+          },
+        }),
+      ]);
 
-      const dayName = start.toLocaleDateString("en-US", { weekday: "short" });
+      const dayMirroredIds = new Set<string>();
+      const dayMirroredNums = new Set<string>();
+      let daySalesSum = 0;
+      for (const s of daySalesList) {
+        daySalesSum += Number(s.total || 0);
+        dayMirroredNums.add(s.invoiceNumber);
+        const m = s.notes?.match(/\[ORDER_ID:([^\]]+)\]/);
+        if (m?.[1]) dayMirroredIds.add(m[1]);
+      }
+
+      for (const ro of dayRestOrders) {
+        if (!dayMirroredIds.has(ro.id) && !dayMirroredNums.has(ro.orderNumber)) {
+          daySalesSum += getOrderRevenue(ro);
+        }
+      }
+
+      const dayName = dayStart.toLocaleDateString("en-US", { weekday: "short" });
       chartData.push({
         name: dayName,
-        date: start.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        sales: dailySales._sum.total || 0,
+        date: dayStart.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        sales: daySalesSum,
       });
     }
 
-    // Count orders (completed sales this month)
-    const ordersCount = await db.sale.count({
-      where: {
-        businessId: context.businessId,
-        branchId,
-        status: "COMPLETED",
-        createdAt: { gte: start, lte: end },
-      },
-    });
+    // Count total settled bills in period
+    const ordersCount = completedSalesInPeriod.length + unmirroredSettledOrders.length;
 
     // Count active customers
     const customersCount = await db.customer.count({
@@ -287,39 +478,56 @@ export async function GET(request: Request) {
       },
     });
 
-    // Count all low stock alert items (total alert count)
+    // Count all low stock alert items
     const alertsCount = products
       .map((prod: any) => {
-        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
+        const branchStock = prod.productStocks.reduce(
+          (sum: number, s: { quantity: number }) => sum + s.quantity,
+          0
+        );
         return branchStock <= prod.alertQuantity;
       })
       .filter(Boolean).length;
 
-    // 9. Sales by Category (current month)
-    // Computed from the already fetched saleItems in memory
-    const categoryProductIds = [...new Set(saleItems.map((item: any) => item.productId))];
-    const productsWithCats = await db.product.findMany({
-      where: { id: { in: categoryProductIds } },
-      select: { id: true, category: { select: { name: true } } },
-    });
-
+    // 9. Sales by Category (SaleItems + RestaurantOrder Lines)
     const categoryMap: Record<string, number> = {};
-    saleItems.forEach((item: any) => {
-      const prod = productsWithCats.find((p: any) => p.id === item.productId);
-      const catName = prod?.category?.name || "Others";
-      categoryMap[catName] = (categoryMap[catName] || 0) + item.total;
-    });
+    for (const item of saleItems) {
+      const catName = item.product?.category?.name || "Restaurant Menu";
+      categoryMap[catName] = (categoryMap[catName] || 0) + Number(item.total || 0);
+    }
+    for (const ro of unmirroredSettledOrders) {
+      for (const line of ro.orderLines) {
+        const catName = line.menuItem?.section?.name || "Restaurant Menu";
+        const lineRev =
+          Number(line.total || 0) > 0
+            ? Number(line.total)
+            : Number(line.unitPrice || line.basePrice || 0) * line.quantity;
+        categoryMap[catName] = (categoryMap[catName] || 0) + lineRev;
+      }
+    }
 
-    const totalCatSales = Object.values(categoryMap).reduce((a: number, b: number) => a + b, 0);
-    const salesByCategory = Object.keys(categoryMap).map((name: string) => ({
-      name,
-      value: totalCatSales > 0 ? Math.round((categoryMap[name] / totalCatSales) * 100) : 0,
-      totalAmount: categoryMap[name],
-    })).sort((a, b) => b.value - a.value).slice(0, 5); // top 5 categories
+    const totalCatSales = Object.values(categoryMap).reduce(
+      (a: number, b: number) => a + b,
+      0
+    );
+    const salesByCategory = Object.keys(categoryMap)
+      .map((name: string) => ({
+        name,
+        value:
+          totalCatSales > 0
+            ? Math.round((categoryMap[name] / totalCatSales) * 100)
+            : 0,
+        totalAmount: categoryMap[name],
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
 
     const outOfStockProducts = products
       .map((prod: any) => {
-        const branchStock = prod.productStocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0);
+        const branchStock = prod.productStocks.reduce(
+          (sum: number, s: { quantity: number }) => sum + s.quantity,
+          0
+        );
         return {
           id: prod.id,
           name: prod.name,
@@ -331,29 +539,10 @@ export async function GET(request: Request) {
       .filter((prod: any) => prod.currentQuantity <= 0)
       .slice(0, 10);
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-
-    const todaySalesRes = await db.sale.aggregate({
-      where: {
-        businessId: context.businessId,
-        branchId,
-        status: "COMPLETED",
-        createdAt: { gte: startOfToday, lte: endOfToday },
-      },
-      _sum: {
-        total: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
-
+    const todayPoint = chartData[chartData.length - 1];
     const todayStats = {
-      sales: todaySalesRes._sum.total || 0,
-      orders: todaySalesRes._count.id || 0,
+      sales: todayPoint?.sales || 0,
+      orders: ordersCount,
     };
 
     // 10. Hospitality and Floor snapshot
@@ -370,9 +559,11 @@ export async function GET(request: Request) {
           where: { businessId: context.businessId },
           select: { status: true },
         }),
-        (db as any).stay ? (db as any).stay.count({
-          where: { businessId: context.businessId, status: "CHECKED_IN" },
-        }) : 0,
+        (db as any).stay
+          ? (db as any).stay.count({
+              where: { businessId: context.businessId, status: "CHECKED_IN" },
+            })
+          : 0,
       ]);
     } catch {
       // safe fallback
@@ -381,13 +572,25 @@ export async function GET(request: Request) {
     const hospitalityStats = {
       rooms: {
         total: rooms.length,
-        occupied: rooms.filter((r: any) => r.status && r.status.includes("OCCUPIED")).length,
-        vacant: rooms.filter((r: any) => r.status && r.status.startsWith("VACANT")).length,
-        maintenance: rooms.filter((r: any) => r.status && (r.status.includes("DIRTY") || r.status.includes("MAINTENANCE") || r.status.includes("SERVICE"))).length,
+        occupied: rooms.filter(
+          (r: any) => r.status && r.status.includes("OCCUPIED")
+        ).length,
+        vacant: rooms.filter(
+          (r: any) => r.status && r.status.startsWith("VACANT")
+        ).length,
+        maintenance: rooms.filter(
+          (r: any) =>
+            r.status &&
+            (r.status.includes("DIRTY") ||
+              r.status.includes("MAINTENANCE") ||
+              r.status.includes("SERVICE"))
+        ).length,
       },
       tables: {
         total: tables.length,
-        occupied: tables.filter((t: any) => t.status === "OCCUPIED" || t.status === "BILLED").length,
+        occupied: tables.filter(
+          (t: any) => t.status === "OCCUPIED" || t.status === "BILLED"
+        ).length,
         available: tables.filter((t: any) => t.status === "AVAILABLE").length,
       },
       activeStays: activeStaysCount,
@@ -408,7 +611,7 @@ export async function GET(request: Request) {
       },
       lowStockAlerts,
       topSellingProducts,
-      recentTransactions,
+      recentTransactions: combinedTransactions,
       salesChart: chartData,
       salesByCategory,
       outOfStockProducts,
@@ -417,6 +620,9 @@ export async function GET(request: Request) {
     });
   } catch (error: unknown) {
     console.error("GET dashboard reports error:", error);
-    return NextResponse.json({ error: "Failed to fetch dashboard reports" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch dashboard reports" },
+      { status: 500 }
+    );
   }
 }

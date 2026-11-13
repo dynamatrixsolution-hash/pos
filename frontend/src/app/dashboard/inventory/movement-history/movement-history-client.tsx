@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { Search, Download } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 export default function MovementHistoryClient() {
   const { currencySymbol } = useSettings();
+  const num = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
   const [movements, setMovements] = useState<any[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [days, setDays] = useState(90);
@@ -20,17 +25,13 @@ export default function MovementHistoryClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (typeFilter) query.append("type", typeFilter);
-        query.append("days", days.toString());
-        if (search) query.append("search", search);
-
-        const res = await fetch(`/api/v1/inventory/movement-history?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMovements(data.movements);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getMovementHistory({
+          type: typeFilter || undefined,
+          days,
+          search: search || undefined,
+        });
+        setMovements(data.movements || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch movement history error:", err);
       } finally {
@@ -222,13 +223,13 @@ export default function MovementHistoryClient() {
 
                   <div className="text-right">
                     {movement.totalAmount && (
-                      <div className="text-sm font-bold text-primary">{currencySymbol}{movement.totalAmount.toFixed(2)}</div>
+                      <div className="text-sm font-bold text-primary tabular-nums">{currencySymbol}{num(movement.totalAmount).toFixed(2)}</div>
                     )}
                     {movement.total && (
-                      <div className="text-sm font-bold text-primary">{currencySymbol}{movement.total.toFixed(2)}</div>
+                      <div className="text-sm font-bold text-primary tabular-nums">{currencySymbol}{num(movement.total).toFixed(2)}</div>
                     )}
                     {movement.totalQuantity && (
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground mt-1 tabular-nums">
                         Qty: {movement.totalQuantity}
                       </div>
                     )}

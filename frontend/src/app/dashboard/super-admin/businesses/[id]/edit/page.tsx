@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 import { ArrowLeft, RefreshCw, Save } from "lucide-react";
 
 interface BusinessDetail {
@@ -44,9 +45,7 @@ export default function EditBusinessPage() {
   const fetchBusiness = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`);
-      if (!res.ok) throw new Error("Failed to load business details");
-      const data = await res.json();
+      const data = await apiClient.superAdmin.getBusinessById(businessId);
       const b = data.business;
       setBusiness(b);
 
@@ -111,29 +110,20 @@ export default function EditBusinessPage() {
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/businesses/${businessId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_PROFILE",
-          payload: {
-            name: name.trim(),
-            slug: slug.trim().toLowerCase(),
-            logo: logo.trim() || null,
-            businessType,
-            currency,
-            taxNumber: taxNumber.trim() || null,
-            email: email.trim() || null,
-            phone: phone.trim() || null,
-            address: address.trim() || null,
-          },
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to update business profile");
-      }
+      await apiClient.superAdmin.updateBusiness(businessId, {
+        action: "UPDATE_PROFILE",
+        payload: {
+          name: name.trim(),
+          slug: slug.trim().toLowerCase(),
+          logo: logo.trim() || null,
+          businessType,
+          currency,
+          taxNumber: taxNumber.trim() || null,
+          email: email.trim() || null,
+          phone: phone.trim() || null,
+          address: address.trim() || null,
+        },
+      }, "PUT");
 
       toast.success("Business updated successfully.");
       router.push(`/dashboard/super-admin/businesses/${businessId}`);

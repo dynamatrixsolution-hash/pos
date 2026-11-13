@@ -10,6 +10,31 @@ const updateBranchSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const branch = await db.branch.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+    });
+
+    if (!branch) {
+      return NextResponse.json({ error: "Branch not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ branch });
+  } catch (error: any) {
+    console.error("GET branch error:", error);
+    return NextResponse.json({ error: "Failed to fetch branch" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -84,6 +109,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update branch" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

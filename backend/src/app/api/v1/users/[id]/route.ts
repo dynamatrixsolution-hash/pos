@@ -15,6 +15,44 @@ const updateUserSchema = z.object({
   deviceName: z.string().optional().nullable(),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const user = await db.user.findFirst({
+      where: {
+        id: params.id,
+        businessId: context.businessId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        branchId: true,
+        isActive: true,
+        allowedDeviceId: true,
+        deviceName: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ user });
+  } catch (error: any) {
+    console.error("GET user [id] error:", error);
+    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -112,6 +150,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
   }
 }
 
+export const PATCH = PUT;
+
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -139,6 +179,23 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
 
     if (existing.id === context.userId) {
       return NextResponse.json({ error: "Self-deletion is forbidden." }, { status: 400 });
+    }
+
+    if (existing.role === "OWNER") {
+      const remainingOwners = await db.user.count({
+        where: {
+          businessId: context.businessId,
+          role: "OWNER",
+          deletedAt: null,
+          id: { not: existing.id },
+        },
+      });
+      if (remainingOwners === 0) {
+        return NextResponse.json(
+          { error: "Cannot delete the sole business owner." },
+          { status: 400 }
+        );
+      }
     }
 
     const deletedUser = await db.user.update({

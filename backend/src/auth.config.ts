@@ -4,6 +4,12 @@ export const authConfig = {
   pages: {
     signIn: "/auth/login",
   },
+  secret:
+    process.env.AUTH_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    (process.env.NODE_ENV !== "production"
+      ? "763edd7e57c60b9057170b23348d159c948728cbc82cfdd42f78bb594f092344"
+      : undefined),
   session: {
     strategy: "jwt",
   },
@@ -21,25 +27,27 @@ export const authConfig = {
           // SUPER_ADMIN Route Protection: Prevent non-SUPER_ADMIN users from accessing platform admin settings
           if (path.startsWith("/dashboard/super-admin")) {
             if (role !== "SUPER_ADMIN") {
-              const redirectPath = role === "CASHIER" ? "/dashboard/pos" : "/dashboard";
+              const redirectPath = role === "CASHIER" ? "/dashboard/restaurant/pos?view=menu" : "/dashboard";
               return Response.redirect(new URL(redirectPath, nextUrl));
             }
           }
 
-          // CASHIER Route Protection: Cashiers can access POS, Sales, Products, Customers, and Inventory
+          // CASHIER Route Protection: Cashiers can access Restaurant POS, Hotel, Sales, Menu Management, Customers, and Inventory
           if (role === "CASHIER") {
             const allowedPaths = [
-              "/dashboard/pos",
+              "/dashboard/restaurant",
+              "/dashboard/hotel",
               "/dashboard/sales",
               "/dashboard/products",
               "/dashboard/customers",
               "/dashboard/inventory",
+              "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
               (allowedPath) => path === allowedPath || path.startsWith(allowedPath + "/")
             );
             if (!isAllowed) {
-              return Response.redirect(new URL("/dashboard/pos", nextUrl));
+              return Response.redirect(new URL("/dashboard/restaurant/pos?view=menu", nextUrl));
             }
           }
 
@@ -60,7 +68,7 @@ export const authConfig = {
         return false; // Redirect unauthenticated users to login page
       } else if (isOnAuth && isLoggedIn) {
         const role = (auth.user as any)?.role || "CASHIER";
-        const redirectPath = role === "CASHIER" ? "/dashboard/pos" : "/dashboard";
+        const redirectPath = role === "CASHIER" ? "/dashboard/restaurant/pos?view=menu" : "/dashboard";
         return Response.redirect(new URL(redirectPath, nextUrl));
       }
       return true;

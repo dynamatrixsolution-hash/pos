@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ArrowRight,
 } from "lucide-react";
+import { apiClient } from "@/core/api/api-client";
 
 interface SubscriptionDetails {
   subscription: {
@@ -51,13 +52,8 @@ export default function SubscriptionsPage() {
 
   const loadSubscription = async () => {
     try {
-      const res = await fetch("/api/v1/subscriptions");
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      } else {
-        setErrorMsg("Failed to load subscription metrics");
-      }
+      const json = await apiClient.settings.getSubscription();
+      setData(json);
     } catch (err) {
       console.error(err);
       setErrorMsg("Network error loading subscription metrics");
@@ -82,17 +78,7 @@ export default function SubscriptionsPage() {
     setShowUpgradeModal(false);
     
     try {
-      const res = await fetch("/api/v1/subscriptions", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selectedPlan.id }),
-      });
-      
-      const resJson = await res.json();
-      if (!res.ok) {
-        throw new Error(resJson.error || "Failed to upgrade subscription");
-      }
-
+      await apiClient.settings.updateSubscription({ plan: selectedPlan.id });
       setSuccessMsg(`Congratulations! Your workspace has been upgraded to the "${selectedPlan.name}" plan.`);
       loadSubscription();
     } catch (err: any) {

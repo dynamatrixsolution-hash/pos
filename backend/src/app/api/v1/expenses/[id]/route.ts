@@ -11,6 +11,31 @@ const expenseSchema = z.object({
   description: z.string().optional().nullable(),
 });
 
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
+
+  try {
+    const expense = await db.expense.findFirst({
+      where: { id: params.id, businessId: context.businessId, deletedAt: null },
+      include: {
+        category: true,
+        branch: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!expense) {
+      return NextResponse.json({ error: "Expense not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ expense });
+  } catch (error: any) {
+    console.error("GET expense error:", error);
+    return NextResponse.json({ error: "Failed to fetch expense" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const context = await getSessionContext();
@@ -84,6 +109,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Failed to update expense" }, { status: 500 });
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

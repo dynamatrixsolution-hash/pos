@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 
@@ -93,14 +94,9 @@ export default function NoticesPage() {
   const fetchNotices = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/super-admin/notices");
-      if (res.ok) {
-        const data = await res.json();
-        setNotices(data.notices || []);
-        if (data.metrics) setMetrics(data.metrics);
-      } else {
-        toast.error("Failed to load platform notices");
-      }
+      const data = await apiClient.superAdmin.getNotices();
+      setNotices(data.notices || []);
+      if (data.metrics) setMetrics(data.metrics);
     } catch {
       toast.error("Network connection error loading notices.");
     } finally {
@@ -179,23 +175,17 @@ export default function NoticesPage() {
 
     setEditSaving(true);
     try {
-      const res = await fetch("/api/v1/super-admin/notices", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingNotice?.id,
-          title: editForm.title.trim(),
-          subheading: editForm.subheading.trim() || null,
-          body: editForm.body.trim(),
-          priority: editForm.priority,
-          audience: editForm.audience,
-          targetRoles: editForm.targetRoles,
-          channels: editForm.channels,
-          reason: editForm.auditReason.trim() || "Super Admin notice update",
-        }),
+      await apiClient.superAdmin.updateNotice({
+        id: editingNotice?.id,
+        title: editForm.title.trim(),
+        subheading: editForm.subheading.trim() || null,
+        body: editForm.body.trim(),
+        priority: editForm.priority,
+        audience: editForm.audience,
+        targetRoles: editForm.targetRoles,
+        channels: editForm.channels,
+        reason: editForm.auditReason.trim() || "Super Admin notice update",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update notice");
 
       toast.success("Notice updated successfully.");
       setEditingNotice(null);
@@ -212,11 +202,7 @@ export default function NoticesPage() {
 
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/v1/super-admin/notices?id=${deleteTarget.id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete notice");
+      await apiClient.superAdmin.deleteNotice(deleteTarget.id);
 
       toast.success("Notice deleted successfully.");
       setDeleteTarget(null);

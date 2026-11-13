@@ -27,6 +27,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface BackupItem {
   id: string;
@@ -101,9 +102,7 @@ export default function SystemMonitoringPage() {
       }
       setRefreshing(true);
 
-      const res = await fetch("/api/v1/super-admin/monitoring");
-      if (!res.ok) throw new Error("Failed to gather platform telemetry");
-      const json = await res.json();
+      const json = await apiClient.superAdmin.getMonitoring();
       setData(json);
 
       // Keep drawer selection updated if open without creating dependency cycles
@@ -143,16 +142,10 @@ export default function SystemMonitoringPage() {
     if (backupId) setTestingBackupId(backupId);
 
     try {
-      const res = await fetch("/api/v1/super-admin/monitoring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          backupId,
-          reason: "Manual super admin recovery rehearsal verification",
-        }),
+      const resData = await apiClient.superAdmin.triggerMonitoringTest({
+        backupId,
+        reason: "Manual super admin recovery rehearsal verification",
       });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || "Recovery test execution failed");
 
       toast.success(resData.message || "Recovery rehearsal passed!");
       await loadTelemetry(true);

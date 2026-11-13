@@ -21,6 +21,7 @@ import {
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface ExpiringBusiness {
   id: string;
@@ -94,17 +95,13 @@ export default function ExpiringSubscriptionsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/v1/super-admin/businesses/expiring?timeframe=${timeframe}&search=${encodeURIComponent(search)}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setBusinesses(data.businesses || []);
-        if (data.counts) setCounts(data.counts);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load expiring subscriptions");
-      }
+      const data = await apiClient.superAdmin.getBusinessesExpiring({
+        timeframe,
+        search: search.trim() || undefined,
+      });
+
+      setBusinesses(data.businesses || []);
+      if (data.counts) setCounts(data.counts);
     } catch {
       toast.error("Network connection error");
     } finally {
@@ -132,19 +129,12 @@ export default function ExpiringSubscriptionsPage() {
 
     setSubmittingExtension(true);
     try {
-      const res = await fetch("/api/v1/super-admin/businesses/expiring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "extend_subscription",
-          businessId: extendingBusiness.id,
-          days: extensionDays,
-          reason: extensionReason.trim(),
-        }),
+      await apiClient.superAdmin.sendExpiringAction({
+        action: "extend_subscription",
+        businessId: extendingBusiness.id,
+        days: extensionDays,
+        reason: extensionReason.trim(),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to extend subscription");
 
       toast.success(`Successfully extended ${extendingBusiness.name} by ${extensionDays} days.`);
       setExtendingBusiness(null);
@@ -161,17 +151,10 @@ export default function ExpiringSubscriptionsPage() {
     if (!remindingBusiness) return;
     setSubmittingReminder(true);
     try {
-      const res = await fetch("/api/v1/super-admin/businesses/expiring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "send_reminder",
-          businessId: remindingBusiness.id,
-        }),
+      await apiClient.superAdmin.sendExpiringAction({
+        action: "send_reminder",
+        businessId: remindingBusiness.id,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to dispatch reminder");
 
       toast.success(`Renewal reminder dispatched to ${remindingBusiness.name}.`);
       setRemindingBusiness(null);
@@ -193,14 +176,7 @@ export default function ExpiringSubscriptionsPage() {
 
     setSubmittingBulkReminders(true);
     try {
-      const res = await fetch("/api/v1/super-admin/businesses/expiring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send_bulk_reminders" }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to dispatch bulk reminders");
+      const data = await apiClient.superAdmin.sendExpiringAction({ action: "send_bulk_reminders" });
 
       toast.success(data.message || "Bulk renewal reminders dispatched successfully.");
       fetchData();

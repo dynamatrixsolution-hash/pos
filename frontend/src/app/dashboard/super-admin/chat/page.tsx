@@ -16,6 +16,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { toast } from "@/components/toast";
+import { apiClient } from "@/core/api/api-client";
 
 interface OwnerItem {
   id: string;
@@ -93,12 +94,9 @@ export default function SuperAdminChatPage() {
 
   const pollMessages = async (ownerId: string) => {
     try {
-      const res = await fetch(`/api/v1/super-admin/chat?ownerId=${ownerId}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.messages) {
-          setMessages(data.messages);
-        }
+      const data = await apiClient.superAdmin.getChat({ ownerId });
+      if (data.messages) {
+        setMessages(data.messages);
       }
     } catch {
       // Background poll silently fails without disrupting user
@@ -108,24 +106,19 @@ export default function SuperAdminChatPage() {
   const loadConversations = async (targetOwnerId?: string, isInit = false) => {
     if (isInit) setLoading(true);
     try {
-      const q = new URLSearchParams();
       const currentSelected = targetOwnerId || activeOwnerId;
-      if (currentSelected) q.set("ownerId", currentSelected);
-      if (searchQuery.trim()) q.set("search", searchQuery.trim());
+      const data = await apiClient.superAdmin.getChat({
+        ownerId: currentSelected || undefined,
+        search: searchQuery.trim() || undefined,
+      });
 
-      const res = await fetch(`/api/v1/super-admin/chat?${q.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOwners(data.owners || []);
+      setOwners(data.owners || []);
 
-        const nextActiveId = targetOwnerId || data.activeOwnerId || (data.owners?.[0]?.id ?? null);
-        setActiveOwnerId(nextActiveId);
+      const nextActiveId = targetOwnerId || data.activeOwnerId || (data.owners?.[0]?.id ?? null);
+      setActiveOwnerId(nextActiveId);
 
-        if (data.messages) {
-          setMessages(data.messages);
-        }
-      } else {
-        toast.error("Failed to load conversations");
+      if (data.messages) {
+        setMessages(data.messages);
       }
     } catch (err: any) {
       console.error("Failed to load direct messages:", err);
@@ -139,15 +132,12 @@ export default function SuperAdminChatPage() {
     setActiveOwnerId(ownerId);
     isInitialLoad.current = true;
     try {
-      const res = await fetch(`/api/v1/super-admin/chat?ownerId=${ownerId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data.messages || []);
-        // Update unread count in local list
-        setOwners((prev) =>
-          prev.map((o) => (o.id === ownerId ? { ...o, unreadCount: 0 } : o))
-        );
-      }
+      const data = await apiClient.superAdmin.getChat({ ownerId });
+      setMessages(data.messages || []);
+      // Update unread count in local list
+      setOwners((prev) =>
+        prev.map((o) => (o.id === ownerId ? { ...o, unreadCount: 0 } : o))
+      );
     } catch (err) {
       console.error("Failed to load thread messages:", err);
     }
@@ -162,43 +152,33 @@ export default function SuperAdminChatPage() {
     setSending(true);
 
     try {
-      const res = await fetch("/api/v1/super-admin/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiverId: activeOwnerId,
-          content: messageContent,
-        }),
+      const data = await apiClient.superAdmin.sendChatMessage({
+        receiverId: activeOwnerId,
+        content: messageContent,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.message) {
-          setMessages((prev) => [...prev, data.message]);
-          // Update last message in owner list
-          setOwners((prev) =>
-            prev.map((o) =>
-              o.id === activeOwnerId
-                ? {
-                    ...o,
-                    lastMessage: {
-                      content: messageContent,
-                      createdAt: new Date().toISOString(),
-                      isMine: true,
-                      isRead: false,
-                    },
-                  }
-                : o
-            )
-          );
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        toast.error(errData.error || "Failed to send message");
+      if (data.message) {
+        setMessages((prev) => [...prev, data.message]);
+        // Update last message in owner list
+        setOwners((prev) =>
+          prev.map((o) =>
+            o.id === activeOwnerId
+              ? {
+                  ...o,
+                  lastMessage: {
+                    content: messageContent,
+                    createdAt: new Date().toISOString(),
+                    isMine: true,
+                    isRead: false,
+                  },
+                }
+              : o
+          )
+        );
       }
     } catch (err: any) {
       console.error("Failed to send message:", err);
-      toast.error("Failed to send message. Please check connection.");
+      toast.error(err.message || "Failed to send message. Please check connection.");
     } finally {
       setSending(false);
     }
@@ -208,29 +188,21 @@ export default function SuperAdminChatPage() {
     if (!activeOwner || blocking) return;
     setBlocking(true);
     try {
-      const res = await fetch("/api/v1/super-admin/chat", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ownerId: activeOwner.id,
-          action: "TOGGLE_BLOCK",
-        }),
+      const data = await apiClient.superAdmin.updateChat({
+        ownerId: activeOwner.id,
+        action: "TOGGLE_BLOCK",
       });
-      if (res.ok) {
-        const data = await res.json();
-        setOwners((prev) =>
-          prev.map((o) =>
-            o.id === activeOwner.id ? { ...o, isBlocked: data.isBlocked } : o
-          )
-        );
-        toast.success(
-          data.isBlocked
-            ? `Messaging access suspended for ${activeOwner.name}`
-            : `Messaging access restored for ${activeOwner.name}`
-        );
-      } else {
-        toast.error("Failed to update status");
-      }
+
+      setOwners((prev) =>
+        prev.map((o) =>
+          o.id === activeOwner.id ? { ...o, isBlocked: data.isBlocked } : o
+        )
+      );
+      toast.success(
+        data.isBlocked
+          ? `Messaging access suspended for ${activeOwner.name}`
+          : `Messaging access restored for ${activeOwner.name}`
+      );
     } catch (err: any) {
       console.error("Failed to toggle block status:", err);
       toast.error("Network error updating status");

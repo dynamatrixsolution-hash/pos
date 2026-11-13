@@ -9,20 +9,24 @@ const productCreateSchema = z.object({
   name: z.string().min(2, "Product name must be at least 2 characters"),
   sku: z.string().optional().nullable(),
   barcode: z.string().optional().nullable(),
-  description: z.string().optional(),
-  costPrice: z.number().min(1, "Cost price must be at least 1"),
-  sellingPrice: z.number().min(1, "Selling price must be at least 1"),
+  description: z.string().optional().nullable(),
+  costPrice: z.number().nonnegative().default(0),
+  sellingPrice: z.number().nonnegative().default(0),
   wholesalePrice: z.number().nonnegative().default(0),
   alertQuantity: z.number().int().nonnegative().default(5),
   categoryId: z.string().uuid().optional().nullable(),
   subcategoryId: z.string().uuid().optional().nullable(),
   brandId: z.string().uuid().optional().nullable(),
   unitId: z.string().uuid().optional().nullable(),
+  unitName: z.string().optional().nullable(),
   batchTracking: z.boolean().default(false),
   expiryTracking: z.boolean().default(false),
   isVatItem: z.boolean().default(true),
   image: z.string().optional().nullable(),
   isRestaurantDish: z.boolean().optional(),
+  itemType: z.enum(["MENU_DISH", "KITCHEN_STOCK", "RETAIL"]).optional(),
+  prepTimeMinutes: z.number().optional().nullable(),
+  kitchenStation: z.string().optional().nullable(),
   initialStock: z.number().nonnegative().optional(), // optional initial stock for main branch
   manufacturingDate: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
@@ -109,6 +113,11 @@ export async function GET(request: Request) {
           menuItems: {
             include: {
               section: { select: { id: true, name: true } },
+              stationRoutes: {
+                include: {
+                  station: { select: { id: true, name: true, code: true } },
+                },
+              },
               recipeVersions: {
                 where: { isActive: true },
                 include: {
@@ -132,8 +141,16 @@ export async function GET(request: Request) {
       db.product.count({ where }),
     ]);
 
+    const mappedProducts = products.map((p) => ({
+      ...p,
+      costPrice: Number(p.costPrice || 0),
+      sellingPrice: Number(p.sellingPrice || 0),
+      wholesalePrice: Number(p.wholesalePrice || 0),
+      alertQuantity: Number(p.alertQuantity || 0),
+    }));
+
     return NextResponse.json({
-      products,
+      products: mappedProducts,
       pagination: {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limit),
@@ -164,7 +181,48 @@ export async function POST(request: Request) {
 
     const data = result.data;
     if (context.branchId) await checkBranch(context, context.branchId);
-    const { initialStock, manufacturingDate, expiryDate, isRestaurantDish, ...productData } = data;
+    let {
+      initialStock,
+      manufacturingDate,
+      expiryDate,
+      isRestaurantDish,
+      itemType,
+      unitName,
+      prepTimeMinutes,
+      kitchenStation,
+      ...productData
+    } = data;
+
+    const isDish = isRestaurantDish || itemType === "MENU_DISH";
+    const isKitchenStock = itemType === "KITCHEN_STOCK";
+
+    // Auto-generate SKUs if missing based on item type
+    if (!productData.sku || productData.sku.trim() === "") {
+      const cleanName = (productData.name || "ITEM").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
+      const prefix = isDish ? "DISH" : isKitchenStock ? "RAW" : "PRD";
+      productData.sku = `${prefix}-${cleanName || "CODE"}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    // Resolve or auto-create unit if unitName is provided
+    if (!productData.unitId && unitName && unitName.trim()) {
+      const cleanUnit = unitName.trim();
+      let matchedUnit = await db.unit.findFirst({
+        where: {
+          businessId: context.businessId,
+          name: { equals: cleanUnit, mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+      if (!matchedUnit) {
+        matchedUnit = await db.unit.create({
+          data: {
+            businessId: context.businessId,
+            name: cleanUnit,
+          },
+        });
+      }
+      productData.unitId = matchedUnit.id;
+    }
 
     // Check product limit from subscription settings
     const limits = await getBusinessLimits(context.businessId);
@@ -301,11 +359,45 @@ export async function POST(request: Request) {
         });
       }
 
-      if (isRestaurantDish) {
-        let section = await tx.menuSection.findFirst({
-          where: { businessId: context.businessId },
-          orderBy: { displayOrder: "asc" },
-        });
+      if (isDish) {
+        let section: any = null;
+        if (newProduct.categoryId) {
+          const cat = await tx.category.findUnique({ where: { id: newProduct.categoryId } });
+          if (cat) {
+            section = await tx.menuSection.findFirst({
+              where: {
+                businessId: context.businessId,
+                name: { equals: cat.name, mode: "insensitive" },
+              },
+            });
+            if (!section) {
+              let menu = await tx.menu.findFirst({
+                where: { businessId: context.businessId },
+              });
+              if (!menu) {
+                menu = await tx.menu.create({
+                  data: { businessId: context.businessId, name: "Main Dining Menu" },
+                });
+              }
+              section = await tx.menuSection.create({
+                data: {
+                  businessId: context.businessId,
+                  menuId: menu.id,
+                  name: cat.name,
+                  displayOrder: 0,
+                },
+              });
+            }
+          }
+        }
+
+        if (!section) {
+          section = await tx.menuSection.findFirst({
+            where: { businessId: context.businessId },
+            orderBy: { displayOrder: "asc" },
+          });
+        }
+
         if (!section) {
           let menu = await tx.menu.findFirst({
             where: { businessId: context.businessId },
@@ -324,7 +416,8 @@ export async function POST(request: Request) {
             },
           });
         }
-        await tx.menuItem.create({
+
+        const createdMenuItem = await tx.menuItem.create({
           data: {
             businessId: context.businessId,
             sectionId: section.id,
@@ -336,8 +429,44 @@ export async function POST(request: Request) {
             imageUrl: newProduct.image,
             isAvailable: true,
             isKitchenItem: true,
+            prepTimeMinutes: prepTimeMinutes || 15,
           },
         });
+
+        if (kitchenStation && kitchenStation.trim()) {
+          const cleanStationName = kitchenStation.trim();
+          const targetBranchId =
+            context.branchId ||
+            (await tx.branch.findFirst({ where: { businessId: context.businessId }, select: { id: true } }))?.id;
+          if (targetBranchId) {
+            let station = await tx.kitchenStation.findFirst({
+              where: {
+                businessId: context.businessId,
+                branchId: targetBranchId,
+                name: { equals: cleanStationName, mode: "insensitive" },
+              },
+            });
+            if (!station) {
+              const codeBase = cleanStationName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6) || "STN";
+              station = await tx.kitchenStation.create({
+                data: {
+                  businessId: context.businessId,
+                  branchId: targetBranchId,
+                  name: cleanStationName,
+                  code: `${codeBase}-${Math.floor(10 + Math.random() * 89)}`,
+                },
+              });
+            }
+            await tx.stationRoute.create({
+              data: {
+                businessId: context.businessId,
+                stationId: station.id,
+                menuItemId: createdMenuItem.id,
+                priority: 10,
+              },
+            });
+          }
+        }
       }
 
       return newProduct;

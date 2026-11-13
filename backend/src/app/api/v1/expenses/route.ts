@@ -18,6 +18,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const branchId = searchParams.get("branchId") || undefined;
   const categoryId = searchParams.get("categoryId") || undefined;
+  const search = searchParams.get("search") || "";
+  const startDateStr = searchParams.get("startDate");
+  const endDateStr = searchParams.get("endDate");
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
@@ -30,6 +33,32 @@ export async function GET(request: Request) {
 
     if (branchId) where.branchId = branchId;
     if (categoryId) where.categoryId = categoryId;
+
+    if (startDateStr || endDateStr) {
+      where.createdAt = {};
+      if (startDateStr) {
+        const start = new Date(startDateStr);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          where.createdAt.gte = start;
+        }
+      }
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          where.createdAt.lte = end;
+        }
+      }
+    }
+
+    if (search.trim()) {
+      where.OR = [
+        { reference: { contains: search.trim(), mode: "insensitive" } },
+        { description: { contains: search.trim(), mode: "insensitive" } },
+        { category: { name: { contains: search.trim(), mode: "insensitive" } } },
+      ];
+    }
 
     const summaryWhere: any = {
       businessId: context.businessId,
@@ -47,7 +76,7 @@ export async function GET(request: Request) {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [expenses, totalCount, totalSum, todaySum, monthSum] = await Promise.all([
+    const [expensesRaw, totalCount, totalSum, todaySum, monthSum] = await Promise.all([
       db.expense.findMany({
         where,
         include: {
@@ -80,6 +109,11 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    const expenses = expensesRaw.map((e) => ({
+      ...e,
+      amount: Number(e.amount || 0),
+    }));
+
     return NextResponse.json({
       expenses,
       pagination: {
@@ -89,9 +123,9 @@ export async function GET(request: Request) {
         limit,
       },
       summary: {
-        total: totalSum._sum.amount ?? 0,
-        today: todaySum._sum.amount ?? 0,
-        thisMonth: monthSum._sum.amount ?? 0,
+        total: Number(totalSum._sum.amount ?? 0),
+        today: Number(todaySum._sum.amount ?? 0),
+        thisMonth: Number(monthSum._sum.amount ?? 0),
       },
     });
   } catch (error: any) {

@@ -108,6 +108,15 @@ model Business {
   platformSupportNotes       PlatformSupportNote[]
   platformSupportTickets     PlatformSupportTicket[]
   platformDirectMessages     PlatformDirectMessage[]
+  cashRegisters              CashRegister[]
+  cashierShifts              CashierShift[]
+  cashMovements              CashMovement[]
+  registerUserAssignments    RegisterUserAssignment[]
+  denominations              Denomination[]
+  shiftDenominations         ShiftDenomination[]
+  shiftTransactions          ShiftTransaction[]
+  shiftAuditLogs             ShiftAuditLog[]
+  shiftAdjustments           ShiftAdjustment[]
 }
 
 model Subscription {
@@ -192,6 +201,13 @@ model Branch {
   printJobs                  PrintJob[]
   offlineSyncBatches         OfflineSyncBatch[]
   pilotDailyReconciliations  PilotDailyReconciliation[]
+  cashRegisters              CashRegister[]
+  cashierShifts              CashierShift[]
+  cashMovements              CashMovement[]
+  registerUserAssignments    RegisterUserAssignment[]
+  shiftTransactions          ShiftTransaction[]
+  shiftAuditLogs             ShiftAuditLog[]
+  shiftAdjustments           ShiftAdjustment[]
 
   @@unique([businessId, id])
 }
@@ -205,7 +221,7 @@ model User {
   name            String
   email           String    @unique
   passwordHash    String
-  role            String    @default("CASHIER") // SUPER_ADMIN, OWNER, MANAGER, CASHIER, ACCOUNTANT, STOREKEEPER, SALESPERSON, DELIVERY
+  role            String    @default("CASHIER") // SUPER_ADMIN, OWNER, MANAGER, FRONT_DESK, CASHIER, WAITER, KITCHEN, HOUSEKEEPING, ACCOUNTANT
   phone           String?
   isActive        Boolean   @default(true)
   allowedDeviceId String?
@@ -267,6 +283,15 @@ model User {
   sentDirectMessages         PlatformDirectMessage[]     @relation("DirectMessageSender")
   receivedDirectMessages     PlatformDirectMessage[]     @relation("DirectMessageReceiver")
   pushBroadcastsCreated      PlatformPushBroadcast[]     @relation("PushBroadcastAuthor")
+  cashierShifts              CashierShift[]              @relation("CashierShiftUser")
+  closedShifts               CashierShift[]              @relation("CashierShiftClosedBy")
+  cashMovements              CashMovement[]
+  createdRegisters           CashRegister[]              @relation("CashRegisterCreatedBy")
+  registerAssignments        RegisterUserAssignment[]
+  approvedCashMovements      CashMovement[]              @relation("CashMovementApprovedBy")
+  shiftAuditLogs             ShiftAuditLog[]
+  createdShiftAdjustments    ShiftAdjustment[]           @relation("ShiftAdjustmentCreatedBy")
+  approvedShiftAdjustments   ShiftAdjustment[]           @relation("ShiftAdjustmentApprovedBy")
 
 
   @@unique([businessId, id])
@@ -374,6 +399,10 @@ model Product {
   consumptionPostings ConsumptionPosting[]
 
   @@unique([businessId, id])
+  @@index([businessId, barcode])
+  @@index([businessId, sku])
+  @@index([businessId, categoryId])
+  @@index([businessId, deletedAt])
 }
 
 model ProductStock {
@@ -407,6 +436,9 @@ model Batch {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
+
+  @@index([productId, branchId])
+  @@index([branchId, expiryDate])
 }
 
 model Customer {
@@ -432,6 +464,9 @@ model Customer {
   refunds  Refund[]
 
   @@unique([businessId, id])
+  @@index([businessId, phone])
+  @@index([businessId, name])
+  @@index([businessId, deletedAt])
 }
 
 model CustomerLedger {
@@ -445,6 +480,8 @@ model CustomerLedger {
   balance     Decimal  @default(0) @db.Decimal(12, 2) // Running balance
   description String?
   createdAt   DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }
 
 model Supplier {
@@ -470,6 +507,9 @@ model Supplier {
   payments      Payment[]
 
   @@unique([businessId, id])
+  @@index([businessId, name])
+  @@index([businessId, phone])
+  @@index([businessId, deletedAt])
 }
 
 model SupplierLedger {
@@ -483,6 +523,8 @@ model SupplierLedger {
   balance     Decimal  @default(0) @db.Decimal(12, 2) // Running balance we owe
   description String?
   createdAt   DateTime @default(now())
+
+  @@index([supplierId, createdAt])
 }
 
 model Sale {
@@ -540,8 +582,16 @@ model Sale {
   creditNotes        CreditNote[]
   debitNotes         DebitNote[]
   cbmsSyncQueues     CbmsSyncQueue[]
+  shiftId            String?
+  shift              CashierShift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  shiftTransactions  ShiftTransaction[]
 
   @@unique([businessId, id])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, customerId])
+  @@index([businessId, paymentStatus])
+  @@index([businessId, shiftId])
+  @@index([businessId, deletedAt])
 }
 
 model SaleItem {
@@ -557,6 +607,9 @@ model SaleItem {
   discount    Decimal @default(0) @db.Decimal(12, 2) // Unit-level discount
   tax         Decimal @default(0) @db.Decimal(12, 2) // Unit-level tax
   total       Decimal @default(0) @db.Decimal(12, 2) // quantity * price
+
+  @@index([saleId])
+  @@index([productId])
 }
 
 model Purchase {
@@ -589,6 +642,9 @@ model Purchase {
   paymentAllocations PaymentAllocation[]
 
   @@unique([businessId, id])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, supplierId])
+  @@index([businessId, deletedAt])
 }
 
 model PurchaseItem {
@@ -603,6 +659,9 @@ model PurchaseItem {
   quantity          Float     @default(1)
   price             Decimal   @default(0) @db.Decimal(12, 2) // Buying price per unit
   total             Decimal   @default(0) @db.Decimal(12, 2)
+
+  @@index([purchaseId])
+  @@index([productId])
 }
 
 model Payment {
@@ -627,14 +686,25 @@ model Payment {
   reference     String? // Reference number
   receiptNumber String? // Receipt or voucher number
   remarks       String? // Notes/remarks
-  type          String    @default("RECEIVED") // RECEIVED or SENT
-  createdAt     DateTime  @default(now())
+  type           String        @default("RECEIVED") // RECEIVED or SENT
+  cashTendered   Decimal?      @db.Decimal(18, 2)
+  changeReturned Decimal?      @db.Decimal(18, 2)
+  shiftId        String?
+  shift          CashierShift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
 
-  allocations PaymentAllocation[]
-  reversal    PaymentReversal?
-  refunds     Refund[]
+  allocations       PaymentAllocation[]
+  reversal          PaymentReversal?
+  refunds           Refund[]
+  shiftTransactions ShiftTransaction[]
 
   @@unique([businessId, id])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, saleId])
+  @@index([businessId, purchaseId])
+  @@index([businessId, customerId])
+  @@index([businessId, supplierId])
+  @@index([businessId, shiftId])
 }
 
 // Responses commit atomically with business effects. Do not purge while clients may retry.
@@ -733,6 +803,9 @@ model Expense {
   deletedAt   DateTime?
 
   @@unique([businessId, id])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, categoryId])
+  @@index([businessId, deletedAt])
 }
 
 model IncomeCategory {
@@ -767,6 +840,9 @@ model Income {
   deletedAt   DateTime?
 
   @@unique([businessId, id])
+  @@index([businessId, branchId, createdAt])
+  @@index([businessId, categoryId])
+  @@index([businessId, deletedAt])
 }
 
 model StockTransfer {
@@ -821,6 +897,9 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@unique([businessId, id])
+  @@index([businessId, module, createdAt])
+  @@index([businessId, userId])
+  @@index([businessId, createdAt])
 }
 
 model Notification {
@@ -1043,6 +1122,8 @@ model CbmsSyncQueue {
   updatedAt       DateTime    @updatedAt
 
   @@unique([businessId, id])
+  @@index([businessId, syncStatus])
+  @@index([businessId, createdAt])
 }
 
 model UserBranchMembership {
@@ -1053,7 +1134,7 @@ model UserBranchMembership {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   branchId   String
   branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  role       String? // Branch-specific role override (e.g., CASHIER, MANAGER). If null, defaults to user.role
+  role       String? // Branch-specific role override (e.g., WAITER, FRONT_DESK, CASHIER, MANAGER). If null, defaults to user.role
   isDefault  Boolean  @default(false)
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -1455,12 +1536,15 @@ model RestaurantOrder {
   rounds         OrderRound[]
   orderLines     OrderLine[]
   kitchenTickets KitchenTicket[]
+  shiftId        String?
+  shift          CashierShift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   @@unique([businessId, id])
   @@unique([businessId, branchId, orderNumber])
   @@index([businessId, branchId, settlementStatus])
   @@index([businessId, tableSessionId])
   @@index([businessId, tableId])
+  @@index([businessId, shiftId])
   @@index([businessId, acceptanceStatus])
   @@index([businessId, fulfillmentStatus])
 }
@@ -2582,4 +2666,245 @@ model PlatformPushBroadcast {
 
   @@index([targetRole, createdAt])
   @@index([targetProperty, createdAt])
+}
+
+// ==============================================================================
+// CASH REGISTER, SHIFT MANAGEMENT & NEPALI CASH DENOMINATION ENGINE
+// ==============================================================================
+
+model CashRegister {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  name           String    // e.g. "Main Cash Counter", "Bar Register 1", "Front Desk POS"
+  code           String    @default("REG-01") // Unique within branch
+  description    String?
+  status         String    @default("CLOSED") // OPEN, CLOSED
+  currentShiftId String?   // scalar pointer to active shift (no FK to preserve acyclic DAG)
+  notes          String?
+  isActive       Boolean   @default(true) // ACTIVE (true) / INACTIVE (false)
+  createdById    String?
+  createdBy      User?     @relation("CashRegisterCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  shifts        CashierShift[]
+  assignedUsers RegisterUserAssignment[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, name])
+  @@unique([branchId, code])
+  @@index([businessId, branchId, status])
+}
+
+model RegisterUserAssignment {
+  id         String       @id @default(uuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId   String
+  branch     Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  registerId String
+  register   CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@unique([registerId, userId])
+  @@index([businessId, branchId, registerId])
+}
+
+model Denomination {
+  id           String   @id @default(uuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  currencyCode String   @default("NPR")
+  value        Decimal  @db.Decimal(18, 2)
+  type         String   @default("NOTE") // NOTE, COIN
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shiftDenominations ShiftDenomination[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, currencyCode, value])
+  @@index([businessId, isActive, displayOrder])
+}
+
+model CashierShift {
+  id                   String       @id @default(uuid())
+  businessId           String
+  business             Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId             String
+  branch               Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  registerId           String
+  register             CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  cashierId            String
+  cashier              User         @relation("CashierShiftUser", fields: [cashierId], references: [id], onDelete: Cascade)
+  shiftNumber          String       // e.g. "SH-20261112-001"
+  status               String       @default("OPEN") // OPEN, CLOSED, FORCE_CLOSED
+  startTime            DateTime     @default(now())
+  endTime              DateTime?
+  
+  // Opening & Denomination
+  openingBalance       Decimal      @default(0) @db.Decimal(18, 2)
+  openingNotes         String?
+  openingDenominations Json?        // [{ note: 1000, count: 5, amount: 5000 }, ...]
+
+  // Live Running Totals
+  cashSales            Decimal      @default(0) @db.Decimal(18, 2)
+  nonCashSales         Decimal      @default(0) @db.Decimal(18, 2) // QR, Card, Bank, Credit, Room Charge
+  totalSales           Decimal      @default(0) @db.Decimal(18, 2)
+  cashRefunds          Decimal      @default(0) @db.Decimal(18, 2)
+  cashIn               Decimal      @default(0) @db.Decimal(18, 2)
+  cashOut              Decimal      @default(0) @db.Decimal(18, 2)
+  expectedCash         Decimal      @default(0) @db.Decimal(18, 2)
+
+  // Closing & Reconciliation
+  actualCash           Decimal?     @db.Decimal(18, 2)
+  cashDifference       Decimal?     @db.Decimal(18, 2) // actualCash - expectedCash (negative = shortage, positive = excess)
+  varianceReason       String?
+  closingNotes         String?
+  declarationConfirmed Boolean      @default(false)
+  closingDenominations Json?        // [{ note: 1000, count: 10, amount: 10000 }, ...]
+  closedById           String?
+  closedBy             User?        @relation("CashierShiftClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  shiftDenominations   ShiftDenomination[]
+  cashMovements        CashMovement[]
+  shiftTransactions    ShiftTransaction[]
+  shiftAuditLogs       ShiftAuditLog[]
+  shiftAdjustments     ShiftAdjustment[]
+  sales                Sale[]
+  payments             Payment[]
+  restaurantOrders     RestaurantOrder[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, branchId, shiftNumber])
+  @@index([businessId, branchId, status])
+  @@index([businessId, cashierId, status])
+  @@index([businessId, registerId, status])
+}
+
+model ShiftDenomination {
+  id                String        @id @default(uuid())
+  businessId        String
+  business          Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  shiftId           String
+  shift             CashierShift  @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  denominationId    String?
+  denomination      Denomination? @relation(fields: [denominationId], references: [id], onDelete: SetNull)
+  denominationValue Decimal       @db.Decimal(18, 2)
+  stage             String        // OPENING, CLOSING
+  quantity          Int
+  subtotal          Decimal       @db.Decimal(18, 2)
+  createdAt         DateTime      @default(now())
+
+  @@unique([businessId, id])
+  @@unique([shiftId, stage, denominationValue])
+  @@index([businessId, shiftId, stage])
+}
+
+model CashMovement {
+  id             String       @id @default(uuid())
+  businessId     String
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shiftId        String
+  shift          CashierShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movementNumber String?
+  type           String       // CASH_IN, CASH_OUT
+  amount         Decimal      @db.Decimal(18, 2)
+  reason         String       // Reason e.g. "ADDITIONAL_FLOAT", "OFFICE_EXPENSE"
+  description    String?
+  referenceId    String?
+  approvedById   String?
+  approvedBy     User?        @relation("CashMovementApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  status         String       @default("POSTED") // POSTED, VOIDED, PENDING_APPROVAL
+  denominations  Json?
+  createdAt      DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, shiftId])
+  @@index([businessId, type])
+}
+
+model ShiftTransaction {
+  id              String       @id @default(uuid())
+  businessId      String
+  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId        String
+  branch          Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shiftId         String
+  shift           CashierShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  saleId          String?
+  sale            Sale?        @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  paymentId       String?
+  payment         Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  transactionType String       // SALE, REFUND
+  paymentMethod   String       // CASH, QR, FONE_PAY, ESEWA, KHALTI, NEPAL_PAY, BANK_TRANSFER, CARD, CREDIT, ROOM_CHARGE
+  amount          Decimal      @db.Decimal(18, 2)
+  cashTendered    Decimal?     @db.Decimal(18, 2)
+  changeReturned  Decimal?     @db.Decimal(18, 2)
+  cashEffect      Decimal      @db.Decimal(18, 2)
+  createdAt       DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, shiftId, createdAt])
+  @@index([businessId, saleId])
+  @@index([businessId, paymentId])
+}
+
+model ShiftAuditLog {
+  id         String       @id @default(uuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId   String?
+  branch     Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  shiftId    String
+  shift      CashierShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String       // SHIFT_OPENED, CASH_IN_CREATED, CASH_OUT_CREATED, SALE_COMPLETED, REFUND_COMPLETED, SHIFT_CLOSE_SUBMITTED, SHIFT_CLOSED, SHIFT_ADJUSTED, SHIFT_REOPENED
+  entityType String
+  entityId   String
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  createdAt  DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, shiftId, createdAt])
+}
+
+model ShiftAdjustment {
+  id             String       @id @default(uuid())
+  businessId     String
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  shiftId        String
+  shift          CashierShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  adjustmentType String       // SHORTAGE, EXCESS, CORRECTION
+  amount         Decimal      @db.Decimal(18, 2)
+  reason         String
+  createdById    String
+  createdBy      User         @relation("ShiftAdjustmentCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  approvedById   String?
+  approvedBy     User?        @relation("ShiftAdjustmentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@unique([businessId, id])
+  @@index([businessId, shiftId, createdAt])
 }

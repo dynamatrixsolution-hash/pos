@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { Search, Download, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
+
+const num = (v: any) => {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+};
 
 export default function CurrentStockClient() {
   const { currencySymbol } = useSettings();
@@ -17,15 +23,13 @@ export default function CurrentStockClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        if (search) query.append("search", search);
-        if (selectedBranch) query.append("branchId", selectedBranch);
-
-        const res = await fetch(`/api/v1/inventory/current-stock?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setStocks(data.stocks);
-          setBranches(data.branches);
+        const data = await apiClient.inventory.getCurrentStock({
+          search: search || undefined,
+          branchId: selectedBranch || undefined,
+        });
+        setStocks(data.stocks || data.stock || []);
+        if (data.branches) setBranches(data.branches);
+        if (data.totalProducts !== undefined) {
           setMetrics({ totalProducts: data.totalProducts, totalValue: data.totalValue });
         }
       } catch (err) {
@@ -77,7 +81,7 @@ export default function CurrentStockClient() {
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Total Stock Value</div>
-          <div className="text-2xl font-black">{currencySymbol}{metrics.totalValue.toFixed(2)}</div>
+          <div className="text-2xl font-black tabular-nums">{currencySymbol}{num(metrics.totalValue).toFixed(2)}</div>
         </div>
       </div>
 
@@ -154,10 +158,10 @@ export default function CurrentStockClient() {
                     </td>
                     <td className="py-3 px-2 text-center text-[11px]">{stock.category}</td>
                     <td className="py-3 px-2 text-center text-[11px]">{stock.unit}</td>
-                    <td className="py-3 px-2 text-right font-medium">{currencySymbol}{stock.costPrice.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-right font-medium text-primary">{currencySymbol}{stock.sellingPrice.toFixed(2)}</td>
-                    <td className="py-3 px-2 text-center font-bold">{stock.totalQuantity}</td>
-                    <td className="py-3 px-2 text-right font-bold">{currencySymbol}{stock.value.toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right font-medium tabular-nums">{currencySymbol}{num(stock.costPrice).toFixed(2)}</td>
+                    <td className="py-3 px-2 text-right font-medium text-primary tabular-nums">{currencySymbol}{num(stock.sellingPrice).toFixed(2)}</td>
+                    <td className="py-3 px-2 text-center font-bold tabular-nums">{stock.totalQuantity}</td>
+                    <td className="py-3 px-2 text-right font-bold tabular-nums">{currencySymbol}{num(stock.value).toFixed(2)}</td>
                     <td className="py-3 px-2 text-center">
                       {stock.status === "OUT_OF_STOCK" ? (
                         <span className="inline-block bg-destructive/10 text-destructive px-2 py-1 rounded text-[10px] font-bold">OUT OF STOCK</span>

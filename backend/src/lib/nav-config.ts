@@ -66,6 +66,15 @@ export const navigationConfig: NavItem[] = [
     feature: "POS Billing",
   },
 
+  // Cash Register & Shifts
+  {
+    title: "Cash Registers & Shifts",
+    href: "/dashboard/shifts",
+    icon: DollarSign,
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    feature: "POS Billing",
+  },
+
   // Products - Cashier, Manager, Owner (Cashier has view-only access)
   {
     title: "Products",

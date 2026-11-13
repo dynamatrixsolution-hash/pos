@@ -13,7 +13,14 @@ const paymentCreateSchema = z.object({
   saleId: z.string().uuid().optional().nullable(),
   purchaseId: z.string().uuid().optional().nullable(),
   amount: z.number().positive("Amount must be greater than zero"),
-  method: z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH"),
+  method: z.preprocess(
+    (val) => {
+      if (val === "QR") return "FONE_PAY";
+      if (val === "BANK_TRANSFER") return "CARD";
+      return val;
+    },
+    z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"]).default("CASH")
+  ),
   reference: z.string().optional().nullable(),
   paymentSource: z.literal("STAFF_RECORDED").optional(),
   receiptNumber: z.string().optional().nullable(),
@@ -97,7 +104,11 @@ export async function GET(request: Request) {
         take: 5000,
       });
 
-      mergedList.push(...payments.map(p => ({ ...p, isIncomeRecord: false })));
+      mergedList.push(...payments.map(p => ({
+        ...p,
+        amount: Number(p.amount || 0),
+        isIncomeRecord: false,
+      })));
 
       const shouldFetchIncomes = !customerId && (!method || method === "CASH");
       if (shouldFetchIncomes) {
@@ -144,7 +155,7 @@ export async function GET(request: Request) {
           supplierId: null,
           branchId: inc.branchId,
           userId: inc.userId,
-          amount: inc.amount,
+          amount: Number(inc.amount || 0),
           method: "CASH",
           reference: inc.reference,
           receiptNumber: inc.reference || `INC-${inc.id.slice(0, 8).toUpperCase()}`,
@@ -171,7 +182,11 @@ export async function GET(request: Request) {
         take: 5000,
       });
 
-      mergedList.push(...payments.map(p => ({ ...p, isExpenseRecord: false })));
+      mergedList.push(...payments.map(p => ({
+        ...p,
+        amount: Number(p.amount || 0),
+        isExpenseRecord: false,
+      })));
 
       const shouldFetchExpenses = !supplierId && (!method || method === "CASH");
       if (shouldFetchExpenses) {
@@ -218,7 +233,7 @@ export async function GET(request: Request) {
           supplierId: null,
           branchId: exp.branchId,
           userId: exp.userId,
-          amount: exp.amount,
+          amount: Number(exp.amount || 0),
           method: "CASH",
           reference: exp.reference,
           receiptNumber: exp.reference || `EXP-${exp.id.slice(0, 8).toUpperCase()}`,
@@ -314,13 +329,55 @@ export async function POST(request: Request) {
         await tx.supplier.update({ where: { id: supplier.id }, data: { balance } });
         await tx.supplierLedger.create({ data: { supplierId, type: "PAYMENT", reference: receiptNumber, debit: data.amount, balance, description: data.remarks } });
       }
+      const activeShift = await tx.cashierShift.findFirst({
+        where: {
+          businessId: context.businessId,
+          cashierId: context.userId,
+          status: "OPEN",
+          ...(branchId ? { branchId } : {}),
+        },
+        select: { id: true },
+      });
+
       const payment = await tx.payment.create({ data: {
         businessId: context.businessId, branchId, userId: context.userId, customerId, supplierId,
         saleId: data.saleId, purchaseId: data.purchaseId, amount: data.amount,
         method: data.method, source: "STAFF_RECORDED", type: data.type,
         reference: data.reference, receiptNumber, remarks: data.remarks,
+        shiftId: activeShift?.id || null,
         createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
       }, include: { customer: true, supplier: true, branch: true, user: { select: { name: true } } } });
+
+      if (activeShift) {
+        if (data.type === "RECEIVED") {
+          if (data.method === "CASH") {
+            await tx.cashierShift.update({
+              where: { id: activeShift.id },
+              data: {
+                cashSales: { increment: data.amount },
+                totalSales: { increment: data.amount },
+                expectedCash: { increment: data.amount },
+              },
+            });
+          } else {
+            await tx.cashierShift.update({
+              where: { id: activeShift.id },
+              data: {
+                nonCashSales: { increment: data.amount },
+                totalSales: { increment: data.amount },
+              },
+            });
+          }
+        } else if (data.type === "SENT" && data.method === "CASH") {
+          await tx.cashierShift.update({
+            where: { id: activeShift.id },
+            data: {
+              cashRefunds: { increment: data.amount },
+              expectedCash: { decrement: data.amount },
+            },
+          });
+        }
+      }
       await tx.auditLog.create({ data: {
         businessId: context.businessId, branchId, userId: context.userId, role: context.role,
         action: "CREATE", module: "PAYMENT", details: "Staff-recorded payment (not provider verified)",

@@ -7,6 +7,7 @@ import {
 import { z } from "zod";
 
 const updateLineStatusSchema = z.object({
+  quantity: z.number().int().min(0).optional(),
   acceptanceStatus: z.enum(["PENDING", "ACCEPTED", "REJECTED"]).optional(),
   fulfillmentStatus: z.enum(["QUEUED", "PREPARING", "READY", "SERVED", "CANCELLED"]).optional(),
   settlementStatus: z.enum(["UNPAID", "PARTIAL", "PAID", "REFUNDED"]).optional(),
@@ -30,6 +31,7 @@ export async function PATCH(
     const updatedLine = await updateLineStatus({
       businessId: session.businessId,
       lineId,
+      quantity: parsed.quantity,
       acceptanceStatus: parsed.acceptanceStatus,
       fulfillmentStatus: parsed.fulfillmentStatus,
       settlementStatus: parsed.settlementStatus,

@@ -29,6 +29,8 @@ const saleItemSchema = z.object({
 const splitPaymentSchema = z.object({
   method: z.preprocess(normalizePaymentMethod, z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"])),
   amount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().positive()),
+  cashTendered: z.coerce.number().nonnegative().optional().nullable(),
+  changeReturned: z.coerce.number().nonnegative().optional().nullable(),
 });
 
 const saleCreateSchema = z.object({
@@ -40,12 +42,17 @@ const saleCreateSchema = z.object({
     if (!val || val === "" || val === "null" || val === "undefined") return undefined;
     return val;
   }, z.string().optional().nullable()),
+  registerId: z.string().optional().nullable(),
+  shiftId: z.string().optional().nullable(),
+  requireOpenShift: z.boolean().optional(),
   items: z.array(saleItemSchema).min(1, "At least one item is required in the checkout cart"),
   subtotal: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
   discount: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
   tax: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative().default(0)),
   total: z.preprocess((v) => Math.max(0, Number(v) || 0), z.number().nonnegative()),
   paidAmount: z.coerce.number().nonnegative().default(0),
+  cashTendered: z.coerce.number().nonnegative().optional().nullable(),
+  changeReturned: z.coerce.number().nonnegative().optional().nullable(),
   paymentMethod: z.preprocess(normalizePaymentMethod, z.enum(["CASH", "CARD", "FONE_PAY", "ESEWA", "KHALTI", "NEPAL_PAY", "CREDIT"])).default("CASH"),
   paymentStatus: z.enum(["PAID", "PARTIAL", "UNPAID"]).default("PAID"),
   status: z.enum(["COMPLETED", "DRAFT", "ON_HOLD"]).default("COMPLETED"),
@@ -64,6 +71,9 @@ export async function GET(request: Request) {
   let branchId = searchParams.get("branchId") || context.branchId;
   const status = searchParams.get("status");
   const paymentStatus = searchParams.get("paymentStatus");
+  const search = searchParams.get("search") || "";
+  const startDateStr = searchParams.get("startDate");
+  const endDateStr = searchParams.get("endDate");
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const skip = (page - 1) * limit;
@@ -80,6 +90,33 @@ export async function GET(request: Request) {
     if (status) where.status = status;
     if (paymentStatus) where.paymentStatus = paymentStatus;
 
+    if (startDateStr || endDateStr) {
+      where.createdAt = {};
+      if (startDateStr) {
+        const start = new Date(startDateStr);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          where.createdAt.gte = start;
+        }
+      }
+      if (endDateStr) {
+        const end = new Date(endDateStr);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          where.createdAt.lte = end;
+        }
+      }
+    }
+
+    if (search.trim()) {
+      where.OR = [
+        { invoiceNumber: { contains: search.trim(), mode: "insensitive" } },
+        { notes: { contains: search.trim(), mode: "insensitive" } },
+        { customer: { name: { contains: search.trim(), mode: "insensitive" } } },
+        { customer: { phone: { contains: search.trim(), mode: "insensitive" } } },
+      ];
+    }
+
     // Cashier role data isolation - view only assigned branch and cashier's own sales
     if (context.role === "CASHIER") {
       where.userId = context.userId;
@@ -88,7 +125,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const [sales, totalCount] = await Promise.all([
+    const [salesRaw, totalCount] = await Promise.all([
       db.sale.findMany({
         where,
         include: {
@@ -107,6 +144,29 @@ export async function GET(request: Request) {
       }),
       db.sale.count({ where }),
     ]);
+
+    const sales = salesRaw.map((s) => ({
+      ...s,
+      subtotal: Number(s.subtotal || 0),
+      discount: Number(s.discount || 0),
+      tax: Number(s.tax || 0),
+      total: Number(s.total || 0),
+      paidAmount: Number(s.paidAmount || 0),
+      vatRefundAmount: Number(s.vatRefundAmount || 0),
+      paymentMethod: s.payments?.[0]?.method || (Number(s.paidAmount || 0) === 0 ? "CREDIT" : "CASH"),
+      payments: (s.payments || []).map((p) => ({
+        ...p,
+        amount: Number(p.amount || 0),
+      })),
+      saleItems: (s.saleItems || []).map((item) => ({
+        ...item,
+        costPrice: Number(item.costPrice || 0),
+        price: Number(item.price || 0),
+        discount: Number(item.discount || 0),
+        tax: Number(item.tax || 0),
+        total: Number(item.total || 0),
+      })),
+    }));
 
     return NextResponse.json({
       sales,
@@ -362,6 +422,52 @@ export async function POST(request: Request) {
       const settlement = reconcilePayment(payload, finalTotal, context);
       if (settlement.paidAmount < finalTotal && !resolvedCustomerId) throw new CommerceError("Unpaid balance requires a registered customer");
 
+      // Check active open cashier shift
+      let activeShift = await tx.cashierShift.findFirst({
+        where: {
+          businessId: context.businessId,
+          status: "OPEN",
+          ...(payload.shiftId
+            ? { id: payload.shiftId }
+            : payload.registerId
+              ? { registerId: payload.registerId }
+              : {
+                  cashierId: context.userId,
+                  ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+                }),
+        },
+        select: { id: true, registerId: true, branchId: true },
+      });
+
+      // Fallback: if no personal shift found, check if there is an active shift on the branch's register
+      if (!activeShift && !payload.shiftId && !payload.registerId && effectiveBranchId) {
+        activeShift = await tx.cashierShift.findFirst({
+          where: {
+            businessId: context.businessId,
+            branchId: effectiveBranchId,
+            status: "OPEN",
+          },
+          select: { id: true, registerId: true, branchId: true },
+        });
+      }
+
+      // Specification §2.2 & §12.1: Block POS checkout if no shift is open when registers are configured
+      if (!activeShift) {
+        const branchRegisterCount = await tx.cashRegister.count({
+          where: {
+            businessId: context.businessId,
+            ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+            deletedAt: null,
+          },
+        });
+        if (payload.requireOpenShift || payload.registerId || payload.shiftId || branchRegisterCount > 0) {
+          throw new CommerceError(
+            "No active cashier shift is open on this branch/register. Please open a shift before processing POS sales.",
+            409
+          );
+        }
+      }
+
       // 5. Create Sale record
       const sale = await tx.sale.create({
         data: {
@@ -380,6 +486,7 @@ export async function POST(request: Request) {
           notes: payload.notes,
           fiscalYearId: activeFiscalYear.id,
           vatRefundAmount,
+          shiftId: activeShift?.id || null,
           saleItems: {
             createMany: {
               data: saleItemsData,
@@ -449,12 +556,59 @@ export async function POST(request: Request) {
 
       // CREDIT is a receivable, never a collected payment.
       for (const payment of settlement.payments) {
+        const isCash = payment.method === "CASH";
+        const splitInput = payload.splitPayments?.find((sp) => sp.method === payment.method && Math.abs(sp.amount - payment.amount) < 0.01);
+        const rawTendered = splitInput?.cashTendered ?? (isCash ? payload.cashTendered : null);
+        const cashTenderedVal = isCash && rawTendered && rawTendered >= payment.amount ? Number(rawTendered.toFixed(2)) : (isCash ? payment.amount : null);
+        const changeReturnedVal = isCash && cashTenderedVal !== null ? Number(Math.max(0, cashTenderedVal - payment.amount).toFixed(2)) : null;
+
         const createdPayment = await tx.payment.create({ data: {
           businessId: context.businessId, branchId: effectiveBranchId, userId: context.userId,
           customerId: resolvedCustomerId,
           saleId: sale.id, amount: payment.amount, method: payment.method,
+          cashTendered: cashTenderedVal !== null ? new Prisma.Decimal(cashTenderedVal) : null,
+          changeReturned: changeReturnedVal !== null ? new Prisma.Decimal(changeReturnedVal) : null,
           source: "STAFF_RECORDED", type: "RECEIVED", reference: payload.paymentReference || null,
+          shiftId: activeShift?.id || null,
         } });
+
+        if (activeShift) {
+          // Specification §3.2 & §3.3: NetCash = CashTendered - ChangeReturned = payment.amount
+          if (isCash) {
+            await tx.cashierShift.update({
+              where: { id: activeShift.id },
+              data: {
+                cashSales: { increment: payment.amount },
+                totalSales: { increment: payment.amount },
+                expectedCash: { increment: payment.amount },
+              },
+            });
+          } else {
+            await tx.cashierShift.update({
+              where: { id: activeShift.id },
+              data: {
+                nonCashSales: { increment: payment.amount },
+                totalSales: { increment: payment.amount },
+              },
+            });
+          }
+
+          await tx.shiftTransaction.create({
+            data: {
+              businessId: context.businessId,
+              branchId: effectiveBranchId,
+              shiftId: activeShift.id,
+              saleId: sale.id,
+              paymentId: createdPayment.id,
+              transactionType: "SALE",
+              paymentMethod: payment.method,
+              amount: new Prisma.Decimal(payment.amount),
+              cashTendered: cashTenderedVal !== null ? new Prisma.Decimal(cashTenderedVal) : null,
+              changeReturned: changeReturnedVal !== null ? new Prisma.Decimal(changeReturnedVal) : null,
+              cashEffect: new Prisma.Decimal(isCash ? payment.amount : 0),
+            },
+          });
+        }
 
         // Record explicit PaymentAllocation linking receipt to this invoice
         await tx.paymentAllocation.create({
@@ -464,6 +618,30 @@ export async function POST(request: Request) {
             saleId: sale.id,
             amount: new Prisma.Decimal(payment.amount),
             allocatedById: context.userId,
+          },
+        });
+      }
+
+      // Also record any unpaid CREDIT portion on the active shift so Total Sales & Non-Cash Sales reflect split/credit bills accurately
+      const unpaidCreditPortion = Number(Math.max(0, finalTotal - settlement.paidAmount).toFixed(2));
+      if (activeShift && unpaidCreditPortion > 0) {
+        await tx.cashierShift.update({
+          where: { id: activeShift.id },
+          data: {
+            nonCashSales: { increment: unpaidCreditPortion },
+            totalSales: { increment: unpaidCreditPortion },
+          },
+        });
+        await tx.shiftTransaction.create({
+          data: {
+            businessId: context.businessId,
+            branchId: effectiveBranchId,
+            shiftId: activeShift.id,
+            saleId: sale.id,
+            transactionType: "SALE",
+            paymentMethod: "CREDIT",
+            amount: new Prisma.Decimal(unpaidCreditPortion),
+            cashEffect: new Prisma.Decimal(0),
           },
         });
       }

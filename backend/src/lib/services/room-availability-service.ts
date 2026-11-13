@@ -595,6 +595,75 @@ export async function updateRoom(
   });
 }
 
+export async function deleteRoom(
+  businessId: string,
+  roomId: string,
+  actorId?: string,
+  prismaClient: PrismaClientLike = db
+) {
+  return await withHotelTransaction(prismaClient, async (tx) => {
+    const existing = await tx.room.findFirst({
+      where: { id: roomId, businessId },
+      include: {
+        stays: { where: { status: { in: ["ACTIVE", "EXTENDED", "TRANSFERRED"] } } },
+        reservations: { where: { status: { in: ["CONFIRMED", "CHECKED_IN"] } } },
+      },
+    });
+    if (!existing) {
+      throw new HotelError("Room not found", 404, "ROOM_NOT_FOUND");
+    }
+
+    if (existing.stays.length > 0) {
+      throw new HotelError(
+        "Cannot delete room with active in-house stay",
+        400,
+        "ACTIVE_STAY_BLOCKS_DELETION"
+      );
+    }
+
+    const historicalCount = await tx.roomAllocation.count({ where: { roomId } });
+    if (historicalCount > 0 || existing.reservations.length > 0) {
+      const deactivated = await tx.room.update({
+        where: { id: roomId },
+        data: { isActive: false, status: "OUT_OF_SERVICE" },
+      });
+      await createAuditEvent(
+        {
+          businessId,
+          branchId: existing.branchId,
+          userId: actorId ?? null,
+          action: "ROOM_DEACTIVATED",
+          entity: "Room",
+          entityId: roomId,
+          oldValue: existing,
+          newValue: deactivated,
+        },
+        tx
+      );
+      return { success: true, deleted: false, message: "Room has historical records and was marked inactive" };
+    }
+
+    await tx.qrLocation.deleteMany({ where: { roomId } });
+
+    await tx.room.delete({ where: { id: roomId } });
+    await createAuditEvent(
+      {
+        businessId,
+        branchId: existing.branchId,
+        userId: actorId ?? null,
+        action: "ROOM_DELETED",
+        entity: "Room",
+        entityId: roomId,
+        oldValue: existing,
+        newValue: null,
+      },
+      tx
+    );
+
+    return { success: true, deleted: true, message: "Room permanently deleted" };
+  });
+}
+
 // -----------------------------------------------------------------------------
 // Availability & Tape Chart Matrix
 // -----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { apiClient } from "@/core/api/api-client";
 
 interface SettingsContextType {
   currencySymbol: string;
@@ -10,6 +11,7 @@ interface SettingsContextType {
   enableVat: boolean;
   businessName: string;
   businessType: string;
+  propertyType: string;
   phone: string;
   address: string;
   panNumber: string;
@@ -39,7 +41,8 @@ const SettingsContext = React.createContext<SettingsContextType>({
   pricingType: "EXCLUSIVE",
   enableVat: true,
   businessName: "",
-  businessType: "RETAIL",
+  businessType: "RESTAURANT",
+  propertyType: "BOTH",
   phone: "",
   address: "",
   panNumber: "",
@@ -69,7 +72,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [pricingType, setPricingType] = React.useState<"INCLUSIVE" | "EXCLUSIVE">("EXCLUSIVE");
   const [enableVat, setEnableVat] = React.useState(true);
   const [businessName, setBusinessName] = React.useState("");
-  const [businessType, setBusinessType] = React.useState("RETAIL");
+  const [businessType, setBusinessType] = React.useState("RESTAURANT");
+  const [propertyType, setPropertyType] = React.useState("BOTH");
   const [phone, setPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
   const [panNumber, setPanNumber] = React.useState("");
@@ -92,22 +96,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const fetchSettings = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/settings");
-      if (res.ok) {
-        const data = await res.json();
-        setBusinessName(data.name || "");
-        setPhone(data.phone || "");
-        setAddress(data.address || "");
-        if (data.taxConfig && typeof data.taxConfig === "object") {
-          setTaxName(data.taxConfig.taxName || "VAT");
-        }
-        const meta = data.settings || {};
-        setCurrencySymbol(meta.currencySymbol || "Rs. ");
-        setBusinessType(meta.businessType || "RETAIL");
-        setPanNumber(meta.panNumber || "");
-        setVatNumber(meta.vatNumber || "");
-        setEnableVat(meta.enableVat ?? true);
-        setVatPercentage(meta.vatPercentage ?? (data.taxConfig?.rate || 13));
+      const data = await apiClient.settings.getSettings();
+      setBusinessName(data.name || "");
+      setPhone(data.phone || "");
+      setAddress(data.address || "");
+      if (data.taxConfig && typeof data.taxConfig === "object") {
+        setTaxName(data.taxConfig.taxName || "VAT");
+      }
+      const meta = data.settings || {};
+      const resolvedType = meta.businessType || meta.propertyType || "BOTH";
+      setCurrencySymbol(meta.currencySymbol || "Rs. ");
+      setBusinessType(resolvedType);
+      setPropertyType(meta.propertyType || resolvedType);
+      setPanNumber(meta.panNumber || "");
+      setVatNumber(meta.vatNumber || "");
+      setEnableVat(meta.enableVat ?? true);
+      setVatPercentage(meta.vatPercentage ?? (data.taxConfig?.rate || 13));
         setPricingType(meta.pricingType || "EXCLUSIVE");
         setReceiptHeader(meta.receiptHeader || "");
         setReceiptFooter(meta.receiptFooter || "");
@@ -123,7 +127,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setPaymentAccountName(meta.paymentAccountName || data.name || "");
         setShowTaxBreakup(meta.showTaxBreakup ?? true);
         setShowQrCode(meta.showQrCode ?? true);
-      }
     } catch (error) {
       console.error("Error fetching settings in provider:", error);
     } finally {
@@ -145,6 +148,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         enableVat,
         businessName,
         businessType,
+        propertyType,
         phone,
         address,
         panNumber,

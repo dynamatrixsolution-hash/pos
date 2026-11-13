@@ -13,6 +13,7 @@ import {
   createOrAppendOrder,
   OrderItemInput,
 } from "@/lib/services/restaurant-order-service";
+import { routeOrderRoundToStations } from "@/lib/services/kitchen-routing-service";
 import { openTableSession } from "@/lib/services/table-session-service";
 import {
   assertFeatureEnabled,
@@ -60,6 +61,16 @@ export function generatePublicQrCode(locationType: "ROOM" | "TABLE"): string {
 
 export function generateOpaqueToken(prefix: "GAG" | "GSS"): string {
   return `${prefix}-${randomBytes(24).toString("base64url")}`;
+}
+
+export function extractTablePin(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/\[PIN:(\d{4})\]/i);
+  return match ? match[1] : null;
+}
+
+export function generateTablePin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 export function maskGuestName(fullName: string): string {
@@ -405,6 +416,14 @@ export async function resolvePublicQrLocation(
             where: { isAvailable: true },
             orderBy: { displayOrder: "asc" },
             include: {
+              product: {
+                select: {
+                  id: true,
+                  image: true,
+                  category: { select: { id: true, name: true } },
+                  subcategory: { select: { id: true, name: true } },
+                },
+              },
               modifierGroups: {
                 orderBy: { displayOrder: "asc" },
                 include: {
@@ -447,6 +466,58 @@ export async function resolvePublicQrLocation(
 
   // CRITICAL PRIVACY INVARIANT: Never expose guestName, guestPhone, guestEmail,
   // stayId, folio, balance, entries, or prior orders in public QR resolution.
+  let activeTableSession: any = null;
+  let activeOrderSummary: any = null;
+  let isBilledLocked = false;
+  let pinRequired = false;
+
+  if (qrLocation.table) {
+    activeTableSession = await prismaClient.tableSession.findFirst({
+      where: {
+        businessId: qrLocation.businessId,
+        tableId: qrLocation.table.id,
+        status: { in: ["ACTIVE", "BILLED"] },
+      },
+      include: {
+        restaurantOrders: {
+          where: { settlementStatus: { not: "PAID" } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            orderNumber: true,
+            totalAmount: true,
+            settlementStatus: true,
+            acceptanceStatus: true,
+            fulfillmentStatus: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { openedAt: "desc" },
+    });
+
+    if (activeTableSession) {
+      if (
+        activeTableSession.status === "BILLED" ||
+        qrLocation.table.status === "BILLED"
+      ) {
+        isBilledLocked = true;
+      }
+      pinRequired = true;
+      if (activeTableSession.restaurantOrders.length > 0) {
+        const ord = activeTableSession.restaurantOrders[0];
+        activeOrderSummary = {
+          orderNumber: ord.orderNumber,
+          totalAmount: ord.totalAmount.toString(),
+          settlementStatus: ord.settlementStatus,
+          fulfillmentStatus: ord.fulfillmentStatus,
+          createdAt: ord.createdAt.toISOString(),
+        };
+      }
+    }
+  }
+
   return {
     qrLocation: {
       id: qrLocation.id,
@@ -475,10 +546,19 @@ export async function resolvePublicQrLocation(
             tableNumber: qrLocation.table.tableNumber,
             capacity: qrLocation.table.capacity,
             floorName: qrLocation.table.floor?.name ?? null,
-            hasActiveSession: Boolean(qrLocation.table.currentSessionId),
+            status: qrLocation.table.status,
+            hasActiveSession: Boolean(activeTableSession),
+            isSettled: !activeTableSession && qrLocation.table.status === "AVAILABLE",
+            isSettling: Boolean(
+              activeTableSession &&
+                (activeTableSession.status === "BILLED" || qrLocation.table.status === "BILLED")
+            ),
+            pinRequired,
+            isBilledLocked,
+            activeOrder: activeOrderSummary,
           }
         : null,
-      requiresVerification: qrLocation.locationType === "ROOM",
+      requiresVerification: qrLocation.locationType === "ROOM" || pinRequired || isBilledLocked,
     },
     menus,
   };
@@ -493,6 +573,7 @@ export interface VerifyAndCreateGuestSessionInput {
   guestLastName?: string | null;
   guestPhoneLast4?: string | null;
   verificationCode?: string | null;
+  joinToken?: string | null;
   deviceFingerprint?: string | null;
   now?: Date;
 }
@@ -688,26 +769,94 @@ export async function verifyAndCreateGuestSession(
         orderBy: { openedAt: "desc" },
       });
 
+      let returnedPin: string | null = null;
+
       if (!tableSession) {
         if (qrLocation.table.status === "AVAILABLE") {
+          const generatedPin = generateTablePin();
+          returnedPin = generatedPin;
           const opened = await openTableSession(
             {
               businessId: qrLocation.businessId,
               branchId: qrLocation.branchId,
               tableId: qrLocation.tableId,
               guestCount: 1,
-              notes: "Opened via Table QR",
+              notes: `[PIN:${generatedPin}] Opened via Table QR`,
             },
             tx
           );
           tableSession = opened.session;
         } else {
           throw new HotelError(
-            `Table ${qrLocation.table.tableNumber} is currently ${qrLocation.table.status} with no active dining session`,
+            `Table ${qrLocation.table.tableNumber} is currently ${qrLocation.table.status} with no active dining session. Please alert staff to clear and reset the table.`,
             409,
             "TABLE_UNAVAILABLE"
           );
         }
+      } else {
+        // Table already has an active dining session or is billed
+        if (tableSession.status === "BILLED" || qrLocation.table.status === "BILLED") {
+          throw new HotelError(
+            `Table ${qrLocation.table.tableNumber} is currently settling bill payment. New orders are locked. If you are a new guest, please notify staff to reset the table.`,
+            409,
+            "TABLE_BILLED_LOCKED"
+          );
+        }
+
+        // Active dining session protection: require 4-digit Table PIN
+        let sessionPin = extractTablePin(tableSession.notes);
+        if (!sessionPin) {
+          sessionPin = generateTablePin();
+          await tx.tableSession.update({
+            where: { id: tableSession.id },
+            data: { notes: `[PIN:${sessionPin}] ${tableSession.notes || ""}`.trim() },
+          });
+        }
+
+        // Frictionless companion join via invite token (shared QR / link / PIN)
+        let isCompanionVerified = false;
+        if (input.joinToken) {
+          const cleanJoin = input.joinToken.trim();
+          if (cleanJoin === sessionPin) {
+            isCompanionVerified = true;
+          } else {
+            const joinHash = hashGuestSecret(cleanJoin);
+            const matchingGrant = await tx.guestAccessGrant.findFirst({
+              where: {
+                businessId: qrLocation.businessId,
+                tableSessionId: tableSession.id,
+                grantCodeHash: joinHash,
+                status: "ACTIVE",
+              },
+            });
+            if (matchingGrant) {
+              isCompanionVerified = true;
+            } else {
+              const matchingSession = await tx.guestSession.findFirst({
+                where: {
+                  businessId: qrLocation.businessId,
+                  tableSessionId: tableSession.id,
+                  sessionTokenHash: joinHash,
+                  status: "ACTIVE",
+                },
+              });
+              if (matchingSession) {
+                isCompanionVerified = true;
+              }
+            }
+          }
+        }
+
+        const providedPin = (input.verificationCode || "").trim();
+        if (!isCompanionVerified && (!providedPin || providedPin !== sessionPin)) {
+          throw new HotelError(
+            `Table ${qrLocation.table.tableNumber} has an active dining order. Scan your companion's invite QR or enter the 4-digit Dining PIN to join.`,
+            403,
+            "TABLE_PIN_REQUIRED"
+          );
+        }
+
+        returnedPin = sessionPin;
       }
 
       const expiresAt = new Date(now.getTime() + 6 * 3600_000);
@@ -763,10 +912,12 @@ export async function verifyAndCreateGuestSession(
       return {
         sessionToken: rawSessionToken,
         grantToken: rawGrantToken,
+        tablePin: returnedPin,
         session: {
           id: session.id,
           locationType: "TABLE" as const,
           tableNumber: qrLocation.table.tableNumber,
+          tablePin: returnedPin,
           guestDisplayName: grant.guestDisplayName,
           scopes: [...GUEST_TABLE_SCOPES],
           expiresAt: session.expiresAt,
@@ -809,8 +960,8 @@ export async function validateGuestSessionToken(
       grant: true,
       qrLocation: {
         include: {
-          room: true,
-          table: true,
+          room: { include: { floor: true, roomType: true } },
+          table: { include: { floor: true } },
         },
       },
       stay: true,
@@ -887,6 +1038,14 @@ export async function validateGuestSessionToken(
         "Table session has ended",
         401,
         "GUEST_TABLE_SESSION_ENDED"
+      );
+    }
+
+    if (requiredScope === "ORDER_INITIATE" && session.tableSession.status === "BILLED") {
+      throw new HotelError(
+        "Table is currently settling bill payment. Additional orders are locked. Please contact your server.",
+        409,
+        "TABLE_BILLED_LOCKED"
       );
     }
   }
@@ -1344,9 +1503,22 @@ export async function submitGuestOrder(
       });
     }
 
-    const originPrefix = stay
-      ? `[Room ${qrLocation.room?.roomNumber ?? ""} Guest QR]`
-      : `[Table ${qrLocation.table?.tableNumber ?? ""} Guest QR]`;
+    let originPrefix = "";
+    if (qrLocation.locationType === "ROOM") {
+      const roomNum = qrLocation.room?.roomNumber ?? "";
+      const roomFloor = qrLocation.room?.floor?.name ? `${qrLocation.room.floor.name} • ` : "";
+      originPrefix = `[Room Service • ${roomFloor}Room ${roomNum}]`;
+    } else {
+      const tNum = qrLocation.table?.tableNumber ?? "Table";
+      const lower = tNum.toLowerCase().trim();
+      let spaceType = "Table";
+      if (lower.startsWith("c-") || lower.startsWith("c_") || lower.includes("cabin")) spaceType = "Cabin";
+      else if (lower.startsWith("vip") || lower.startsWith("v-") || lower.includes("suite")) spaceType = "VIP Room";
+      else if (lower.startsWith("h-") || lower.startsWith("hall") || lower.includes("banquet")) spaceType = "Hall";
+
+      const tableFloor = qrLocation.table?.floor?.name ? `${qrLocation.table.floor.name} • ` : "";
+      originPrefix = `[QR Order • ${tableFloor}${spaceType}: ${tNum}]`;
+    }
 
     const orderNotes = input.notes?.trim()
       ? `${originPrefix} ${input.notes.trim()}`
@@ -1358,12 +1530,26 @@ export async function submitGuestOrder(
         branchId: session.branchId,
         tableSessionId: session.tableSessionId ?? null,
         tableId: qrLocation.tableId ?? null,
-        orderType: "DINE_IN",
+        orderType: qrLocation.locationType === "ROOM" ? "ROOM_SERVICE" : "DINE_IN",
         items: canonicalItems,
         notes: orderNotes,
       },
       tx
     );
+
+    // Auto-route round to Kitchen Stations so KDS receives the ticket immediately
+    try {
+      await routeOrderRoundToStations(
+        {
+          businessId: session.businessId,
+          roundId: result.round.id,
+          actorId: undefined,
+        },
+        tx
+      );
+    } catch (routeErr) {
+      console.error("Auto-routing guest QR round to kitchen stations failed:", routeErr);
+    }
 
     await createAuditEvent(
       {

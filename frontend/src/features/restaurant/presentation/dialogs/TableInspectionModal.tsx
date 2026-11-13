@@ -1,0 +1,331 @@
+"use client";
+
+import React, { useState } from "react";
+import {
+  X,
+  UtensilsCrossed,
+  CreditCard,
+  Trash2,
+  AlertTriangle,
+  Receipt,
+  ShoppingBag,
+} from "lucide-react";
+import { usePosTicketsStore } from "../../state/pos-tickets.store";
+import { usePosUiStore } from "../../state/pos-ui.store";
+
+function formatNPR(amount: number | string | undefined): string {
+  const val = Number(amount) || 0;
+  return `Rs. ${val.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export const TableInspectionModal = React.memo(function TableInspectionModal() {
+  const inspectingTable = usePosTicketsStore((s) => s.inspectingTable);
+  const inspectingOrderData = usePosTicketsStore((s) => s.inspectingOrderData);
+  const isInspectingLoading = usePosTicketsStore((s) => s.isInspectingLoading);
+  const closeTableInspection = usePosTicketsStore((s) => s.closeTableInspection);
+  const selectOccupiedSpace = usePosTicketsStore((s) => s.selectOccupiedSpace);
+  const cancellingTable = usePosTicketsStore((s) => s.cancellingTable);
+  const setCancellingTable = usePosTicketsStore((s) => s.setCancellingTable);
+  const isCancellingTable = usePosTicketsStore((s) => s.isCancellingTable);
+  const submitCancelTable = usePosTicketsStore((s) => s.submitCancelTable);
+  const setAdjustingLine = usePosTicketsStore((s) => s.setAdjustingLine);
+
+  const setShowSettlementModal = usePosUiStore((s) => s.setShowSettlementModal);
+
+  const [cancelReason, setCancelReason] = useState("Customer requested cancellation");
+
+  if (!inspectingTable) return null;
+
+  const activeOrder = inspectingOrderData?.activeOrder;
+
+  const handleTakeOrder = () => {
+    selectOccupiedSpace(inspectingTable, activeOrder ? { activeOrder } : undefined);
+    closeTableInspection();
+  };
+
+  const handlePay = () => {
+    selectOccupiedSpace(inspectingTable, activeOrder ? { activeOrder } : undefined);
+    closeTableInspection();
+    setShowSettlementModal(true);
+  };
+
+  const handleOpenCancelConfirmation = () => {
+    setCancellingTable({
+      tableId: inspectingTable.id,
+      tableNumber: inspectingTable.tableNumber,
+      orderId: activeOrder?.id,
+      sessionId:
+        activeOrder?.tableSessionId ||
+        inspectingTable.currentSessionId ||
+        inspectingOrderData?.activeSession?.id ||
+        inspectingTable.tableSessions?.[0]?.id ||
+        "",
+      itemCount:
+        activeOrder?.rounds?.reduce((acc: number, r: any) => acc + (r.lines?.length || 0), 0) || 0,
+      totalAmount: activeOrder?.totalAmount?.toString() || "0.00",
+    });
+  };
+
+  return (
+    <>
+      {/* 1. Main Table Inspection Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
+        <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-[#6B2837] text-white">
+                <Receipt className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#292320]">
+                  Table {inspectingTable.tableNumber} — Order Details
+                </h3>
+                <p className="text-[11px] text-[#71675E]">
+                  {inspectingTable.floor?.name || "Floor"} • {inspectingTable.capacity} covers
+                  {activeOrder?.orderNumber && (
+                    <span className="font-mono font-bold text-[#6B2837] ml-2">
+                      #{activeOrder.orderNumber}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={closeTableInspection}
+              className="h-8 w-8 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] flex items-center justify-center text-[#71675E] hover:text-[#292320] cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Body: Rounds & Lines */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {isInspectingLoading ? (
+              <div className="py-12 text-center text-xs text-[#71675E] space-y-2">
+                <div className="inline-block animate-spin h-6 w-6 border-2 border-[#6B2837] border-t-transparent rounded-full" />
+                <p>Loading table order details...</p>
+              </div>
+            ) : activeOrder && activeOrder.rounds?.length > 0 ? (
+              <div className="space-y-3">
+                {activeOrder.rounds.map((round: any) => (
+                  <div
+                    key={round.id}
+                    className="p-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between font-bold text-[#292320]">
+                      <span>Round #{round.roundNumber}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD]">
+                        {round.status || "PREPARING"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 divide-y divide-[#D8CEC1]/50">
+                      {round.lines?.map((line: any) => {
+                        const isCancelled =
+                          line.acceptanceStatus === "REJECTED" || line.fulfillmentStatus === "CANCELLED";
+                        const isParcel = (line.notes || "").includes("PARCEL");
+
+                        return (
+                          <div
+                            key={line.id}
+                            className="pt-1.5 first:pt-0 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-bold text-[#292320] shrink-0">
+                                {line.quantity}x
+                              </span>
+                              <span
+                                className={`truncate ${
+                                  isCancelled ? "line-through text-[#71675E]" : "font-medium"
+                                }`}
+                              >
+                                {line.itemName}
+                              </span>
+
+                              {isCancelled ? (
+                                <span className="shrink-0 px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800 border border-red-200">
+                                  Cancelled {line.rejectionReason ? `(${line.rejectionReason})` : ""}
+                                </span>
+                              ) : isParcel ? (
+                                <span className="shrink-0 px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] flex items-center gap-1">
+                                  <ShoppingBag className="h-2.5 w-2.5" />
+                                  <span>Takeaway</span>
+                                </span>
+                              ) : (
+                                <span className="shrink-0 px-1.5 py-0.2 rounded text-[9px] font-medium bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD] flex items-center gap-1">
+                                  <UtensilsCrossed className="h-2.5 w-2.5" />
+                                  <span>Dine-in</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span
+                                className={`font-mono font-bold tabular-nums ${
+                                  isCancelled ? "line-through text-[#71675E]" : ""
+                                }`}
+                              >
+                                {formatNPR(line.total || line.lineTotal)}
+                              </span>
+                              {!isCancelled && activeOrder.id && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setAdjustingLine({
+                                      orderId: activeOrder.id,
+                                      lineId: line.id,
+                                      itemName: line.itemName,
+                                      currentQty: line.quantity,
+                                      notes: line.notes,
+                                    })
+                                  }
+                                  title="Cancel or adjust dish"
+                                  className="p-1 rounded text-[#71675E] hover:text-[#DC2626] hover:bg-red-50 cursor-pointer"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Balance Summary */}
+                <div className="p-3 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between text-xs">
+                  <span className="text-[#71675E]">Running Total Balance:</span>
+                  <span className="text-base font-black font-mono text-[#6B2837] tabular-nums">
+                    {formatNPR(activeOrder.totalAmount)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="py-10 text-center rounded-lg border border-dashed border-[#D8CEC1] bg-[#FFFCF7] space-y-2">
+                <UtensilsCrossed className="h-8 w-8 text-[#71675E]/40 mx-auto" />
+                <p className="font-bold text-[#292320]">Table is seated</p>
+                <p className="text-[11px] text-[#71675E]">
+                  No kitchen rounds have been submitted yet. Click below to add dishes!
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="pt-3 border-t border-[#D8CEC1] flex items-center justify-between gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenCancelConfirmation}
+              className="px-3 py-2 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-[#DC2626] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              title="Cancel table and void all orders"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Cancel Table</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleTakeOrder}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <UtensilsCrossed className="h-3.5 w-3.5" />
+                <span>Take Order</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePay}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>Pay</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Cancel Table Confirmation Modal */}
+      {cancellingTable && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/60 p-4 backdrop-blur-xs select-none">
+          <div className="w-full max-w-md rounded-xl border border-red-200 bg-[#FFFCF7] p-5 space-y-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-red-100 text-[#DC2626] shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-black text-[#292320]">
+                  Cancel Table {cancellingTable.tableNumber}?
+                </h4>
+                <p className="text-xs text-[#DC2626] font-bold mt-1">
+                  Notice: All orders will be cancelled!
+                </p>
+                <p className="text-[11px] text-[#71675E] mt-1 leading-relaxed">
+                  Cancelling this table will void all kitchen tickets, cancel all order items, close the active guest session, and reset Table {cancellingTable.tableNumber} back to Available.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-1 text-xs">
+              <div className="flex justify-between text-[#71675E]">
+                <span>Total Items:</span>
+                <span className="font-bold text-[#292320]">{cancellingTable.itemCount}</span>
+              </div>
+              <div className="flex justify-between text-[#71675E]">
+                <span>Outstanding Balance:</span>
+                <span className="font-mono font-bold text-[#6B2837]">{formatNPR(cancellingTable.totalAmount)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-[#292320]">Cancellation Reason</label>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Guest left, duplicated order, etc."
+                className="w-full text-xs px-2.5 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-[#D8CEC1] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCancellingTable(null)}
+                disabled={isCancellingTable}
+                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] cursor-pointer"
+              >
+                No, Keep Table
+              </button>
+
+              <button
+                type="button"
+                onClick={() => submitCancelTable(cancelReason)}
+                disabled={isCancellingTable}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] disabled:opacity-50 text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {isCancellingTable ? (
+                  <span>Cancelling...</span>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Yes, Cancel Table &amp; All Orders</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+});
+

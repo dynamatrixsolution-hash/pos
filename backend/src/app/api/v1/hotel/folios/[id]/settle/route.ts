@@ -36,11 +36,11 @@ export async function POST(
     const body = await req.json();
     const parsed = settleFolioSchema.parse(body);
 
-    const branchId = parsed.branchId || session.branchId;
+    const branchId = parsed.branchId || session.branchId || undefined;
 
     const result = await settleGuestFolio({
       businessId: session.businessId,
-      branchId: branchId!,
+      branchId,
       folioId: id,
       tenders: parsed.tenders,
       actorId: session.userId,
@@ -51,6 +51,7 @@ export async function POST(
       allocations: result.allocations,
     });
   } catch (error: any) {
+    console.error("[Folio Settle Error]:", error);
     if (
       error instanceof HotelError ||
       error?.name === "HotelError" ||

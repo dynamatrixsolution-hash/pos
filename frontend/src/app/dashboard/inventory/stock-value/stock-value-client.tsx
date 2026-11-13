@@ -3,9 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
+import { apiClient } from "@/core/api/api-client";
 
 export default function StockValueClient() {
   const { currencySymbol } = useSettings();
+  const num = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+  };
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
@@ -25,17 +30,11 @@ export default function StockValueClient() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const query = new URLSearchParams();
-        query.append("sortBy", sortBy);
-
-        const res = await fetch(`/api/v1/inventory/stock-value?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data.products);
-          setCategories(data.categories);
-          setBranches(data.branches);
-          setSummary(data.summary);
-        }
+        const data = await apiClient.inventory.getStockValue({ sortBy });
+        setProducts(data.products || []);
+        setCategories(data.categories || []);
+        setBranches(data.branches || []);
+        if (data.summary) setSummary(data.summary);
       } catch (err) {
         console.error("Fetch stock value error:", err);
       } finally {
@@ -53,16 +52,16 @@ export default function StockValueClient() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Cost Value</div>
-          <div className="text-2xl font-black">{currencySymbol}{summary.totalCostValue.toFixed(2)}</div>
+          <div className="text-2xl font-black tabular-nums">{currencySymbol}{num(summary.totalCostValue).toFixed(2)}</div>
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <div className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-1">Selling Value</div>
-          <div className="text-2xl font-black text-primary">{currencySymbol}{summary.totalSellingValue.toFixed(2)}</div>
+          <div className="text-2xl font-black text-primary tabular-nums">{currencySymbol}{num(summary.totalSellingValue).toFixed(2)}</div>
         </div>
         <div className="bg-primary/10 border border-primary/20 rounded-md p-5">
           <div className="text-primary text-xs font-bold uppercase tracking-wider mb-1">Profit Margin</div>
-          <div className="text-2xl font-black text-primary flex items-center gap-2">
-            {summary.profitMargin.toFixed(2)}%
+          <div className="text-2xl font-black text-primary flex items-center gap-2 tabular-nums">
+            {num(summary.profitMargin).toFixed(2)}%
             <TrendingUp className="h-6 w-6" />
           </div>
         </div>
@@ -164,12 +163,12 @@ export default function StockValueClient() {
                           <div className="font-bold text-primary">{p.sku}</div>
                           <div className="text-[11px]">{p.name}</div>
                         </td>
-                        <td className="py-3 px-2 text-center font-bold">{p.quantity}</td>
-                        <td className="py-3 px-2 text-right">{currencySymbol}{p.costPrice.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right text-primary font-medium">{currencySymbol}{p.sellingPrice.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold">{currencySymbol}{p.costValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-primary">{currencySymbol}{p.sellingValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right">{p.marginPercent}%</td>
+                        <td className="py-3 px-2 text-center font-bold tabular-nums">{p.quantity}</td>
+                        <td className="py-3 px-2 text-right font-mono tabular-nums">{currencySymbol}{num(p.costPrice).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right text-primary font-medium font-mono tabular-nums">{currencySymbol}{num(p.sellingPrice).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold font-mono tabular-nums">{currencySymbol}{num(p.costValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-primary font-mono tabular-nums">{currencySymbol}{num(p.sellingValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right tabular-nums">{p.marginPercent}%</td>
                       </tr>
                     ))}
 
@@ -177,10 +176,10 @@ export default function StockValueClient() {
                     categories.map((c: any) => (
                       <tr key={c.category} className="hover:bg-secondary/10">
                         <td className="py-3 px-2 font-bold">{c.category}</td>
-                        <td className="py-3 px-2 text-center font-bold">{c.quantity}</td>
-                        <td className="py-3 px-2 text-right font-bold">{currencySymbol}{c.costValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-primary">{currencySymbol}{c.sellingValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-green-600">{currencySymbol}{c.marginValue.toFixed(2)}</td>
+                        <td className="py-3 px-2 text-center font-bold tabular-nums">{c.quantity}</td>
+                        <td className="py-3 px-2 text-right font-bold font-mono tabular-nums">{currencySymbol}{num(c.costValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-primary font-mono tabular-nums">{currencySymbol}{num(c.sellingValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-green-600 font-mono tabular-nums">{currencySymbol}{num(c.marginValue).toFixed(2)}</td>
                       </tr>
                     ))}
 
@@ -188,10 +187,10 @@ export default function StockValueClient() {
                     branches.map((b: any) => (
                       <tr key={b.branchId} className="hover:bg-secondary/10">
                         <td className="py-3 px-2 font-bold">{b.branchName}</td>
-                        <td className="py-3 px-2 text-center font-bold">{b.quantity}</td>
-                        <td className="py-3 px-2 text-right font-bold">{currencySymbol}{b.costValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-primary">{currencySymbol}{b.sellingValue.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right font-bold text-green-600">{currencySymbol}{b.marginValue.toFixed(2)}</td>
+                        <td className="py-3 px-2 text-center font-bold tabular-nums">{b.quantity}</td>
+                        <td className="py-3 px-2 text-right font-bold font-mono tabular-nums">{currencySymbol}{num(b.costValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-primary font-mono tabular-nums">{currencySymbol}{num(b.sellingValue).toFixed(2)}</td>
+                        <td className="py-3 px-2 text-right font-bold text-green-600 font-mono tabular-nums">{currencySymbol}{num(b.marginValue).toFixed(2)}</td>
                       </tr>
                     ))}
                 </tbody>

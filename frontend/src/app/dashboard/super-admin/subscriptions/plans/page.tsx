@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiClient } from "@/core/api/api-client";
 import {
   Layers,
   Settings,
@@ -102,16 +103,10 @@ export default function PlansAndPricingPage() {
   const fetchPlansData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/super-admin/subscriptions");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.plans) setPlans(data.plans);
-        if (data.featureMatrix) setFeatureMatrix(data.featureMatrix);
-        if (data.globalSettings) setGlobalSettings(data.globalSettings);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setFeedback({ type: "error", message: err.error || "Failed to load plans data" });
-      }
+      const data = await apiClient.superAdmin.getSubscriptions();
+      if (data.plans) setPlans(data.plans);
+      if (data.featureMatrix) setFeatureMatrix(data.featureMatrix);
+      if (data.globalSettings) setGlobalSettings(data.globalSettings);
     } catch {
       setFeedback({ type: "error", message: "Network connection error loading plans." });
     } finally {
@@ -150,17 +145,10 @@ export default function PlansAndPricingPage() {
         return p;
       });
 
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_PLANS",
-          plans: updatedPlans,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "UPDATE_PLANS",
+        plans: updatedPlans,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update plan limits");
 
       setPlans(updatedPlans);
       setEditingPlanLimits(null);
@@ -196,17 +184,10 @@ export default function PlansAndPricingPage() {
       };
 
       const updatedPlans = [...plans, newTier];
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_PLANS",
-          plans: updatedPlans,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "UPDATE_PLANS",
+        plans: updatedPlans,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create plan");
 
       setPlans(updatedPlans);
       setShowCreatePlanModal(false);
@@ -225,17 +206,10 @@ export default function PlansAndPricingPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_GLOBAL_SETTINGS",
-          globalSettings,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "UPDATE_GLOBAL_SETTINGS",
+        globalSettings,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update global settings");
 
       setShowGlobalSettingsModal(false);
       setFeedback({ type: "success", message: "Global subscription settings updated." });
@@ -257,17 +231,10 @@ export default function PlansAndPricingPage() {
   const handleSaveFeatureMatrix = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_FEATURE_MATRIX",
-          featureMatrix,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "UPDATE_FEATURE_MATRIX",
+        featureMatrix,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save feature matrix");
 
       setIsEditingMatrix(false);
       setFeedback({ type: "success", message: "Feature matrix configuration saved." });

@@ -8,19 +8,20 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const appliedModifierSchema = z.object({
-  modifierGroupId: z.string().min(1),
-  groupName: z.string().min(1),
-  optionId: z.string().min(1),
+  modifierGroupId: z.string().optional().default("default-group"),
+  groupName: z.string().optional().default("Modifier"),
+  optionId: z.string().optional().default("default-option"),
   optionName: z.string().min(1),
-  priceDelta: z.union([z.number(), z.string()]),
+  priceDelta: z.union([z.number(), z.string()]).default(0),
 });
 
 const orderItemSchema = z.object({
   menuItemId: z.string().optional(),
-  itemName: z.string().min(1, "Item name is required"),
-  basePrice: z.union([z.number(), z.string()]),
+  itemName: z.string().optional(),
+  basePrice: z.union([z.number(), z.string()]).optional(),
   quantity: z.coerce.number().min(1).default(1),
   appliedModifiers: z.array(appliedModifierSchema).optional().default([]),
+  selectedModifiers: z.array(z.any()).optional().default([]),
   notes: z.string().optional(),
 });
 
@@ -28,7 +29,17 @@ const createOrderSchema = z.object({
   branchId: z.string().optional().nullable(),
   tableSessionId: z.string().optional().nullable(),
   tableId: z.string().optional().nullable(),
-  orderType: z.enum(["DINE_IN", "TAKEAWAY", "BAR_WALK_IN", "DELIVERY"]).default("DINE_IN"),
+  orderType: z.enum(["DINE_IN", "TAKEAWAY", "BAR_WALK_IN", "DELIVERY", "ROOM_SERVICE"]).default("DINE_IN"),
+  roomServiceInfo: z
+    .object({
+      stayId: z.string().optional(),
+      roomId: z.string().optional(),
+      roomNumber: z.string().optional(),
+      floorName: z.string().optional(),
+      guestName: z.string().optional(),
+      chargeToFolio: z.boolean().optional(),
+    })
+    .optional(),
   deliveryInfo: z
     .object({
       customerName: z.string().optional(),
@@ -36,6 +47,8 @@ const createOrderSchema = z.object({
       address: z.string().optional(),
       riderName: z.string().optional(),
       deliveryFee: z.union([z.number(), z.string()]).optional(),
+      packagingFee: z.union([z.number(), z.string()]).optional(),
+      expressFee: z.union([z.number(), z.string()]).optional(),
     })
     .optional(),
   items: z.array(orderItemSchema).min(1, "At least one item is required"),
@@ -108,20 +121,110 @@ export async function POST(req: Request) {
         d.address ? `Address: ${d.address}` : "",
         d.riderName ? `Rider: ${d.riderName}` : "",
         d.deliveryFee ? `Delivery Fee: ${d.deliveryFee}` : "",
+        d.packagingFee ? `Packaging: ${d.packagingFee}` : "",
+        d.expressFee ? `Express: ${d.expressFee}` : "",
       ].filter(Boolean);
       if (dParts.length > 0) {
         const deliveryNote = `[DELIVERY] ${dParts.join(" | ")}`;
         finalNotes = finalNotes ? `${deliveryNote}\n${finalNotes}` : deliveryNote;
       }
+    } else if (parsed.orderType === "ROOM_SERVICE" && parsed.roomServiceInfo) {
+      const r = parsed.roomServiceInfo;
+      const rParts = [
+        r.roomNumber ? `Room ${r.roomNumber}` : "",
+        r.floorName ? `Floor: ${r.floorName}` : "",
+        r.guestName ? `Guest: ${r.guestName}` : "",
+      ].filter(Boolean);
+      if (rParts.length > 0) {
+        const roomNote = `[Room Service • ${rParts.join(" • ")}]`;
+        finalNotes = finalNotes ? `${roomNote}\n${finalNotes}` : roomNote;
+      }
     }
+
+    // Isolate DINE_IN from TAKEAWAY and DELIVERY so delivery never associates with a table
+    const effectiveTableId = parsed.orderType === "DINE_IN" ? (parsed.tableId || null) : null;
+    let effectiveTableSessionId = parsed.orderType === "DINE_IN" ? (parsed.tableSessionId || null) : null;
+
+    // Auto-resolve or auto-create table session if waiter directly took order on a table without pre-seating
+    if (parsed.orderType === "DINE_IN" && effectiveTableId && !effectiveTableSessionId) {
+      const activeSession = await db.tableSession.findFirst({
+        where: {
+          tableId: effectiveTableId,
+          businessId: session.businessId,
+          status: { in: ["ACTIVE", "BILLED"] },
+        },
+        select: { id: true },
+      });
+      if (activeSession) {
+        effectiveTableSessionId = activeSession.id;
+      } else {
+        try {
+          const { openTableSession } = await import("@/lib/services/table-session-service");
+          const newSession = await openTableSession({
+            businessId: session.businessId,
+            branchId,
+            tableId: effectiveTableId,
+            guestCount: 1,
+            openedById: session.userId,
+            notes: "Direct POS Order",
+          });
+          effectiveTableSessionId = newSession.session.id;
+        } catch (openErr) {
+          console.warn("Auto-open session note:", openErr);
+        }
+      }
+    }
+
+    let effectiveOrderType = parsed.orderType;
+    if (parsed.orderType === "DINE_IN" && !effectiveTableId) {
+      // Waiter took direct dine-in order at counter without selecting a table
+      effectiveOrderType = "BAR_WALK_IN";
+      finalNotes = finalNotes ? `[Counter / Walk-in Dine-In] ${finalNotes}` : "[Counter / Walk-in Dine-In]";
+    }
+
+    // Normalize item lines: lookup missing itemName / basePrice by menuItemId if needed
+    const normalizedItems = await Promise.all(
+      parsed.items.map(async (item) => {
+        let name = item.itemName;
+        let price = item.basePrice;
+        if ((!name || price === undefined) && item.menuItemId) {
+          const mi = await db.menuItem.findUnique({
+            where: { id: item.menuItemId },
+            select: { name: true, basePrice: true },
+          });
+          if (mi) {
+            name = name || mi.name;
+            price = price !== undefined ? price : mi.basePrice.toString();
+          }
+        }
+        let mods = item.appliedModifiers || [];
+        if (mods.length === 0 && item.selectedModifiers && item.selectedModifiers.length > 0) {
+          mods = item.selectedModifiers.map((sm: any) => ({
+            modifierGroupId: sm.modifierGroupId || "default-group",
+            groupName: sm.groupName || "Modifier",
+            optionId: sm.optionId || "default-option",
+            optionName: sm.optionName || sm.name || "Option",
+            priceDelta: sm.priceAdjustment || sm.priceDelta || 0,
+          }));
+        }
+        return {
+          menuItemId: item.menuItemId,
+          itemName: name || "Menu Item",
+          basePrice: price !== undefined ? price : 0,
+          quantity: item.quantity,
+          appliedModifiers: mods,
+          notes: item.notes,
+        };
+      })
+    );
 
     const result = await createOrAppendOrder({
       businessId: session.businessId,
       branchId,
-      tableSessionId: parsed.tableSessionId,
-      tableId: parsed.tableId,
-      orderType: parsed.orderType,
-      items: parsed.items,
+      tableSessionId: effectiveTableSessionId,
+      tableId: effectiveTableId,
+      orderType: effectiveOrderType,
+      items: normalizedItems,
       notes: finalNotes || undefined,
       actorId: session.userId,
     });
@@ -137,6 +240,26 @@ export async function POST(req: Request) {
         });
       } catch (routeErr) {
         console.warn("Auto-route to kitchen warning:", routeErr);
+      }
+    }
+
+    // Auto-post to Hotel Room Folio if requested
+    if (
+      parsed.orderType === "ROOM_SERVICE" &&
+      parsed.roomServiceInfo?.stayId &&
+      parsed.roomServiceInfo?.chargeToFolio
+    ) {
+      try {
+        const { postRestaurantOrderToFolio } = await import("@/lib/services/folio-service");
+        await postRestaurantOrderToFolio({
+          businessId: session.businessId,
+          branchId,
+          orderId: result.order.id,
+          stayId: parsed.roomServiceInfo.stayId,
+          actorId: session.userId,
+        });
+      } catch (folioErr) {
+        console.warn("Auto-post room order to folio warning:", folioErr);
       }
     }
 

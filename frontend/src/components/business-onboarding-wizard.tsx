@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Notify } from "@/lib/notify";
+import { apiClient } from "@/core/api/api-client";
 import {
   Building,
   CheckCircle,
@@ -244,32 +245,12 @@ export default function BusinessOnboardingWizard({
 
     try {
       if (mode === "PUBLIC_USER") {
-        const res = await fetch("/api/v1/auth/register-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
+        const json = await apiClient.auth.registerRequest(formData);
 
-        const json = await res.json();
-        if (!res.ok) {
-          const detailMsg = typeof json.details === "string" ? json.details : json.details ? JSON.stringify(json.details) : "";
-          throw new Error(json.error ? `${json.error}${detailMsg ? `: ${detailMsg}` : ""}` : "Failed to submit registration request.");
-        }
-
-        Notify.success("Workspace registration request submitted successfully!");
         Notify.success("Workspace registration request submitted successfully!");
         router.push(`/auth/register/status?id=${json.request.id}&code=${json.request.trackingCode}`);
       } else {
-        const res = await fetch("/api/v1/super-admin/businesses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error || "Failed to provision business tenant.");
-        }
+        await apiClient.superAdmin.createBusiness(formData);
 
         if (onSuccess) {
           onSuccess();

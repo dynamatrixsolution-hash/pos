@@ -111,3 +111,7 @@ export async function PUT(req: Request) {
     return handleRouteError(error, "Failed to update property feature flags");
   }
 }
+
+export const POST = PUT;
+export const PATCH = PUT;
+

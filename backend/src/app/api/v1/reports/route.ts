@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
     const salesByPaymentMethod = salesPayments.map((p) => ({
       method: p.method,
-      amount: p._sum.amount || 0,
+      amount: Number(p._sum.amount || 0),
     }));
 
     // 2. Purchases Aggregates
@@ -155,7 +155,7 @@ export async function GET(request: Request) {
       return {
         categoryId: ecg.categoryId,
         categoryName: cat?.name || "Other/General",
-        amount: ecg._sum.amount || 0,
+        amount: Number(ecg._sum.amount || 0),
       };
     });
 
@@ -174,7 +174,26 @@ export async function GET(request: Request) {
       },
     });
 
-    // Add settled restaurant orders to total sales
+    // Deduplicate settled restaurant orders that already have a mirrored Sale row ([ORDER_ID:...])
+    const salesWithOrderTags = await db.sale.findMany({
+      where: {
+        ...whereClauseCommon,
+        status: "COMPLETED",
+        isActive: true,
+        notes: { contains: "[ORDER_ID:" },
+      },
+      select: { notes: true, total: true },
+    });
+    const mirroredOrderIds = new Set<string>();
+    let mirroredRestaurantSalesTotal = 0;
+    for (const s of salesWithOrderTags) {
+      mirroredRestaurantSalesTotal += Number(s.total || 0);
+      const match = s.notes?.match(/\[ORDER_ID:([^\]]+)\]/);
+      if (match && match[1]) {
+        mirroredOrderIds.add(match[1]);
+      }
+    }
+
     const settledRestaurantOrders = await db.restaurantOrder.findMany({
       where: {
         businessId: context.businessId,
@@ -183,9 +202,11 @@ export async function GET(request: Request) {
         ...(authorizedBranch ? { branchId: authorizedBranch } : {}),
       },
     });
-    const restaurantSalesTotal = settledRestaurantOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
-    const combinedTotalSales = totalSales + restaurantSalesTotal;
-    const combinedTotalSalesCount = totalSalesCount + settledRestaurantOrders.length;
+    const unmirroredRestaurantOrders = settledRestaurantOrders.filter((o) => !mirroredOrderIds.has(o.id));
+    const unmirroredRestaurantSalesTotal = unmirroredRestaurantOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const restaurantSalesTotal = mirroredRestaurantSalesTotal + unmirroredRestaurantSalesTotal;
+    const combinedTotalSales = totalSales + unmirroredRestaurantSalesTotal;
+    const combinedTotalSalesCount = totalSalesCount + unmirroredRestaurantOrders.length;
 
     // Kitchen recipe consumption COGS
     const kitchenConsumptions = await db.consumptionPosting.findMany({
@@ -240,7 +261,7 @@ export async function GET(request: Request) {
         name: meta?.name || "Unknown Item",
         sku: meta?.sku || "",
         quantitySold: item._sum.quantity || 0,
-        revenue: item._sum.total || 0,
+        revenue: Number(item._sum.total || 0),
       };
     });
 

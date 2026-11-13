@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import { useUser } from "@/lib/client-auth";
 import { OwnerOnly } from "@/components/protected";
 import { AlertTriangle, Plus, Edit2, Power } from "lucide-react";
+import { apiClient } from "@/core/api/api-client";
 
 interface Branch {
   id: string;
@@ -59,9 +60,8 @@ function BranchManagementContent() {
   async function fetchBranches() {
     try {
       setLoading(true);
-      const response = await fetch("/api/branches");
-      const data = await response.json();
-      setBranches(data);
+      const data = await apiClient.settings.getBranches();
+      setBranches(data.branches || data);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
     } finally {
@@ -248,17 +248,10 @@ function BranchForm({ branch, onClose, onSave }: BranchFormProps) {
     setError(null);
 
     try {
-      const method = branch ? "PATCH" : "POST";
-      const url = branch ? `/api/branches/${branch.id}` : "/api/branches";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save branch");
+      if (branch) {
+        await apiClient.settings.updateBranch(branch.id, formData);
+      } else {
+        await apiClient.settings.createBranch(formData);
       }
 
       await onSave();
@@ -372,17 +365,7 @@ function BranchForm({ branch, onClose, onSave }: BranchFormProps) {
  */
 export async function toggleBranchStatus(branchId: string, enable: boolean) {
   try {
-    const response = await fetch(`/api/branches/${branchId}/toggle`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: enable }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to toggle branch status");
-    }
-
-    return await response.json();
+    return await apiClient.settings.updateBranch(branchId, { isEnabled: enable });
   } catch (error) {
     console.error("Error toggling branch:", error);
     throw error;

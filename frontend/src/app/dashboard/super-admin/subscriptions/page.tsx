@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiClient } from "@/core/api/api-client";
 import {
   CreditCard,
   FileText,
@@ -119,25 +120,19 @@ export default function SubscriptionsDirectoryPage() {
   const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (search.trim()) params.set("search", search.trim());
-      if (planFilter !== "ALL") params.set("plan", planFilter);
-      if (cycleFilter !== "ALL") params.set("cycle", cycleFilter);
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      const data = await apiClient.superAdmin.getSubscriptions({
+        search: search.trim() || undefined,
+        plan: planFilter,
+        cycle: cycleFilter,
+        status: statusFilter,
+      });
 
-      const res = await fetch(`/api/v1/super-admin/subscriptions?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSubscriptions(data.subscriptions || []);
-        if (data.kpis) setKpis(data.kpis);
-        if (data.planDistribution) setPlanDistribution(data.planDistribution);
-        if (data.recentActivity) setRecentActivity(data.recentActivity);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setFeedback({ type: "error", message: err.error || "Failed to load subscriptions" });
-      }
-    } catch {
-      setFeedback({ type: "error", message: "Network connection error loading subscriptions." });
+      setSubscriptions(data.subscriptions || []);
+      if (data.kpis) setKpis(data.kpis);
+      if (data.planDistribution) setPlanDistribution(data.planDistribution);
+      if (data.recentActivity) setRecentActivity(data.recentActivity);
+    } catch (err: any) {
+      setFeedback({ type: "error", message: err?.message || "Network connection error loading subscriptions." });
     } finally {
       setLoading(false);
     }
@@ -195,20 +190,13 @@ export default function SubscriptionsDirectoryPage() {
     if (!renewItem) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "RENEW_SUBSCRIPTION",
-          businessId: renewItem.businessId,
-          plan: renewItem.plan,
-          billingCycle: renewItem.billingCycle.toUpperCase(),
-          durationMonths: renewMonths,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "RENEW_SUBSCRIPTION",
+        businessId: renewItem.businessId,
+        plan: renewItem.plan,
+        billingCycle: renewItem.billingCycle.toUpperCase(),
+        durationMonths: renewMonths,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to renew subscription");
 
       setFeedback({ type: "success", message: `Subscription renewed successfully for ${renewItem.businessName}.` });
       setRenewItem(null);
@@ -228,20 +216,13 @@ export default function SubscriptionsDirectoryPage() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/v1/super-admin/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "ASSIGN_PLAN",
-          businessId: newBusinessId,
-          plan: newPlan,
-          billingCycle: newCycle,
-          durationMonths: newCycle === "ANNUAL" ? 12 : 1,
-        }),
+      await apiClient.superAdmin.createSubscription({
+        action: "ASSIGN_PLAN",
+        businessId: newBusinessId,
+        plan: newPlan,
+        billingCycle: newCycle,
+        durationMonths: newCycle === "ANNUAL" ? 12 : 1,
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to assign subscription");
 
       setFeedback({ type: "success", message: "Subscription assigned successfully." });
       setShowAddModal(false);
@@ -399,7 +380,7 @@ export default function SubscriptionsDirectoryPage() {
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium text-[#71675E] truncate">MRR / Revenue</p>
             <p className="text-xl font-bold tracking-tight text-emerald-700 tabular-nums mt-0.5">
-              NPR {(kpis.mrr / 1000).toFixed(1)}k
+              NPR {(Number(kpis.mrr || 0) / 1000).toFixed(1)}k
             </p>
           </div>
           <div className="h-8 w-8 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0 font-bold text-xs">
@@ -428,7 +409,7 @@ export default function SubscriptionsDirectoryPage() {
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium text-[#71675E] truncate">Renewal Rate</p>
             <p className="text-xl font-bold tracking-tight text-blue-700 tabular-nums mt-0.5">
-              {kpis.renewalRate.toFixed(1)}%
+              {Number(kpis.renewalRate || 0).toFixed(1)}%
             </p>
           </div>
           <div className="h-8 w-8 rounded-md bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center shrink-0">
@@ -879,7 +860,7 @@ export default function SubscriptionsDirectoryPage() {
               <p className="text-[11px] font-semibold text-[#71675E]">MRR / Revenue Trend</p>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-base font-bold text-[#292320] tabular-nums">
-                  NPR {(kpis.mrr / 1000).toFixed(2)}k
+                  NPR {(Number(kpis.mrr || 0) / 1000).toFixed(2)}k
                 </span>
                 <span className="text-[10px] text-emerald-700 font-semibold flex items-center">
                   <ArrowUpRight className="h-3 w-3" /> +15.3% vs last month

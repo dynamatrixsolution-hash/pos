@@ -165,27 +165,65 @@ export async function openTableSession(
       throw new TableSessionError("Table not found or is inactive", 404);
     }
 
-    if (table.status !== "AVAILABLE" || table.currentSessionId !== null) {
-      throw new TableSessionError(
-        `Table ${table.tableNumber} is already ${table.status}`,
-        409
-      );
-    }
-
-    // 2. Check no existing active session references this table
+    // 2. Check active sessions for this table
     const existingActiveSession = await tx.tableSession.findFirst({
       where: {
         businessId: input.businessId,
         tableId: input.tableId,
         status: { in: ["ACTIVE", "BILLED"] },
       },
+      include: {
+        restaurantOrders: {
+          where: {
+            settlementStatus: { not: "PAID" },
+            fulfillmentStatus: { not: "CANCELLED" },
+          },
+        },
+      },
     });
 
     if (existingActiveSession) {
-      throw new TableSessionError(
-        `Table already has an active session (${existingActiveSession.sessionNumber})`,
-        409
-      );
+      if (!existingActiveSession.restaurantOrders || existingActiveSession.restaurantOrders.length === 0) {
+        // Auto-heal dangling ghost session with no active orders
+        await tx.tableSession.update({
+          where: { id: existingActiveSession.id },
+          data: {
+            status: "CLOSED",
+            closedAt: new Date(),
+            closedById: input.openedById || null,
+            notes: (existingActiveSession.notes || "") + " [Cleaned orphaned session on new seat]",
+          },
+        });
+      } else {
+        throw new TableSessionError(
+          `Table already has an active session (${existingActiveSession.sessionNumber})`,
+          409
+        );
+      }
+    }
+
+    if (table.status !== "AVAILABLE" && table.status !== "RESERVED") {
+      // If table was stuck in OCCUPIED but has no active orders, auto-heal it
+      const activeOrderOnTable = await tx.restaurantOrder.findFirst({
+        where: {
+          businessId: input.businessId,
+          tableId: input.tableId,
+          settlementStatus: { not: "PAID" },
+          fulfillmentStatus: { not: "CANCELLED" },
+        },
+      });
+
+      if (!activeOrderOnTable) {
+        await tx.restaurantTable.update({
+          where: { id: table.id },
+          data: { status: "AVAILABLE", currentSessionId: null },
+        });
+      } else {
+        throw new TableSessionError(
+          `Table ${table.tableNumber} is currently ${table.status}`,
+          409
+        );
+      }
     }
 
     // 3. Generate monotonic session number
@@ -197,7 +235,12 @@ export async function openTableSession(
 
     const openedById = input.openedById || input.serverStaffId || null;
 
-    // 4. Create active table session
+    // 4. Create active table session with 4-digit PIN for guest companion ordering
+    const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
+    const finalNotes = input.notes && input.notes.includes("[PIN:")
+      ? input.notes
+      : `[PIN:${generatedPin}] ${input.notes || ""}`.trim();
+
     const session = await tx.tableSession.create({
       data: {
         businessId: input.businessId,
@@ -208,7 +251,7 @@ export async function openTableSession(
         status: "ACTIVE",
         openedAt: new Date(),
         openedById,
-        notes: input.notes || null,
+        notes: finalNotes || null,
         version: 1,
       },
     });
