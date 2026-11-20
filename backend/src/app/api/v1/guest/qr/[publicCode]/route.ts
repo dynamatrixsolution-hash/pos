@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api-helper";
 import { resolvePublicQrLocation } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 
@@ -22,7 +23,7 @@ export async function GET(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to resolve QR location" },
+      { error: safeErrorMessage(error, "Failed to resolve QR location") },
       { status: 500 }
     );
   }

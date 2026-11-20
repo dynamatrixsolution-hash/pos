@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api-helper";
 import { verifyAndCreateGuestSession } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { enforceRateLimit } from "@/lib/rate-limiter";
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to verify guest session" },
+      { error: safeErrorMessage(error, "Failed to verify guest session") },
       { status: 500 }
     );
   }

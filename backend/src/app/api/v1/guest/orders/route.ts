@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api-helper";
 import {
   getGuestOrdersAndTracking,
   submitGuestOrder,
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch guest orders" },
+      { error: safeErrorMessage(error, "Failed to fetch guest orders") },
       { status: 500 }
     );
   }
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to submit guest order" },
+      { error: safeErrorMessage(error, "Failed to submit guest order") },
       { status: 500 }
     );
   }

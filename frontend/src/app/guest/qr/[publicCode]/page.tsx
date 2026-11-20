@@ -578,7 +578,7 @@ export default function GuestQrPortalPage() {
             }
             await fetchGuestSessionData(token, false);
             showBanner(
-              `🎉 Joined Table ${qrData.qrLocation?.table?.tableNumber || ""}! You can now order together.`,
+              `Joined Table ${qrData.qrLocation?.table?.tableNumber || ""}! You can now order together.`,
               "success"
             );
           } catch {
@@ -623,7 +623,7 @@ export default function GuestQrPortalPage() {
         if (data.qrLocation) {
           setQrLocation(data.qrLocation);
           if (data.qrLocation.table?.isSettled) {
-            showBanner("✨ Previous bill settled! Table is now ready for your order.", "success");
+            showBanner("Previous bill settled! Table is now ready for your order.", "success");
           }
         }
       } catch {
@@ -1198,7 +1198,7 @@ export default function GuestQrPortalPage() {
     <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614] flex justify-center">
       <div className="w-full max-w-lg min-h-screen flex flex-col border-x border-[#EEE7DD] bg-[#FFFCF7] relative pb-24 shadow-2xs">
         {/* Sticky Mobile Hospitality Header: Restaurant Name on Left, Table + Search + Waiter on Right */}
-        <header className="sticky top-0 z-30 bg-[#FFFCF7]/95 backdrop-blur-md px-4 py-2.5 border-b border-[#EEE7DD] shadow-2xs">
+        <header className="sticky top-0 z-30 bg-[#FFFCF7] px-4 py-2.5 border-b border-[#EEE7DD] shadow-2xs">
           <div className="flex items-center justify-between gap-2">
             {/* Top Left: Restaurant Name */}
             <div className="min-w-0 pr-1">
@@ -1227,7 +1227,7 @@ export default function GuestQrPortalPage() {
               <button
                 type="button"
                 onClick={() => setIsSearchModalOpen(true)}
-                className="w-9 h-9 rounded-full bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer"
+                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#292320] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer"
                 title="Search Food"
               >
                 <Search className="w-4 h-4 text-[#292320]" />
@@ -1238,7 +1238,7 @@ export default function GuestQrPortalPage() {
                 type="button"
                 disabled={sendingRequestType === "WAITER_CALL" || (cooldowns["WAITER_CALL"] || 0) > 0}
                 onClick={() => handleTriggerServiceRequest("WAITER_CALL")}
-                className="w-9 h-9 rounded-full bg-white border border-[#EEE7DD] flex items-center justify-center text-[#6B2837] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer disabled:opacity-50 relative"
+                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#6B2837] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer disabled:opacity-50 relative"
                 title="Call Waiter"
               >
                 <Bell className="w-4 h-4" />
@@ -1295,7 +1295,7 @@ export default function GuestQrPortalPage() {
 
         {/* Floating Toast Notification */}
         {toast && (
-          <div className="mx-4 mt-3 p-3 rounded-xl shadow-md border text-xs font-medium flex items-center justify-between gap-2 bg-white border-[#A77B38]/40 text-[#1E1B18]">
+          <div className="mx-4 mt-3 p-3 rounded-xl shadow-md border text-xs font-medium flex items-center justify-between gap-2 bg-[#FFFCF7] border-[#A77B38]/40 text-[#1E1B18]">
             <div className="flex items-center gap-2">
               {toast.type === "error" ? (
                 <AlertCircle className="w-4 h-4 text-[#9E2A2B] shrink-0" />
@@ -1364,12 +1364,12 @@ export default function GuestQrPortalPage() {
                           <div
                             key={item.id}
                             onClick={() => handleSelectMenuItem(item)}
-                            className="w-38 sm:w-42 shrink-0 bg-white rounded-xl p-2.5 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer space-y-1.5"
+                            className="w-38 sm:w-42 shrink-0 bg-[#FFFCF7] rounded-xl p-2.5 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer space-y-1.5"
                           >
                             <div className="relative aspect-4/3 rounded-lg overflow-hidden bg-[#EEE7DD]">
                               <FoodImage item={item} iconClassName="w-8 h-8" />
                               {item.prepTimeMinutes ? (
-                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 text-[9px] text-[#292320] font-bold tabular-nums">
+                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#FFFCF7] text-[9px] text-[#292320] font-bold tabular-nums">
                                   {item.prepTimeMinutes}m
                                 </div>
                               ) : null}
@@ -1402,7 +1402,7 @@ export default function GuestQrPortalPage() {
 
                 {/* Horizontal Category Nav Chips */}
                 {allSections.length > 1 && (
-                  <div id="catalog-courses-scroll" className="sticky top-[53px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7]/95 backdrop-blur-md border-b border-[#EEE7DD]">
+                  <div id="catalog-courses-scroll" className="sticky top-[53px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7] border-b border-[#EEE7DD]">
                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                       <button
                         type="button"
@@ -1410,7 +1410,7 @@ export default function GuestQrPortalPage() {
                         className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                           selectedSectionId === "ALL"
                             ? "bg-[#6B2837] text-white shadow-2xs"
-                            : "bg-white text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
+                            : "bg-[#FFFCF7] text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
                         }`}
                       >
                         All
@@ -1423,7 +1423,7 @@ export default function GuestQrPortalPage() {
                           className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
                             selectedSectionId === sec.id
                               ? "bg-[#6B2837] text-white shadow-2xs"
-                              : "bg-white text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
+                              : "bg-[#FFFCF7] text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
                           }`}
                         >
                           {sec.name}
@@ -1450,7 +1450,7 @@ export default function GuestQrPortalPage() {
                 )}
 
                 {filteredSections.length === 0 ? (
-                  <div className="bg-white rounded-xl p-8 text-center border border-[#EEE7DD] space-y-2">
+                  <div className="bg-[#FFFCF7] rounded-xl p-8 text-center border border-[#EEE7DD] space-y-2">
                     <UtensilsCrossed className="w-8 h-8 text-[#A77B38] mx-auto" />
                     <p className="text-sm font-bold text-[#292320]">No dishes found</p>
                     <p className="text-xs text-[#71675E]">
@@ -1494,7 +1494,7 @@ export default function GuestQrPortalPage() {
                               <div
                                 key={item.id}
                                 onClick={() => handleSelectMenuItem(item)}
-                                className="bg-white rounded-xl p-3 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
+                                className="bg-[#FFFCF7] rounded-xl p-3 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
                               >
                                 <div className="flex-1 min-w-0 space-y-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -1578,7 +1578,7 @@ export default function GuestQrPortalPage() {
                     type="button"
                     onClick={() => fetchGuestSessionData(sessionToken, false)}
                     disabled={refreshingData}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#E2D9C8] text-xs font-bold text-[#6B2837] shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] shadow-sm"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${refreshingData ? "animate-spin" : ""}`} />
                     Refresh
@@ -1587,7 +1587,7 @@ export default function GuestQrPortalPage() {
               </div>
 
               {!isVerified ? (
-                <div className="bg-white rounded-2xl p-6 text-center border border-[#E6DEC8] space-y-3">
+                <div className="bg-[#FFFCF7] rounded-2xl p-6 text-center border border-[#E6DEC8] space-y-3">
                   <Lock className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <h3 className="text-sm font-bold text-[#1E1B18]">
                     {isRoomQr ? "Verify Your Room Stay to Track Orders" : "No Active Table Orders Yet"}
@@ -1616,7 +1616,7 @@ export default function GuestQrPortalPage() {
                   )}
                 </div>
               ) : orders.length === 0 ? (
-                <div className="bg-white rounded-2xl p-6 text-center border border-[#E6DEC8] space-y-3">
+                <div className="bg-[#FFFCF7] rounded-2xl p-6 text-center border border-[#E6DEC8] space-y-3">
                   <ChefHat className="w-9 h-9 text-[#A77B38] mx-auto" />
                   <h3 className="text-sm font-bold text-[#1E1B18]">No Orders Placed Yet</h3>
                   <p className="text-xs text-[#6E655F]">
@@ -1644,7 +1644,7 @@ export default function GuestQrPortalPage() {
                     return (
                       <div
                         key={order.id}
-                        className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm space-y-4"
+                        className="bg-[#FFFCF7] rounded-2xl p-4 border border-[#E6DEC8] shadow-sm space-y-4"
                       >
                         <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-2.5">
                           <div>
@@ -1820,7 +1820,7 @@ export default function GuestQrPortalPage() {
               </div>
 
               {isRoomQr && !isVerified && (
-                <div className="bg-white rounded-2xl p-4 border border-[#A77B38] shadow-sm flex items-center justify-between gap-3">
+                <div className="bg-[#FFFCF7] rounded-2xl p-4 border border-[#A77B38] shadow-sm flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold text-[#6B2837]">
                       Room Verification Required
@@ -1840,7 +1840,7 @@ export default function GuestQrPortalPage() {
               )}
 
               {/* Optional Custom Note */}
-              <div className="bg-white rounded-2xl p-3.5 border border-[#E6DEC8] shadow-sm">
+              <div className="bg-[#FFFCF7] rounded-2xl p-3.5 border border-[#E6DEC8] shadow-sm">
                 <label className="block text-xs font-bold text-[#1E1B18] mb-1.5">
                   Optional Note for Staff
                 </label>
@@ -1891,7 +1891,7 @@ export default function GuestQrPortalPage() {
                         type="button"
                         disabled={busy || cd > 0}
                         onClick={() => handleTriggerServiceRequest(card.type)}
-                        className="w-full text-left bg-white rounded-2xl p-3.5 border border-[#E6DEC8] hover:border-[#6B2837] shadow-sm flex items-center justify-between gap-3 disabled:opacity-60 transition"
+                        className="w-full text-left bg-[#FFFCF7] rounded-2xl p-3.5 border border-[#E6DEC8] hover:border-[#6B2837] shadow-sm flex items-center justify-between gap-3 disabled:opacity-60 transition"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
@@ -1956,7 +1956,7 @@ export default function GuestQrPortalPage() {
                           type="button"
                           disabled={busy || cd > 0}
                           onClick={() => handleTriggerServiceRequest(card.type)}
-                          className="w-full text-left bg-white rounded-2xl p-3.5 border border-[#E6DEC8] hover:border-[#6B2837] shadow-sm flex items-center justify-between gap-3 disabled:opacity-60 transition"
+                          className="w-full text-left bg-[#FFFCF7] rounded-2xl p-3.5 border border-[#E6DEC8] hover:border-[#6B2837] shadow-sm flex items-center justify-between gap-3 disabled:opacity-60 transition"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#A77B38]">
@@ -1993,7 +1993,7 @@ export default function GuestQrPortalPage() {
                     {localServiceRequests.map((req) => (
                       <div
                         key={req.id}
-                        className="bg-white rounded-xl p-3 border border-[#E6DEC8] flex items-center justify-between gap-2 text-xs"
+                        className="bg-[#FFFCF7] rounded-xl p-3 border border-[#E6DEC8] flex items-center justify-between gap-2 text-xs"
                       >
                         <div>
                           <span className="font-bold text-[#1E1B18]">
@@ -2044,7 +2044,7 @@ export default function GuestQrPortalPage() {
                     type="button"
                     onClick={() => fetchGuestSessionData(sessionToken, false)}
                     disabled={refreshingData}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-[#EEE7DD] text-xs font-bold text-[#6B2837] cursor-pointer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FFFCF7] border border-[#EEE7DD] text-xs font-bold text-[#6B2837] cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${refreshingData ? "animate-spin" : ""}`} />
                     Sync
@@ -2053,7 +2053,7 @@ export default function GuestQrPortalPage() {
               </div>
 
               {orders.length === 0 ? (
-                <div className="bg-white rounded-2xl p-8 text-center border border-[#EEE7DD] space-y-2">
+                <div className="bg-[#FFFCF7] rounded-2xl p-8 text-center border border-[#EEE7DD] space-y-2">
                   <Receipt className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <p className="text-sm font-bold text-[#292320]">No Orders Placed Yet</p>
                   <p className="text-xs text-[#71675E]">
@@ -2099,7 +2099,7 @@ export default function GuestQrPortalPage() {
                   {orders.map((ord) => (
                     <div
                       key={ord.id}
-                      className="bg-white rounded-2xl p-4 border border-[#EEE7DD] shadow-xs space-y-3"
+                      className="bg-[#FFFCF7] rounded-2xl p-4 border border-[#EEE7DD] shadow-xs space-y-3"
                     >
                       <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-2">
                         <div>
@@ -2144,7 +2144,7 @@ export default function GuestQrPortalPage() {
                   ))}
 
                   {/* 1-Tap Bill Settlement Request */}
-                  <div className="rounded-2xl bg-white border border-[#EEE7DD] p-4 shadow-xs space-y-2.5">
+                  <div className="rounded-2xl bg-[#FFFCF7] border border-[#EEE7DD] p-4 shadow-xs space-y-2.5">
                     <p className="text-xs font-bold text-[#292320]">
                       Ready to settle payment?
                     </p>
@@ -2190,7 +2190,7 @@ export default function GuestQrPortalPage() {
                     type="button"
                     onClick={() => fetchGuestSessionData(sessionToken, false)}
                     disabled={refreshingData}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-[#E2D9C8] text-xs font-bold text-[#6B2837]"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold text-[#6B2837]"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${refreshingData ? "animate-spin" : ""}`} />
                     Sync
@@ -2199,7 +2199,7 @@ export default function GuestQrPortalPage() {
               </div>
 
               {!isVerified || !folioSummary ? (
-                <div className="bg-white rounded-2xl p-5 border border-[#E6DEC8] shadow-sm space-y-4">
+                <div className="bg-[#FFFCF7] rounded-2xl p-5 border border-[#E6DEC8] shadow-sm space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
                       <Lock className="w-5 h-5" />
@@ -2306,7 +2306,7 @@ export default function GuestQrPortalPage() {
                   {(folioSummary.folios || []).map((folio) => (
                     <div
                       key={folio.id}
-                      className="bg-white rounded-2xl p-4 border border-[#E6DEC8] shadow-sm space-y-3"
+                      className="bg-[#FFFCF7] rounded-2xl p-4 border border-[#E6DEC8] shadow-sm space-y-3"
                     >
                       <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-2">
                         <div>
@@ -2422,10 +2422,10 @@ export default function GuestQrPortalPage() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="w-full py-3 px-4 rounded-xl bg-[#6B2837] text-white shadow-lg border border-[#A77B38]/50 flex items-center justify-between cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl bg-[#6B2837] text-white border border-[#A77B38]/50 flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-white text-[#6B2837] font-extrabold text-xs flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-[#FFFCF7] text-[#6B2837] font-extrabold text-xs flex items-center justify-center">
                   {cartSummary.count}
                 </span>
                 <span className="text-xs font-bold">View Order Tray</span>
@@ -2439,7 +2439,7 @@ export default function GuestQrPortalPage() {
         )}
 
         {/* Sticky Bottom Navigation Bar (Preserved brand tabs with clean styling) */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7]/95 backdrop-blur-md border-t border-[#EEE7DD] shadow-xs px-2 py-1">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7] border-t border-[#EEE7DD] shadow-xs px-2 py-1">
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
@@ -2512,15 +2512,15 @@ export default function GuestQrPortalPage() {
           const curTotalCents = (curBaseCents + curModsCents) * customItemQty;
 
           return (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-[#D8CEC1]">
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden flex flex-col border border-[#D8CEC1]">
                 {/* Hero Dish Image or Food Icon */}
                 <div className="relative aspect-16/9 w-full overflow-hidden bg-[#FAF6F0] shrink-0 border-b border-[#EEE7DD]">
                   <FoodImage item={customizingItem} iconClassName="w-12 h-12" />
                   <button
                     type="button"
                     onClick={() => setCustomizingItem(null)}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-[#292320] hover:bg-white transition shadow-sm cursor-pointer"
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#FFFCF7] flex items-center justify-center text-[#292320] hover:bg-white transition shadow-sm cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -2595,7 +2595,7 @@ export default function GuestQrPortalPage() {
                                   className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
                                     checked
                                       ? "border-[#6B2837] bg-[#FAF6F0] font-semibold text-[#292320]"
-                                      : "border-[#EEE7DD] bg-white text-[#292320] hover:bg-[#FAF6F0]/50"
+                                      : "border-[#EEE7DD] bg-[#FFFCF7] text-[#292320] hover:bg-[#FAF6F0]/50"
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
@@ -2636,18 +2636,18 @@ export default function GuestQrPortalPage() {
                       value={customItemNotes}
                       onChange={(e) => setCustomItemNotes(e.target.value)}
                       placeholder="e.g. Less spicy, no coriander, extra sauce..."
-                      className="w-full px-3 py-2 rounded-lg bg-white border border-[#EEE7DD] text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                      className="w-full px-3 py-2 rounded-lg bg-[#FFFCF7] border border-[#EEE7DD] text-xs text-[#292320] focus:outline-none focus:border-[#6B2837]"
                     />
                   </div>
                 </div>
 
                 {/* Footer Action Bar */}
-                <div className="p-3.5 bg-white border-t border-[#EEE7DD] flex items-center gap-3 shrink-0">
+                <div className="p-3.5 bg-[#FFFCF7] border-t border-[#EEE7DD] flex items-center gap-3 shrink-0">
                   <div className="flex items-center gap-2 bg-[#FAF6F0] p-1 rounded-lg border border-[#EEE7DD]">
                     <button
                       type="button"
                       onClick={() => setCustomItemQty((q) => Math.max(1, q - 1))}
-                      className="w-7 h-7 rounded bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
+                      className="w-7 h-7 rounded bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -2657,7 +2657,7 @@ export default function GuestQrPortalPage() {
                     <button
                       type="button"
                       onClick={() => setCustomItemQty((q) => q + 1)}
-                      className="w-7 h-7 rounded bg-white border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
+                      className="w-7 h-7 rounded bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#292320] cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -2684,7 +2684,7 @@ export default function GuestQrPortalPage() {
            ========================================================= */}
         {isCartOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-0 sm:p-4">
-            <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
+            <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-xl sm:rounded-xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
               <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-3">
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5 text-[#6B2837]" />
@@ -2732,7 +2732,7 @@ export default function GuestQrPortalPage() {
                           <button
                             type="button"
                             onClick={() => updateCartQty(line.cartKey, -1)}
-                            className="w-7 h-7 rounded-lg bg-white border border-[#E2D9C8] flex items-center justify-center"
+                            className="w-7 h-7 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] flex items-center justify-center"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
@@ -2740,7 +2740,7 @@ export default function GuestQrPortalPage() {
                           <button
                             type="button"
                             onClick={() => updateCartQty(line.cartKey, 1)}
-                            className="w-7 h-7 rounded-lg bg-white border border-[#E2D9C8] flex items-center justify-center"
+                            className="w-7 h-7 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] flex items-center justify-center"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
@@ -2774,7 +2774,7 @@ export default function GuestQrPortalPage() {
                       type="button"
                       disabled={submittingOrder}
                       onClick={handleSubmitOrder}
-                      className="w-full py-3 rounded-xl bg-[#6B2837] text-white font-bold text-xs shadow-lg hover:bg-[#561F2B] disabled:opacity-50 flex items-center justify-center gap-2 transition"
+                      className="w-full py-3 rounded-xl bg-[#6B2837] text-white font-bold text-xs hover:bg-[#561F2B] disabled:opacity-50 flex items-center justify-center gap-2 transition"
                     >
                       <Send className="w-4 h-4" />
                       {submittingOrder
@@ -2797,7 +2797,7 @@ export default function GuestQrPortalPage() {
            ========================================================= */}
         {showVerifyModal && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-[#E6DEC8] space-y-4">
+            <div className="bg-[#FFFCF7] w-full max-w-sm rounded-xl p-5 border border-[#D8CEC1] space-y-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-center text-[#6B2837]">
@@ -2880,7 +2880,7 @@ export default function GuestQrPortalPage() {
            ========================================================= */}
         {showTablePinModal && (
           <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl border border-[#D8CEC1] space-y-4">
+            <div className="bg-[#FFFCF7] w-full max-w-sm rounded-2xl p-5 border border-[#D8CEC1] space-y-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-[#FAF6F0] border border-[#D8CEC1] flex items-center justify-center text-[#6B2837]">
@@ -2916,7 +2916,7 @@ export default function GuestQrPortalPage() {
                     disabled={sendingTurnoverAlert}
                     className="w-full py-2.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#541E2A] transition cursor-pointer"
                   >
-                    {sendingTurnoverAlert ? "Alerting Server..." : "🔔 We Are New Guests (Reset Table)"}
+                    {sendingTurnoverAlert ? "Alerting Server..." : "We Are New Guests (Reset Table)"}
                   </button>
                 </div>
               ) : (
@@ -2951,7 +2951,7 @@ export default function GuestQrPortalPage() {
                       disabled={sendingTurnoverAlert}
                       className="text-[11px] font-semibold text-[#6B2837] hover:underline cursor-pointer"
                     >
-                      {tableAlertSent ? "Server Alerted ✓" : "Previous guests left?"}
+                      {tableAlertSent ? "Server Alerted" : "Previous guests left?"}
                     </button>
                     <div className="flex gap-2">
                       <button
@@ -2979,8 +2979,8 @@ export default function GuestQrPortalPage() {
             MODAL: INVITE TABLE COMPANIONS (GROUP ORDERING)
            ========================================================= */}
         {showGroupShareModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-[#FFFCF7] w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-[#D8CEC1] space-y-4">
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="bg-[#FFFCF7] w-full max-w-sm rounded-2xl p-6 border border-[#D8CEC1] space-y-4">
               <div className="flex items-start justify-between pb-2 border-b border-[#EEE7DD]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-xl bg-[#EEE7DD] text-[#6B2837] flex items-center justify-center shrink-0">
@@ -3010,7 +3010,7 @@ export default function GuestQrPortalPage() {
                 </p>
 
                 {/* ISO Standard Companion QR Code */}
-                <div className="inline-block p-3.5 bg-white rounded-xl border border-[#D8CEC1] shadow-xs">
+                <div className="inline-block p-3.5 bg-[#FFFCF7] rounded-xl border border-[#D8CEC1] shadow-xs">
                   <DeterministicQrMatrixSvg value={companionShareUrl} size={180} />
                   <p className="text-[10px] text-[#71675E] font-medium mt-2">
                     Point camera at this screen to join instantly
@@ -3083,10 +3083,10 @@ export default function GuestQrPortalPage() {
             MODAL: MOBILE SEARCH & CHEF FOOD RECOMMENDATIONS
            ========================================================= */}
         {isSearchModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-start p-0 sm:p-4">
-            <div className="bg-[#FFFCF7] w-full max-w-md mx-auto sm:rounded-3xl min-h-screen sm:min-h-0 sm:max-h-[88vh] flex flex-col shadow-2xl border border-[#D8CEC1]">
+          <div className="fixed inset-0 z-50 bg-black/60 flex flex-col justify-start p-0 sm:p-4">
+            <div className="bg-[#FFFCF7] w-full max-w-md mx-auto sm:rounded-xl min-h-screen sm:min-h-0 sm:max-h-[88vh] flex flex-col border border-[#D8CEC1]">
               {/* Search Header Bar */}
-              <div className="p-3.5 border-b border-[#EEE7DD] bg-white sm:rounded-t-3xl flex items-center gap-2">
+              <div className="p-3.5 border-b border-[#EEE7DD] bg-[#FFFCF7] sm:rounded-t-xl flex items-center gap-2">
                 <div className="relative flex-1 flex items-center">
                   <Search className="w-4 h-4 text-[#71675E] absolute left-3 pointer-events-none" />
                   <input
@@ -3138,7 +3138,7 @@ export default function GuestQrPortalPage() {
                               setIsSearchModalOpen(false);
                               handleSelectMenuItem(item);
                             }}
-                            className="p-3 rounded-xl bg-white border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                            className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-[#EEE7DD]">
@@ -3183,7 +3183,7 @@ export default function GuestQrPortalPage() {
                             setIsSearchModalOpen(false);
                             handleSelectMenuItem(item);
                           }}
-                          className="p-3 rounded-xl bg-white border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                          className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[#EEE7DD]">

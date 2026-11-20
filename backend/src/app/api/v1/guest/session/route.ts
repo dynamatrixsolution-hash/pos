@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api-helper";
 import {
   validateGuestSessionToken,
   getGuestPortalFolioSummary,
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to load guest session" },
+      { error: safeErrorMessage(error, "Failed to load guest session") },
       { status: 500 }
     );
   }

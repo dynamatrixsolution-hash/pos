@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorMessage } from "@/lib/api-helper";
 import { createGuestServiceRequest } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create service request" },
+      { error: safeErrorMessage(error, "Failed to create service request") },
       { status: 500 }
     );
   }
