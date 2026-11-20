@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: "/auth/login",
     error: "/auth/error",
@@ -13,6 +14,8 @@ export const authConfig = {
       : undefined),
   session: {
     strategy: "jwt",
+    maxAge: 12 * 60 * 60, // 12 hours for shared POS terminal safety
+    updateAge: 60 * 60,
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {

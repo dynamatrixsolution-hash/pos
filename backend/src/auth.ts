@@ -12,7 +12,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
     Credentials({
       async authorize(credentials) {
         const parsedCredentials = z
-          .object({ email: z.string().email(), password: z.string().min(6) })
+          .object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(6) })
           .safeParse(credentials);
 
         if (!parsedCredentials.success) {
@@ -33,17 +33,21 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
           },
         });
 
-        if (!user || !user.isActive || user.deletedAt) {
+        if (!user || !user.isActive || user.deletedAt || user.business?.deletedAt) {
           // Timing-attack mitigation: equalize response timing
           await verifyDummyPassword(password);
           return null;
         }
 
-        // Verify if subscription exists and is active/valid
-        const subscription = user.business.subscription;
-        if (!subscription || subscription.status !== "ACTIVE") {
-          // You could allow subscription panel access or login blocks
-          // For now, let them log in, but middleware will restrict access
+        // Block suspended or cancelled tenant accounts at login (allow SUPER_ADMIN)
+        const subStatus = user.business?.subscription?.status?.toUpperCase();
+        if (
+          user.role !== "SUPER_ADMIN" &&
+          subStatus &&
+          ["SUSPENDED", "CANCELLED"].includes(subStatus)
+        ) {
+          await verifyDummyPassword(password);
+          return null;
         }
 
         // Verify password hash securely with pepper support
