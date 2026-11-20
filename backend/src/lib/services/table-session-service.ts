@@ -114,6 +114,8 @@ export async function generateMonotonicSessionNumber(
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
   const prefix = `SESS-${dateStr}-`;
 
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${businessId}:${branchId}:table-session:${dateStr}`}))`;
+
   const lastSession = await tx.tableSession.findFirst({
     where: {
       businessId,
@@ -233,35 +235,55 @@ export async function openTableSession(
       }
     }
 
-    // 3. Generate monotonic session number
-    const sessionNumber = await generateMonotonicSessionNumber(
-      tx,
-      input.businessId,
-      input.branchId
-    );
-
+    // 3 & 4. Generate monotonic session number and create active table session
+    // Retry on P2002 in case caller passed a non-transactional PrismaClient under high concurrency
     const openedById = input.openedById || input.serverStaffId || null;
-
-    // 4. Create active table session with 4-digit PIN for guest companion ordering
     const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
     const finalNotes = input.notes && input.notes.includes("[PIN:")
       ? input.notes
       : `[PIN:${generatedPin}] ${input.notes || ""}`.trim();
 
-    const session = await tx.tableSession.create({
-      data: {
-        businessId: input.businessId,
-        branchId: input.branchId,
-        tableId: input.tableId,
-        sessionNumber,
-        guestCount: input.guestCount && input.guestCount > 0 ? input.guestCount : 1,
-        status: "ACTIVE",
-        openedAt: new Date(),
-        openedById,
-        notes: finalNotes || null,
-        version: 1,
-      },
-    });
+    let session!: TableSession;
+    let sessionNumber = "";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const baseSessionNumber = await generateMonotonicSessionNumber(
+        tx,
+        input.businessId,
+        input.branchId
+      );
+      let candidateSessionNumber = baseSessionNumber;
+      if (attempt > 0) {
+        const parts = baseSessionNumber.split("-");
+        const seq = (parseInt(parts[parts.length - 1], 10) || 1) + attempt;
+        candidateSessionNumber = `${parts.slice(0, -1).join("-")}-${String(seq).padStart(4, "0")}`;
+      }
+      try {
+        session = await tx.tableSession.create({
+          data: {
+            businessId: input.businessId,
+            branchId: input.branchId,
+            tableId: input.tableId,
+            sessionNumber: candidateSessionNumber,
+            guestCount: input.guestCount && input.guestCount > 0 ? input.guestCount : 1,
+            status: "ACTIVE",
+            openedAt: new Date(),
+            openedById,
+            notes: finalNotes || null,
+            version: 1,
+          },
+        });
+        sessionNumber = candidateSessionNumber;
+        break;
+      } catch (err: any) {
+        const isSessionNumberCollision =
+          err?.code === "P2002" &&
+          Array.isArray(err?.meta?.target) &&
+          err.meta.target.includes("sessionNumber");
+        if (!isSessionNumberCollision || attempt === 9) {
+          throw err;
+        }
+      }
+    }
 
     // 5. Atomic CAS update on RestaurantTable
     const tableUpdate = await tx.restaurantTable.updateMany({

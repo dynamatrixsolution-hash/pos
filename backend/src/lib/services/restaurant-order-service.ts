@@ -154,7 +154,7 @@ function generateOrderNumber(): string {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
   const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "");
-  const rand = Math.floor(1000 + Math.random() * 9000);
+  const rand = Math.floor(100000 + Math.random() * 900000);
   return `RO-${dateStr}-${timeStr}-${rand}`;
 }
 
@@ -236,6 +236,7 @@ export async function createOrAppendOrder(
         nextRoundNumber = order.rounds[0].roundNumber + 1;
       }
     } else if (input.tableSessionId) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`table-order:${input.tableSessionId}`}))`;
       // 1b. If tableSessionId is provided, check session state and find existing open order
       const session = await tx.tableSession.findFirst({
         where: { id: input.tableSessionId, businessId: input.businessId },
@@ -489,6 +490,10 @@ export async function updateLineStatus(
   externalTx?: Prisma.TransactionClient
 ) {
   const runner = async (tx: Prisma.TransactionClient) => {
+    if (input.orderId) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`order-append:${input.orderId}`}))`;
+    }
+
     const line = await tx.orderLine.findFirst({
       where: {
         id: input.lineId,
@@ -500,6 +505,10 @@ export async function updateLineStatus(
 
     if (!line) {
       throw new RestaurantOrderError("Order line not found", 404);
+    }
+
+    if (!input.orderId) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`order-append:${line.orderId}`}))`;
     }
 
     if (line.order.settlementStatus === "PAID" || line.settlementStatus === "PAID") {
