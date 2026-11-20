@@ -5,7 +5,7 @@
 **Enterprise-grade Hotel PMS, Restaurant POS & KDS, Inventory, Accounting & QR Self-Ordering Platform**
 
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js_16_App_Router-6B2837?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![Express](https://img.shields.io/badge/Backend-Express_5_API-292320?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![Backend](https://img.shields.io/badge/Backend-Next.js_16_API-292320?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Prisma](https://img.shields.io/badge/ORM-Prisma_PostgreSQL-28634B?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript_Strict-315F85?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vitest](https://img.shields.io/badge/Tests-Vitest_Verified-946000?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
@@ -99,7 +99,7 @@ flowchart LR
         Pages --> Stores --> Repo
     end
 
-    subgraph BE["Backend — Express 5 (Port 4000)"]
+    subgraph BE["Backend — Next.js 16 API (Port 3001)"]
         Guard["RBAC & Tenant Guard<br/>(requireRole + businessId isolation)"]:::api
         Idem["Idempotency Layer<br/>(x-idempotency-key)"]:::api
         Routes["REST v1 Route Handlers<br/>(/api/v1/*)"]:::api
@@ -185,7 +185,7 @@ pos/
 │       ├── hooks/                    # Shared Client Hooks
 │       └── lib/                      # Navigation Config, Currency & Helpers
 │
-├── backend/                          # Express 5 REST API (Port 4000)
+├── backend/                          # Next.js 16 REST API (Port 3001)
 │   └── src/
 │       ├── app/api/v1/
 │       │   ├── super-admin/          # [TIER 1] Platform Admin Endpoints
@@ -243,7 +243,7 @@ npx prisma generate --schema=packages/db/prisma/schema.prisma
 
 ### 3. Run Development Servers
 ```bash
-# Starts both Backend (4000) and Frontend (3000)
+# Starts both Backend (3001) and Frontend (3000)
 npm run dev
 ```
 
