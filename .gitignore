@@ -48,3 +48,13 @@ frontend/client/
 
 certificates/
 scratch/
+
+# AI agent, teamwork & internal audit/planning files
+.agent/
+.agents/
+AGENTS.md
+PROJECT.md
+Prayassh_*.md
+skills-lock.json
+optimization and security/
+docs/hospitality/
