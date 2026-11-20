@@ -1,7 +1,7 @@
 import { resolveBranch, serializable } from "@/lib/commerce-transaction";
 import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
 
@@ -49,10 +49,10 @@ export async function POST(
         },
       });
 
-      if (!sale) throw new Error("Sale invoice not found");
+      if (!sale) throw new CommerceError("Sale invoice not found", 404);
       if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
       await resolveBranch(tx, context, sale.branchId);
-      if (!sale.isActive) throw new Error("Invoice is already cancelled");
+      if (!sale.isActive) throw new CommerceError("Invoice is already cancelled", 400);
 
       if (Number(sale.paidAmount) > 0 || await tx.payment.count({ where: { saleId } })) throw new CommerceError("Paid invoices require a reconciled refund workflow", 409);
       const credits = await tx.creditNote.count({ where: { saleId } });
@@ -167,6 +167,9 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST cancel error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to cancel invoice" }, { status: error instanceof CommerceError ? error.status : 400 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to cancel invoice") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

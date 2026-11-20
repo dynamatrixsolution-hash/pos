@@ -8,6 +8,7 @@ import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearCaches } from "@/lib/cache-utils";
 import { apiClient } from "@/core/api/api-client";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { navigationConfig, NavItem, Role } from "@/lib/nav-config";
 import { OpenShiftModal } from "@/components/shifts/open-shift-modal";
 import {
@@ -211,22 +212,22 @@ export default function DashboardShellClient({
     if (user.role === "SUPER_ADMIN") return;
     try {
       const res = await fetch("/api/v1/shifts/current");
+      if (!res.ok) return;
       const data = await res.json();
-      if (res.ok && data.hasActiveShift) {
+      if (data.hasActiveShift) {
         setActiveShift(data.shift);
       } else {
         setActiveShift(null);
       }
     } catch {
-      setActiveShift(null);
+      // Preserve existing activeShift on transient network dropouts
     }
   }, [user.role]);
 
-  React.useEffect(() => {
-    fetchActiveShift();
-    const interval = setInterval(fetchActiveShift, 25000);
-    return () => clearInterval(interval);
-  }, [fetchActiveShift]);
+  useVisibilityPolling(fetchActiveShift, 25000, {
+    immediate: true,
+    enabled: user.role !== "SUPER_ADMIN",
+  });
 
   // Inactivity tracking state
   const [showInactivityWarning, setShowInactivityWarning] = React.useState(false);
@@ -1347,7 +1348,7 @@ export default function DashboardShellClient({
               {notificationsOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-96 rounded-lg border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-lg z-50 p-2 text-left">
+                  <div className="absolute right-0 mt-2 w-96 rounded-lg border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 z-50 p-2 text-left">
                     <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#D8CEC1] dark:border-slate-800">
                       <div>
                         <span className="text-xs font-bold text-[#292320] dark:text-slate-200">Notifications & Notices</span>
@@ -1462,7 +1463,7 @@ export default function DashboardShellClient({
               {profileDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setProfileDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-xl z-50 p-2 animate-in slide-in-from-top-2 fade-in duration-150 text-left">
+                  <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 z-50 p-2 animate-in slide-in-from-top-2 fade-in duration-150 text-left">
                     {/* User Identity Card */}
                     <div className="p-3 rounded-lg bg-[#F7F3EC] dark:bg-slate-800/60 border border-[#D8CEC1]/60 flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-[#6B2837] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
@@ -1528,7 +1529,7 @@ export default function DashboardShellClient({
                         className="flex items-center justify-between w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg font-bold transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-2">
-                          <LogOut className="h-4 w-4 text-red-600 group-hover:translate-x-0.5 transition-transform" />
+                          <LogOut className="h-4 w-4 text-red-600" />
                           <span>Sign Out</span>
                         </div>
                         <span className="text-[10px] text-red-500/70 font-normal">End Session</span>
@@ -1555,7 +1556,7 @@ export default function DashboardShellClient({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-background/80 z-40 md:hidden"
               onClick={() => setMobileMenuOpen(false)}
             />
             <motion.aside 
@@ -1563,7 +1564,7 @@ export default function DashboardShellClient({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="fixed inset-y-0 left-0 w-72 z-50 flex flex-col md:hidden shadow-xl"
+              className="fixed inset-y-0 left-0 w-72 z-50 flex flex-col md:hidden"
               style={{ backgroundColor: userRole === "SUPER_ADMIN" ? "#F7F3EC" : "#241C1E" }}
             >
               {userRole === "SUPER_ADMIN" ? (
@@ -1697,7 +1698,7 @@ export default function DashboardShellClient({
 
       {/* Logout Confirmation Modal */}
       {logoutConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 no-print animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 no-print animate-in fade-in duration-150">
           <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 w-full max-w-sm shadow-md flex flex-col gap-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-start gap-3.5">
               <div className="w-10 h-10 rounded-md bg-[#6B2837]/10 border border-[#6B2837]/20 flex items-center justify-center text-[#6B2837] shrink-0 mt-0.5">
@@ -1757,7 +1758,7 @@ export default function DashboardShellClient({
 
       {/* Inactivity Warning Modal */}
       {showInactivityWarning && (
-        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/70 p-4 no-print animate-in fade-in duration-200">
           <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0 animate-pulse">

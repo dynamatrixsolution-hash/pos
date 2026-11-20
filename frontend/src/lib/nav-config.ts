@@ -32,7 +32,7 @@ import {
   BedDouble,
   Calendar,
   KeyRound,
-  Sparkles,
+  ClipboardCheck,
   QrCode,
   Clock,
   Rocket,
@@ -147,7 +147,7 @@ export const navigationConfig: NavItem[] = [
       {
         title: "Housekeeping & Maintenance",
         href: "/dashboard/hotel/housekeeping",
-        icon: Sparkles,
+        icon: ClipboardCheck,
         roles: ["OWNER", "MANAGER", "CASHIER"],
       },
       {

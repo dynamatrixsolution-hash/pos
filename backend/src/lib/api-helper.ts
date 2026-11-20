@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ROLE_GROUPS, normalizeRole } from "./rbac";
 
 // Ensure BigInt can be serialized to JSON across all API routes
 if (typeof BigInt !== "undefined" && !(BigInt.prototype as any).toJSON) {
@@ -103,6 +104,20 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 }
 
 export { isValidUUID, stripHtml, sanitizePayload, safeErrorMessage } from "./security";
+export { ROLE_GROUPS, normalizeRole } from "./rbac";
+
+/**
+ * Enforces that the session role belongs to one of the allowed roles.
+ * Returns null when authorized, or a standard 403 NextResponse when denied.
+ */
+export function requireRoles(
+  session: Pick<SessionContext, "role">,
+  allowedRoles: readonly string[]
+): NextResponse | null {
+  return allowedRoles.includes(normalizeRole(session.role))
+    ? null
+    : roleErrorResponse();
+}
 
 /**
  * Standard pagination parameter extractor and guard against DOS table scans.

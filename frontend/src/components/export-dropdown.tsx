@@ -84,7 +84,7 @@ export default function ExportDropdown({
       {/* Dropdown Card */}
       {isOpen && (
         <div
-          className={`absolute z-50 mt-1.5 w-52 rounded-xl bg-[#FFFCF7] border border-[#D8CEC1] p-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-100 ${
+          className={`absolute z-50 mt-1.5 w-52 rounded-xl bg-[#FFFCF7] border border-[#D8CEC1] p-1.5 animate-in fade-in zoom-in-95 duration-100 ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >

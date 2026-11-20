@@ -1,7 +1,7 @@
 import { resolveBranch, commerceTransaction } from "@/lib/commerce-transaction";
 import { CommerceError, money, reconcilePayment } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
 
@@ -65,10 +65,10 @@ export async function POST(
         include: { saleItems: true },
       });
 
-      if (!originalSale) throw new Error("Original invoice not found");
+      if (!originalSale) throw new CommerceError("Original invoice not found", 404);
       if (originalSale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
       await resolveBranch(tx, context, originalSale.branchId);
-      if (!originalSale.isActive) throw new Error("Original invoice is not active (cannot correct a cancelled or already corrected invoice)");
+      if (!originalSale.isActive) throw new CommerceError("Original invoice is not active (cannot correct a cancelled or already corrected invoice)", 400);
 
       const existingPayments = await tx.payment.count({ where: { saleId: originalSale.id } });
       const existingCredits = await tx.creditNote.count({ where: { saleId: originalSale.id } });
@@ -392,6 +392,9 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("POST correct error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to process invoice correction" }, { status: error instanceof CommerceError ? error.status : 400 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to process invoice correction") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

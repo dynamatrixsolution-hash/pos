@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { z } from "zod";
 
 const unitSchema = z.object({
@@ -30,6 +30,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
+  const denied = requireRoles(context, ROLE_GROUPS.ADMIN_MANAGER);
+  if (denied) return denied;
 
   try {
     const body = await request.json();

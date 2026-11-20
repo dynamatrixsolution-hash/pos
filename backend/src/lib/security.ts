@@ -104,6 +104,7 @@ export function safeErrorMessage(error: any, fallback: string = "An unexpected e
   if (!error) return fallback;
 
   const msg: string = error?.message || String(error);
+  if (!msg || !msg.trim()) return fallback;
 
   // Prisma error signatures
   if (error?.code === "P2002") {
@@ -116,17 +117,16 @@ export function safeErrorMessage(error: any, fallback: string = "An unexpected e
   if (error?.code === "P2025") {
     return "The requested record could not be found or was already removed.";
   }
+  if (typeof error?.code === "string" && /^P\d{4}$/.test(error.code)) {
+    return fallback;
+  }
 
-  // Check if error contains raw SQL or internal table names
+  // Mask raw SQL, Prisma internals, constraint details, driver/network errors, and stack traces
   if (
-    msg.includes("SELECT") ||
-    msg.includes("INSERT") ||
-    msg.includes("UPDATE") ||
-    msg.includes("DELETE") ||
-    msg.includes("prisma") ||
-    msg.includes("database") ||
-    msg.includes("foreign key") ||
-    msg.includes("column")
+    /\b(SELECT|INSERT|UPDATE|DELETE)\b/.test(msg) ||
+    /prisma|postgres|postgresql|foreign\s+key|unique\s+constraint|constraint\s+failed|relation\s+"|column\s+"|invalid\s+`?prisma|argument\s+`|econnrefused|etimedout|enotfound|typeerror|referenceerror|syntaxerror|cannot\s+read\s+propert|\n\s+at\s+/i.test(
+      msg
+    )
   ) {
     return fallback;
   }

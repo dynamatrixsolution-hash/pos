@@ -414,7 +414,7 @@ function StatusContent() {
                     Administrator Instructions
                   </h4>
                 </div>
-                <p className="text-xs text-[#292320] bg-white border border-[#D8CEC1] p-3 rounded-md font-medium">
+                <p className="text-xs text-[#292320] bg-[#FFFCF7] border border-[#D8CEC1] p-3 rounded-md font-medium">
                   {requestData.adminNotes || "Please review and revise your submitted business details."}
                 </p>
                 <button
@@ -436,7 +436,7 @@ function StatusContent() {
                     Application Rejection Reason
                   </h4>
                 </div>
-                <p className="text-xs text-[#292320] bg-white border border-[#E9B6B7] p-3 rounded-md font-medium">
+                <p className="text-xs text-[#292320] bg-[#FFFCF7] border border-[#E9B6B7] p-3 rounded-md font-medium">
                   {requestData.rejectionReason || "The business registration was declined by the platform administrator."}
                 </p>
               </div>
@@ -557,7 +557,7 @@ function StatusContent() {
                     type="text"
                     value={editForm.businessName}
                     onChange={(e) => setEditForm({ ...editForm, businessName: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                    className="w-full px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
                     required
                   />
                 </div>
@@ -570,7 +570,7 @@ function StatusContent() {
                     type="text"
                     value={editForm.slug}
                     onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                    className="w-full px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
                     required
                   />
                 </div>
@@ -584,7 +584,7 @@ function StatusContent() {
                       type="text"
                       value={editForm.ownerName}
                       onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                      className="w-full px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
                       required
                     />
                   </div>
@@ -596,7 +596,7 @@ function StatusContent() {
                       type="email"
                       value={editForm.ownerEmail}
                       onChange={(e) => setEditForm({ ...editForm, ownerEmail: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                      className="w-full px-3 py-2 bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg text-xs font-semibold text-[#292320] focus:outline-none focus:border-[#6B2837]"
                       required
                     />
                   </div>

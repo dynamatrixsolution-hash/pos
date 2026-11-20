@@ -221,7 +221,11 @@ export async function reversePayment(
       where: {
         businessId: params.businessId,
         status: "OPEN",
-        ...(payment.shiftId ? { id: payment.shiftId } : { branchId: payment.branchId }),
+        ...(payment.shiftId
+          ? { id: payment.shiftId }
+          : payment.branchId
+          ? { branchId: payment.branchId }
+          : {}),
       },
     });
     if (activeShift) {
@@ -239,7 +243,7 @@ export async function reversePayment(
       await tx.shiftTransaction.create({
         data: {
           businessId: params.businessId,
-          branchId: payment.branchId,
+          branchId: payment.branchId || activeShift.branchId,
           shiftId: activeShift.id,
           saleId: payment.saleId || null,
           paymentId: payment.id,
@@ -326,7 +330,7 @@ export async function createRefund(
         source: "STAFF_RECORDED",
         type: "SENT",
         reference: `REFUND-${refund.id.slice(0, 8)}`,
-        notes: params.reason,
+        remarks: params.reason,
         shiftId: activeShift.id,
       },
     });

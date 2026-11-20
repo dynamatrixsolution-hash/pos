@@ -17,6 +17,27 @@ export type Role =
   | "SALESPERSON"
   | "DELIVERY";
 
+/** Normalizes role casing and maps legacy ADMIN to OWNER. */
+export function normalizeRole(role?: string | null): string {
+  const upper = String(role || "").trim().toUpperCase();
+  return upper === "ADMIN" ? "OWNER" : upper;
+}
+
+/** Shared backend authorization role groups aligned with operational boundaries. */
+export const ROLE_GROUPS = {
+  SUPER_ADMIN_ONLY: ["SUPER_ADMIN"],
+  OWNER_ONLY: ["SUPER_ADMIN", "OWNER"],
+  ADMIN_MANAGER: ["SUPER_ADMIN", "OWNER", "MANAGER"],
+  RESTAURANT_SERVICE: ["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER", "WAITER"],
+  RESTAURANT_BILLING: ["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER"],
+  KITCHEN_OPERATIONS: ["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN"],
+  HOTEL_FRONT_DESK: ["SUPER_ADMIN", "OWNER", "MANAGER", "FRONT_DESK", "CASHIER"],
+  HOTEL_HOUSEKEEPING: ["SUPER_ADMIN", "OWNER", "MANAGER", "FRONT_DESK", "CASHIER", "HOUSEKEEPING"],
+  HOTEL_SERVICE_DESK: ["SUPER_ADMIN", "OWNER", "MANAGER", "FRONT_DESK", "CASHIER", "HOUSEKEEPING", "WAITER"],
+  SHIFT_OPERATORS: ["SUPER_ADMIN", "OWNER", "MANAGER", "CASHIER", "FRONT_DESK"],
+  PILOT_OPERATORS: ["SUPER_ADMIN", "OWNER", "MANAGER", "FRONT_DESK", "CASHIER", "WAITER"],
+} as const;
+
 export interface Permission {
   resource: string;
   actions: string[];
@@ -217,8 +238,8 @@ export const accessibleResources: Record<string, string[]> = {
 /**
  * Check if a role has permission to perform an action on a resource
  */
-export function hasPermission(role: Role, resource: string, action: string): boolean {
-  const permissions = rolePermissions[role];
+export function hasPermission(role: Role | string, resource: string, action: string): boolean {
+  const permissions = rolePermissions[normalizeRole(role)];
   if (!permissions) return false;
 
   const resourcePermission = permissions.find((p) => p.resource === resource);
@@ -228,8 +249,8 @@ export function hasPermission(role: Role, resource: string, action: string): boo
 /**
  * Check if a role can access a route
  */
-export function canAccessRoute(role: Role, path: string): boolean {
-  const accessible = accessibleResources[role];
+export function canAccessRoute(role: Role | string, path: string): boolean {
+  const accessible = accessibleResources[normalizeRole(role)];
   if (!accessible) return false;
 
   // Check exact match or prefix match
@@ -239,14 +260,14 @@ export function canAccessRoute(role: Role, path: string): boolean {
 /**
  * Get allowed routes for a role
  */
-export function getAllowedRoutes(role: Role): string[] {
-  return accessibleResources[role] || [];
+export function getAllowedRoutes(role: Role | string): string[] {
+  return accessibleResources[normalizeRole(role)] || [];
 }
 
 /**
  * Check if user can perform action on resource
  */
-export function authorize(role: Role, resource: string, action: string): { authorized: boolean; reason?: string } {
+export function authorize(role: Role | string, resource: string, action: string): { authorized: boolean; reason?: string } {
   if (!hasPermission(role, resource, action)) {
     return {
       authorized: false,

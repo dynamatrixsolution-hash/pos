@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
-import { money, addMoney, mulMoney, divMoney, toDecimal } from "@/lib/services/decimal-math";
+import { money, addMoney, subMoney, mulMoney, divMoney, toDecimal } from "@/lib/services/decimal-math";
 import { createAuditEvent } from "@/lib/audit-event";
 
 export class RestaurantOrderError extends Error {
@@ -43,6 +43,7 @@ export interface CreateOrAppendOrderInput {
 
 export interface UpdateLineStatusInput {
   businessId: string;
+  orderId?: string;
   lineId: string;
   quantity?: number;
   acceptanceStatus?: "PENDING" | "ACCEPTED" | "REJECTED";
@@ -50,8 +51,25 @@ export interface UpdateLineStatusInput {
   settlementStatus?: "UNPAID" | "PARTIAL" | "PAID" | "REFUNDED";
   rejectionReason?: string;
   voidReason?: string;
+  notes?: string;
   actorId?: string;
   expectedVersion?: number;
+}
+
+export interface ConvertOrderTypeInput {
+  businessId: string;
+  orderId: string;
+  targetOrderType: "TAKEAWAY" | "DELIVERY";
+  deliveryInfo?: {
+    customerName?: string;
+    phone?: string;
+    address?: string;
+    riderName?: string;
+    deliveryFee?: number | string;
+    notes?: string;
+  };
+  notes?: string;
+  actorId?: string;
 }
 
 export interface CancelOrderInput {
@@ -61,12 +79,124 @@ export interface CancelOrderInput {
   actorId?: string;
 }
 
+export interface SettlementTotalsResult {
+  subtotal: number;
+  discountTotal: number;
+  afterDiscount: number;
+  taxTotal: number;
+  extraFees: number;
+  totalAmount: number;
+}
+
+/**
+ * Pure server-authoritative settlement calculation across active pre-tax order lines.
+ * Prevents double-VAT and clamps discounts and extra fees safely via Decimal arithmetic.
+ */
+export function computeSettlementTotals(params: {
+  lines: Array<{ unitPrice: number | string | Prisma.Decimal; quantity: number }>;
+  discountType?: "FLAT" | "PERCENT";
+  discountValue?: number;
+  discountTotal?: number;
+  applyVat?: boolean;
+  vatRatePercent?: number;
+  deliveryFee?: number;
+  packagingFee?: number;
+  expressFee?: number;
+}): SettlementTotalsResult {
+  let subtotalDec = new Prisma.Decimal(0);
+  for (const line of params.lines) {
+    const qty = Math.max(0, Math.floor(Number(line.quantity) || 0));
+    if (qty === 0) continue;
+    subtotalDec = addMoney(subtotalDec, mulMoney(money(line.unitPrice || 0), qty));
+  }
+
+  let discountDec = new Prisma.Decimal(0);
+  if (params.discountType === "PERCENT" && params.discountValue !== undefined) {
+    const clampedPct = Math.min(100, Math.max(0, Number(params.discountValue) || 0));
+    discountDec = divMoney(mulMoney(subtotalDec, clampedPct), 100);
+  } else {
+    const rawDiscount = Math.max(
+      0,
+      Number(params.discountTotal ?? params.discountValue ?? 0) || 0
+    );
+    discountDec = money(rawDiscount);
+  }
+  if (discountDec.greaterThan(subtotalDec)) {
+    discountDec = subtotalDec;
+  }
+
+  const afterDiscountDec = subMoney(subtotalDec, discountDec);
+  const vatRate = Math.max(0, Number(params.vatRatePercent ?? 13) || 0);
+  const taxDec =
+    params.applyVat !== false && vatRate > 0 && !afterDiscountDec.isZero()
+      ? divMoney(mulMoney(afterDiscountDec, vatRate), 100)
+      : new Prisma.Decimal(0);
+
+  const feeSum =
+    Math.max(0, Number(params.deliveryFee) || 0) +
+    Math.max(0, Number(params.packagingFee) || 0) +
+    Math.max(0, Number(params.expressFee) || 0);
+  const extraFeesDec = money(feeSum);
+
+  const totalDec = addMoney(addMoney(afterDiscountDec, taxDec), extraFeesDec);
+
+  return {
+    subtotal: Number(subtotalDec.toFixed(2)),
+    discountTotal: Number(discountDec.toFixed(2)),
+    afterDiscount: Number(afterDiscountDec.toFixed(2)),
+    taxTotal: Number(taxDec.toFixed(2)),
+    extraFees: Number(extraFeesDec.toFixed(2)),
+    totalAmount: Number(totalDec.toFixed(2)),
+  };
+}
+
 function generateOrderNumber(): string {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
   const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, "");
   const rand = Math.floor(1000 + Math.random() * 9000);
   return `RO-${dateStr}-${timeStr}-${rand}`;
+}
+
+function replaceServingTag(
+  notes: string | null | undefined,
+  targetTag: "[DINE-IN]" | "[TAKEAWAY]" | "[DELIVERY]"
+): string {
+  const cleaned = (notes || "")
+    .replace(/\[(DINE-IN|TAKEAWAY|DELIVERY|PARCEL)\]/gi, "")
+    .trim();
+  return cleaned ? `${targetTag} ${cleaned}` : targetTag;
+}
+
+async function releaseTableIfIdle(
+  tx: Prisma.TransactionClient,
+  businessId: string,
+  tableId: string | null | undefined,
+  tableSessionId: string | null | undefined,
+  excludeOrderId: string
+) {
+  if (!tableId) return;
+  const otherActiveOrders = await tx.restaurantOrder.count({
+    where: {
+      tableId,
+      businessId,
+      id: { not: excludeOrderId },
+      settlementStatus: { not: "PAID" },
+      fulfillmentStatus: { not: "CANCELLED" },
+    },
+  });
+  if (otherActiveOrders > 0) return;
+
+  if (tableSessionId) {
+    await tx.tableSession.update({
+      where: { id: tableSessionId },
+      data: { status: "CLOSED", closedAt: new Date() },
+    });
+  }
+  await tx.restaurantTable.update({
+    where: { id: tableId },
+    data: { status: "AVAILABLE", currentSessionId: null },
+  });
 }
 
 /**
@@ -119,12 +249,13 @@ export async function createOrAppendOrder(
         throw new RestaurantOrderError(`Cannot add order to session with status: ${session.status}`, 400);
       }
 
-      // Check if session already has an order
+      // Check if session already has an active, non-cancelled order
       order = await tx.restaurantOrder.findFirst({
         where: {
           tableSessionId: input.tableSessionId,
           businessId: input.businessId,
           settlementStatus: { not: "PAID" },
+          fulfillmentStatus: { not: "CANCELLED" },
         },
         include: {
           rounds: { orderBy: { roundNumber: "desc" } },
@@ -359,12 +490,20 @@ export async function updateLineStatus(
 ) {
   const runner = async (tx: Prisma.TransactionClient) => {
     const line = await tx.orderLine.findFirst({
-      where: { id: input.lineId, businessId: input.businessId },
+      where: {
+        id: input.lineId,
+        businessId: input.businessId,
+        ...(input.orderId ? { orderId: input.orderId } : {}),
+      },
       include: { order: true },
     });
 
     if (!line) {
       throw new RestaurantOrderError("Order line not found", 404);
+    }
+
+    if (line.order.settlementStatus === "PAID" || line.settlementStatus === "PAID") {
+      throw new RestaurantOrderError("Cannot modify items on a paid order", 400);
     }
 
     if (input.expectedVersion !== undefined && line.version !== input.expectedVersion) {
@@ -394,7 +533,9 @@ export async function updateLineStatus(
       } else {
         const unitPrice = line.unitPrice;
         const lineSubtotal = mulMoney(unitPrice, newQty);
-        const lineTax = mulMoney(lineSubtotal, divMoney(line.taxRate, 100));
+        const lineTax = line.taxRate.isZero()
+          ? new Prisma.Decimal(0)
+          : money(divMoney(mulMoney(lineSubtotal, line.taxRate), 100));
         const lineTotal = addMoney(lineSubtotal, lineTax);
         dataToUpdate.quantity = newQty;
         dataToUpdate.subtotal = lineSubtotal;
@@ -430,6 +571,15 @@ export async function updateLineStatus(
 
     if (input.voidReason) {
       dataToUpdate.voidReason = input.voidReason;
+    }
+
+    if (input.notes !== undefined) {
+      const normalizedNotes = input.notes.trim() || null;
+      dataToUpdate.notes = normalizedNotes;
+      await tx.kitchenTicketLine.updateMany({
+        where: { orderLineId: line.id, status: { not: "CANCELLED" } },
+        data: { notes: normalizedNotes },
+      });
     }
 
     const updatedLine = await tx.orderLine.update({
@@ -517,6 +667,7 @@ export async function updateLineStatus(
           acceptanceStatus: line.acceptanceStatus,
           fulfillmentStatus: line.fulfillmentStatus,
           settlementStatus: line.settlementStatus,
+          ...(input.notes !== undefined ? { notes: line.notes } : {}),
           version: line.version,
         },
         newValue: {
@@ -524,6 +675,7 @@ export async function updateLineStatus(
           acceptanceStatus: updatedLine.acceptanceStatus,
           fulfillmentStatus: updatedLine.fulfillmentStatus,
           settlementStatus: updatedLine.settlementStatus,
+          ...(input.notes !== undefined ? { notes: updatedLine.notes } : {}),
           version: updatedLine.version,
         },
       },
@@ -605,30 +757,7 @@ export async function cancelRestaurantOrder(input: CancelOrderInput) {
     });
 
     // 5. If this was a dine-in table order, release table session if no other active orders exist
-    if (order.tableId) {
-      const otherActiveOrders = await tx.restaurantOrder.count({
-        where: {
-          tableId: order.tableId,
-          businessId: input.businessId,
-          id: { not: order.id },
-          settlementStatus: { not: "PAID" },
-          fulfillmentStatus: { not: "CANCELLED" },
-        },
-      });
-
-      if (otherActiveOrders === 0) {
-        if (order.tableSessionId) {
-          await tx.tableSession.update({
-            where: { id: order.tableSessionId },
-            data: { status: "CLOSED", closedAt: new Date() },
-          });
-        }
-        await tx.restaurantTable.update({
-          where: { id: order.tableId },
-          data: { status: "AVAILABLE", currentSessionId: null },
-        });
-      }
-    }
+    await releaseTableIfIdle(tx, input.businessId, order.tableId, order.tableSessionId, order.id);
 
     // 6. Audit Event
     await createAuditEvent(
@@ -655,6 +784,140 @@ export async function cancelRestaurantOrder(input: CancelOrderInput) {
     );
 
     return updatedOrder;
+  });
+}
+
+/**
+ * Converts an active order (e.g. mid-meal Dine-In) to TAKEAWAY or DELIVERY.
+ * Detaches and frees the table/session if idle and updates active KDS/order line tags.
+ */
+export async function convertRestaurantOrderType(
+  input: ConvertOrderTypeInput,
+  externalTx?: Prisma.TransactionClient
+) {
+  const runner = async (tx: Prisma.TransactionClient) => {
+    const order = await tx.restaurantOrder.findFirst({
+      where: { id: input.orderId, businessId: input.businessId },
+      include: { table: true, orderLines: true },
+    });
+
+    if (!order) {
+      throw new RestaurantOrderError("Order not found", 404);
+    }
+    if (order.settlementStatus === "PAID") {
+      throw new RestaurantOrderError("Cannot convert a paid and settled order", 400);
+    }
+    if (order.fulfillmentStatus === "CANCELLED") {
+      throw new RestaurantOrderError("Cannot convert a cancelled order", 400);
+    }
+
+    const oldOrderType = order.orderType;
+    const oldTableId = order.tableId;
+    const oldTableSessionId = order.tableSessionId;
+
+    // Strip prior delivery/origin markers before rebuilding clean operational notes
+    const strippedExistingNotes = (order.notes || "")
+      .replace(/\[DELIVERY[^\]]*\]/gi, "")
+      .replace(/\[From Table [^\]]*\]/gi, "")
+      .trim();
+
+    const headerParts: string[] = [];
+    if (input.targetOrderType === "DELIVERY" && input.deliveryInfo) {
+      const d = input.deliveryInfo;
+      const cust = d.customerName?.trim() || "Customer";
+      const phone = d.phone?.trim() || "N/A";
+      const addr = d.address?.trim() || "No address";
+      const rider = d.riderName?.trim() || "In-House Rider";
+      const dNotes = d.notes?.trim();
+      headerParts.push(
+        `[DELIVERY to ${cust} (${phone}) - ${addr} via ${rider}${dNotes ? ` | ${dNotes}` : ""}]`
+      );
+    }
+    if (order.table?.tableNumber) {
+      headerParts.push(`[From Table ${order.table.tableNumber}]`);
+    }
+
+    const finalNotes =
+      [...headerParts, input.notes?.trim(), strippedExistingNotes].filter(Boolean).join(" ") ||
+      null;
+
+    // Sync serving tag on active, unserved lines and kitchen ticket lines
+    const targetTag = input.targetOrderType === "DELIVERY" ? "[DELIVERY]" : "[TAKEAWAY]";
+    const activeLines = order.orderLines.filter(
+      (l) =>
+        l.acceptanceStatus !== "REJECTED" &&
+        l.fulfillmentStatus !== "CANCELLED" &&
+        l.fulfillmentStatus !== "SERVED"
+    );
+
+    for (const line of activeLines) {
+      const nextLineNotes = replaceServingTag(line.notes, targetTag);
+      if (nextLineNotes !== (line.notes || "")) {
+        await tx.orderLine.update({
+          where: { id: line.id },
+          data: { notes: nextLineNotes, version: { increment: 1 } },
+        });
+        await tx.kitchenTicketLine.updateMany({
+          where: {
+            orderLineId: line.id,
+            status: { notIn: ["CANCELLED", "SERVED"] },
+          },
+          data: { notes: nextLineNotes },
+        });
+      }
+    }
+
+    const updatedOrder = await tx.restaurantOrder.update({
+      where: { id: order.id },
+      data: {
+        orderType: input.targetOrderType,
+        tableId: null,
+        tableSessionId: null,
+        notes: finalNotes,
+        version: { increment: 1 },
+      },
+      include: {
+        tableSession: true,
+        table: true,
+        rounds: {
+          include: { lines: true },
+          orderBy: { roundNumber: "asc" },
+        },
+      },
+    });
+
+    await releaseTableIfIdle(tx, input.businessId, oldTableId, oldTableSessionId, order.id);
+
+    await createAuditEvent(
+      {
+        businessId: input.businessId,
+        branchId: order.branchId,
+        userId: input.actorId,
+        action: "RESTAURANT_ORDER_TYPE_CONVERTED",
+        entity: "RestaurantOrder",
+        entityId: order.id,
+        oldValue: {
+          orderType: oldOrderType,
+          tableId: oldTableId,
+          tableSessionId: oldTableSessionId,
+        },
+        newValue: {
+          orderType: input.targetOrderType,
+          tableId: null,
+          tableSessionId: null,
+        },
+      },
+      tx
+    );
+
+    return updatedOrder;
+  };
+
+  if (externalTx) {
+    return await runner(externalTx);
+  }
+  return await db.$transaction(runner, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
   });
 }
 

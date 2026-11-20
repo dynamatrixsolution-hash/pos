@@ -214,7 +214,7 @@ export default function RegisterPage() {
                       ? "bg-[#6A2635] text-white shadow-xs ring-2 ring-[#6A2635]/20"
                       : currentStep > 1
                       ? "bg-[#28634B] text-white"
-                      : "border border-[#CDC4B7] text-[#71675E] bg-white"
+                      : "border border-[#CDC4B7] text-[#71675E] bg-[#FFFCF7]"
                   }`}
                 >
                   {currentStep > 1 ? <Check className="w-4 h-4" /> : "1"}
@@ -238,7 +238,7 @@ export default function RegisterPage() {
                       ? "bg-[#6A2635] text-white shadow-xs ring-2 ring-[#6A2635]/20"
                       : currentStep > 2
                       ? "bg-[#28634B] text-white"
-                      : "border border-[#CDC4B7] text-[#71675E] bg-white"
+                      : "border border-[#CDC4B7] text-[#71675E] bg-[#FFFCF7]"
                   }`}
                 >
                   {currentStep > 2 ? <Check className="w-4 h-4" /> : "2"}
@@ -262,7 +262,7 @@ export default function RegisterPage() {
                       ? "bg-[#6A2635] text-white shadow-xs ring-2 ring-[#6A2635]/20"
                       : currentStep > 3
                       ? "bg-[#28634B] text-white"
-                      : "border border-[#CDC4B7] text-[#71675E] bg-white"
+                      : "border border-[#CDC4B7] text-[#71675E] bg-[#FFFCF7]"
                   }`}
                 >
                   {currentStep > 3 ? <Check className="w-4 h-4" /> : "3"}
@@ -284,7 +284,7 @@ export default function RegisterPage() {
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     currentStep === 4
                       ? "bg-[#6A2635] text-white shadow-xs ring-2 ring-[#6A2635]/20"
-                      : "border border-[#CDC4B7] text-[#71675E] bg-white"
+                      : "border border-[#CDC4B7] text-[#71675E] bg-[#FFFCF7]"
                   }`}
                 >
                   4
@@ -326,7 +326,7 @@ export default function RegisterPage() {
                       placeholder="e.g. Lakeside Retreat"
                       value={formData.businessName}
                       onChange={(e) => handleBusinessNameChange(e.target.value)}
-                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-white border rounded-lg text-sm sm:text-base font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] transition-all ${
+                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border rounded-lg text-sm sm:text-base font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] transition-all ${
                         fieldErrors.businessName ? "border-[#B33432]" : "border-[#CDC4B7]"
                       }`}
                     />
@@ -346,7 +346,7 @@ export default function RegisterPage() {
                       <label
                         className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
                           formData.businessType === "RESTAURANT"
-                            ? "bg-white shadow-xs border border-[#D5CEC2]"
+                            ? "bg-[#FFFCF7] shadow-xs border border-[#D5CEC2]"
                             : "hover:bg-white/60"
                         }`}
                       >
@@ -365,7 +365,7 @@ export default function RegisterPage() {
                       <label
                         className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
                           formData.businessType === "HOTEL"
-                            ? "bg-white shadow-xs border border-[#D5CEC2]"
+                            ? "bg-[#FFFCF7] shadow-xs border border-[#D5CEC2]"
                             : "hover:bg-white/60"
                         }`}
                       >
@@ -384,7 +384,7 @@ export default function RegisterPage() {
                       <label
                         className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
                           formData.businessType === "BOTH"
-                            ? "bg-white shadow-xs border border-[#D5CEC2]"
+                            ? "bg-[#FFFCF7] shadow-xs border border-[#D5CEC2]"
                             : "hover:bg-white/60"
                         }`}
                       >
@@ -409,7 +409,7 @@ export default function RegisterPage() {
                         Workspace address
                       </label>
                       <div
-                        className={`flex rounded-lg border bg-white overflow-hidden transition-all focus-within:border-[#6A2635] focus-within:ring-1 focus-within:ring-[#6A2635] ${
+                        className={`flex rounded-lg border bg-[#FFFCF7] overflow-hidden transition-all focus-within:border-[#6A2635] focus-within:ring-1 focus-within:ring-[#6A2635] ${
                           fieldErrors.slug ? "border-[#B33432]" : "border-[#CDC4B7]"
                         }`}
                       >
@@ -444,7 +444,7 @@ export default function RegisterPage() {
                       <select
                         value={formData.currency}
                         onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                        className="w-full px-3 py-2.5 sm:py-3 bg-white border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
+                        className="w-full px-3 py-2.5 sm:py-3 bg-[#FFFCF7] border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
                       >
                         <option value="NPR">NPR — Nepalese rupee</option>
                         <option value="INR">INR — Indian rupee</option>
@@ -470,7 +470,7 @@ export default function RegisterPage() {
                           setFormData({ ...formData, email: e.target.value });
                           if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: "" });
                         }}
-                        className={`w-full px-3.5 py-2.5 sm:py-3 bg-white border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
+                        className={`w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
                           fieldErrors.email ? "border-[#B33432]" : "border-[#CDC4B7]"
                         }`}
                       />
@@ -490,7 +490,7 @@ export default function RegisterPage() {
                         placeholder="+977"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 sm:py-3 bg-white border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
+                        className="w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
                       />
                     </div>
                   </div>
@@ -505,7 +505,7 @@ export default function RegisterPage() {
                       placeholder="Street, city"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3.5 py-2.5 sm:py-3 bg-white border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
+                      className="w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
                     />
                   </div>
 
@@ -519,7 +519,7 @@ export default function RegisterPage() {
                       placeholder="PAN / VAT number"
                       value={formData.taxNumber}
                       onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })}
-                      className="w-full px-3.5 py-2.5 sm:py-3 bg-white border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
+                      className="w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
                     />
                   </div>
                 </div>
@@ -546,7 +546,7 @@ export default function RegisterPage() {
                     className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                       formData.plan === "STARTER"
                         ? "border-[#6A2635] bg-[#FAF3F4] ring-1 ring-[#6A2635]"
-                        : "border-[#CDC4B7] bg-white hover:border-[#6A2635]/50"
+                        : "border-[#CDC4B7] bg-[#FFFCF7] hover:border-[#6A2635]/50"
                     }`}
                   >
                     <div className="flex justify-between items-center">
@@ -572,7 +572,7 @@ export default function RegisterPage() {
                     className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                       formData.plan === "GROWTH"
                         ? "border-[#6A2635] bg-[#FAF3F4] ring-1 ring-[#6A2635]"
-                        : "border-[#CDC4B7] bg-white hover:border-[#6A2635]/50"
+                        : "border-[#CDC4B7] bg-[#FFFCF7] hover:border-[#6A2635]/50"
                     }`}
                   >
                     <div className="flex justify-between items-center">
@@ -598,7 +598,7 @@ export default function RegisterPage() {
                     className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                       formData.plan === "ENTERPRISE"
                         ? "border-[#6A2635] bg-[#FAF3F4] ring-1 ring-[#6A2635]"
-                        : "border-[#CDC4B7] bg-white hover:border-[#6A2635]/50"
+                        : "border-[#CDC4B7] bg-[#FFFCF7] hover:border-[#6A2635]/50"
                     }`}
                   >
                     <div className="flex justify-between items-center">
@@ -637,7 +637,7 @@ export default function RegisterPage() {
                     ].map((mod) => (
                       <label
                         key={mod.key}
-                        className="flex items-center gap-2 p-2 bg-white border border-[#CDC4B7] rounded-md cursor-pointer hover:bg-[#FAF7F2]"
+                        className="flex items-center gap-2 p-2 bg-[#FFFCF7] border border-[#CDC4B7] rounded-md cursor-pointer hover:bg-[#FAF7F2]"
                       >
                         <input
                           type="checkbox"
@@ -686,7 +686,7 @@ export default function RegisterPage() {
                         setFormData({ ...formData, ownerName: e.target.value });
                         if (fieldErrors.ownerName) setFieldErrors({ ...fieldErrors, ownerName: "" });
                       }}
-                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-white border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
+                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
                         fieldErrors.ownerName ? "border-[#B33432]" : "border-[#CDC4B7]"
                       }`}
                     />
@@ -709,7 +709,7 @@ export default function RegisterPage() {
                         setFormData({ ...formData, ownerEmail: e.target.value });
                         if (fieldErrors.ownerEmail) setFieldErrors({ ...fieldErrors, ownerEmail: "" });
                       }}
-                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-white border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
+                      className={`w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
                         fieldErrors.ownerEmail ? "border-[#B33432]" : "border-[#CDC4B7]"
                       }`}
                     />
@@ -729,7 +729,7 @@ export default function RegisterPage() {
                       placeholder="+977"
                       value={formData.ownerPhone}
                       onChange={(e) => setFormData({ ...formData, ownerPhone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 sm:py-3 bg-white border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
+                      className="w-full px-3.5 py-2.5 sm:py-3 bg-[#FFFCF7] border border-[#CDC4B7] rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635]"
                     />
                   </div>
 
@@ -746,7 +746,7 @@ export default function RegisterPage() {
                           setFormData({ ...formData, password: e.target.value });
                           if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" });
                         }}
-                        className={`w-full pl-3.5 pr-10 py-2.5 sm:py-3 bg-white border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
+                        className={`w-full pl-3.5 pr-10 py-2.5 sm:py-3 bg-[#FFFCF7] border rounded-lg text-xs sm:text-sm font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-1 focus:ring-[#6A2635] ${
                           fieldErrors.password ? "border-[#B33432]" : "border-[#CDC4B7]"
                         }`}
                       />
@@ -780,7 +780,7 @@ export default function RegisterPage() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-[#D5CEC2] rounded-lg p-4 space-y-3 text-xs sm:text-sm">
+                <div className="bg-[#FFFCF7] border border-[#D5CEC2] rounded-lg p-4 space-y-3 text-xs sm:text-sm">
                   <div className="flex justify-between py-1 border-b border-[#EEE7DD]">
                     <span className="text-[#71675E] font-medium">Business Name:</span>
                     <span className="font-bold text-[#140F0C]">{formData.businessName}</span>
@@ -835,7 +835,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={handlePrevStep}
                     disabled={isLoading}
-                    className="px-4 py-2 sm:py-2.5 rounded-lg border border-[#CDC4B7] bg-white text-[#292320] text-xs sm:text-sm font-bold hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+                    className="px-4 py-2 sm:py-2.5 rounded-lg border border-[#CDC4B7] bg-[#FFFCF7] text-[#292320] text-xs sm:text-sm font-bold hover:bg-[#FAF7F2] transition-colors cursor-pointer"
                   >
                     Back
                   </button>

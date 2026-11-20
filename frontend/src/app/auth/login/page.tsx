@@ -202,7 +202,7 @@ function LoginForm() {
                   type="email"
                   placeholder="you@yourbusiness.com"
                   {...register("email")}
-                  className={`w-full px-4 py-3 sm:py-3.5 bg-white border rounded-lg text-base sm:text-[17px] font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-2 focus:ring-[#6A2635]/25 transition-all ${
+                  className={`w-full px-4 py-3 sm:py-3.5 bg-[#FFFCF7] border rounded-lg text-base sm:text-[17px] font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-2 focus:ring-[#6A2635]/25 transition-all ${
                     errors.email ? "border-[#B33432]" : "border-[#CDC4B7]"
                   }`}
                 />
@@ -223,7 +223,7 @@ function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     {...register("password")}
-                    className={`w-full pl-4 pr-12 py-3 sm:py-3.5 bg-white border rounded-lg text-base sm:text-[17px] font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-2 focus:ring-[#6A2635]/25 transition-all ${
+                    className={`w-full pl-4 pr-12 py-3 sm:py-3.5 bg-[#FFFCF7] border rounded-lg text-base sm:text-[17px] font-medium text-[#1F1915] placeholder:text-[#9E938B] focus:outline-none focus:border-[#6A2635] focus:ring-2 focus:ring-[#6A2635]/25 transition-all ${
                       errors.password ? "border-[#B33432]" : "border-[#CDC4B7]"
                     }`}
                   />

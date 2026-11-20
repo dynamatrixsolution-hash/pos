@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limiter";
+import { safeErrorMessage } from "@/lib/api-helper";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -156,8 +157,7 @@ export async function POST(request: Request) {
     console.error("Register request error:", error);
     return NextResponse.json(
       {
-        error: error?.message || "Failed to submit business registration request",
-        details: String(error),
+        error: safeErrorMessage(error, "Failed to submit business registration request"),
       },
       { status: 500 }
     );

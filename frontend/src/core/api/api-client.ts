@@ -16,6 +16,19 @@ export class ApiError extends Error {
   }
 }
 
+export function createIdempotencyKey(prefix = "req"): string {
+  const bytes = new Uint8Array(12);
+  if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  const rand = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${prefix}_${rand}`;
+}
+
 class BaseApiClient {
   protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
@@ -24,7 +37,14 @@ class BaseApiClient {
     }
     headers.set("Accept", "application/json");
 
-    const res = await fetch(endpoint, {
+    // Resolve internal backend URL during Next.js SSR where relative /api/v1 URLs fail
+    const url =
+      typeof window === "undefined" &&
+      (endpoint.startsWith("/api/v1") || endpoint.startsWith("/api/docs"))
+        ? `${process.env.BACKEND_URL || "http://localhost:3001"}${endpoint}`
+        : endpoint;
+
+    const res = await fetch(url, {
       ...options,
       headers,
     });
@@ -233,30 +253,39 @@ export class RestaurantEndpoints extends BaseApiClient {
     }>(`/api/v1/restaurant/tables/${tableId}/orders`);
   }
 
-  async createOrder(payload: {
-    orderType: string;
-    tableId?: string;
-    tableSessionId?: string;
-    items: any[];
-    notes?: string;
-    autoRouteToKitchen?: boolean;
-    deliveryInfo?: any;
-    roomServiceInfo?: any;
-  }) {
+  async createOrder(
+    payload: {
+      orderType: string;
+      tableId?: string;
+      tableSessionId?: string;
+      items: any[];
+      notes?: string;
+      autoRouteToKitchen?: boolean;
+      deliveryInfo?: any;
+      roomServiceInfo?: any;
+    },
+    idempotencyKey?: string
+  ) {
     return this.request<{ success: boolean; order: any; round: any; tickets: any[] }>(
       "/api/v1/restaurant/orders",
       {
         method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey || createIdempotencyKey("pos_ord") },
         body: JSON.stringify(payload),
       }
     );
   }
 
-  async addOrderRound(orderId: string, payload: { items: any[]; notes?: string }) {
+  async addOrderRound(
+    orderId: string,
+    payload: { items: any[]; notes?: string },
+    idempotencyKey?: string
+  ) {
     return this.request<{ success: boolean; round: any; tickets: any[] }>(
       `/api/v1/restaurant/orders/${orderId}/rounds`,
       {
         method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey || createIdempotencyKey("pos_rnd") },
         body: JSON.stringify(payload),
       }
     );
@@ -272,12 +301,29 @@ export class RestaurantEndpoints extends BaseApiClient {
     );
   }
 
-  async closeSession(sessionId: string, reason?: string) {
+  async closeSession(sessionId: string, notes?: string) {
     return this.request<{ success: boolean; session: any }>(
       `/api/v1/restaurant/sessions/${sessionId}/close`,
       {
         method: "POST",
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ notes }),
+      }
+    );
+  }
+
+  async convertOrderType(
+    orderId: string,
+    payload: {
+      orderType: "TAKEAWAY" | "DELIVERY";
+      deliveryInfo?: Record<string, any>;
+      notes?: string;
+    }
+  ) {
+    return this.request<{ success: boolean; order: any }>(
+      `/api/v1/restaurant/orders/${orderId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
       }
     );
   }
@@ -285,7 +331,14 @@ export class RestaurantEndpoints extends BaseApiClient {
   async updateOrderLineStatus(
     orderId: string,
     lineId: string,
-    payload: { action: "CANCEL" | "ADJUST_QTY"; reason?: string; quantity?: number }
+    payload: {
+      quantity?: number;
+      acceptanceStatus?: "PENDING" | "ACCEPTED" | "REJECTED";
+      fulfillmentStatus?: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
+      rejectionReason?: string;
+      voidReason?: string;
+      notes?: string;
+    }
   ) {
     return this.request<{ success: boolean; line?: any }>(
       `/api/v1/restaurant/orders/${orderId}/lines/${lineId}/status`,
@@ -300,28 +353,61 @@ export class RestaurantEndpoints extends BaseApiClient {
   async settleOrder(
     orderId: string,
     payload: {
-      payments: Array<{
-        method: "CASH" | "CARD" | "QR" | "BANK_TRANSFER" | "CREDIT" | "ROOM_CHARGE" | "OTHER";
+      paymentMethod:
+        | "CASH"
+        | "CARD"
+        | "FONE_PAY"
+        | "ESEWA"
+        | "KHALTI"
+        | "NEPAL_PAY"
+        | "CREDIT"
+        | "ROOM_CHARGE";
+      stayId?: string | null;
+      splitPayments?: Array<{
+        method:
+          | "CASH"
+          | "CARD"
+          | "FONE_PAY"
+          | "ESEWA"
+          | "KHALTI"
+          | "NEPAL_PAY"
+          | "CREDIT"
+          | "ROOM_CHARGE";
         amount: number;
-        reference?: string;
+        cashTendered?: number | null;
+        changeReturned?: number | null;
+        reference?: string | null;
       }>;
+      cashTendered?: number | null;
+      changeReturned?: number | null;
       discountType?: "FLAT" | "PERCENT";
       discountValue?: number;
-      serviceChargeRate?: number;
-      vatRate?: number;
-      customerId?: string;
+      discountTotal?: number;
+      applyVat?: boolean;
+      deliveryFee?: number;
+      packagingFee?: number;
+      expressFee?: number;
+      customerId?: string | null;
       customerName?: string;
       customerPhone?: string;
-      customerPan?: string;
-    }
+      paymentReference?: string | null;
+      notes?: string | null;
+      clearTable?: boolean;
+    },
+    idempotencyKey?: string
   ) {
-    return this.request<{ success: boolean; order: any; invoice?: any }>(
-      `/api/v1/restaurant/orders/${orderId}/settle`,
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }
-    );
+    return this.request<{
+      success: boolean;
+      message?: string;
+      order: any;
+      table?: any;
+      sale?: any;
+      invoiceNumber?: string;
+    }>(`/api/v1/restaurant/orders/${orderId}/settle`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey || createIdempotencyKey("pos_stl") },
+      body: JSON.stringify(payload),
+    });
   }
 
   // 5. Kitchen Display & Stations
@@ -551,9 +637,21 @@ export class HotelEndpoints extends BaseApiClient {
     });
   }
 
-  async settleFolio(folioId: string, payload: { payments: Array<{ method: string; amount: number; notes?: string }> }) {
-    return this.request<{ success: boolean; folio: any; receiptNumber?: string }>(`/api/v1/hotel/folios/${folioId}/settle`, {
+  async settleFolio(
+    folioId: string,
+    payload: {
+      tenders: Array<{
+        paymentMethod: "CASH" | "CARD" | "QR" | "BANK_TRANSFER" | "DEPOSIT";
+        amount: number;
+        reference?: string | null;
+        notes?: string | null;
+      }>;
+    },
+    idempotencyKey?: string
+  ) {
+    return this.request<{ folio: any; allocations: any[] }>(`/api/v1/hotel/folios/${folioId}/settle`, {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey || createIdempotencyKey("fol_stl") },
       body: JSON.stringify(payload),
     });
   }

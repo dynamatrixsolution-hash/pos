@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 
 export async function GET() {
   const context = await getSessionContext();
@@ -53,6 +53,8 @@ export async function GET() {
 export async function PUT(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
+  const denied = requireRoles(context, ROLE_GROUPS.OWNER_ONLY);
+  if (denied) return denied;
 
   try {
     const { plan } = await request.json();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -77,6 +77,6 @@ export async function GET(request: Request) {
       suppliers,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Search failed") }, { status: 500 });
   }
 }

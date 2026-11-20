@@ -51,3 +51,62 @@ export async function commerceTransaction<T>(request: Request, context: Commerce
     return response as T;
   });
 }
+
+/**
+ * Runs a mutation inside a transaction with optional Idempotency-Key deduplication.
+ * Backward compatible when the header is omitted; replays committed responses when repeated.
+ */
+export async function runWithOptionalIdempotency<T>(
+  request: Request,
+  context: Pick<CommerceContext, "userId" | "businessId" | "branchId" | "role">,
+  operation: string,
+  body: unknown,
+  work: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<{ result: T; replayed: boolean }> {
+  const key = request.headers.get("Idempotency-Key")?.trim();
+  if (!key) {
+    const result = await db.$transaction(work, { maxWait: 10000, timeout: 30000 });
+    return { result, replayed: false };
+  }
+
+  if (!/^[a-zA-Z0-9_:-]{16,128}$/.test(key)) {
+    throw new CommerceError("Idempotency-Key must be 16-128 safe characters", 400);
+  }
+
+  const requestHash = createHash("sha256")
+    .update(JSON.stringify({ userId: context.userId, branchId: context.branchId, role: context.role, body }))
+    .digest("hex");
+  const where = { businessId_operation_key: { businessId: context.businessId, operation, key } };
+
+  try {
+    return await serializable(async (tx) => {
+      const existing = await tx.requestResult.findUnique({ where });
+      if (existing) {
+        if (existing.requestHash !== requestHash) {
+          throw new CommerceError("Idempotency-Key reused with different request payload", 409);
+        }
+        return { result: existing.response as T, replayed: true };
+      }
+
+      const raw = await work(tx);
+      const response = JSON.parse(JSON.stringify(raw));
+      await tx.requestResult.create({
+        data: { businessId: context.businessId, operation, key, requestHash, response },
+      });
+      return { result: response as T, replayed: false };
+    });
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = db.requestResult?.findUnique
+        ? await db.requestResult.findUnique({ where })
+        : await db.$transaction((tx) => tx.requestResult.findUnique({ where }));
+      if (existing) {
+        if (existing.requestHash !== requestHash) {
+          throw new CommerceError("Idempotency-Key reused with different request payload", 409);
+        }
+        return { result: existing.response as T, replayed: true };
+      }
+    }
+    throw error;
+  }
+}

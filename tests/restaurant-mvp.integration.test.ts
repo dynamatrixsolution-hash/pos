@@ -437,4 +437,166 @@ describe.skipIf(!target)("Phase 3: Restaurant Staff MVP Integration & Invariants
     expect(table2.status).toBe("AVAILABLE");
     expect(table2.currentSessionId).toBeNull();
   });
+
+  it("syncs line serving notes to KDS, recalculates tax accurately, and blocks paid-line edits", async () => {
+    const { openTableSession } = await import("../backend/src/lib/services/table-session-service");
+    const { createOrAppendOrder, updateLineStatus } = await import(
+      "../backend/src/lib/services/restaurant-order-service"
+    );
+
+    const session3 = await openTableSession(
+      { businessId, branchId, tableId: table3Id, guestCount: 4, openedById: userId },
+      db
+    );
+
+    const created = await createOrAppendOrder(
+      {
+        businessId,
+        branchId,
+        tableSessionId: session3.session.id,
+        tableId: table3Id,
+        orderType: "DINE_IN",
+        items: [
+          {
+            menuItemId: menuItem1Id,
+            itemName: "Wood-Fired Pizza",
+            basePrice: 850.0,
+            quantity: 3,
+            notes: "[DINE-IN] Extra crisp",
+          },
+        ],
+        actorId: userId,
+      },
+      db
+    );
+
+    const orderLine = created.lines[0];
+    const station = await db.kitchenStation.create({
+      data: { businessId, branchId, name: "Main Kitchen", code: "MAIN-TEST" },
+    });
+    const ticket = await db.kitchenTicket.create({
+      data: {
+        businessId,
+        branchId,
+        stationId: station.id,
+        orderId: created.order.id,
+        roundId: created.round.id,
+        ticketNumber: "KT-TEST-01",
+        status: "QUEUED",
+      },
+    });
+    const ticketLine = await db.kitchenTicketLine.create({
+      data: {
+        businessId,
+        ticketId: ticket.id,
+        orderLineId: orderLine.id,
+        itemName: orderLine.itemName,
+        quantity: orderLine.quantity,
+        modifiersSnapshot: [],
+        notes: orderLine.notes,
+        status: "QUEUED",
+      },
+    });
+
+    // 1. Update line notes and verify sync to KitchenTicketLine
+    const notesUpdated = await updateLineStatus(
+      {
+        businessId,
+        orderId: created.order.id,
+        lineId: orderLine.id,
+        notes: "[TAKEAWAY] Extra crisp",
+        actorId: userId,
+      },
+      db
+    );
+    expect(notesUpdated.notes).toBe("[TAKEAWAY] Extra crisp");
+
+    const syncedTicketLine = await db.kitchenTicketLine.findUniqueOrThrow({
+      where: { id: ticketLine.id },
+    });
+    expect(syncedTicketLine.notes).toBe("[TAKEAWAY] Extra crisp");
+
+    // 2. Reduce quantity 3 -> 2 and verify exact 13% tax recalculation (1700 * 0.13 = 221, total = 1921)
+    const qtyUpdated = await updateLineStatus(
+      {
+        businessId,
+        orderId: created.order.id,
+        lineId: orderLine.id,
+        quantity: 2,
+        voidReason: "Reduced",
+        actorId: userId,
+      },
+      db
+    );
+    expect(qtyUpdated.quantity).toBe(2);
+    expect(Number(qtyUpdated.subtotal)).toBe(1700.0);
+    expect(Number(qtyUpdated.taxAmount)).toBe(221.0);
+    expect(Number(qtyUpdated.total)).toBe(1921.0);
+
+    // 3. Guard against modifying an already-settled PAID line
+    const paidLine = await db.orderLine.findFirstOrThrow({
+      where: { businessId, settlementStatus: "PAID" },
+    });
+    await expect(
+      updateLineStatus(
+        {
+          businessId,
+          lineId: paidLine.id,
+          quantity: 1,
+          actorId: userId,
+        },
+        db
+      )
+    ).rejects.toThrow(/Cannot modify items on a paid order/i);
+  });
+
+  it("converts an active Dine-In order to Delivery and frees the table", async () => {
+    const { convertRestaurantOrderType } = await import(
+      "../backend/src/lib/services/restaurant-order-service"
+    );
+
+    const activeOrder = await db.restaurantOrder.findFirstOrThrow({
+      where: { businessId, tableId: table3Id, settlementStatus: "UNPAID" },
+      include: { orderLines: true },
+    });
+    const prevSessionId = activeOrder.tableSessionId!;
+    const activeLineId = activeOrder.orderLines[0].id;
+
+    const converted = await convertRestaurantOrderType(
+      {
+        businessId,
+        orderId: activeOrder.id,
+        targetOrderType: "DELIVERY",
+        deliveryInfo: {
+          customerName: "Sita",
+          phone: "9800000000",
+          address: "Lazimpat",
+          riderName: "In-House Rider",
+        },
+        actorId: userId,
+      },
+      db
+    );
+
+    expect(converted.orderType).toBe("DELIVERY");
+    expect(converted.tableId).toBeNull();
+    expect(converted.tableSessionId).toBeNull();
+    expect(converted.notes).toContain("[DELIVERY to Sita (9800000000) - Lazimpat via In-House Rider]");
+    expect(converted.notes).toContain("[From Table T-03]");
+
+    const updatedOrderLine = await db.orderLine.findUniqueOrThrow({ where: { id: activeLineId } });
+    expect(updatedOrderLine.notes).toBe("[DELIVERY] Extra crisp");
+
+    const updatedTicketLine = await db.kitchenTicketLine.findFirstOrThrow({
+      where: { orderLineId: activeLineId },
+    });
+    expect(updatedTicketLine.notes).toBe("[DELIVERY] Extra crisp");
+
+    const closedSession = await db.tableSession.findUniqueOrThrow({ where: { id: prevSessionId } });
+    expect(closedSession.status).toBe("CLOSED");
+
+    const table3 = await db.restaurantTable.findUniqueOrThrow({ where: { id: table3Id } });
+    expect(table3.status).toBe("AVAILABLE");
+    expect(table3.currentSessionId).toBeNull();
+  });
 });

@@ -207,8 +207,8 @@ export default function BarcodeScannerModal({
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="relative bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm flex flex-col items-center gap-4 text-white shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 p-4">
+      <div className="relative bg-slate-900 border border-slate-800 rounded-xl p-6 w-full max-w-sm flex flex-col items-center gap-4 text-white overflow-hidden">
         {/* Animated slide down scanning indicators */}
         <div className="absolute inset-x-0 top-0 h-1 bg-[#2563EB] opacity-40 animate-pulse shadow-[0_0_15px_#2563EB]" />
 
@@ -293,7 +293,7 @@ export default function BarcodeScannerModal({
                 onClose();
               }
             }}
-            className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-black tracking-wide uppercase mt-1.5 shadow-lg shadow-[#2563EB]/25 transition-all cursor-pointer"
+            className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-black tracking-wide uppercase mt-1.5 shadow-[#2563EB]/25 transition-all cursor-pointer"
           >
             Finish Scanning
           </button>

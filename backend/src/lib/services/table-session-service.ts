@@ -183,7 +183,14 @@ export async function openTableSession(
     });
 
     if (existingActiveSession) {
-      if (!existingActiveSession.restaurantOrders || existingActiveSession.restaurantOrders.length === 0) {
+      const hasActiveOrders = Boolean(
+        existingActiveSession.restaurantOrders && existingActiveSession.restaurantOrders.length > 0
+      );
+      const isGenuinelyOrphaned =
+        !hasActiveOrders &&
+        (table.status === "AVAILABLE" || table.currentSessionId !== existingActiveSession.id);
+
+      if (isGenuinelyOrphaned) {
         // Auto-heal dangling ghost session with no active orders
         await tx.tableSession.update({
           where: { id: existingActiveSession.id },
@@ -196,14 +203,14 @@ export async function openTableSession(
         });
       } else {
         throw new TableSessionError(
-          `Table already has an active session (${existingActiveSession.sessionNumber})`,
+          `Table ${table.tableNumber} is already ${table.status} (${existingActiveSession.sessionNumber})`,
           409
         );
       }
     }
 
     if (table.status !== "AVAILABLE" && table.status !== "RESERVED") {
-      // If table was stuck in OCCUPIED but has no active orders, auto-heal it
+      // If table was stuck in OCCUPIED with no active session or active orders, auto-heal it
       const activeOrderOnTable = await tx.restaurantOrder.findFirst({
         where: {
           businessId: input.businessId,
@@ -213,7 +220,7 @@ export async function openTableSession(
         },
       });
 
-      if (!activeOrderOnTable) {
+      if (!existingActiveSession && !activeOrderOnTable) {
         await tx.restaurantTable.update({
           where: { id: table.id },
           data: { status: "AVAILABLE", currentSessionId: null },

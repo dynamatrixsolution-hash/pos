@@ -38,12 +38,12 @@ export function Protected({ children, resource, action, fallback }: ProtectedPro
  */
 export function AccessDenied() {
   return (
-    <div className="flex items-center justify-center min-h-[400px] bg-gradient-to-br from-red-50 to-orange-50 rounded-lg border border-red-200">
+    <div className="flex items-center justify-center min-h-[400px] bg-[#FAEAEC] rounded-lg border border-[#E9B6B7]">
       <div className="text-center">
         <div className="mb-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-[#FFFCF7] border border-[#E9B6B7] rounded-lg">
             <svg
-              className="w-8 h-8 text-red-600"
+              className="w-7 h-7 text-[#B33432]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -57,9 +57,9 @@ export function AccessDenied() {
             </svg>
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
-        <p className="text-gray-600">
-          You don't have permission to access this resource.
+        <h2 className="text-xl font-bold text-[#292320] mb-2">Access Denied</h2>
+        <p className="text-sm text-[#71675E]">
+          You don&apos;t have permission to access this resource.
         </p>
       </div>
     </div>

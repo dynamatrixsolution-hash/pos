@@ -160,7 +160,7 @@ function BranchCard({ branch, onEdit, onToggle }: BranchCardProps) {
   const isEnabled = branch.isEnabled !== false; // Default to enabled
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-6">
+    <div className="bg-[#FFFCF7] rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-6">
       {/* Header with Main Badge */}
       <div className="flex items-start justify-between mb-4">
         <div>
@@ -265,7 +265,7 @@ function BranchForm({ branch, onClose, onSave }: BranchFormProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-[#FFFCF7] rounded-lg max-w-md w-full mx-4">
         <div className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             {branch ? "Edit Branch" : "Create New Branch"}
