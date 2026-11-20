@@ -8,6 +8,21 @@ async function main() {
 
   // 0. Clear existing data to make seed re-runnable
   console.log("Clearing existing data...");
+  try { await prisma.kitchenTicketLine.deleteMany({}); } catch (e) {}
+  try { await prisma.kitchenTicket.deleteMany({}); } catch (e) {}
+  try { await prisma.orderLine.deleteMany({}); } catch (e) {}
+  try { await prisma.orderRound.deleteMany({}); } catch (e) {}
+  try { await prisma.restaurantOrder.deleteMany({}); } catch (e) {}
+  try { await prisma.tableSession.deleteMany({}); } catch (e) {}
+  try { await prisma.qrLocation.deleteMany({}); } catch (e) {}
+  try { await prisma.restaurantTable.deleteMany({}); } catch (e) {}
+  try { await prisma.room.deleteMany({}); } catch (e) {}
+  try { await prisma.roomType.deleteMany({}); } catch (e) {}
+  try { await prisma.floor.deleteMany({}); } catch (e) {}
+  try { await prisma.menuItem.deleteMany({}); } catch (e) {}
+  try { await prisma.menuSection.deleteMany({}); } catch (e) {}
+  try { await prisma.menu.deleteMany({}); } catch (e) {}
+  try { await prisma.kitchenStation.deleteMany({}); } catch (e) {}
   try { await prisma.customerLedger.deleteMany({}); } catch (e) {}
   try { await prisma.supplierLedger.deleteMany({}); } catch (e) {}
   try { await prisma.payment.deleteMany({}); } catch (e) {}
@@ -105,6 +120,8 @@ async function main() {
   const superAdminHash = bcrypt.hashSync("superadmin123", salt);
   const ownerHash = bcrypt.hashSync("admin123", salt);
   const cashierHash = bcrypt.hashSync("cashier123", salt);
+  const waiterHash = bcrypt.hashSync("waiter123", salt);
+  const kitchenHash = bcrypt.hashSync("kitchen123", salt);
 
   const platformBusiness = await prisma.business.upsert({
     where: { slug: "platform-admin" },
@@ -220,7 +237,35 @@ async function main() {
     },
   });
 
-  console.log(`Users created: ${superAdmin.email} (Super Admin), ${owner.email} (Owner), ${cashier.email} (Cashier)`);
+  const waiter = await prisma.user.upsert({
+    where: { email: "waiter@dynapos.com" },
+    update: {},
+    create: {
+      businessId: business.id,
+      branchId: mainBranch.id,
+      name: "Sam Waiter",
+      email: "waiter@dynapos.com",
+      passwordHash: waiterHash,
+      role: "WAITER",
+      phone: "+1-555-0403",
+    },
+  });
+
+  const kitchenUser = await prisma.user.upsert({
+    where: { email: "kitchen@dynapos.com" },
+    update: {},
+    create: {
+      businessId: business.id,
+      branchId: mainBranch.id,
+      name: "Chef Maya",
+      email: "kitchen@dynapos.com",
+      passwordHash: kitchenHash,
+      role: "KITCHEN",
+      phone: "+1-555-0404",
+    },
+  });
+
+  console.log(`Users created: ${superAdmin.email}, ${owner.email}, ${cashier.email}, ${waiter.email}, ${kitchenUser.email}`);
 
   // 5. Create Categories
   const produce = await prisma.category.create({
@@ -812,6 +857,113 @@ async function main() {
       remarks: "Salaries: Staff payroll payout",
     },
   });
+
+  // 11. Seed Hospitality (Restaurant Floors, Tables, Menu, KDS Stations & Hotel Rooms)
+  console.log("Seeding restaurant & hotel hospitality data...");
+  const diningFloor = await prisma.floor.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Main Dining Hall", displayOrder: 1 },
+  });
+  const rooftopFloor = await prisma.floor.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Rooftop Terrace", displayOrder: 2 },
+  });
+
+  for (let i = 1; i <= 8; i++) {
+    const code = `T-${String(i).padStart(2, "0")}`;
+    const table = await prisma.restaurantTable.create({
+      data: {
+        businessId: business.id,
+        branchId: mainBranch.id,
+        floorId: i <= 5 ? diningFloor.id : rooftopFloor.id,
+        tableNumber: code,
+        capacity: i % 2 === 0 ? 4 : 6,
+        status: "AVAILABLE",
+      },
+    });
+    await prisma.qrLocation.create({
+      data: {
+        businessId: business.id,
+        branchId: mainBranch.id,
+        publicCode: `restro-t${String(i).padStart(2, "0")}`,
+        locationType: "TABLE",
+        tableId: table.id,
+        label: `Table ${code}`,
+        isActive: true,
+        createdById: owner.id,
+      },
+    });
+  }
+
+  const mainKitchen = await prisma.kitchenStation.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Main Kitchen", code: "HOT-KITCHEN", isActive: true },
+  });
+  const barStation = await prisma.kitchenStation.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Bar & Beverage", code: "BAR", isActive: true },
+  });
+
+  const menu = await prisma.menu.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "All Day Dining", isActive: true, displayOrder: 1 },
+  });
+
+  const secAppetizers = await prisma.menuSection.create({
+    data: { businessId: business.id, menuId: menu.id, name: "Appetizers & Momos", displayOrder: 1 },
+  });
+  const secMains = await prisma.menuSection.create({
+    data: { businessId: business.id, menuId: menu.id, name: "Signature Mains & Thalis", displayOrder: 2 },
+  });
+  const secDrinks = await prisma.menuSection.create({
+    data: { businessId: business.id, menuId: menu.id, name: "Craft Beverages & Bar", displayOrder: 3 },
+  });
+
+  await prisma.menuItem.createMany({
+    data: [
+      { businessId: business.id, sectionId: secAppetizers.id, name: "Crispy Mustang Alu", basePrice: 360, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secAppetizers.id, name: "Himalayan Jhol Momo", basePrice: 480, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secAppetizers.id, name: "Grand Himalayan Buff Platter", basePrice: 620, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secMains.id, name: "Royal Thakali Mutton Thali", basePrice: 1150, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secMains.id, name: "Trisuli Grilled Rainbow Trout", basePrice: 1450, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secMains.id, name: "Aloo Puri Platter", basePrice: 215, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secDrinks.id, name: "Ilam Orthodox Masala Tea", basePrice: 220, taxRate: 13, isAvailable: true },
+      { businessId: business.id, sectionId: secDrinks.id, name: "Himalayan Rhododendron Spritz", basePrice: 450, taxRate: 13, isAvailable: true },
+    ],
+  });
+
+  const deluxeType = await prisma.roomType.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Deluxe King", code: "DLX-KING", baseRate: 4500, maxOccupancy: 2, displayOrder: 1 },
+  });
+  const suiteType = await prisma.roomType.create({
+    data: { businessId: business.id, branchId: mainBranch.id, name: "Executive Suite", code: "EXEC-SUITE", baseRate: 8500, maxOccupancy: 4, displayOrder: 2 },
+  });
+
+  for (const r of [
+    { num: "101", typeId: deluxeType.id, floorId: diningFloor.id, cap: 2 },
+    { num: "102", typeId: deluxeType.id, floorId: diningFloor.id, cap: 2 },
+    { num: "201", typeId: suiteType.id, floorId: rooftopFloor.id, cap: 4 },
+    { num: "202", typeId: suiteType.id, floorId: rooftopFloor.id, cap: 4 },
+  ]) {
+    const room = await prisma.room.create({
+      data: {
+        businessId: business.id,
+        branchId: mainBranch.id,
+        roomTypeId: r.typeId,
+        floorId: r.floorId,
+        roomNumber: r.num,
+        capacity: r.cap,
+        status: "VACANT_CLEAN",
+      },
+    });
+    await prisma.qrLocation.create({
+      data: {
+        businessId: business.id,
+        branchId: mainBranch.id,
+        publicCode: `restro-r${r.num}`,
+        locationType: "ROOM",
+        roomId: room.id,
+        label: `Room ${r.num}`,
+        isActive: true,
+        createdById: owner.id,
+      },
+    });
+  }
 
   console.log("Historical data seeding completed successfully!");
 }
