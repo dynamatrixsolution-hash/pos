@@ -44,10 +44,18 @@ class BaseApiClient {
         ? `${process.env.BACKEND_URL || "http://localhost:3001"}${endpoint}`
         : endpoint;
 
-    const res = await fetch(url, {
-      ...options,
-      headers,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers,
+      });
+    } catch {
+      throw new ApiError(
+        "Unable to connect to the server. Please check your connection or try again shortly.",
+        503
+      );
+    }
 
     let data: any = null;
     const contentType = res.headers.get("content-type");
@@ -60,7 +68,13 @@ class BaseApiClient {
     }
 
     if (!res.ok) {
-      const errorMessage = data?.error || data?.message || `Request failed with status ${res.status}`;
+      const serverFallback =
+        res.status >= 502 && res.status <= 504
+          ? "Server is temporarily unavailable. Please try again in a moment."
+          : res.status === 500
+          ? "A server error occurred. Please try again or contact support."
+          : `Request failed with status ${res.status}`;
+      const errorMessage = data?.error || data?.message || serverFallback;
       throw new ApiError(errorMessage, res.status, data);
     }
 

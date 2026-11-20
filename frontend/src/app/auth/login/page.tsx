@@ -41,8 +41,8 @@ function LoginForm() {
   }, []);
 
   React.useEffect(() => {
-    if (errorParam === "CredentialsSignin") {
-      Notify.failure("Invalid email or password. Please verify your credentials.");
+    if (errorParam) {
+      Notify.fromError(errorParam);
     }
   }, [errorParam]);
 
@@ -107,18 +107,20 @@ function LoginForm() {
       });
 
       if (!res || res.error) {
-        const errorMsg =
-          res?.error === "Configuration"
-            ? "Server Configuration Error: The authentication secret is invalid."
-            : res?.error || "Login failed. Please verify your credentials.";
-        Notify.failure(errorMsg);
+        Notify.fromError(
+          res?.error || "CredentialsSignin",
+          "Your email or password does not match. Please check and try again."
+        );
         setIsLoading(false);
       } else {
         Notify.success("Login successful. Opening sales terminal...");
         window.location.href = "/dashboard";
       }
-    } catch {
-      Notify.failure("A connection error occurred. Please try again.");
+    } catch (err) {
+      Notify.fromError(
+        err,
+        "Unable to reach the server. Please check your connection or try again shortly."
+      );
       setIsLoading(false);
     }
   };
@@ -130,9 +132,9 @@ function LoginForm() {
     }
   };
 
-  const handleQuickFill = (email: string) => {
+  const handleQuickFill = (email: string, password: string) => {
     setValue("email", email);
-    setValue("password", "Password123!");
+    setValue("password", password);
     Notify.info(`Autofilled demo credentials for ${email}`);
   };
 
@@ -276,7 +278,7 @@ function LoginForm() {
                 <span>Demo login:</span>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill("superadmin@restroinn.com")}
+                  onClick={() => handleQuickFill("superadmin@dynapos.com", "superadmin123")}
                   className="text-[#6A2635] hover:underline font-bold cursor-pointer"
                 >
                   Super Admin
@@ -284,7 +286,7 @@ function LoginForm() {
                 <span>•</span>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill("owner@restroinn.com")}
+                  onClick={() => handleQuickFill("owner@dynapos.com", "admin123")}
                   className="text-[#6A2635] hover:underline font-bold cursor-pointer"
                 >
                   Owner
@@ -292,7 +294,7 @@ function LoginForm() {
                 <span>•</span>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill("cashier@restroinn.com")}
+                  onClick={() => handleQuickFill("cashier@dynapos.com", "cashier123")}
                   className="text-[#6A2635] hover:underline font-bold cursor-pointer"
                 >
                   Cashier
