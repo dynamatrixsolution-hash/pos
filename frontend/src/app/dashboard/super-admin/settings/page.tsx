@@ -688,8 +688,8 @@ export default function PlatformSettingsPage() {
 
       {/* 4. Mandatory Audit Reason Modal */}
       {auditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] p-4 shadow-xl space-y-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-md bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-2">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-[#6B2837]" />
@@ -746,12 +746,12 @@ export default function PlatformSettingsPage() {
       {auditDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+            className="absolute inset-0 bg-black/40 transition-opacity"
             onClick={() => setAuditDrawerOpen(false)}
           />
 
           <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen sm:w-[580px] md:w-[720px] lg:w-[860px] max-w-[95vw] bg-[#FFFCF7] border-l border-[#D8CEC1] flex flex-col shadow-2xl">
+            <div className="w-screen sm:w-[580px] md:w-[720px] lg:w-[860px] max-w-[95vw] bg-[#FFFCF7] border-l border-[#D8CEC1] flex flex-col">
               {/* Header */}
               <div className="py-2.5 px-4 border-b border-[#D8CEC1] flex items-center justify-between bg-[#FFFCF7]">
                 <div className="flex items-center gap-2">

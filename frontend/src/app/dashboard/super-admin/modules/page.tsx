@@ -14,7 +14,7 @@ import {
   UtensilsCrossed,
   Store,
   Coffee,
-  Sparkles,
+  ClipboardCheck,
   BedDouble,
   CalendarDays,
   Receipt,
@@ -75,7 +75,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   UtensilsCrossed,
   Store,
   Coffee,
-  Sparkles,
+  Sparkles: ClipboardCheck,
   BedDouble,
   CalendarDays,
   Receipt,
@@ -538,7 +538,7 @@ export default function ModuleControlCenterPage() {
                             }`}
                           >
                             <span
-                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs transition duration-150 ease-in-out ${
+                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-[#FFFCF7] shadow-xs transition duration-150 ease-in-out ${
                                 mod.isActive ? "translate-x-3" : "translate-x-0"
                               }`}
                             />

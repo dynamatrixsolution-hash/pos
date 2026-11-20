@@ -633,7 +633,7 @@ export default function RevenuePaymentsPage() {
 
         {/* 6. Settlement Modal */}
         {settlingInvoice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-md p-4 space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
                 <div>
@@ -723,7 +723,7 @@ export default function RevenuePaymentsPage() {
 
         {/* 7. Statement / Print Modal */}
         {selectedStatement && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
             <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-lg p-5 space-y-4 my-8">
               <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
                 <div className="flex items-center gap-1.5">

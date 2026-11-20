@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
 export async function GET(request: Request) {
@@ -509,6 +509,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Subscription configurations updated successfully" });
   } catch (error: any) {
     console.error("POST subscriptions error:", error);
-    return NextResponse.json({ error: error.message || "Failed to save subscription configuration" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to save subscription configuration") }, { status: 500 });
   }
 }

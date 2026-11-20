@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 
 // Helper to calculate date range based on period
 function getDateRange(period: string, customStart?: string | null, customEnd?: string | null) {
@@ -215,6 +215,6 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET reports error:", error);
-    return NextResponse.json({ error: error.message || "Failed to compile reports" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to compile reports") }, { status: 500 });
   }
 }

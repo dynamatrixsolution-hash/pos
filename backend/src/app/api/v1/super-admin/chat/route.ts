@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
 // Default initial sample messages if thread is empty
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET direct chat error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load direct messages" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load direct messages") }, { status: 500 });
   }
 }
 
@@ -272,7 +272,7 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("POST direct chat error:", error);
-    return NextResponse.json({ error: error.message || "Failed to send message" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to send message") }, { status: 500 });
   }
 }
 
@@ -330,7 +330,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("PUT direct chat error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update chat state" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to update chat state") }, { status: 500 });
   }
 }
 

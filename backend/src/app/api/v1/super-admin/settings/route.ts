@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
 // GET /api/v1/super-admin/settings
@@ -91,7 +91,7 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("GET platform settings error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load platform settings" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load platform settings") }, { status: 500 });
   }
 }
 
@@ -151,6 +151,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, setting: updated });
   } catch (error: any) {
     console.error("PUT platform settings error:", error);
-    return NextResponse.json({ error: error.message || "Failed to save platform setting" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to save platform setting") }, { status: 500 });
   }
 }

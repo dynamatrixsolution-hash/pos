@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 import { logPlatformAudit } from "@/lib/platform-audit";
 import { z } from "zod";
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
     console.error("POST /super-admin/modules/toggle error:", error);
-    return NextResponse.json({ error: error.message || "Failed to toggle module" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to toggle module") }, { status: 500 });
   }
 }
 

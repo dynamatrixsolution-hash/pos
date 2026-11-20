@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
 function parseTicketConversation(ticket: any) {
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET support tickets error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load support tickets" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load support tickets") }, { status: 500 });
   }
 }
 
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, ticket });
   } catch (error: any) {
     console.error("POST support ticket error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create support ticket" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to create support ticket") }, { status: 500 });
   }
 }
 
@@ -303,6 +303,6 @@ export async function PUT(request: Request) {
     });
   } catch (error: any) {
     console.error("PUT support ticket error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update support ticket" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to update support ticket") }, { status: 500 });
   }
 }

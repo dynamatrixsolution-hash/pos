@@ -28,6 +28,7 @@ import {
   FileText,
   Lock,
   Pencil,
+  X,
   Camera,
 } from "lucide-react";
 
@@ -1196,7 +1197,7 @@ export default function BusinessDetailPage() {
       {/* MODAL 1: SUSPEND ACCOUNT MODAL */}
       {suspendModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4">
             <h3 className="text-base font-bold text-[#B91C1C] flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" /> Confirm Account Suspension
             </h3>
@@ -1236,7 +1237,7 @@ export default function BusinessDetailPage() {
       {/* MODAL 2: EDIT SUBSCRIPTION & MODULES */}
       {subEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-2xl w-full p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-bold text-[#292320]">Edit Subscription & Module Entitlements</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1357,7 +1358,7 @@ export default function BusinessDetailPage() {
       {/* MODAL 3: RECORD PAYMENT MODAL */}
       {paymentModalOpen && selectedInvoice && (
         <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4">
             <h3 className="text-base font-bold text-[#292320]">Record SaaS Subscription Payment</h3>
             <p className="text-xs text-[#71675E]">
               Recording payment for invoice <span className="font-mono font-bold">{selectedInvoice.invoiceNumber}</span>{" "}
@@ -1431,7 +1432,7 @@ export default function BusinessDetailPage() {
       {/* MODAL 4: ADD INTERNAL SUPPORT NOTE */}
       {noteModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-6 space-y-4">
             <h3 className="text-base font-bold text-[#292320]">Log Internal Support Note</h3>
 
             <div className="space-y-3 text-xs">
@@ -1506,7 +1507,7 @@ export default function BusinessDetailPage() {
       {/* MODAL 5: EDIT BUSINESS PROFILE & LOGO */}
       {isEditProfileOpen && (
         <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-center justify-center p-4">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-5 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-lg w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
               <h3 className="text-base font-bold text-[#292320] flex items-center gap-2">
                 <Pencil className="h-4 w-4 text-[#6B2837]" /> Edit Business Profile & Branding
@@ -1514,9 +1515,10 @@ export default function BusinessDetailPage() {
               <button
                 type="button"
                 onClick={() => setIsEditProfileOpen(false)}
-                className="text-[#71675E] hover:text-[#292320] text-sm p-1 cursor-pointer"
+                className="text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
+                aria-label="Close"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 

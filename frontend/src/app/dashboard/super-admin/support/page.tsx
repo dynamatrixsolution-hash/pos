@@ -454,12 +454,12 @@ export default function SupportTicketsPage() {
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Dimmed backdrop */}
           <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-2xs transition-opacity animate-in fade-in duration-200"
+            className="fixed inset-0 bg-black/30 transition-opacity animate-in fade-in duration-200"
             onClick={() => setSelectedTicket(null)}
           />
 
           {/* Right-side sliding panel taking big space of screen */}
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[580px] md:w-[720px] lg:w-[860px] xl:w-[940px] max-w-[95vw] bg-[#FFFCF7] border-l border-[#D8CEC1] shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200 text-[#292320]">
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[580px] md:w-[720px] lg:w-[860px] xl:w-[940px] max-w-[95vw] bg-[#FFFCF7] border-l border-[#D8CEC1] flex flex-col h-full animate-in slide-in-from-right duration-200 text-[#292320]">
             {/* Drawer Header */}
             <div className="py-2.5 px-4 border-b border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">

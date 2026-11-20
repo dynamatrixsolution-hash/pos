@@ -58,7 +58,7 @@ function MetricCard({ href, label, value, actionLabel, tone = "default" }: Metri
   return (
     <Link
       href={href}
-      className="group min-h-[82px] rounded-md border border-[#E4E1DD] bg-white px-4 py-3 transition-colors hover:border-[#C9B5BA] hover:bg-[#FFFEFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+      className="group min-h-[82px] rounded-md border border-[#E4E1DD] bg-[#FFFCF7] px-4 py-3 transition-colors hover:border-[#C9B5BA] hover:bg-[#FFFEFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.075em] text-[#77736F]">
@@ -295,14 +295,14 @@ export default function SuperAdminDashboardPage() {
                 type="button"
                 onClick={fetchDashboardData}
                 disabled={loading}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-white px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-[#FFFCF7] px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
               >
                 <RefreshIcon spinning={loading} />
                 {loading ? "Refreshing" : "Refresh"}
               </button>
               <Link
                 href="/dashboard/super-admin/notices/create"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-white px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#DEDAD6] bg-[#FFFCF7] px-3 text-[11px] font-medium text-[#393430] transition-colors hover:border-[#C9C1BB] hover:bg-[#FAF9F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
               >
                 <BroadcastIcon />
                 Broadcast notice
@@ -348,7 +348,7 @@ export default function SuperAdminDashboardPage() {
 
         {/* Operational queues */}
         <section aria-label="Operational queues" className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white xl:col-span-7">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-[#FFFCF7] xl:col-span-7">
             <SectionHeader
               title="Verification queue"
               count={`${pendingCount} pending`}
@@ -405,7 +405,7 @@ export default function SuperAdminDashboardPage() {
                             <div className="inline-flex items-center gap-1.5">
                               <Link
                                 href={`/dashboard/super-admin/businesses/pending?inspect=${req.id}`}
-                                className="inline-flex h-7 items-center rounded border border-[#DEDAD6] bg-white px-2.5 text-[10px] font-medium text-[#393430] transition-colors hover:bg-[#F7F6F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
+                                className="inline-flex h-7 items-center rounded border border-[#DEDAD6] bg-[#FFFCF7] px-2.5 text-[10px] font-medium text-[#393430] transition-colors hover:bg-[#F7F6F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B263A]/20"
                               >
                                 Inspect
                               </Link>
@@ -428,7 +428,7 @@ export default function SuperAdminDashboardPage() {
             )}
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white xl:col-span-5">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-[#FFFCF7] xl:col-span-5">
             <SectionHeader
               title="Overdue subscriptions"
               count={`${overdueCount} overdue`}
@@ -492,7 +492,7 @@ export default function SuperAdminDashboardPage() {
 
         {/* Tenant directory and audit activity */}
         <section aria-label="Tenant directory and recent activity" className="grid grid-cols-1 gap-3 2xl:grid-cols-12">
-          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white 2xl:col-span-8">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-[#FFFCF7] 2xl:col-span-8">
             <SectionHeader
               title="Registered properties"
               count={`${recentBusinesses.length} recent`}
@@ -564,7 +564,7 @@ export default function SuperAdminDashboardPage() {
             </div>
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-white 2xl:col-span-4">
+          <div className="min-w-0 overflow-hidden rounded-md border border-[#E4E1DD] bg-[#FFFCF7] 2xl:col-span-4">
             <SectionHeader
               title="Recent activity"
               count={`${Math.min(recentAuditActivity.length, 6)} events`}

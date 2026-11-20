@@ -14,7 +14,6 @@ import {
   CreditCard,
   Edit2,
   Trash2,
-  Sparkles,
   Shield,
   Building2,
   Users,

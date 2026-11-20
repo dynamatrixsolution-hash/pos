@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 import { z } from "zod";
 
@@ -110,7 +110,7 @@ export async function POST(
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
     console.error("POST /super-admin/support/[id]/reply error:", error);
-    return NextResponse.json({ error: error.message || "Failed to reply to support ticket" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to reply to support ticket") }, { status: 500 });
   }
 }
 

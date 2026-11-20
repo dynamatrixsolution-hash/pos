@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 import { PACKAGE_DEFAULT_MODULES } from "@/lib/module-gatekeeper";
 
@@ -309,7 +309,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET modules error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load module configuration matrix" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load module configuration matrix") }, { status: 500 });
   }
 }
 
@@ -361,7 +361,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, module: newModule });
   } catch (error: any) {
     console.error("POST create module error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create module" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to create module") }, { status: 500 });
   }
 }
 
@@ -453,6 +453,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid mode. Must be GLOBAL_MATRIX or TENANT_OVERRIDE" }, { status: 400 });
   } catch (error: any) {
     console.error("PUT modules error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update module settings" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to update module settings") }, { status: 500 });
   }
 }

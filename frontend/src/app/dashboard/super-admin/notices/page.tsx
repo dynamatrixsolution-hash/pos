@@ -583,7 +583,7 @@ export default function NoticesPage() {
 
         {/* 5. Preview Notice Modal */}
         {previewNotice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-lg p-4 space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
                 <div>
@@ -644,7 +644,7 @@ export default function NoticesPage() {
 
         {/* 6. Edit Notice Modal */}
         {editingNotice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-lg p-4 space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
                 <h3 className="text-sm font-bold text-[#292320]">Edit Broadcast Notice</h3>
@@ -739,7 +739,7 @@ export default function NoticesPage() {
 
         {/* 7. Delete Notice Confirmation Modal */}
         {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
             <div className="bg-[#FFFCF7] rounded-lg border border-[#D8CEC1] w-full max-w-md p-4 space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
                 <h3 className="text-sm font-bold text-[#9C3232]">Delete Broadcast Notice</h3>

@@ -542,7 +542,7 @@ export default function ExpiringSubscriptionsPage() {
       {/* 5. Extension Modal */}
       {extendingBusiness && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3 shadow-lg">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
               <h3 className="text-xs font-bold text-[#292320]">
                 Extend Subscription &bull; {extendingBusiness.name}
@@ -611,7 +611,7 @@ export default function ExpiringSubscriptionsPage() {
       {/* 6. Send Reminder Confirmation Modal */}
       {remindingBusiness && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3 shadow-lg">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg max-w-md w-full p-4 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#D8CEC1]">
               <h3 className="text-xs font-bold text-[#292320]">Dispatch Renewal Notice</h3>
               <button

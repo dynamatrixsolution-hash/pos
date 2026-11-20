@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 
 // Default seed notices for hospitality operations if empty
@@ -240,7 +240,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET notices error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load notices" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load notices") }, { status: 500 });
   }
 }
 
@@ -299,7 +299,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, notice });
   } catch (error: any) {
     console.error("POST notice error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create notice" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to create notice") }, { status: 500 });
   }
 }
 
@@ -356,7 +356,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, notice: updated });
   } catch (error: any) {
     console.error("PUT notice error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update notice" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to update notice") }, { status: 500 });
   }
 }
 
@@ -394,6 +394,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, message: "Notice deleted successfully" });
   } catch (error: any) {
     console.error("DELETE notice error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete notice" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to delete notice") }, { status: 500 });
   }
 }

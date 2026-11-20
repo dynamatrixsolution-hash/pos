@@ -24,7 +24,6 @@ import {
   X,
   ShieldCheck,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import ExportDropdown from "@/components/export-dropdown";
 import { ExportOptions } from "@/lib/export-service";

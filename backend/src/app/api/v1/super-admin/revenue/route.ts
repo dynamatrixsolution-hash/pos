@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Super Admin Record Settlement API Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to record payment settlement" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to record payment settlement") }, { status: 500 });
   }
 }
 

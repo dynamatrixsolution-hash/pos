@@ -768,7 +768,7 @@ export default function SuperAdminUsersPage() {
                     navigator.clipboard.writeText(tempPasswordResult);
                     toast.success("Password copied to clipboard");
                   }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-white border border-[#D8CEC1] rounded font-semibold text-[#6B2837] hover:bg-[#F7F3EC] cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-[#FFFCF7] border border-[#D8CEC1] rounded font-semibold text-[#6B2837] hover:bg-[#F7F3EC] cursor-pointer"
                 >
                   <Copy className="h-2.5 w-2.5" />
                   <span>Copy</span>

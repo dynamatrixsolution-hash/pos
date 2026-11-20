@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
 import { PACKAGE_DEFAULT_MODULES, HospitalityModule } from "@/lib/module-gatekeeper";
 import crypto from "node:crypto";
@@ -665,7 +665,7 @@ export async function PUT(
     return NextResponse.json({ error: "Action not recognized" }, { status: 400 });
   } catch (error: any) {
     console.error("PUT business action error:", error);
-    return NextResponse.json({ error: error.message || "Failed to perform business adjustment" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to perform business adjustment") }, { status: 500 });
   }
 }
 
