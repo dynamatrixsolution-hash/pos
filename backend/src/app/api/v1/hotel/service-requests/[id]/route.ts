@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { updateServiceRequestStatus } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
@@ -16,6 +16,8 @@ async function handleStatusUpdate(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_SERVICE_DESK);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -48,7 +50,7 @@ async function handleStatusUpdate(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update service request status" },
+      { error: safeErrorMessage(error, "Failed to update service request status") },
       { status: 500 }
     );
   }

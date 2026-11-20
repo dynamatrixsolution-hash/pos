@@ -2,7 +2,7 @@ import { serializable, checkBranch } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logActivity } from "@/lib/activity-logger";
 
 export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -50,7 +50,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
           });
 
           if (!sourceStock || sourceStock.quantity < item.quantity) {
-            throw new Error(`Insufficient stock for product "${item.product.name}" at source branch. Available: ${sourceStock?.quantity || 0}, Transfer: ${item.quantity}`);
+            throw new CommerceError(`Insufficient stock for product "${item.product.name}" at source branch. Available: ${sourceStock?.quantity || 0}, Transfer: ${item.quantity}`, 400);
           }
 
           await tx.productStock.update({
@@ -246,6 +246,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid action type" }, { status: 400 });
   } catch (error: any) {
     console.error("PATCH transfer error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update stock transfer" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to update stock transfer") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

@@ -44,8 +44,8 @@ export const RoomQrModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 shadow-2xl text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 text-center">
         <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
           <div className="flex items-center gap-2">
             <QrCode className="h-4 w-4 text-[#6B2837]" />
@@ -63,7 +63,7 @@ export const RoomQrModal: React.FC = () => {
         </div>
 
         {/* QR Code Canvas Card */}
-        <div className="p-4 rounded-xl border border-[#D8CEC1] bg-white space-y-3 shadow-inner">
+        <div className="p-4 rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] space-y-3 shadow-inner">
           <div className="text-xs font-bold text-[#71675E] uppercase tracking-wider">
             Room {selectedRoomForAction.roomNumber}
           </div>
@@ -91,7 +91,7 @@ export const RoomQrModal: React.FC = () => {
           <button
             type="button"
             onClick={handleCopy}
-            className="px-2 py-1 rounded border border-[#D8CEC1] bg-white text-xs font-semibold text-[#292320] flex items-center gap-1 cursor-pointer shrink-0"
+            className="px-2 py-1 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-xs font-semibold text-[#292320] flex items-center gap-1 cursor-pointer shrink-0"
           >
             {copied ? <Check className="h-3 w-3 text-[#16A34A]" /> : <Copy className="h-3 w-3" />}
             <span>{copied ? "Copied" : "Copy"}</span>

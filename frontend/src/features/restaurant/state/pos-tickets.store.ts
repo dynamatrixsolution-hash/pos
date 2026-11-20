@@ -15,12 +15,14 @@ import {
 import { restaurantPosRepository } from "../repositories/restaurant-pos.repository";
 import { usePosUiStore } from "./pos-ui.store";
 import { usePosCatalogStore } from "./pos-catalog.store";
+import { toast } from "@/components/toast";
 
 interface PosTicketsState {
   activeAllOrders: any[];
   activeOrderId: string;
   orderNumber: string;
   existingRounds: ExistingRound[];
+  existingOrderSubtotal: string;
   existingOrderTotal: string;
 
   // Table Inspection Modal
@@ -45,9 +47,73 @@ interface PosTicketsState {
   setCancellingTable: (target: TableCancellationTarget | null) => void;
   submitCancelTable: (reason: string) => Promise<boolean>;
   setAdjustingLine: (target: LineAdjustmentTarget | null) => void;
-  submitAdjustLine: (action: "CANCEL" | "ADJUST_QTY", reason?: string, quantity?: number) => Promise<boolean>;
+  submitAdjustLine: (
+    action: "CANCEL" | "ADJUST_QTY" | "UPDATE_NOTES",
+    reason?: string,
+    quantity?: number,
+    notes?: string
+  ) => Promise<boolean>;
+  convertActiveOrderType: (targetType: "TAKEAWAY" | "DELIVERY", deliveryInfo?: any) => Promise<boolean>;
   selectOccupiedSpace: (table: SpaceTable, orderData?: any) => void;
   selectTakeawayOrDelivery: (order: any) => void;
+}
+
+function buildOrderSnapshot(order: any): {
+  activeOrderId: string;
+  orderNumber: string;
+  existingRounds: ExistingRound[];
+  existingOrderSubtotal: string;
+  existingOrderTotal: string;
+} {
+  if (!order) {
+    return {
+      activeOrderId: "",
+      orderNumber: "",
+      existingRounds: [],
+      existingOrderSubtotal: "0.00",
+      existingOrderTotal: "0.00",
+    };
+  }
+
+  let preTaxSum = 0;
+  let hasLinePrices = false;
+  const rounds: ExistingRound[] = (order.rounds || []).map((r: any) => ({
+    id: r.id,
+    roundNumber: r.roundNumber,
+    notes: r.notes || "",
+    lines: (r.lines || []).map((l: any) => {
+      const isCancelled =
+        l.acceptanceStatus === "REJECTED" || l.fulfillmentStatus === "CANCELLED";
+      if (!isCancelled && l.unitPrice != null) {
+        hasLinePrices = true;
+        preTaxSum += (Number(l.unitPrice) || 0) * (Number(l.quantity) || 0);
+      }
+      return {
+        id: l.id,
+        itemName: l.itemName,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice?.toString() || "0.00",
+        total: l.total?.toString() || "0.00",
+        acceptanceStatus: l.acceptanceStatus,
+        fulfillmentStatus: l.fulfillmentStatus,
+        rejectionReason: l.rejectionReason,
+        notes: l.notes,
+        appliedModifiers: l.appliedModifiers || [],
+      };
+    }),
+  }));
+
+  const resolvedSubtotal = hasLinePrices
+    ? preTaxSum.toFixed(2)
+    : order.subtotal?.toString() || "0.00";
+
+  return {
+    activeOrderId: order.id,
+    orderNumber: order.orderNumber || "",
+    existingRounds: rounds,
+    existingOrderSubtotal: resolvedSubtotal,
+    existingOrderTotal: order.totalAmount?.toString() || "0.00",
+  };
 }
 
 export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
@@ -55,6 +121,7 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
   activeOrderId: "",
   orderNumber: "",
   existingRounds: [],
+  existingOrderSubtotal: "0.00",
   existingOrderTotal: "0.00",
 
   inspectingTable: null,
@@ -80,82 +147,16 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
     if (!tableId) return null;
     try {
       const data = await restaurantPosRepository.fetchTableOrders(tableId);
-      if (data?.activeOrder) {
-        const order = data.activeOrder;
-        const rounds: ExistingRound[] = (order.rounds || []).map((r: any) => ({
-          id: r.id,
-          roundNumber: r.roundNumber,
-          notes: r.notes || "",
-          lines: (r.lines || []).map((l: any) => ({
-            id: l.id,
-            itemName: l.itemName,
-            quantity: l.quantity,
-            unitPrice: l.unitPrice?.toString() || "0.00",
-            total: l.total?.toString() || "0.00",
-            acceptanceStatus: l.acceptanceStatus,
-            fulfillmentStatus: l.fulfillmentStatus,
-            rejectionReason: l.rejectionReason,
-            notes: l.notes,
-            appliedModifiers: l.appliedModifiers || [],
-          })),
-        }));
-
-        set({
-          activeOrderId: order.id,
-          existingOrderTotal: order.totalAmount?.toString() || "0.00",
-          orderNumber: order.orderNumber || "",
-          existingRounds: rounds,
-        });
-        return order;
-      } else {
-        set({
-          activeOrderId: "",
-          existingOrderTotal: "0.00",
-          orderNumber: "",
-          existingRounds: [],
-        });
-        return null;
-      }
+      const order = data?.activeOrder || null;
+      set(buildOrderSnapshot(order));
+      return order;
     } catch {
       return null;
     }
   },
 
   setActiveOrder: (order) => {
-    if (!order) {
-      set({
-        activeOrderId: "",
-        existingOrderTotal: "0.00",
-        orderNumber: "",
-        existingRounds: [],
-      });
-      return;
-    }
-
-    const rounds: ExistingRound[] = (order.rounds || []).map((r: any) => ({
-      id: r.id,
-      roundNumber: r.roundNumber,
-      notes: r.notes || "",
-      lines: (r.lines || []).map((l: any) => ({
-        id: l.id,
-        itemName: l.itemName,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice?.toString() || "0.00",
-        total: l.total?.toString() || "0.00",
-        acceptanceStatus: l.acceptanceStatus,
-        fulfillmentStatus: l.fulfillmentStatus,
-        rejectionReason: l.rejectionReason,
-        notes: l.notes,
-        appliedModifiers: l.appliedModifiers || [],
-      })),
-    }));
-
-    set({
-      activeOrderId: order.id,
-      existingOrderTotal: order.totalAmount?.toString() || "0.00",
-      orderNumber: order.orderNumber || "",
-      existingRounds: rounds,
-    });
+    set(buildOrderSnapshot(order));
   },
 
   openTableInspection: async (table: SpaceTable) => {
@@ -180,53 +181,141 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
 
     set({ isCancellingTable: true });
     try {
-      // 1. If an order exists, void/cancel it
+      // 1. Void/cancel order (also releases table & closes session if idle); only close session directly if no order exists
       if (target.orderId) {
         await restaurantPosRepository.cancelOrder(target.orderId, reason);
+      } else if (target.sessionId) {
+        await restaurantPosRepository.closeTableSession(target.sessionId, reason);
       }
 
-      // 2. Close session to free the table
-      if (target.sessionId) {
-        await restaurantPosRepository.closeTableSession(target.sessionId);
+      // 2. Update table in catalog store to AVAILABLE immediately
+      if (target.tableId) {
+        usePosCatalogStore.getState().updateTableStatusLocally(target.tableId, "AVAILABLE", null);
       }
 
-      // 3. Update table in catalog store to AVAILABLE immediately
-      usePosCatalogStore.getState().updateTableStatusLocally(target.tableId, "AVAILABLE", null);
-
-      // 4. If current active table was cancelled, clear active selection
-      if (usePosUiStore.getState().selectedTableId === target.tableId) {
-        usePosUiStore.getState().setSelectedTable("");
+      // 3. If current active table or order was cancelled, clear selection cleanly
+      const ui = usePosUiStore.getState();
+      const isCancelledCurrentTable = Boolean(target.tableId && ui.selectedTableId === target.tableId);
+      const isCancelledCurrentOrder = Boolean(target.orderId && get().activeOrderId === target.orderId);
+      if (isCancelledCurrentTable || isCancelledCurrentOrder) {
+        ui.setSelectedTable("");
         get().setActiveOrder(null);
+        const { usePosCartStore } = await import("./pos-cart.store");
+        usePosCartStore.getState().clearDraft();
+        if (isCancelledCurrentTable) {
+          ui.syncUrlView("SELECT_SPACE");
+        }
       }
 
       set({ cancellingTable: null, isCancellingTable: false, inspectingTable: null, inspectingOrderData: null });
       usePosCatalogStore.getState().loadInitialCatalog();
       get().fetchActiveOrders();
+      toast.success(target.tableNumber ? `Table ${target.tableNumber} order cancelled.` : "Order cancelled.");
       return true;
-    } catch {
+    } catch (err: any) {
       set({ isCancellingTable: false });
+      toast.error(err?.message || "Failed to cancel order");
       return false;
     }
   },
 
   setAdjustingLine: (adjustingLine) => set({ adjustingLine }),
 
-  submitAdjustLine: async (action, reason, quantity) => {
+  submitAdjustLine: async (action, reason, quantity, notes) => {
     const target = get().adjustingLine;
     if (!target) return false;
 
     set({ isUpdatingLine: true });
     try {
-      await restaurantPosRepository.updateOrderLine(target.orderId, target.lineId, action, reason, quantity);
+      await restaurantPosRepository.updateOrderLine(
+        target.orderId,
+        target.lineId,
+        action,
+        reason,
+        quantity,
+        notes
+      );
       const selTableId = usePosUiStore.getState().selectedTableId;
       if (selTableId) await get().fetchTableOrders(selTableId);
       const inspTable = get().inspectingTable;
       if (inspTable) await get().openTableInspection(inspTable);
-      get().fetchActiveOrders();
+      await get().fetchActiveOrders();
+
+      if (!selTableId && target.orderId) {
+        const updatedOrder = get().activeAllOrders.find(
+          (o) =>
+            o.id === target.orderId &&
+            o.settlementStatus !== "PAID" &&
+            o.fulfillmentStatus !== "CANCELLED"
+        );
+        get().setActiveOrder(updatedOrder || null);
+      }
+
       set({ adjustingLine: null, isUpdatingLine: false });
+      toast.success(
+        action === "CANCEL"
+          ? `${target.itemName} cancelled.`
+          : action === "ADJUST_QTY"
+          ? `${target.itemName} quantity updated.`
+          : `${target.itemName} serving note updated.`
+      );
       return true;
-    } catch {
+    } catch (err: any) {
       set({ isUpdatingLine: false });
+      toast.error(err?.message || "Failed to update dish");
+      return false;
+    }
+  },
+
+  convertActiveOrderType: async (targetType, deliveryInfo) => {
+    const ui = usePosUiStore.getState();
+    const activeOrderId = get().activeOrderId;
+    const oldTableId = ui.selectedTableId;
+    const fromKey =
+      ui.orderType === "DINE_IN" && oldTableId
+        ? `table_${oldTableId}`
+        : activeOrderId
+        ? `order_${activeOrderId}`
+        : `type_${ui.orderType}`;
+
+    try {
+      const { usePosCartStore } = await import("./pos-cart.store");
+
+      if (activeOrderId) {
+        const res = await restaurantPosRepository.convertOrderType(activeOrderId, {
+          orderType: targetType,
+          deliveryInfo,
+        });
+        usePosCartStore
+          .getState()
+          .migrateDraftToTarget(fromKey, `order_${res.order.id}`, "TAKEAWAY_PARCEL");
+
+        if (oldTableId) {
+          usePosCatalogStore.getState().updateTableStatusLocally(oldTableId, "AVAILABLE", null);
+        }
+        ui.setSelectedTable("");
+        ui.setOrderType(targetType);
+        ui.syncUrlView("MENU_POS");
+        get().setActiveOrder(res.order);
+        usePosCatalogStore.getState().loadInitialCatalog();
+        get().fetchActiveOrders();
+      } else {
+        usePosCartStore
+          .getState()
+          .migrateDraftToTarget(fromKey, `type_${targetType}`, "TAKEAWAY_PARCEL");
+        ui.setSelectedTable("");
+        ui.setOrderType(targetType);
+        ui.syncUrlView("MENU_POS");
+      }
+
+      toast.success(
+        targetType === "DELIVERY"
+          ? "Order converted to Delivery."
+          : "Order converted to Takeaway Parcel."
+      );
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to convert order");
       return false;
     }
   },
@@ -341,20 +430,31 @@ export function selectAllActiveTickets(
   );
   takeaways.forEach((o) => {
     const notes = o.notes || "";
-    const custMatch = notes.match(/Customer:\s*([^|•\]]+)/i);
+    const custMatch =
+      notes.match(/\[TAKEAWAY(?:\s+to)?\s+([^(\]|•]+?)(?:\s*\(([^)]*)\))?/i) ||
+      notes.match(/Customer:\s*([^|•\]]+)/i) ||
+      notes.match(/Takeaway(?:\s+for)?:\s*([^|•\]]+)/i);
+
+    const rawCust = custMatch ? custMatch[1].trim() : "";
+    const custName = rawCust && rawCust.toLowerCase() !== "customer" ? rawCust : "";
+    const phone = custMatch?.[2]?.trim() || "";
     const isCurrent = dineInView === "MENU_POS" && currentOrderId === o.id;
     let count = 0;
     if (Array.isArray(o.rounds)) {
       o.rounds.forEach((r: any) => {
-        if (Array.isArray(r.lines)) count += r.lines.length;
+        if (Array.isArray(r.lines)) {
+          count += r.lines.filter(
+            (l: any) => l.acceptanceStatus !== "REJECTED" && l.fulfillmentStatus !== "CANCELLED"
+          ).length;
+        }
       });
     }
 
     list.push({
       id: `takeaway_${o.id}`,
       ticketType: "TAKEAWAY",
-      title: custMatch ? `Takeaway: ${custMatch[1].trim()}` : "Takeaway Order",
-      subTitle: o.orderNumber,
+      title: custName ? `Takeaway: ${custName}` : `Takeaway #${o.orderNumber || o.id.slice(0, 6)}`,
+      subTitle: phone || o.orderNumber,
       order: o,
       orderNumber: o.orderNumber,
       itemCount: count,
@@ -371,21 +471,38 @@ export function selectAllActiveTickets(
   );
   deliveries.forEach((o) => {
     const notes = o.notes || "";
-    const custMatch = notes.match(/Customer:\s*([^|•\]]+)/i);
-    const addrMatch = notes.match(/Address:\s*([^|•\]]+)/i);
+    const delivMatch = notes.match(
+      /\[DELIVERY(?:\s+to)?\s+([^(\]|•\-]+?)(?:\s*\(([^)]*)\))?(?:\s*-\s*([^|\]•]+?))?(?:\s*via\s*([^|\]]+?))?(?:\s*\|.*)?\]/i
+    );
+    const legacyCustMatch = notes.match(/Customer:\s*([^|•\]]+)/i);
+    const legacyAddrMatch = notes.match(/Address:\s*([^|•\]]+)/i);
+
+    const rawCust = delivMatch ? delivMatch[1].trim() : legacyCustMatch ? legacyCustMatch[1].trim() : "";
+    const custName = rawCust && rawCust.toLowerCase() !== "customer" ? rawCust : "";
+    const phone = delivMatch?.[2]?.trim() || "";
+    const address = delivMatch?.[3]?.trim() || (legacyAddrMatch ? legacyAddrMatch[1].trim() : "");
+    const rider = delivMatch?.[4]?.trim() || "";
+
     const isCurrent = dineInView === "MENU_POS" && currentOrderId === o.id;
     let count = 0;
     if (Array.isArray(o.rounds)) {
       o.rounds.forEach((r: any) => {
-        if (Array.isArray(r.lines)) count += r.lines.length;
+        if (Array.isArray(r.lines)) {
+          count += r.lines.filter(
+            (l: any) => l.acceptanceStatus !== "REJECTED" && l.fulfillmentStatus !== "CANCELLED"
+          ).length;
+        }
       });
     }
+
+    const subParts = [address, phone, rider].filter(Boolean);
+    const subTitle = subParts.length > 0 ? subParts.join(" • ") : o.orderNumber;
 
     list.push({
       id: `delivery_${o.id}`,
       ticketType: "DELIVERY",
-      title: custMatch ? `Delivery: ${custMatch[1].trim()}` : "Delivery Order",
-      subTitle: addrMatch ? addrMatch[1].trim() : o.orderNumber,
+      title: custName ? `Delivery: ${custName}` : `Delivery #${o.orderNumber || o.id.slice(0, 6)}`,
+      subTitle,
       order: o,
       orderNumber: o.orderNumber,
       itemCount: count,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   advanceTicketStatus,
   KitchenRoutingError,
@@ -19,6 +19,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.KITCHEN_OPERATIONS);
+    if (denied) return denied;
 
     const { id: ticketId } = await params;
     const body = await req.json();
@@ -44,7 +46,7 @@ export async function PATCH(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to update ticket status" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to update ticket status") }, { status: 500 });
   }
 }
 

@@ -32,7 +32,7 @@ interface HotelFoliosState {
   setIsSettleModalOpen: (open: boolean) => void;
 
   postCharge: (payload: { description: string; amount: number; category?: string; notes?: string }) => Promise<boolean>;
-  settleFolio: (tenderLines: FolioPaymentSplit[]) => Promise<boolean>;
+  settleFolio: (tenderLines: FolioPaymentSplit[], idempotencyKey?: string) => Promise<boolean>;
   reverseEntry: (entryId: string, reason: string) => Promise<boolean>;
 }
 
@@ -103,19 +103,27 @@ export const useHotelFoliosStore = create<HotelFoliosState>((set, get) => ({
     }
   },
 
-  settleFolio: async (tenderLines) => {
+  settleFolio: async (tenderLines, idempotencyKey) => {
     const { selectedFolio } = get();
     if (!selectedFolio) return false;
 
     set({ isActionLoading: true });
     try {
-      await hotelRepository.settleFolio(selectedFolio.id, {
-        payments: tenderLines.map((t) => ({
-          method: t.method,
-          amount: t.amount,
-          notes: t.notes,
-        })),
-      });
+      await hotelRepository.settleFolio(
+        selectedFolio.id,
+        {
+          tenders: tenderLines.map((t) => {
+            const isQrAlias = ["FONEPAY", "KHALTI"].includes(t.method);
+            return {
+              paymentMethod: isQrAlias ? "QR" : (t.method as "CASH" | "CARD" | "QR" | "BANK_TRANSFER" | "DEPOSIT"),
+              amount: t.amount,
+              reference: isQrAlias ? t.method : null,
+              notes: t.notes || null,
+            };
+          }),
+        },
+        idempotencyKey
+      );
       await get().selectFolio(selectedFolio.id);
       await get().loadFolios();
       set({ isActionLoading: false, isSettleModalOpen: false });

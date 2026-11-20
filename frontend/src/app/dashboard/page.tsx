@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useSettings } from "@/components/settings-provider";
 import SuperAdminDashboard from "@/components/super-admin-dashboard";
 import { apiClient } from "@/core/api/api-client";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import {
   ArrowRight,
   BedDouble,
@@ -143,14 +144,14 @@ export default function DashboardPage() {
     };
 
     init();
-    const poll = setInterval(() => {
-      if (active) loadDashboard();
-    }, 15000);
     return () => {
       active = false;
-      clearInterval(poll);
     };
   }, [loadDashboard, userRole]);
+
+  useVisibilityPolling(loadDashboard, 15000, {
+    enabled: userRole !== "SUPER_ADMIN",
+  });
 
   if (!mounted || isLoading) {
     return (

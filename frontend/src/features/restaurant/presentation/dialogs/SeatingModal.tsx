@@ -6,6 +6,7 @@ import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
 import { usePosTicketsStore } from "../../state/pos-tickets.store";
 import { restaurantPosRepository } from "../../repositories/restaurant-pos.repository";
+import { toast } from "@/components/toast";
 
 export const SeatingModal = React.memo(function SeatingModal() {
   const show = usePosUiStore((s) => s.showSeatingModal);
@@ -42,16 +43,17 @@ export const SeatingModal = React.memo(function SeatingModal() {
       setIsTicketDrawerOpen(true);
       fetchActiveOrders();
       loadInitialCatalog();
-    } catch {
-      // Error handled
+      toast.success(`Table ${targetTable.tableNumber} seated`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to seat guests");
     } finally {
       setIsSeating(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-2.5">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-[#F8EEF0] text-[#6B2837]">

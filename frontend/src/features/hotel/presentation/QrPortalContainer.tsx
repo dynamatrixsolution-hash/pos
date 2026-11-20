@@ -271,7 +271,7 @@ export function QrPortalContainer() {
                   <span className="text-[10px] text-[#71675E]">v{loc.rotationCount || 1}</span>
                 </div>
 
-                <div className="p-3 bg-white border border-[#EEE7DD] rounded-lg shadow-sm">
+                <div className="p-3 bg-[#FFFCF7] border border-[#EEE7DD] rounded-lg shadow-sm">
                   <DeterministicQrMatrixSvg value={guestUrl} size={130} />
                 </div>
 
@@ -306,8 +306,8 @@ export function QrPortalContainer() {
 
       {/* New QR Plaque Modal */}
       {showNewQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
               <h3 className="text-base font-bold text-[#292320]">Generate Digital Plaque</h3>
               <button onClick={() => setShowNewQrModal(false)} className="p-1 rounded text-[#71675E] hover:bg-[#F7F3EC]">

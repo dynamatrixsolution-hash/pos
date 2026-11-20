@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import {
+  getSessionContext,
+  authErrorResponse,
+  getPaginationParams,
+  paginationMeta,
+  safeErrorMessage,
+  requireRoles,
+  ROLE_GROUPS,
+} from "@/lib/api-helper";
+import { runWithOptionalIdempotency } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import {
   createOrAppendOrder,
   RestaurantOrderError,
@@ -65,30 +75,55 @@ export async function GET(req: Request) {
     const tableSessionId = searchParams.get("tableSessionId");
     const tableId = searchParams.get("tableId");
     const branchId = searchParams.get("branchId") || session.branchId;
+    const status = searchParams.get("status")?.toUpperCase();
+    const settlementStatus = searchParams.get("settlementStatus")?.toUpperCase();
+    const fulfillmentStatus = searchParams.get("fulfillmentStatus")?.toUpperCase();
+    const { page, limit, skip, take } = getPaginationParams(req, 100, 200);
 
-    const orders = await db.restaurantOrder.findMany({
-      where: {
-        businessId: session.businessId,
-        ...(branchId ? { branchId } : {}),
-        ...(tableSessionId ? { tableSessionId } : {}),
-        ...(tableId ? { tableId } : {}),
-      },
-      include: {
-        tableSession: true,
-        table: true,
-        rounds: {
-          include: {
-            lines: true,
+    const where: any = {
+      businessId: session.businessId,
+      ...(branchId ? { branchId } : {}),
+      ...(tableSessionId ? { tableSessionId } : {}),
+      ...(tableId ? { tableId } : {}),
+    };
+
+    if (status === "ACTIVE") {
+      where.settlementStatus = { not: "PAID" };
+      where.fulfillmentStatus = { not: "CANCELLED" };
+    } else {
+      if (settlementStatus) where.settlementStatus = settlementStatus;
+      if (fulfillmentStatus) where.fulfillmentStatus = fulfillmentStatus;
+    }
+
+    const [orders, total] = await Promise.all([
+      db.restaurantOrder.findMany({
+        where,
+        include: {
+          tableSession: true,
+          table: true,
+          rounds: {
+            include: {
+              lines: true,
+            },
+            orderBy: { roundNumber: "asc" },
           },
-          orderBy: { roundNumber: "asc" },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+      db.restaurantOrder.count({ where }),
+    ]);
 
-    return NextResponse.json({ orders });
+    return NextResponse.json({
+      orders,
+      pagination: paginationMeta(total, page, limit),
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch orders" }, { status: 500 });
+    return NextResponse.json(
+      { error: safeErrorMessage(error, "Failed to fetch orders") },
+      { status: 500 }
+    );
   }
 }
 
@@ -96,6 +131,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createOrderSchema.parse(body);
@@ -218,16 +255,33 @@ export async function POST(req: Request) {
       })
     );
 
-    const result = await createOrAppendOrder({
-      businessId: session.businessId,
-      branchId,
-      tableSessionId: effectiveTableSessionId,
-      tableId: effectiveTableId,
-      orderType: effectiveOrderType,
-      items: normalizedItems,
-      notes: finalNotes || undefined,
-      actorId: session.userId,
-    });
+    const { result, replayed } = await runWithOptionalIdempotency(
+      req,
+      session,
+      "RESTAURANT_ORDER_CREATE",
+      parsed,
+      async (tx) =>
+        createOrAppendOrder(
+          {
+            businessId: session.businessId,
+            branchId,
+            tableSessionId: effectiveTableSessionId,
+            tableId: effectiveTableId,
+            orderType: effectiveOrderType,
+            items: normalizedItems,
+            notes: finalNotes || undefined,
+            actorId: session.userId,
+          },
+          tx
+        )
+    );
+
+    if (replayed) {
+      return NextResponse.json(result, {
+        status: 201,
+        headers: { "X-Idempotent-Replay": "true" },
+      });
+    }
 
     let routedTickets: any[] = [];
     if (parsed.autoRouteToKitchen && result.round?.id) {
@@ -283,13 +337,19 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error("Order creation POST error:", error);
+    if (error instanceof CommerceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof RestaurantOrderError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to place order" }, { status: 500 });
+    return NextResponse.json(
+      { error: safeErrorMessage(error, "Failed to place order") },
+      { status: 500 }
+    );
   }
 }
 

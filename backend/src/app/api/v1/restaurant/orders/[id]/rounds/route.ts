@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
+import { runWithOptionalIdempotency } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import {
   createOrAppendOrder,
   RestaurantOrderError,
@@ -38,6 +40,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
     const { id: orderId } = await params;
     const body = await req.json().catch(() => ({}));
@@ -87,15 +91,32 @@ export async function POST(
       })
     );
 
-    const result = await createOrAppendOrder({
-      businessId: session.businessId,
-      branchId: existingOrder.branchId,
-      orderId,
-      orderType: existingOrder.orderType,
-      items: normalizedItems,
-      notes: parsed.notes,
-      actorId: session.userId,
-    });
+    const { result, replayed } = await runWithOptionalIdempotency(
+      req,
+      session,
+      `RESTAURANT_ORDER_ROUND:${orderId}`,
+      parsed,
+      async (tx) =>
+        createOrAppendOrder(
+          {
+            businessId: session.businessId,
+            branchId: existingOrder.branchId,
+            orderId,
+            orderType: existingOrder.orderType,
+            items: normalizedItems,
+            notes: parsed.notes,
+            actorId: session.userId,
+          },
+          tx
+        )
+    );
+
+    if (replayed) {
+      return NextResponse.json(result, {
+        status: 201,
+        headers: { "X-Idempotent-Replay": "true" },
+      });
+    }
 
     let routedTickets: any[] = [];
     if (parsed.autoRouteToKitchen && result.round?.id) {
@@ -128,13 +149,16 @@ export async function POST(
       { status: 201 }
     );
   } catch (error: any) {
+    if (error instanceof CommerceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     if (error instanceof RestaurantOrderError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to append order round" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to append order round") }, { status: 500 });
   }
 }
 

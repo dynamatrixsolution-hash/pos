@@ -164,8 +164,19 @@ export class HotelRepository {
     return await apiClient.hotel.postFolioCharge(folioId, payload);
   }
 
-  async settleFolio(folioId: string, payload: { payments: Array<{ method: string; amount: number; notes?: string }> }) {
-    return await apiClient.hotel.settleFolio(folioId, payload);
+  async settleFolio(
+    folioId: string,
+    payload: {
+      tenders: Array<{
+        paymentMethod: "CASH" | "CARD" | "QR" | "BANK_TRANSFER" | "DEPOSIT";
+        amount: number;
+        reference?: string | null;
+        notes?: string | null;
+      }>;
+    },
+    idempotencyKey?: string
+  ) {
+    return await apiClient.hotel.settleFolio(folioId, payload, idempotencyKey);
   }
 
   async reverseFolioEntry(folioId: string, entryId: string, reason: string) {

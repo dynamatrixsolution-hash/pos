@@ -19,8 +19,8 @@ export const OpeningStockActionModal: React.FC = () => {
   // 1. Delete Confirmation Modal
   if (deletingEntryId) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-        <div className="w-full max-w-sm rounded-xl border border-red-200 bg-[#FFFCF7] p-5 space-y-4 shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+        <div className="w-full max-w-sm rounded-xl border border-red-200 bg-[#FFFCF7] p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-xl bg-red-100 text-[#DC2626] shrink-0">
               <AlertTriangle className="h-5 w-5" />
@@ -64,8 +64,8 @@ export const OpeningStockActionModal: React.FC = () => {
     const entry = actionConfirmEntry.entry;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-        <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 shadow-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+        <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div
               className={`p-2.5 rounded-xl shrink-0 ${

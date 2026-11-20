@@ -1,7 +1,7 @@
 import { checkBranch, serializable } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { reversePayment, PaymentLedgerError } from "@/lib/services/payment-ledger-service";
 import { enqueueOutboxEvent } from "@/lib/services/outbox-service";
 import { z } from "zod";
@@ -89,7 +89,7 @@ export async function POST(
     }
     console.error("Payment reversal error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to reverse payment" },
+      { error: safeErrorMessage(error, "Failed to reverse payment") },
       { status: 500 }
     );
   }

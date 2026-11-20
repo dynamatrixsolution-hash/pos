@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   createMenuSection,
   MenuCatalogError,
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ sections });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch sections" },
+      { error: safeErrorMessage(error, "Failed to fetch sections") },
       { status: 500 }
     );
   }
@@ -43,6 +43,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createSectionSchema.parse(body);
@@ -86,7 +88,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create menu section" },
+      { error: safeErrorMessage(error, "Failed to create menu section") },
       { status: 500 }
     );
   }

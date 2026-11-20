@@ -277,7 +277,7 @@ export default function SubscriptionsPage() {
             return (
               <div
                 key={plan.name}
-                className={`bg-gradient-to-b from-white to-slate-50/40 dark:from-slate-900 dark:to-slate-950/40 border rounded-lg flex flex-col justify-between shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-sm ${
+                className={`bg-[#FFFCF7] dark:bg-slate-900 border rounded-lg flex flex-col justify-between relative overflow-hidden transition-colors duration-200 ${
                   plan.active
                     ? "border-[#064E3B] ring-2 ring-[#064E3B]/10"
                     : isProfessional
@@ -287,8 +287,8 @@ export default function SubscriptionsPage() {
               >
                 {/* Custom Badges */}
                 {isProfessional && (
-                  <div className="absolute top-0 right-0 left-0 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[8px] font-black uppercase tracking-widest py-1 text-center font-mono">
-                    ★ Most Popular Option ★
+                  <div className="absolute top-0 right-0 left-0 bg-[#946000] text-white text-[8px] font-black uppercase tracking-widest py-1 text-center font-mono">
+                    Most Popular Option
                   </div>
                 )}
                 {plan.active && (
@@ -345,7 +345,7 @@ export default function SubscriptionsPage() {
 
       {/* Upgrade Checkout Dialog Overlay */}
       {showUpgradeModal && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200">
           <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-full max-w-md rounded-lg p-6 shadow-sm space-y-4 animate-in zoom-in-95 duration-200">
             <div>
               <h2 className="text-base font-black text-[#292320] dark:text-slate-100 flex items-center gap-2">

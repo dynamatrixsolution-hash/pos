@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   createModifierGroup,
   getModifierGroups,
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ groups });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch modifier groups" },
+      { error: safeErrorMessage(error, "Failed to fetch modifier groups") },
       { status: 500 }
     );
   }
@@ -40,6 +40,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createModifierGroupSchema.parse(body);
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create modifier group" },
+      { error: safeErrorMessage(error, "Failed to create modifier group") },
       { status: 500 }
     );
   }

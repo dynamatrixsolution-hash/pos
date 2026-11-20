@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 import {
   getPropertyFeatureFlags,
@@ -35,7 +35,7 @@ function handleRouteError(error: any, fallbackMessage: string) {
     );
   }
   return NextResponse.json(
-    { error: error?.message || fallbackMessage },
+    { error: safeErrorMessage(error, fallbackMessage) },
     { status: 500 }
   );
 }
@@ -74,6 +74,8 @@ export async function PUT(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { searchParams } = new URL(req.url);
     const body = await req.json().catch(() => ({}));

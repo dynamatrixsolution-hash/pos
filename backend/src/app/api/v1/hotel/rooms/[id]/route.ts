@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   updateRoom,
   deleteRoom,
@@ -47,7 +47,7 @@ export async function GET(
     return NextResponse.json({ room });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch room" },
+      { error: safeErrorMessage(error, "Failed to fetch room") },
       { status: 500 }
     );
   }
@@ -60,10 +60,25 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_HOUSEKEEPING);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
     const parsed = updateRoomSchema.parse(body);
+
+    const hasStructuralChanges =
+      parsed.roomTypeId !== undefined ||
+      parsed.floorId !== undefined ||
+      parsed.roomNumber !== undefined ||
+      parsed.capacity !== undefined ||
+      parsed.keyCardAlias !== undefined ||
+      parsed.features !== undefined ||
+      parsed.isActive !== undefined;
+    if (hasStructuralChanges) {
+      const adminDenied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+      if (adminDenied) return adminDenied;
+    }
 
     const room = await updateRoom({
       businessId: session.businessId,
@@ -88,7 +103,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update room" },
+      { error: safeErrorMessage(error, "Failed to update room") },
       { status: 500 }
     );
   }
@@ -103,6 +118,8 @@ export async function DELETE(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     const result = await deleteRoom(session.businessId, id, session.userId);
@@ -116,7 +133,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to delete room" },
+      { error: safeErrorMessage(error, "Failed to delete room") },
       { status: 500 }
     );
   }

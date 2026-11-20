@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, CreditCard, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { useHotelFoliosStore } from "../../state/hotel-folios.store";
 import { FolioPaymentSplit } from "../../models/hotel.types";
+import { createIdempotencyKey } from "@/core/api/api-client";
 
 function formatNPR(amount: number | string | undefined): string {
   const val = Number(amount) || 0;
@@ -22,9 +23,11 @@ export const SettleFolioModal: React.FC = () => {
 
   const [tenders, setTenders] = useState<FolioPaymentSplit[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const settleKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (selectedFolio && isSettleModalOpen) {
+      settleKeyRef.current = null;
       setTenders([
         {
           id: "t-1",
@@ -44,6 +47,7 @@ export const SettleFolioModal: React.FC = () => {
   const remaining = balanceDue - totalTendered;
 
   const handleAddTender = () => {
+    settleKeyRef.current = null;
     setTenders((prev) => [
       ...prev,
       {
@@ -57,10 +61,12 @@ export const SettleFolioModal: React.FC = () => {
 
   const handleRemoveTender = (id: string) => {
     if (tenders.length <= 1) return;
+    settleKeyRef.current = null;
     setTenders((prev) => prev.filter((t) => t.id !== id));
   };
 
   const handleUpdateTender = (id: string, field: keyof FolioPaymentSplit, val: any) => {
+    settleKeyRef.current = null;
     setTenders((prev) =>
       prev.map((t) => (t.id === id ? { ...t, [field]: val } : t))
     );
@@ -74,15 +80,20 @@ export const SettleFolioModal: React.FC = () => {
     }
 
     setError(null);
-    const ok = await settleFolio(tenders);
-    if (!ok) {
-      setError("Failed to settle folio. Please try again.");
+    if (!settleKeyRef.current) {
+      settleKeyRef.current = createIdempotencyKey("fol_stl");
+    }
+    const ok = await settleFolio(tenders, settleKeyRef.current);
+    if (ok) {
+      settleKeyRef.current = null;
+    } else {
+      setError(useHotelFoliosStore.getState().error || "Failed to settle folio. Please try again.");
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+      <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">

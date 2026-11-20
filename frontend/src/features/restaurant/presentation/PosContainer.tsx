@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { usePosUiStore } from "../state/pos-ui.store";
 import { usePosCatalogStore } from "../state/pos-catalog.store";
 import { usePosTicketsStore } from "../state/pos-tickets.store";
@@ -22,6 +23,8 @@ import { TransferModal } from "./dialogs/TransferModal";
 import { MergeModal } from "./dialogs/MergeModal";
 import { SettlementModal } from "./dialogs/SettlementModal";
 import { DeliveryModal } from "./dialogs/DeliveryModal";
+import { LineAdjustmentModal } from "./dialogs/LineAdjustmentModal";
+import { CancelOrderModal } from "./dialogs/CancelOrderModal";
 
 export const PosContainer: React.FC = () => {
   const searchParams = useSearchParams();
@@ -60,18 +63,14 @@ export const PosContainer: React.FC = () => {
     }
   }, [viewParam, tableIdParam, setDineInView, setIsTicketDrawerOpen, setSelectedTable, fetchTableOrders]);
 
-  // Initial catalog load & silent poll
+  // Initial catalog & active tickets load
   useEffect(() => {
     loadInitialCatalog();
     fetchActiveOrders();
-
-    // 5-second silent background poll for live kitchen orders
-    const interval = setInterval(() => {
-      fetchActiveOrders();
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [loadInitialCatalog, fetchActiveOrders]);
+
+  // 5-second visibility-aware, overlap-safe poll for live active tickets
+  useVisibilityPolling(fetchActiveOrders, 5000);
 
   const hasHydratedRef = React.useRef(false);
 
@@ -119,6 +118,8 @@ export const PosContainer: React.FC = () => {
       <MergeModal />
       <SettlementModal />
       <DeliveryModal />
+      <LineAdjustmentModal />
+      <CancelOrderModal />
     </div>
   );
 };

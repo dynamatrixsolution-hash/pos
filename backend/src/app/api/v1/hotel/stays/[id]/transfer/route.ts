@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { transferRoom } from "@/lib/services/hotel-room-transfer-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
@@ -16,6 +16,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_FRONT_DESK);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -44,7 +46,7 @@ export async function POST(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to transfer room" },
+      { error: safeErrorMessage(error, "Failed to transfer room") },
       { status: 500 }
     );
   }

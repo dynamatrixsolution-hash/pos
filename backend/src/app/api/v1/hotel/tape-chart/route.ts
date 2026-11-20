@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import {
   getTapeChartMatrix,
   HotelError,
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch tape chart matrix" },
+      { error: safeErrorMessage(error, "Failed to fetch tape chart matrix") },
       { status: 500 }
     );
   }

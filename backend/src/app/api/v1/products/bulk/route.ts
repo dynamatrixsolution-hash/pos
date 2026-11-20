@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
 import crypto from "crypto";
@@ -245,6 +245,6 @@ export async function POST(request: Request) {
     );
   } catch (error: any) {
     console.error("Bulk import products error:", error);
-    return NextResponse.json({ error: error.message || "Failed to bulk import products" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to bulk import products") }, { status: 500 });
   }
 }

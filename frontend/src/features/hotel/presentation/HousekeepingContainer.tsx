@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useHotelHousekeepingStore } from "../state/hotel-housekeeping.store";
-import { Sparkles, Wrench, Plus, RefreshCw, X, Loader2, CheckCircle2, Clock } from "lucide-react";
+import { ClipboardCheck, Wrench, Plus, RefreshCw, X, Loader2, CheckCircle2, Clock } from "lucide-react";
 
 const HK_FILTERS = ["ALL", "DIRTY", "IN_PROGRESS", "CLEAN", "INSPECTED"] as const;
 
@@ -117,7 +117,7 @@ export function HousekeepingContainer() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#EEE7DD] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#6B2837]" />
+            <ClipboardCheck className="h-5 w-5 text-[#6B2837]" />
             <h1 className="text-xl font-bold text-[#292320] tracking-tight">Housekeeping & Maintenance</h1>
           </div>
           <p className="text-xs text-[#71675E] mt-0.5">
@@ -165,7 +165,7 @@ export function HousekeepingContainer() {
                 : "text-[#71675E] hover:text-[#292320] hover:bg-[#F7F3EC]"
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <ClipboardCheck className="h-3.5 w-3.5" />
             Housekeeping Tasks ({tasks.length})
           </button>
           <button
@@ -209,7 +209,7 @@ export function HousekeepingContainer() {
       ) : activeTab === "HOUSEKEEPING" ? (
         tasks.length === 0 ? (
           <div className="p-10 text-center bg-[#FFFCF7] border border-[#EEE7DD] rounded-lg">
-            <Sparkles className="h-8 w-8 text-[#71675E] mx-auto mb-2 opacity-50" />
+            <ClipboardCheck className="h-8 w-8 text-[#71675E] mx-auto mb-2 opacity-50" />
             <h3 className="text-sm font-semibold text-[#292320]">No housekeeping tasks</h3>
             <p className="text-xs text-[#71675E] mt-1">All rooms are currently in order.</p>
           </div>
@@ -356,8 +356,8 @@ export function HousekeepingContainer() {
 
       {/* Dispatch Task Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
               <h3 className="text-base font-bold text-[#292320]">Dispatch Housekeeping Task</h3>
               <button onClick={() => setShowTaskModal(false)} className="p-1 rounded text-[#71675E] hover:bg-[#F7F3EC]">
@@ -446,8 +446,8 @@ export function HousekeepingContainer() {
 
       {/* Log Maintenance Modal */}
       {showMaintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
               <h3 className="text-base font-bold text-[#292320]">Block Room for Maintenance</h3>
               <button onClick={() => setShowMaintModal(false)} className="p-1 rounded text-[#71675E] hover:bg-[#F7F3EC]">

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   updateModifierGroup,
   deleteModifierGroup,
@@ -29,6 +29,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -47,7 +49,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update modifier group" },
+      { error: safeErrorMessage(error, "Failed to update modifier group") },
       { status: 500 }
     );
   }
@@ -60,6 +62,8 @@ export async function DELETE(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     await deleteModifierGroup(session.businessId, id);
@@ -69,7 +73,7 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to delete modifier group" },
+      { error: safeErrorMessage(error, "Failed to delete modifier group") },
       { status: 500 }
     );
   }

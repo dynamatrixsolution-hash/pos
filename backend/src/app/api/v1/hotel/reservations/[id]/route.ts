@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   getReservationById,
   updateReservation,
@@ -49,7 +49,7 @@ export async function GET(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch reservation" },
+      { error: safeErrorMessage(error, "Failed to fetch reservation") },
       { status: 500 }
     );
   }
@@ -62,6 +62,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_FRONT_DESK);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -123,7 +125,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update reservation" },
+      { error: safeErrorMessage(error, "Failed to update reservation") },
       { status: 500 }
     );
   }
@@ -136,6 +138,8 @@ export async function DELETE(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_FRONT_DESK);
+    if (denied) return denied;
 
     const { id } = await params;
     const reservation = await cancelReservation({
@@ -155,7 +159,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to cancel reservation" },
+      { error: safeErrorMessage(error, "Failed to cancel reservation") },
       { status: 500 }
     );
   }

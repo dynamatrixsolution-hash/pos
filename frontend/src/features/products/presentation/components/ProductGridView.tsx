@@ -104,7 +104,7 @@ export const ProductGridView: React.FC = () => {
                   src={p.image}
                   alt={p.name}
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="object-cover"
                   sizes="(max-width: 768px) 100vw, 300px"
                 />
               ) : (

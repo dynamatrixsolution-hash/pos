@@ -205,8 +205,8 @@ export function BranchesContainer() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-xl max-w-md w-full p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-3">
               <h3 className="text-base font-bold text-[#292320]">
                 {editingBranch ? "Edit Branch" : "Add New Branch"}

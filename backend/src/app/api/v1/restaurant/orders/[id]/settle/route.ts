@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
+import { runWithOptionalIdempotency } from "@/lib/commerce-transaction";
+import { CommerceError } from "@/lib/commerce-policy";
 import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
 import { createAuditEvent } from "@/lib/audit-event";
 import { deductRecipeIngredientsForTicketLine } from "@/lib/services/recipe-consumption-service";
 import { enqueueOutboxEvent } from "@/lib/services/outbox-service";
+import {
+  computeSettlementTotals,
+  RestaurantOrderError,
+} from "@/lib/services/restaurant-order-service";
+import { postRestaurantOrderToFolio } from "@/lib/services/folio-service";
+import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
 
 const splitPaymentAllocationSchema = z.object({
@@ -26,6 +34,7 @@ const splitPaymentAllocationSchema = z.object({
 
 const settleOrderSchema = z.object({
   customerId: z.string().nullable().optional(),
+  stayId: z.string().optional().nullable(),
   registerId: z.string().optional().nullable(),
   shiftId: z.string().optional().nullable(),
   requireOpenShift: z.boolean().optional(),
@@ -49,6 +58,8 @@ const settleOrderSchema = z.object({
   applyVat: z.boolean().optional().default(true),
   totalAmount: z.coerce.number().min(0).optional(),
   paidAmount: z.coerce.number().min(0).optional(),
+  discountType: z.enum(["FLAT", "PERCENT"]).optional().default("FLAT"),
+  discountValue: z.coerce.number().min(0).optional(),
   discountTotal: z.coerce.number().min(0).optional().default(0),
   deliveryFee: z.coerce.number().min(0).optional().default(0),
   packagingFee: z.coerce.number().min(0).optional().default(0),
@@ -65,37 +76,57 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_BILLING);
+    if (denied) return denied;
 
     const { id: orderId } = await params;
     const body = await req.json().catch(() => ({}));
     const parsed = settleOrderSchema.parse(body);
 
-    const order = await db.restaurantOrder.findFirst({
-      where: { id: orderId, businessId: session.businessId },
-      include: {
-        table: true,
-        tableSession: true,
-        rounds: {
-          include: {
-            lines: {
-              include: {
-                menuItem: {
-                  include: {
-                    product: true,
+    if (parsed.paymentMethod === "ROOM_CHARGE" && !parsed.stayId) {
+      return NextResponse.json(
+        { error: "Please select an active hotel room/stay for Room Charge." },
+        { status: 400 }
+      );
+    }
+
+    const { result, replayed } = await runWithOptionalIdempotency(
+      req,
+      session,
+      `RESTAURANT_SETTLE:${orderId}`,
+      parsed,
+      async (tx) => {
+      const order = await tx.restaurantOrder.findFirst({
+        where: { id: orderId, businessId: session.businessId },
+        include: {
+          table: true,
+          tableSession: true,
+          rounds: {
+            include: {
+              lines: {
+                include: {
+                  menuItem: {
+                    include: {
+                      product: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
+      if (!order) {
+        throw new RestaurantOrderError("Order not found", 404);
+      }
+      if (order.fulfillmentStatus === "CANCELLED") {
+        throw new RestaurantOrderError("Cannot settle a cancelled order.", 400);
+      }
+      if (order.settlementStatus === "PAID") {
+        throw new RestaurantOrderError("Order is already paid and settled.", 409);
+      }
 
-    const result = await db.$transaction(async (tx) => {
       // Gather all active lines across this order (and any merged sibling orders in the same tableSession)
       const siblingOrders = order.tableSessionId
         ? await tx.restaurantOrder.findMany({
@@ -104,6 +135,7 @@ export async function POST(
               businessId: session.businessId,
               id: { not: order.id },
               settlementStatus: { not: "PAID" },
+              fulfillmentStatus: { not: "CANCELLED" },
             },
             include: {
               rounds: {
@@ -130,35 +162,28 @@ export async function POST(
             l.acceptanceStatus !== "REJECTED"
         );
 
-      const computedLinesSubtotal = activeLines.reduce(
-        (sum, l) => sum + Number(l.unitPrice || l.basePrice || 0) * l.quantity,
-        0
-      );
+      if (activeLines.length === 0) {
+        throw new RestaurantOrderError("Cannot settle an order with no active items.", 400);
+      }
 
-      const finalSubtotal =
-        parsed.subtotal !== undefined && parsed.subtotal > 0
-          ? parsed.subtotal
-          : computedLinesSubtotal > 0
-          ? computedLinesSubtotal
-          : Number(order.subtotal || order.totalAmount || 0);
+      const totals = computeSettlementTotals({
+        lines: activeLines.map((l) => ({
+          unitPrice: l.unitPrice || l.basePrice || 0,
+          quantity: l.quantity,
+        })),
+        discountType: parsed.discountType,
+        discountValue: parsed.discountValue,
+        discountTotal: parsed.discountTotal,
+        applyVat: parsed.applyVat,
+        deliveryFee: parsed.deliveryFee,
+        packagingFee: parsed.packagingFee,
+        expressFee: parsed.expressFee,
+      });
 
-      const finalDiscount = Math.min(parsed.discountTotal || 0, finalSubtotal);
-      const afterDiscount = Math.max(0, finalSubtotal - finalDiscount);
-      const finalTax =
-        parsed.taxTotal !== undefined
-          ? parsed.taxTotal
-          : parsed.applyVat
-          ? Number((afterDiscount * 0.13).toFixed(2))
-          : 0;
-      const extraFees =
-        (parsed.deliveryFee || 0) +
-        (parsed.packagingFee || 0) +
-        (parsed.expressFee || 0);
-
-      const finalTotal =
-        parsed.totalAmount !== undefined && parsed.totalAmount > 0
-          ? Number(parsed.totalAmount.toFixed(2))
-          : Number((afterDiscount + finalTax + extraFees).toFixed(2));
+      const finalSubtotal = totals.subtotal;
+      const finalDiscount = totals.discountTotal;
+      const finalTax = totals.taxTotal;
+      const finalTotal = totals.totalAmount;
 
       const isCredit = parsed.paymentMethod === "CREDIT";
       const effectivePaidNum = isCredit
@@ -185,8 +210,7 @@ export async function POST(
           totalAmount: new Prisma.Decimal(finalTotal.toFixed(2)),
           paidAmount: new Prisma.Decimal(effectivePaidNum.toFixed(2)),
           acceptanceStatus: "ACCEPTED",
-          fulfillmentStatus:
-            order.fulfillmentStatus === "CANCELLED" ? "CANCELLED" : "SERVED",
+          fulfillmentStatus: "SERVED",
           version: { increment: 1 },
           notes: parsed.notes || order.notes,
         },
@@ -205,6 +229,19 @@ export async function POST(
           version: { increment: 1 },
         },
       });
+
+      if (parsed.paymentMethod === "ROOM_CHARGE" && parsed.stayId) {
+        await postRestaurantOrderToFolio(
+          {
+            businessId: session.businessId,
+            branchId: order.branchId,
+            orderId: order.id,
+            stayId: parsed.stayId,
+            actorId: session.userId,
+          },
+          tx
+        );
+      }
 
       // 2a. If merged tables share this session, mark all sibling orders and lines as PAID too
       if (order.tableSessionId && siblingOrders.length > 0) {
@@ -817,37 +854,50 @@ export async function POST(
         tx
       );
 
+      const updatedOrderWithDetails = await tx.restaurantOrder.findUnique({
+        where: { id: order.id },
+      });
+
       return {
-        order: updatedOrder,
+        order: updatedOrderWithDetails || updatedOrder,
         table: tableUpdated,
         sale: createdSale,
         invoiceNumber: generatedInvoiceNumber,
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      message: parsed.clearTable
-        ? `Order #${order.orderNumber} settled (${result.invoiceNumber}) and table cleared.`
-        : `Order #${order.orderNumber} settled (${result.invoiceNumber}).`,
-      ...result,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: parsed.clearTable
+          ? `Order #${result.order.orderNumber} settled (${result.invoiceNumber}) and table cleared.`
+          : `Order #${result.order.orderNumber} settled (${result.invoiceNumber}).`,
+        ...result,
+      },
+      replayed ? { headers: { "X-Idempotent-Replay": "true" } } : undefined
+    );
   } catch (error: any) {
     console.error("Order settlement error:", error);
+    if (error instanceof CommerceError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof RestaurantOrderError || error instanceof HotelError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.issues[0]?.message || "Validation failed" },
         { status: 400 }
       );
     }
-    if (error?.status === 409) {
+    if (error?.status === 400 || error?.status === 404 || error?.status === 409) {
       return NextResponse.json(
-        { error: error.message || "Shift conflict" },
-        { status: 409 }
+        { error: error.message || "Settlement rejected" },
+        { status: error.status }
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to settle order" },
+      { error: safeErrorMessage(error, "Failed to settle order") },
       { status: 500 }
     );
   }

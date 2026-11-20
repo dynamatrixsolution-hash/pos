@@ -1,22 +1,5 @@
-import React from "react";
-import { Layers } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 glass-card bg-gradient-to-br from-primary/10 via-transparent to-transparent p-6 rounded-lg">
-        <div>
-          <h1 className="text-2xl font-black">Stock In / Out</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Manage inward and outward stock movements.</p>
-        </div>
-      </div>
-      <div className="glass-card rounded-lg p-12 flex flex-col items-center justify-center text-center text-muted-foreground min-h-[400px]">
-        <Layers className="h-16 w-16 mb-4 opacity-50" />
-        <h2 className="text-xl font-bold text-foreground mb-2">Stock In / Out Module</h2>
-        <p className="max-w-md text-sm">
-          This section is currently under development. You will soon be able to fully manage your Stock In / Out here.
-        </p>
-      </div>
-    </div>
-  );
+  redirect("/dashboard/inventory/stock-movements");
 }

@@ -1,7 +1,7 @@
 import { serializable, checkBranch } from "@/lib/commerce-transaction";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, getBusinessLimits, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity-logger";
 
@@ -160,7 +160,7 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("GET products error:", error);
-    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to fetch products") }, { status: 500 });
   }
 }
 

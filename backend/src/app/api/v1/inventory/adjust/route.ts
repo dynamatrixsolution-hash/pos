@@ -2,7 +2,7 @@ import { checkBranch, serializable } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 
 const adjustmentSchema = z.object({
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         newQty = currentQty + quantity;
       } else if (type === "STOCK_OUT" || type === "DAMAGE") {
         if (currentQty < quantity) {
-          throw new Error(`Insufficient stock for adjustment. Available: ${currentQty}, Requested reduction: ${quantity}`);
+          throw new CommerceError(`Insufficient stock for adjustment. Available: ${currentQty}, Requested reduction: ${quantity}`, 400);
         }
         newQty = currentQty - quantity;
       } else if (type === "ADJUSTMENT") {
@@ -109,7 +109,10 @@ export async function POST(request: Request) {
       stock: adjustmentResult,
     });
   } catch (error: any) {
-    console.error("POST inventory adjust error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to adjust inventory" }, { status: error instanceof CommerceError ? error.status : 500 });
+    console.error("POST inventory adjust error:", error);
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to adjust inventory") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

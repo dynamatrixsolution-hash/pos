@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   getTableSessionById,
   updateTableSession,
@@ -30,7 +30,7 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch table session" },
+      { error: safeErrorMessage(error, "Failed to fetch table session") },
       { status: 500 }
     );
   }
@@ -43,6 +43,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -69,7 +71,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update table session" },
+      { error: safeErrorMessage(error, "Failed to update table session") },
       { status: 500 }
     );
   }

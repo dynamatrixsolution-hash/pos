@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 
 export async function GET(
@@ -66,7 +66,7 @@ export async function GET(
   } catch (error: any) {
     console.error("GET /restaurant/tables/[id]/orders error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch table orders" },
+      { error: safeErrorMessage(error, "Failed to fetch table orders") },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { getStaffMenuCatalog } from "@/lib/services/menu-catalog-service";
 import { db } from "@/lib/db";
 
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("GET /restaurant/menu/catalog error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch menu catalog" },
+      { error: safeErrorMessage(error, "Failed to fetch menu catalog") },
       { status: 500 }
     );
   }

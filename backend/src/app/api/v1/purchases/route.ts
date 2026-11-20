@@ -2,7 +2,7 @@ import { checkBranch, resolveBranch, serializable } from "@/lib/commerce-transac
 import { CommerceError, requireStaff, money, reconcilePayment } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 
 const purchaseItemSchema = z.object({
@@ -397,6 +397,9 @@ export async function POST(request: Request) {
     return NextResponse.json(purchaseResult, { status: 201 });
   } catch (error: any) {
     console.error("POST purchase error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to process purchase" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to process purchase") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

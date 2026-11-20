@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   updateLineStatus,
   RestaurantOrderError,
@@ -13,6 +13,7 @@ const updateLineStatusSchema = z.object({
   settlementStatus: z.enum(["UNPAID", "PARTIAL", "PAID", "REFUNDED"]).optional(),
   rejectionReason: z.string().optional(),
   voidReason: z.string().optional(),
+  notes: z.string().max(500).optional(),
   expectedVersion: z.number().optional(),
 });
 
@@ -23,13 +24,16 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
-    const { lineId } = await params;
+    const { id: orderId, lineId } = await params;
     const body = await req.json();
     const parsed = updateLineStatusSchema.parse(body);
 
     const updatedLine = await updateLineStatus({
       businessId: session.businessId,
+      orderId,
       lineId,
       quantity: parsed.quantity,
       acceptanceStatus: parsed.acceptanceStatus,
@@ -37,6 +41,7 @@ export async function PATCH(
       settlementStatus: parsed.settlementStatus,
       rejectionReason: parsed.rejectionReason,
       voidReason: parsed.voidReason,
+      notes: parsed.notes,
       actorId: session.userId,
       expectedVersion: parsed.expectedVersion,
     });
@@ -52,7 +57,10 @@ export async function PATCH(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to update order line status" }, { status: 500 });
+    return NextResponse.json(
+      { error: safeErrorMessage(error, "Failed to update order line status") },
+      { status: 500 }
+    );
   }
 }
 

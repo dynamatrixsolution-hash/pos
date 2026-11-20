@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 
 // GET /api/v1/notifications/broadcasts
 export async function GET() {
@@ -74,6 +74,6 @@ export async function GET() {
     return NextResponse.json({ broadcasts: filtered });
   } catch (error: any) {
     console.error("GET broadcasts error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load broadcast notices" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to load broadcast notices") }, { status: 500 });
   }
 }

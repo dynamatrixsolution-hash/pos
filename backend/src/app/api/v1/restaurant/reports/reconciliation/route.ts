@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
 import { z } from "zod";
@@ -299,7 +299,7 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("Reconciliation report error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate reconciliation report" },
+      { error: safeErrorMessage(error, "Failed to generate reconciliation report") },
       { status: 500 }
     );
   }
@@ -325,6 +325,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = actionSchema.parse(body);
@@ -476,7 +478,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to process reconciliation action" },
+      { error: safeErrorMessage(error, "Failed to process reconciliation action") },
       { status: 500 }
     );
   }

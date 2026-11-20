@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { getServiceRequestsForStaff } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch service requests" },
+      { error: safeErrorMessage(error, "Failed to fetch service requests") },
       { status: 500 }
     );
   }

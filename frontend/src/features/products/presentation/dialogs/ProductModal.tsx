@@ -11,7 +11,6 @@ import {
   Save,
   Clock,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import { useProductsUiStore } from "../../state/products-ui.store";
 import { useProductsStore } from "../../state/products.store";
@@ -157,8 +156,8 @@ export const ProductModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-2xl rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+      <div className="w-full max-w-2xl rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -279,7 +278,7 @@ export const ProductModal: React.FC = () => {
                   onClick={handleGenerateBarcode}
                   className="text-[10px] text-[#6B2837] hover:underline font-bold flex items-center gap-1 cursor-pointer"
                 >
-                  <Sparkles className="h-2.5 w-2.5" />
+                  <Barcode className="h-2.5 w-2.5" />
                   <span>Auto Generate</span>
                 </button>
               </div>

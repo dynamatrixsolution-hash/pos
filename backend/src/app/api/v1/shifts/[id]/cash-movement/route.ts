@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   computeShiftFinancialSummary,
   logShiftAudit,
@@ -35,6 +35,8 @@ export async function handleCreateCashMovement(
 ) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
+  const denied = requireRoles(context, ROLE_GROUPS.SHIFT_OPERATORS);
+  if (denied) return denied;
 
   try {
     const body = await request.json();
@@ -65,6 +67,13 @@ export async function handleCreateCashMovement(
     }
 
     const { shift, metrics } = summary;
+
+    if (!isManagerOrOwnerRole(context.role) && shift.cashierId !== context.userId) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only record cash movements on your own active shift." },
+        { status: 403 }
+      );
+    }
 
     if (shift.status !== "OPEN") {
       return NextResponse.json(

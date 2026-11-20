@@ -9,8 +9,6 @@ import {
   UtensilsCrossed,
   ShoppingBag,
   Truck,
-  ArrowRightLeft,
-  GitMerge,
   ChevronDown,
   Search,
 } from "lucide-react";
@@ -40,8 +38,6 @@ export const PosHeader = React.memo(function PosHeader() {
   const setOrderType = usePosUiStore((s) => s.setOrderType);
   const syncUrlView = usePosUiStore((s) => s.syncUrlView);
   const setShowOccupiedTicketsModal = usePosUiStore((s) => s.setShowOccupiedTicketsModal);
-  const setShowTransferModal = usePosUiStore((s) => s.setShowTransferModal);
-  const setShowMergeModal = usePosUiStore((s) => s.setShowMergeModal);
   const setShowDeliveryModal = usePosUiStore((s) => s.setShowDeliveryModal);
 
   // Catalog store filters
@@ -64,12 +60,6 @@ export const PosHeader = React.memo(function PosHeader() {
   const draftLines = usePosCartStore((s) => s.draftLines);
 
   const [orderTypeDropdownOpen, setOrderTypeDropdownOpen] = useState(false);
-
-  // Derive active table
-  const selectedTable = useMemo(
-    () => tables.find((t) => t.id === selectedTableId),
-    [tables, selectedTableId]
-  );
 
   // Derive aggregated tickets
   const allActiveTickets = useMemo(
@@ -129,7 +119,7 @@ export const PosHeader = React.memo(function PosHeader() {
           {orderTypeDropdownOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setOrderTypeDropdownOpen(false)} />
-              <div className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-xl z-50 py-1 text-xs font-semibold">
+              <div className="absolute left-0 top-full mt-1.5 w-52 rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-xs z-50 py-1 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => {
@@ -264,69 +254,21 @@ export const PosHeader = React.memo(function PosHeader() {
                 className="h-8 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs font-semibold text-[#292320] focus:border-[#6B2837] focus:outline-none cursor-pointer"
               >
                 <option value="ALL">All Statuses ({tables.length})</option>
-                <option value="AVAILABLE">🟢 Available ({availableCount})</option>
-                <option value="OCCUPIED">🔴 Occupied ({occupiedCount})</option>
-                <option value="BILLED">🟡 Billed ({billedCount})</option>
+                <option value="AVAILABLE">Available ({availableCount})</option>
+                <option value="OCCUPIED">Occupied ({occupiedCount})</option>
+                <option value="BILLED">Billed ({billedCount})</option>
               </select>
             </div>
           </div>
         )}
 
         {/* ================================================================= */}
-        {/* VIEW B: ORDERING VIEW (MENU_POS - Table Controls & Search Input)  */}
+        {/* VIEW B: ORDERING VIEW (MENU_POS - Food Search Input)              */}
         {/* ================================================================= */}
         {dineInView === "MENU_POS" && (
           <div className="flex items-center gap-2">
-            {orderType === "DINE_IN" && selectedTable && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowOccupiedTicketsModal(true)}
-                  className="h-8 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] flex items-center gap-1.5 text-xs font-bold text-[#6B2837] transition-colors cursor-pointer shrink-0"
-                  title="Click to view all busy tables or switch tabs"
-                >
-                  <span>{selectedTable.tableNumber}</span>
-                  <span className="text-[10px] text-[#71675E] font-normal hidden sm:inline">
-                    ({selectedTable.capacity}p)
-                  </span>
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
-                  <ChevronDown className="h-3 w-3 text-[#71675E] ml-0.5" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowOccupiedTicketsModal(true)}
-                  className="h-8 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#6B2837] transition-colors flex items-center gap-1 cursor-pointer shrink-0 hidden sm:flex"
-                  title="Switch to another active table"
-                >
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Switch</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowTransferModal(true)}
-                  className="h-8 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] transition-colors flex items-center gap-1 cursor-pointer shrink-0 hidden md:flex"
-                  title="Transfer table session to another table"
-                >
-                  <ArrowRightLeft className="h-3.5 w-3.5 text-[#B45309]" />
-                  <span>Transfer</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowMergeModal(true)}
-                  className="h-8 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] transition-colors flex items-center gap-1 cursor-pointer shrink-0 hidden md:flex"
-                  title="Merge tables into this bill"
-                >
-                  <GitMerge className="h-3.5 w-3.5 text-[#2D6A4F]" />
-                  <span>Merge</span>
-                </button>
-              </>
-            )}
-
-            {/* Food Search Input (Moved directly up into header row) */}
-            <div className="relative w-44 sm:w-60 md:w-72 shrink-0">
+            {/* Food Search Input */}
+            <div className="relative w-56 sm:w-72 md:w-80 lg:w-96 shrink-0">
               <Search className="h-3.5 w-3.5 text-[#71675E] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"

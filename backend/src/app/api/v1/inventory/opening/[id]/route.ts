@@ -2,7 +2,7 @@ import { checkBranch } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logActivity } from "@/lib/activity-logger";
 import { approveOpeningStockTransaction } from "../route";
 
@@ -72,7 +72,10 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     return NextResponse.json({ message: "Opening stock updated successfully", entry: updated });
   } catch (error: any) {
     console.error("PUT opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to update opening stock") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }
 
@@ -116,7 +119,10 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
     return NextResponse.json({ message: "Opening stock entry deleted successfully" });
   } catch (error: any) {
     console.error("DELETE opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to delete opening stock") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }
 
@@ -179,6 +185,9 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     return NextResponse.json({ message: `Opening stock entry ${status.toLowerCase()} successfully`, entry: updated });
   } catch (error: any) {
     console.error("PATCH opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update status" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to update status") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

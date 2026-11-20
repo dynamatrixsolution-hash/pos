@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { ensureQrLocation } from "@/lib/services/guest-portal-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { db } from "@/lib/db";
@@ -11,6 +11,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_FRONT_DESK);
+    if (denied) return denied;
 
     const { id } = await params;
 
@@ -53,7 +55,7 @@ export async function POST(
     }
     console.error("POST /hotel/qr-locations/[id]/rotate error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to rotate QR location" },
+      { error: safeErrorMessage(error, "Failed to rotate QR location") },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   createTable,
   getTables,
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch tables" },
+      { error: safeErrorMessage(error, "Failed to fetch tables") },
       { status: 500 }
     );
   }
@@ -76,6 +76,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createTableSchema.parse(body);
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create table" },
+      { error: safeErrorMessage(error, "Failed to create table") },
       { status: 500 }
     );
   }
@@ -117,6 +119,8 @@ export async function PATCH(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = updatePositionsSchema.parse(body);
@@ -143,7 +147,7 @@ export async function PATCH(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update table positions" },
+      { error: safeErrorMessage(error, "Failed to update table positions") },
       { status: 500 }
     );
   }

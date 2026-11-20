@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 import { enqueueAndDispatchPrintJob } from "@/lib/services/pilot-rollout-service";
 
@@ -10,6 +10,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.PILOT_OPERATORS);
+    if (denied) return denied;
 
     const { id } = await params;
 
@@ -45,7 +47,7 @@ export async function POST(
   } catch (error: any) {
     console.error("POST /hotel/pilot/print-jobs/[id]/retry error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to retry print job" },
+      { error: safeErrorMessage(error, "Failed to retry print job") },
       { status: 500 }
     );
   }

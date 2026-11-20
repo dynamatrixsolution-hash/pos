@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   updateRoomType,
   deleteRoomType,
@@ -48,7 +48,7 @@ export async function GET(
     return NextResponse.json({ roomType });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Failed to fetch room type" },
+      { error: safeErrorMessage(error, "Failed to fetch room type") },
       { status: 500 }
     );
   }
@@ -61,6 +61,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -89,7 +91,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update room type" },
+      { error: safeErrorMessage(error, "Failed to update room type") },
       { status: 500 }
     );
   }
@@ -104,6 +106,8 @@ export async function DELETE(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     await deleteRoomType(session.businessId, id, session.userId);
@@ -117,7 +121,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to delete room type" },
+      { error: safeErrorMessage(error, "Failed to delete room type") },
       { status: 500 }
     );
   }

@@ -116,7 +116,7 @@ export const RestaurantQrContainer: React.FC = () => {
           return (
             <div
               key={t.id}
-              className="p-5 rounded-xl border border-[#D8CEC1] bg-white shadow-2xs flex flex-col items-center justify-between space-y-3.5 text-center transition-all group"
+              className="p-5 rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xs flex flex-col items-center justify-between space-y-3.5 text-center transition-all group"
             >
               <div className="space-y-0.5">
                 <span className="text-[9px] font-black uppercase tracking-widest text-[#6B2837]">
@@ -131,7 +131,7 @@ export const RestaurantQrContainer: React.FC = () => {
               </div>
 
               {/* QR Code */}
-              <div className="p-3 rounded-xl border border-[#D8CEC1] bg-white shadow-2xs">
+              <div className="p-3 rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xs">
                 <DeterministicQrMatrixSvg
                   value={url}
                   size={150}

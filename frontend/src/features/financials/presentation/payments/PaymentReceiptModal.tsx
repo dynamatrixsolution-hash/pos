@@ -29,8 +29,8 @@ export const PaymentReceiptModal: React.FC = () => {
   const party = isReceived ? p.customer : p.supplier;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+      <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-3 border-b border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

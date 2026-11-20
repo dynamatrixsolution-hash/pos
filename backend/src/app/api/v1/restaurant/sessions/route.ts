@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   openTableSession,
   getActiveTableSessions,
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch table sessions" },
+      { error: safeErrorMessage(error, "Failed to fetch table sessions") },
       { status: 500 }
     );
   }
@@ -47,6 +47,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = openSessionSchema.parse(body);
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to open table session" },
+      { error: safeErrorMessage(error, "Failed to open table session") },
       { status: 500 }
     );
   }

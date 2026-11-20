@@ -26,17 +26,6 @@ type InventoryItem = {
   stocks: { branchId: string; branchName: string; quantity: number }[];
 };
 
-const INVENTORY_SECTIONS = [
-  { id: "overview", label: "Overview", icon: "📊" },
-  { id: "current-stock", label: "Current Stock", icon: "📦" },
-  { id: "stock-movements", label: "Stock In/Out", icon: "↔️" },
-  { id: "stock-adjustments", label: "Adjustments", icon: "⚙️" },
-  { id: "batch-stock", label: "Batch Stock", icon: "🏷️" },
-  { id: "damage-expiry", label: "Damage & Expiry", icon: "⚠️" },
-  { id: "stock-value", label: "Stock Value", icon: "💰" },
-  { id: "movement-history", label: "History", icon: "📜" },
-];
-
 const num = (v: any) => {
   const n = Number(v);
   return isNaN(n) ? 0 : n;
@@ -239,7 +228,7 @@ export default function InventoryClient() {
 
       {/* Adjust Modal */}
       {isModalOpen && selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-card rounded-lg w-full max-w-md p-6 shadow-sm border border-border">
             <h3 className="text-xl font-bold mb-1">Adjust Inventory</h3>
             <p className="text-xs text-muted-foreground mb-4">

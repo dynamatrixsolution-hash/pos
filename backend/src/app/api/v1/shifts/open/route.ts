@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { validateAndCalculateDenominations } from "@/lib/denomination";
 import {
   ensureBusinessDenominations,
@@ -12,6 +12,8 @@ import {
 export async function POST(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
+  const denied = requireRoles(context, ROLE_GROUPS.SHIFT_OPERATORS);
+  if (denied) return denied;
 
   try {
     const body = await request.json();

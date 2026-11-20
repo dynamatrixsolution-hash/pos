@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   createReservation,
   getReservations,
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to fetch reservations" },
+      { error: safeErrorMessage(error, "Failed to fetch reservations") },
       { status: 500 }
     );
   }
@@ -78,6 +78,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_FRONT_DESK);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createReservationSchema.parse(body);
@@ -134,7 +136,7 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to create reservation" },
+      { error: safeErrorMessage(error, "Failed to create reservation") },
       { status: 500 }
     );
   }

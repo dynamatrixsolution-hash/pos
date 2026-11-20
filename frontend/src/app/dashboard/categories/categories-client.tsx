@@ -338,7 +338,7 @@ export default function CategoriesClient() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 animate-in fade-in duration-200">
           <div className="glass-card rounded-lg w-full max-w-md p-6 shadow-sm border border-border/50 animate-in zoom-in-95 duration-200">
             <h3 className="text-xl font-bold mb-4">
               {editingId ? "Edit" : "Add"} {getTabLabel()}
@@ -394,7 +394,7 @@ export default function CategoriesClient() {
 
       {/* Custom Alert/Confirm Popup Modal */}
       {alertModal.open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-sm flex flex-col gap-4 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center gap-3">
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${

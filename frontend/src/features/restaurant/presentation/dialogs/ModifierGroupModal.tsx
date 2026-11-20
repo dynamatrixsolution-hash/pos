@@ -91,8 +91,8 @@ export const ModifierGroupModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+      <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="p-4 border-b border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">

@@ -26,7 +26,7 @@ export async function GET(
 
     const business = await db.business.findUnique({
       where: { id: context.businessId },
-      select: { name: true, address: true, phone: true, panNumber: true },
+      select: { name: true, address: true, phone: true, settings: true },
     });
 
     const openingDenominations = (shift.shiftDenominations || []).filter(
@@ -36,9 +36,18 @@ export async function GET(
       (d: any) => d.stage === "CLOSING"
     );
 
+    const bizSettings = (business?.settings as any) || {};
+
     return NextResponse.json({
       report: {
-        business,
+        business: business
+          ? {
+              name: business.name,
+              address: business.address,
+              phone: business.phone,
+              panNumber: bizSettings.panNumber || bizSettings.taxNumber || null,
+            }
+          : null,
         branch: shift.branch,
         register: shift.register,
         shiftNumber: shift.shiftNumber,

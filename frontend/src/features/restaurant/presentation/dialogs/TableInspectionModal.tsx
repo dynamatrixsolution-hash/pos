@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   X,
   UtensilsCrossed,
   CreditCard,
   Trash2,
-  AlertTriangle,
   Receipt,
   ShoppingBag,
 } from "lucide-react";
@@ -27,15 +26,10 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
   const isInspectingLoading = usePosTicketsStore((s) => s.isInspectingLoading);
   const closeTableInspection = usePosTicketsStore((s) => s.closeTableInspection);
   const selectOccupiedSpace = usePosTicketsStore((s) => s.selectOccupiedSpace);
-  const cancellingTable = usePosTicketsStore((s) => s.cancellingTable);
   const setCancellingTable = usePosTicketsStore((s) => s.setCancellingTable);
-  const isCancellingTable = usePosTicketsStore((s) => s.isCancellingTable);
-  const submitCancelTable = usePosTicketsStore((s) => s.submitCancelTable);
   const setAdjustingLine = usePosTicketsStore((s) => s.setAdjustingLine);
 
   const setShowSettlementModal = usePosUiStore((s) => s.setShowSettlementModal);
-
-  const [cancelReason, setCancelReason] = useState("Customer requested cancellation");
 
   if (!inspectingTable) return null;
 
@@ -70,10 +64,8 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
   };
 
   return (
-    <>
-      {/* 1. Main Table Inspection Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-        <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+        <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3 shrink-0">
             <div className="flex items-center gap-2.5">
@@ -252,80 +244,6 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
           </div>
         </div>
       </div>
-
-      {/* 2. Cancel Table Confirmation Modal */}
-      {cancellingTable && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/60 p-4 backdrop-blur-xs select-none">
-          <div className="w-full max-w-md rounded-xl border border-red-200 bg-[#FFFCF7] p-5 space-y-4 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-red-100 text-[#DC2626] shrink-0">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-sm font-black text-[#292320]">
-                  Cancel Table {cancellingTable.tableNumber}?
-                </h4>
-                <p className="text-xs text-[#DC2626] font-bold mt-1">
-                  Notice: All orders will be cancelled!
-                </p>
-                <p className="text-[11px] text-[#71675E] mt-1 leading-relaxed">
-                  Cancelling this table will void all kitchen tickets, cancel all order items, close the active guest session, and reset Table {cancellingTable.tableNumber} back to Available.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-1 text-xs">
-              <div className="flex justify-between text-[#71675E]">
-                <span>Total Items:</span>
-                <span className="font-bold text-[#292320]">{cancellingTable.itemCount}</span>
-              </div>
-              <div className="flex justify-between text-[#71675E]">
-                <span>Outstanding Balance:</span>
-                <span className="font-mono font-bold text-[#6B2837]">{formatNPR(cancellingTable.totalAmount)}</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-[#292320]">Cancellation Reason</label>
-              <input
-                type="text"
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g. Guest left, duplicated order, etc."
-                className="w-full text-xs px-2.5 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
-              />
-            </div>
-
-            <div className="pt-2 border-t border-[#D8CEC1] flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCancellingTable(null)}
-                disabled={isCancellingTable}
-                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] cursor-pointer"
-              >
-                No, Keep Table
-              </button>
-
-              <button
-                type="button"
-                onClick={() => submitCancelTable(cancelReason)}
-                disabled={isCancellingTable}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] disabled:opacity-50 text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                {isCancellingTable ? (
-                  <span>Cancelling...</span>
-                ) : (
-                  <>
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Yes, Cancel Table &amp; All Orders</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   );
 });
 

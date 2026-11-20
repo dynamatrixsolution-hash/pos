@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Search, UtensilsCrossed, Plus, Sparkles } from "lucide-react";
+import { Search, UtensilsCrossed, Plus } from "lucide-react";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
 import { usePosCartStore } from "../../state/pos-cart.store";
 import { usePosUiStore } from "../../state/pos-ui.store";

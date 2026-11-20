@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   createRecipeVersion,
   getActiveRecipe,
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const recipe = await getActiveRecipe(session.businessId, menuItemId);
     return NextResponse.json({ recipe });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch recipe" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to fetch recipe") }, { status: 500 });
   }
 }
 
@@ -60,6 +60,8 @@ export async function POST(req: Request) {
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const body = await req.json();
     const parsed = createRecipeSchema.parse(body);
@@ -127,7 +129,7 @@ export async function POST(req: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to create recipe" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed to create recipe") }, { status: 500 });
   }
 }
 

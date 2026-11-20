@@ -1,7 +1,7 @@
 import { resolveBranch, commerceTransaction } from "@/lib/commerce-transaction";
 import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { CbmsService } from "@/lib/cbms-service";
 import { z } from "zod";
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         include: { saleItems: true },
       });
 
-      if (!sale) throw new Error("Sale invoice not found");
+      if (!sale) throw new CommerceError("Sale invoice not found", 404);
       if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
       await resolveBranch(tx, context, sale.branchId);
       if (!sale.isActive) throw new CommerceError("Invoice is inactive");
@@ -79,17 +79,17 @@ export async function POST(request: Request) {
         // Verify item was in the original sale
         const originalItem = sale.saleItems.find((si) => si.productId === item.productId);
         if (!originalItem) {
-          throw new Error(`Product ${item.productId} was not part of the original sale.`);
+          throw new CommerceError(`Product ${item.productId} was not part of the original sale.`, 400);
         }
         const returned = await tx.creditNoteItem.aggregate({ where: { creditNote: { saleId }, productId: item.productId }, _sum: { quantity: true } });
         if (item.quantity + (returned._sum.quantity || 0) > originalItem.quantity) {
-          throw new Error(`Credit quantity exceeds original sold quantity for product ${item.productId}.`);
+          throw new CommerceError(`Credit quantity exceeds original sold quantity for product ${item.productId}.`, 400);
         }
 
         const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId, deletedAt: null },
         });
-        if (!product) throw new Error("Product not found");
+        if (!product) throw new CommerceError("Product not found", 404);
 
         const lineTotal = item.quantity * item.price;
         subtotal += lineTotal;
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
               source: "STAFF_RECORDED",
               type: "SENT",
               reference: noteNumber,
-              notes: `Cash refund for Credit Note ${noteNumber}: ${reason}`,
+              remarks: `Cash refund for Credit Note ${noteNumber}: ${reason}`,
               shiftId: activeShift.id,
             },
           });
@@ -245,6 +245,9 @@ export async function POST(request: Request) {
     return NextResponse.json(creditNoteResult, { status: 201 });
   } catch (error: any) {
     console.error("POST credit-note error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to create Credit Note" }, { status: error instanceof CommerceError ? error.status : 400 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to create Credit Note") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

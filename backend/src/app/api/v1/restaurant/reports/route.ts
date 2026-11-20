@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 
 export async function GET(req: Request) {
@@ -88,7 +88,7 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("GET /restaurant/reports error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to generate restaurant report" },
+      { error: safeErrorMessage(error, "Failed to generate restaurant report") },
       { status: 500 }
     );
   }

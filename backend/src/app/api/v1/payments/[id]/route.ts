@@ -2,7 +2,7 @@ import { checkBranch, serializable } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 
 const paymentUpdateSchema = z.object({
@@ -378,6 +378,9 @@ export async function DELETE(
     return NextResponse.json(reversalResult);
   } catch (error: any) {
     console.error("DELETE payment error:", error);
-    return NextResponse.json({ error: error.message || "Failed to reverse payment" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to reverse payment") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

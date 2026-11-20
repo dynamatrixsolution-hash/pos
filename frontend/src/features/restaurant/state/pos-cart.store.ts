@@ -14,6 +14,10 @@ import { restaurantPosRepository } from "../repositories/restaurant-pos.reposito
 import { usePosUiStore } from "./pos-ui.store";
 import { usePosTicketsStore } from "./pos-tickets.store";
 import { usePosCatalogStore } from "./pos-catalog.store";
+import { toast } from "@/components/toast";
+import { createIdempotencyKey } from "@/core/api/api-client";
+
+const draftSubmissionKeys = new Map<string, string>();
 
 interface PosCartState {
   draftLines: DraftLine[];
@@ -39,6 +43,12 @@ interface PosCartState {
   ) => void;
   updateDraftQty: (index: number, delta: number) => void;
   removeDraftLine: (index: number) => void;
+  toggleDraftServingType: (index: number) => void;
+  migrateDraftToTarget: (
+    fromKey: string,
+    toKey: string,
+    forceServingType?: "DINE_IN_PLATE" | "TAKEAWAY_PARCEL"
+  ) => void;
   clearDraft: () => void;
   setOrderNotes: (notes: string) => void;
   setPackagingCharge: (fee: number) => void;
@@ -88,6 +98,7 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
     const unitPrice = base + modTotal;
     const totalPrice = unitPrice * quantity;
     const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
 
     set((state) => {
       const modKey = (mods: SelectedModifier[]) =>
@@ -146,6 +157,7 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
 
   updateDraftQty: (index, delta) => {
     const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
     set((state) => {
       const lines = [...state.draftLines];
       const target = lines[index];
@@ -180,6 +192,7 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
 
   removeDraftLine: (index) => {
     const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
     set((state) => {
       const updatedLines = state.draftLines.filter((_, i) => i !== index);
       return {
@@ -195,8 +208,66 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
     });
   },
 
+  toggleDraftServingType: (index) => {
+    const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
+    set((state) => {
+      const lines = [...state.draftLines];
+      const target = lines[index];
+      if (!target) return state;
+
+      const newServing =
+        target.servingType === "TAKEAWAY_PARCEL" ? "DINE_IN_PLATE" : "TAKEAWAY_PARCEL";
+      lines[index] = {
+        ...target,
+        servingType: newServing,
+      };
+
+      return {
+        draftLines: lines,
+        draftsByTarget: {
+          ...state.draftsByTarget,
+          [targetKey]: {
+            lines,
+            notes: state.orderNotes,
+          },
+        },
+      };
+    });
+  },
+
+  migrateDraftToTarget: (fromKey, toKey, forceServingType) => {
+    draftSubmissionKeys.delete(fromKey);
+    draftSubmissionKeys.delete(toKey);
+    set((state) => {
+      const source = state.draftsByTarget[fromKey] || {
+        lines: state.draftLines,
+        notes: state.orderNotes,
+      };
+      const migratedLines = forceServingType
+        ? source.lines.map((l) => ({ ...l, servingType: forceServingType }))
+        : [...source.lines];
+      const nextDrafts = { ...state.draftsByTarget };
+      if (fromKey !== toKey) {
+        delete nextDrafts[fromKey];
+      }
+      if (migratedLines.length > 0 || source.notes) {
+        nextDrafts[toKey] = {
+          lines: migratedLines,
+          notes: source.notes,
+        };
+      }
+      return {
+        draftLines: migratedLines,
+        orderNotes: source.notes,
+        draftsByTarget: nextDrafts,
+      };
+    });
+  },
+
   clearDraft: () => {
     const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
     set((state) => {
       const updatedDrafts = { ...state.draftsByTarget };
       delete updatedDrafts[targetKey];
@@ -210,6 +281,7 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
 
   setOrderNotes: (orderNotes) => {
     const targetKey = resolveTargetKey();
+    draftSubmissionKeys.delete(targetKey);
     set((state) => ({
       orderNotes,
       draftsByTarget: {
@@ -232,15 +304,24 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
 
     const ui = usePosUiStore.getState();
     const tickets = usePosTicketsStore.getState();
+    const targetKey = resolveTargetKey();
+    const idempotencyKey =
+      draftSubmissionKeys.get(targetKey) || createIdempotencyKey("pos_ord");
+    draftSubmissionKeys.set(targetKey, idempotencyKey);
 
     set({ isSubmitting: true });
     try {
       // 1. Format item lines
       const itemsPayload = draftLines.map((line) => {
         let lineNotes = line.notes || "";
-        if (line.servingType === "TAKEAWAY_PARCEL") {
-          if (!lineNotes.toUpperCase().includes("PARCEL") && !lineNotes.toUpperCase().includes("TAKEAWAY")) {
-            lineNotes = `[TAKEAWAY] ${lineNotes}`.trim();
+        if (line.servingType === "TAKEAWAY_PARCEL" || ui.orderType === "TAKEAWAY" || ui.orderType === "DELIVERY") {
+          const tag = ui.orderType === "DELIVERY" ? "[DELIVERY]" : "[TAKEAWAY]";
+          if (
+            !lineNotes.toUpperCase().includes("PARCEL") &&
+            !lineNotes.toUpperCase().includes("TAKEAWAY") &&
+            !lineNotes.toUpperCase().includes("DELIVERY")
+          ) {
+            lineNotes = `${tag} ${lineNotes}`.trim();
           }
         } else {
           if (!lineNotes.toUpperCase().includes("DINE-IN") && !lineNotes.toUpperCase().includes("PLATE")) {
@@ -265,23 +346,37 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
       });
 
       // 2. Either append round to existing order, or create new order
+      let createdOrder: any = null;
       if (tickets.activeOrderId) {
-        await restaurantPosRepository.submitAdditionalRound(tickets.activeOrderId, {
-          items: itemsPayload,
-          notes: orderNotes,
-        });
+        const res = await restaurantPosRepository.submitAdditionalRound(
+          tickets.activeOrderId,
+          {
+            items: itemsPayload,
+            notes: orderNotes,
+          },
+          idempotencyKey
+        );
+        if (res?.order) {
+          createdOrder = res.order;
+        }
       } else {
-        await restaurantPosRepository.submitNewOrder({
-          orderType: ui.orderType,
-          tableId: ui.orderType === "DINE_IN" ? ui.selectedTableId || undefined : undefined,
-          tableSessionId: ui.orderType === "DINE_IN" ? ui.selectedSessionId || undefined : undefined,
-          items: itemsPayload,
-          notes: orderNotes,
-        });
+        const res = await restaurantPosRepository.submitNewOrder(
+          {
+            orderType: ui.orderType,
+            tableId: ui.orderType === "DINE_IN" ? ui.selectedTableId || undefined : undefined,
+            tableSessionId: ui.orderType === "DINE_IN" ? ui.selectedSessionId || undefined : undefined,
+            items: itemsPayload,
+            notes: orderNotes,
+          },
+          idempotencyKey
+        );
+        if (res?.order) {
+          createdOrder = res.order;
+        }
       }
 
       // 3. Clear draft and reload fresh orders
-      const targetKey = resolveTargetKey();
+      draftSubmissionKeys.delete(targetKey);
       set((state) => {
         const updatedDrafts = { ...state.draftsByTarget };
         delete updatedDrafts[targetKey];
@@ -289,12 +384,19 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
       });
       if (ui.selectedTableId) {
         await tickets.fetchTableOrders(ui.selectedTableId);
+      } else if (createdOrder) {
+        tickets.setActiveOrder(createdOrder);
       }
       tickets.fetchActiveOrders();
       usePosCatalogStore.getState().loadInitialCatalog();
+      toast.success("Order sent to kitchen");
       return true;
-    } catch {
+    } catch (err: any) {
+      if (err?.statusCode >= 400 && err?.statusCode < 500) {
+        draftSubmissionKeys.delete(targetKey);
+      }
       set({ isSubmitting: false });
+      toast.error(err?.message || "Failed to send order to kitchen");
       return false;
     }
   },

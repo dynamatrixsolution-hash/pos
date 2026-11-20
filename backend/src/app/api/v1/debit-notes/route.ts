@@ -1,7 +1,7 @@
 import { commerceTransaction, resolveBranch } from "@/lib/commerce-transaction";
 import { CommerceError } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { z } from "zod";
 
 const noteItemSchema = z.object({
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         include: { saleItems: true },
       });
 
-      if (!sale) throw new Error("Sale invoice not found");
+      if (!sale) throw new CommerceError("Sale invoice not found", 404);
       if (sale.businessId !== context.businessId) throw new CommerceError("Unauthorized tenant access", 403);
       await resolveBranch(tx, context, sale.branchId);
       if (!sale.isActive) throw new CommerceError("Invoice is inactive");
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId, deletedAt: null },
         });
-        if (!product) throw new Error("Product not found");
+        if (!product) throw new CommerceError("Product not found", 404);
 
         const lineTotal = item.quantity * item.price;
         subtotal += lineTotal;
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
           where: { productId_branchId: { productId: item.productId, branchId: sale.branchId } },
         });
         if (!stock || stock.quantity < item.quantity) {
-          throw new Error(`Insufficient stock for product "${product.name}". Available: ${stock?.quantity || 0}, Requested: ${item.quantity}`);
+          throw new CommerceError(`Insufficient stock for product "${product.name}". Available: ${stock?.quantity || 0}, Requested: ${item.quantity}`, 400);
         }
 
         await tx.productStock.update({
@@ -179,6 +179,9 @@ export async function POST(request: Request) {
     return NextResponse.json(debitNoteResult, { status: 201 });
   } catch (error: any) {
     console.error("POST debit-note error:", error.message || error);
-    return NextResponse.json({ error: error.message || "Failed to create Debit Note" }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to create Debit Note") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

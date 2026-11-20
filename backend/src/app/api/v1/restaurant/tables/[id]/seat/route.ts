@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { openTableSession, TableSessionError } from "@/lib/services/table-session-service";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -17,6 +17,8 @@ export async function POST(
   try {
     const sessionContext = await getSessionContext();
     if (!sessionContext) return authErrorResponse();
+    const denied = requireRoles(sessionContext, ROLE_GROUPS.RESTAURANT_SERVICE);
+    if (denied) return denied;
 
     const { id: tableId } = await params;
     const body = await req.json().catch(() => ({}));
@@ -90,7 +92,7 @@ export async function POST(
     }
     console.error("POST /restaurant/tables/[id]/seat error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to seat table" },
+      { error: safeErrorMessage(error, "Failed to seat table") },
       { status: 500 }
     );
   }

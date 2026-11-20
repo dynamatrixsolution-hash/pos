@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { updateHousekeepingTaskStatus } from "@/lib/services/hotel-housekeeping-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
@@ -17,6 +17,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.HOTEL_HOUSEKEEPING);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -47,7 +49,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update housekeeping task" },
+      { error: safeErrorMessage(error, "Failed to update housekeeping task") },
       { status: 500 }
     );
   }

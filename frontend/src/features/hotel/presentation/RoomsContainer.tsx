@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { useHotelUiStore } from "../state/hotel-ui.store";
 import { useHotelRoomsStore } from "../state/hotel-rooms.store";
 
@@ -27,14 +28,10 @@ export const RoomsContainer: React.FC = () => {
 
   useEffect(() => {
     loadInitialData();
+  }, [loadInitialData]);
 
-    // 10-second silent background poll for room status updates
-    const interval = setInterval(() => {
-      refreshRooms();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [loadInitialData, refreshRooms]);
+  // 10-second visibility-aware poll for room status updates
+  useVisibilityPolling(refreshRooms, 10000);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F7F3EC] text-[#292320]">

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { restaurantPosRepository } from "../repositories/restaurant-pos.repository";
+import { toast } from "@/components/toast";
 
 export interface TicketLineItem {
   id: string;
@@ -67,7 +68,7 @@ interface RestaurantKdsState {
   setCancellingOrder: (target: { ticketId: string; orderId: string; tableNumber: string } | null) => void;
 
   // Actions
-  loadKitchenData: () => Promise<void>;
+  loadKitchenData: (includeMeta?: boolean) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "PREPARING" | "READY" | "SERVED") => Promise<boolean>;
   updateLineStatus: (ticketId: string, lineId: string, status: "PREPARING" | "READY" | "CANCELLED", reason?: string) => Promise<boolean>;
   submitCancelOrder: (reason: string) => Promise<boolean>;
@@ -96,17 +97,26 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
   setCancellingOrder: (cancellingOrder) => set({ cancellingOrder }),
 
-  loadKitchenData: async () => {
+  loadKitchenData: async (includeMeta = false) => {
     try {
-      const data = await restaurantPosRepository.fetchKitchenData(
-        get().selectedStationId !== "ALL" ? get().selectedStationId : undefined
-      );
-      set({
-        tickets: data.tickets || [],
-        servedTickets: data.served || [],
-        stations: data.stations || [],
-        floors: data.floors || [],
-      });
+      const stationId = get().selectedStationId !== "ALL" ? get().selectedStationId : undefined;
+      if (includeMeta || get().stations.length === 0) {
+        const data = await restaurantPosRepository.fetchKitchenData(stationId);
+        set({
+          tickets: data.tickets || [],
+          servedTickets: data.served || [],
+          stations: data.stations || [],
+          floors: data.floors || [],
+          error: null,
+        });
+      } else {
+        const data = await restaurantPosRepository.fetchKitchenTickets(stationId);
+        set({
+          tickets: data.tickets || [],
+          servedTickets: data.served || [],
+          error: null,
+        });
+      }
     } catch (err: any) {
       set({ error: err.message || "Failed to poll kitchen tickets" });
     }
@@ -115,9 +125,10 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   updateTicketStatus: async (ticketId, status) => {
     try {
       await restaurantPosRepository.updateKitchenTicketStatus(ticketId, status);
-      await get().loadKitchenData();
+      await get().loadKitchenData(false);
       return true;
-    } catch {
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update ticket status");
       return false;
     }
   },
@@ -125,9 +136,10 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   updateLineStatus: async (ticketId, lineId, status, reason) => {
     try {
       await restaurantPosRepository.updateKitchenTicketLineStatus(ticketId, lineId, status, reason);
-      await get().loadKitchenData();
+      await get().loadKitchenData(false);
       return true;
-    } catch {
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update dish status");
       return false;
     }
   },
@@ -137,10 +149,12 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
     if (!target) return false;
     try {
       await restaurantPosRepository.cancelOrder(target.orderId, reason);
-      await get().loadKitchenData();
+      await get().loadKitchenData(false);
       set({ cancellingOrder: null });
+      toast.success("Kitchen order cancelled");
       return true;
-    } catch {
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to cancel kitchen order");
       return false;
     }
   },

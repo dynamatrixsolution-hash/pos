@@ -2,7 +2,7 @@ import { checkBranch } from "@/lib/commerce-transaction";
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logActivity } from "@/lib/activity-logger";
 import { z } from "zod";
 
@@ -146,6 +146,9 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (error: any) {
     console.error("POST stock transfer error:", error.message);
-    return NextResponse.json({ error: error.message || "Failed to transfer stock" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to transfer stock") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }

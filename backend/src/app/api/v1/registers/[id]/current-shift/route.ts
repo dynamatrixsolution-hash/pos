@@ -16,7 +16,7 @@ export async function GET(
     const register = await db.cashRegister.findFirst({
       where: { id, businessId: context.businessId, deletedAt: null },
       include: {
-        branch: { select: { id: true, name: true, code: true } },
+        branch: { select: { id: true, name: true } },
       },
     });
 

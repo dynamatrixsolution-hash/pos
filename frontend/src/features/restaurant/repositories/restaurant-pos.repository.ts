@@ -139,7 +139,7 @@ export class RestaurantPosRepository {
   }
 
   async fetchActiveOrders(): Promise<any[]> {
-    const res = await apiClient.restaurant.getOrders();
+    const res = await apiClient.restaurant.getOrders({ status: "ACTIVE" });
     return Array.isArray(res.orders) ? res.orders : [];
   }
 
@@ -159,42 +159,82 @@ export class RestaurantPosRepository {
     return apiClient.restaurant.mergeTables({ sourceTableIds, targetTableId, reason });
   }
 
-  async submitNewOrder(payload: {
-    orderType: OrderType;
-    tableId?: string;
-    tableSessionId?: string;
-    roomServiceInfo?: any;
-    deliveryInfo?: any;
-    items: any[];
-    notes?: string;
-  }): Promise<any> {
-    return apiClient.restaurant.createOrder(payload);
+  async submitNewOrder(
+    payload: {
+      orderType: OrderType;
+      tableId?: string;
+      tableSessionId?: string;
+      roomServiceInfo?: any;
+      deliveryInfo?: any;
+      items: any[];
+      notes?: string;
+    },
+    idempotencyKey?: string
+  ): Promise<any> {
+    return apiClient.restaurant.createOrder(payload, idempotencyKey);
   }
 
-  async submitAdditionalRound(orderId: string, payload: { items: any[]; notes?: string }): Promise<any> {
-    return apiClient.restaurant.addOrderRound(orderId, payload);
+  async submitAdditionalRound(
+    orderId: string,
+    payload: { items: any[]; notes?: string },
+    idempotencyKey?: string
+  ): Promise<any> {
+    return apiClient.restaurant.addOrderRound(orderId, payload, idempotencyKey);
   }
 
   async cancelOrder(orderId: string, reason?: string): Promise<any> {
     return apiClient.restaurant.cancelOrder(orderId, reason || "Order cancelled");
   }
 
-  async closeTableSession(sessionId: string): Promise<any> {
-    return apiClient.restaurant.closeSession(sessionId);
+  async closeTableSession(sessionId: string, notes?: string): Promise<any> {
+    return apiClient.restaurant.closeSession(sessionId, notes);
   }
 
   async updateOrderLine(
     orderId: string,
     lineId: string,
-    action: "CANCEL" | "ADJUST_QTY",
+    action: "CANCEL" | "ADJUST_QTY" | "UPDATE_NOTES",
     reason?: string,
-    quantity?: number
+    quantity?: number,
+    notes?: string
   ): Promise<any> {
-    return apiClient.restaurant.updateOrderLineStatus(orderId, lineId, { action, reason, quantity });
+    if (action === "CANCEL") {
+      const cancelReason = reason?.trim() || "Cancelled by staff";
+      return apiClient.restaurant.updateOrderLineStatus(orderId, lineId, {
+        acceptanceStatus: "REJECTED",
+        fulfillmentStatus: "CANCELLED",
+        rejectionReason: cancelReason,
+        voidReason: cancelReason,
+      });
+    }
+    if (action === "ADJUST_QTY") {
+      return apiClient.restaurant.updateOrderLineStatus(orderId, lineId, {
+        quantity,
+        voidReason: reason?.trim() || undefined,
+      });
+    }
+    return apiClient.restaurant.updateOrderLineStatus(orderId, lineId, {
+      notes,
+    });
   }
 
-  async settleOrder(orderId: string, payload: any): Promise<any> {
-    return apiClient.restaurant.settleOrder(orderId, payload);
+  async convertOrderType(
+    orderId: string,
+    payload: {
+      orderType: "TAKEAWAY" | "DELIVERY";
+      deliveryInfo?: any;
+      notes?: string;
+    }
+  ): Promise<{ success: boolean; order: any }> {
+    return apiClient.restaurant.convertOrderType(orderId, payload);
+  }
+
+  async settleOrder(
+    orderId: string,
+    payload: Parameters<typeof apiClient.restaurant.settleOrder>[1],
+    idempotencyKey?: string
+  ) {
+    return apiClient.restaurant.settleOrder(orderId, payload, idempotencyKey);
   }
 
   async fetchHotelStays(): Promise<any[]> {
@@ -290,6 +330,14 @@ export class RestaurantPosRepository {
   }
 
   // Kitchen Display & Tickets
+  async fetchKitchenTickets(stationId?: string): Promise<{ tickets: any[]; served: any[] }> {
+    const tktRes = await apiClient.restaurant.getKitchenTickets(stationId);
+    return {
+      tickets: tktRes.tickets || [],
+      served: tktRes.served || [],
+    };
+  }
+
   async fetchKitchenData(stationId?: string): Promise<{ tickets: any[]; served: any[]; stations: any[]; floors: any[] }> {
     const [tktRes, stnRes, flrRes] = await Promise.all([
       apiClient.restaurant.getKitchenTickets(stationId),

@@ -21,6 +21,7 @@ interface PosUiState {
   showTransferModal: boolean;
   showMergeModal: boolean;
   showDeliveryModal: boolean;
+  deliveryModalMode: "NEW" | "CONVERT_ACTIVE";
   showModifierModal: boolean;
   showSettlementModal: boolean;
 
@@ -37,6 +38,7 @@ interface PosUiState {
   setShowTransferModal: (open: boolean) => void;
   setShowMergeModal: (open: boolean) => void;
   setShowDeliveryModal: (open: boolean) => void;
+  setDeliveryModalMode: (mode: "NEW" | "CONVERT_ACTIVE") => void;
   setShowModifierModal: (open: boolean) => void;
   setShowSettlementModal: (open: boolean) => void;
 
@@ -56,6 +58,7 @@ export const usePosUiStore = create<PosUiState>((set, get) => ({
   showTransferModal: false,
   showMergeModal: false,
   showDeliveryModal: false,
+  deliveryModalMode: "NEW",
   showModifierModal: false,
   showSettlementModal: false,
 
@@ -72,6 +75,7 @@ export const usePosUiStore = create<PosUiState>((set, get) => ({
   setShowTransferModal: (showTransferModal) => set({ showTransferModal }),
   setShowMergeModal: (showMergeModal) => set({ showMergeModal }),
   setShowDeliveryModal: (showDeliveryModal) => set({ showDeliveryModal }),
+  setDeliveryModalMode: (deliveryModalMode) => set({ deliveryModalMode }),
   setShowModifierModal: (showModifierModal) => set({ showModifierModal }),
   setShowSettlementModal: (showSettlementModal) => set({ showSettlementModal }),
 
@@ -87,7 +91,7 @@ export const usePosUiStore = create<PosUiState>((set, get) => ({
       url.searchParams.set("view", view === "MENU_POS" ? "menu" : "tables");
       if (tableId) {
         url.searchParams.set("tableId", tableId);
-      } else if (view === "SELECT_SPACE") {
+      } else {
         url.searchParams.delete("tableId");
       }
       window.history.pushState(null, "", url.toString());

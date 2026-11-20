@@ -8,7 +8,6 @@ import {
   Edit3,
   Wrench,
   Trash2,
-  Sparkles,
   Info,
   Layers,
 } from "lucide-react";

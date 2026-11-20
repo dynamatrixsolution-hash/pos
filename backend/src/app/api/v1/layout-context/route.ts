@@ -11,7 +11,6 @@ export async function GET() {
   const isOwner = OWNER_ROLES.includes(userRole);
 
   try {
-    // 1. Fetch branches
     const branchWhere: any = {
       businessId,
       deletedAt: null,
@@ -19,34 +18,66 @@ export async function GET() {
     if (!isOwner && userBranchId) {
       branchWhere.id = userBranchId;
     }
-    const branches = await db.branch.findMany({
-      where: branchWhere,
-      select: {
-        id: true,
-        name: true,
-        isMain: true,
-      },
-      orderBy: { name: "asc" },
-    });
+
+    // 1. Parallelize independent layout context queries
+    const [branches, dbNotifications, subscription, business, platform] = await Promise.all([
+      db.branch.findMany({
+        where: branchWhere,
+        select: {
+          id: true,
+          name: true,
+          isMain: true,
+        },
+        orderBy: { name: "asc" },
+      }),
+      db.notification.findMany({
+        where: {
+          businessId,
+          isRead: false,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      db.subscription.findUnique({
+        where: { businessId },
+        select: {
+          plan: true,
+          endDate: true,
+          status: true,
+        },
+      }),
+      db.business.findUnique({
+        where: { id: businessId },
+        select: { settings: true },
+      }),
+      db.business.findUnique({
+        where: { slug: "platform-admin" },
+        select: { settings: true },
+      }),
+    ]);
 
     // Calculate active branch ID for low stock lookup
     const activeBranchId = userBranchId || branches.find((b) => b.isMain)?.id || branches[0]?.id || null;
 
-    // 2. Retrieve products and filter by low stock threshold for active branch
+    // 2. Retrieve bounded product projection for low-stock alerts
     const products = await db.product.findMany({
       where: {
         businessId,
         deletedAt: null,
       },
-      include: {
-        productStocks: activeBranchId ? {
-          where: { branchId: activeBranchId },
-        } : undefined,
+      select: {
+        id: true,
+        name: true,
+        alertQuantity: true,
         unit: { select: { name: true } },
+        productStocks: activeBranchId
+          ? { where: { branchId: activeBranchId }, select: { quantity: true } }
+          : { select: { quantity: true } },
       },
+      take: 500,
     });
 
-    const lowStockAlerts = products
+    const lowStockNotifications = products
       .map((prod) => {
         const currentStock = prod.productStocks.reduce((sum, s) => sum + s.quantity, 0);
         return {
@@ -57,50 +88,18 @@ export async function GET() {
           unit: prod.unit?.name || "Pcs",
         };
       })
-      .filter((prod) => prod.currentStock <= prod.alertQuantity);
-
-    const lowStockNotifications = lowStockAlerts.map((alert) => ({
-      id: `low-stock-${alert.id}`,
-      title: "Low Stock Alert",
-      message: `${alert.name} is down to ${alert.currentStock} ${alert.unit} (Min: ${alert.alertQuantity})`,
-      type: "STOCK",
-      isRead: false,
-      createdAt: new Date(),
-    }));
-
-    // 3. Fetch database unread notifications
-    const dbNotifications = await db.notification.findMany({
-      where: {
-        businessId,
+      .filter((prod) => prod.currentStock <= prod.alertQuantity)
+      .slice(0, 20)
+      .map((alert) => ({
+        id: `low-stock-${alert.id}`,
+        title: "Low Stock Alert",
+        message: `${alert.name} is down to ${alert.currentStock} ${alert.unit} (Min: ${alert.alertQuantity})`,
+        type: "STOCK",
         isRead: false,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
+        createdAt: new Date(),
+      }));
 
     const initialNotifications = [...lowStockNotifications, ...dbNotifications];
-
-    // 4. Fetch subscription details
-    const subscription = await db.subscription.findUnique({
-      where: { businessId },
-      select: {
-        plan: true,
-        endDate: true,
-        status: true,
-      },
-    });
-
-    // 5. Fetch current business settings
-    const business = await db.business.findUnique({
-      where: { id: businessId },
-      select: { settings: true },
-    });
-
-    // 6. Fetch platform settings
-    const platform = await db.business.findUnique({
-      where: { slug: "platform-admin" },
-      select: { settings: true },
-    });
 
     const settings = (business?.settings as any) || {};
     const platformSettings = (platform?.settings as any) || {};

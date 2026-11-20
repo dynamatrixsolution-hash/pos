@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { db } from "@/lib/db";
 import { getPilotOperationalHealth } from "@/lib/services/pilot-rollout-service";
 import { HotelError } from "@/lib/services/room-availability-service";
@@ -32,7 +32,7 @@ function handleRouteError(error: any, fallbackMessage: string) {
     );
   }
   return NextResponse.json(
-    { error: error?.message || fallbackMessage },
+    { error: safeErrorMessage(error, fallbackMessage) },
     { status: 500 }
   );
 }

@@ -291,7 +291,7 @@ export default function UsersClient() {
 
       {/* Invite Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-card rounded-lg w-full max-w-lg p-6 shadow-sm border border-border my-8">
             <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary"/> 

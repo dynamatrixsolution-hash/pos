@@ -6,12 +6,16 @@ import {
   Search,
   Store,
   UtensilsCrossed,
+  ShoppingBag,
+  Truck,
+  Plus,
   CreditCard,
   X,
 } from "lucide-react";
 import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
 import { usePosTicketsStore, selectAllActiveTickets } from "../../state/pos-tickets.store";
+import { usePosCartStore } from "../../state/pos-cart.store";
 import { ActiveTicket } from "../../models/pos.types";
 
 function formatNPR(amount: number | string | undefined): string {
@@ -37,22 +41,37 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
   const selectTakeawayOrDelivery = usePosTicketsStore((s) => s.selectTakeawayOrDelivery);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"ALL" | "DINE_IN" | "TAKEAWAY" | "DELIVERY">("ALL");
 
   const allActiveTickets = useMemo(
     () => selectAllActiveTickets(tables, activeAllOrders, selectedTableId, activeOrderId, dineInView),
     [tables, activeAllOrders, selectedTableId, activeOrderId, dineInView]
   );
 
+  const counts = useMemo(
+    () => ({
+      all: allActiveTickets.length,
+      dineIn: allActiveTickets.filter((t) => t.ticketType === "DINE_IN").length,
+      takeaway: allActiveTickets.filter((t) => t.ticketType === "TAKEAWAY").length,
+      delivery: allActiveTickets.filter((t) => t.ticketType === "DELIVERY").length,
+    }),
+    [allActiveTickets]
+  );
+
   const filteredTickets = useMemo(() => {
-    if (!searchQuery.trim()) return allActiveTickets;
+    let list = allActiveTickets;
+    if (filterType !== "ALL") {
+      list = list.filter((t) => t.ticketType === filterType);
+    }
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase().trim();
-    return allActiveTickets.filter(
+    return list.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         t.subTitle.toLowerCase().includes(q) ||
         (t.orderNumber && t.orderNumber.toLowerCase().includes(q))
     );
-  }, [allActiveTickets, searchQuery]);
+  }, [allActiveTickets, filterType, searchQuery]);
 
   if (!show) return null;
 
@@ -76,9 +95,22 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
     }
   };
 
+  const handleStartNew = (type: "TAKEAWAY" | "DELIVERY") => {
+    setShow(false);
+    usePosTicketsStore.getState().setActiveOrder(null);
+    usePosUiStore.getState().setSelectedTable("");
+    usePosUiStore.getState().setOrderType(type);
+    usePosCartStore.getState().syncDraftForTarget(`type_${type}`);
+    usePosUiStore.getState().syncUrlView("MENU_POS");
+    usePosUiStore.getState().setIsTicketDrawerOpen(true);
+    if (type === "DELIVERY") {
+      usePosUiStore.getState().setShowDeliveryModal(true);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 backdrop-blur-xs select-none">
-      <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/50 p-4 select-none">
+      <div className="w-full max-w-xl rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-3.5 max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-2.5 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -90,7 +122,7 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
                 Active Tickets &amp; Open Tabs ({allActiveTickets.length})
               </h3>
               <p className="text-[11px] text-[#71675E]">
-                View, add dishes, or settle bills across all active dining spaces
+                View, add dishes, or settle bills across tables, takeaways and deliveries
               </p>
             </div>
           </div>
@@ -103,16 +135,89 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative shrink-0">
-          <Search className="h-3.5 w-3.5 text-[#71675E] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search table, floor, customer or order #..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-7 py-2 text-xs rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:border-[#6B2837] focus:outline-none placeholder:text-[#71675E]"
-          />
+        {/* Search & Quick New Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="relative flex-1">
+            <Search className="h-3.5 w-3.5 text-[#71675E] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search customer, address, table, order #..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-7 py-2 text-xs rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] focus:border-[#6B2837] focus:outline-none placeholder:text-[#71675E]"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleStartNew("TAKEAWAY")}
+            className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] flex items-center gap-1 cursor-pointer shrink-0"
+            title="Start a new Takeaway order"
+          >
+            <Plus className="h-3.5 w-3.5 text-[#B45309]" />
+            <span>Takeaway</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStartNew("DELIVERY")}
+            className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] flex items-center gap-1 cursor-pointer shrink-0"
+            title="Start a new Delivery order"
+          >
+            <Plus className="h-3.5 w-3.5 text-[#1E40AF]" />
+            <span>Delivery</span>
+          </button>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1.5 border-b border-[#D8CEC1]/70 pb-2 shrink-0 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setFilterType("ALL")}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+              filterType === "ALL"
+                ? "bg-[#6B2837] text-white"
+                : "bg-[#F7F3EC] text-[#71675E] hover:bg-[#EEE7DD]"
+            }`}
+          >
+            All ({counts.all})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType("DINE_IN")}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+              filterType === "DINE_IN"
+                ? "bg-[#6B2837] text-white"
+                : "bg-[#F7F3EC] text-[#71675E] hover:bg-[#EEE7DD]"
+            }`}
+          >
+            <Store className="h-3 w-3" />
+            <span>Tables ({counts.dineIn})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType("TAKEAWAY")}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+              filterType === "TAKEAWAY"
+                ? "bg-[#6B2837] text-white"
+                : "bg-[#F7F3EC] text-[#71675E] hover:bg-[#EEE7DD]"
+            }`}
+          >
+            <ShoppingBag className="h-3 w-3" />
+            <span>Takeaways ({counts.takeaway})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType("DELIVERY")}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 ${
+              filterType === "DELIVERY"
+                ? "bg-[#6B2837] text-white"
+                : "bg-[#F7F3EC] text-[#71675E] hover:bg-[#EEE7DD]"
+            }`}
+          >
+            <Truck className="h-3 w-3" />
+            <span>Deliveries ({counts.delivery})</span>
+          </button>
         </div>
 
         {/* Tickets List */}
@@ -122,13 +227,13 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
               <Store className="h-8 w-8 text-[#71675E]/40 mx-auto" />
               <p className="font-bold text-xs text-[#292320]">
                 {allActiveTickets.length === 0
-                  ? "No active tickets or occupied spaces"
-                  : `No active tickets match "${searchQuery}"`}
+                  ? "No active tickets or open tabs"
+                  : `No active tickets match filter or "${searchQuery}"`}
               </p>
               <p className="text-[11px] text-[#71675E]">
                 {allActiveTickets.length === 0
-                  ? "All dining spaces are available. Seat guests from the floor layout to start an order."
-                  : "Try adjusting your search query."}
+                  ? "Take a new order from tables, takeaways, or deliveries to begin."
+                  : "Try clearing filters or search query."}
               </p>
             </div>
           ) : (
@@ -143,14 +248,40 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
               >
                 {/* Details */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold inline-flex items-center gap-1 ${
+                        tkt.ticketType === "DELIVERY"
+                          ? "bg-blue-50 text-blue-800 border border-blue-200"
+                          : tkt.ticketType === "TAKEAWAY"
+                          ? "bg-amber-50 text-amber-800 border border-amber-200"
+                          : "bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD]"
+                      }`}
+                    >
+                      {tkt.ticketType === "DELIVERY" ? (
+                        <Truck className="h-2.5 w-2.5" />
+                      ) : tkt.ticketType === "TAKEAWAY" ? (
+                        <ShoppingBag className="h-2.5 w-2.5" />
+                      ) : (
+                        <Store className="h-2.5 w-2.5" />
+                      )}
+                      <span>
+                        {tkt.ticketType === "DELIVERY"
+                          ? "Delivery"
+                          : tkt.ticketType === "TAKEAWAY"
+                          ? "Takeaway"
+                          : "Dine-In"}
+                      </span>
+                    </span>
+
                     <span className="text-xs font-black text-[#6B2837]">{tkt.title}</span>
-                    <span className="text-[11px] text-[#71675E]">{tkt.subTitle}</span>
+
                     {tkt.isCurrent && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#6B2837] text-white">
                         Active in POS
                       </span>
                     )}
+
                     <span
                       className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                         tkt.status === "Billed"
@@ -161,6 +292,10 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
                       {tkt.status}
                     </span>
                   </div>
+
+                  {tkt.subTitle && (
+                    <p className="text-[11px] text-[#71675E] mt-0.5 truncate">{tkt.subTitle}</p>
+                  )}
 
                   {tkt.order ? (
                     <div className="mt-1 flex items-center gap-3 text-xs text-[#5A504A]">
@@ -197,7 +332,7 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
                     title="Open ticket to add dishes or edit order"
                   >
                     <UtensilsCrossed className="h-3 w-3 text-[#6B2837]" />
-                    <span>Open Ticket</span>
+                    <span>Open</span>
                   </button>
 
                   <button

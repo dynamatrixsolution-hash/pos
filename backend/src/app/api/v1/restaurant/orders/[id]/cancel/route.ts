@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   cancelRestaurantOrder,
   RestaurantOrderError,
@@ -17,6 +17,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.RESTAURANT_BILLING);
+    if (denied) return denied;
 
     const { id: orderId } = await params;
     const body = await req.json().catch(() => ({}));
@@ -42,7 +44,7 @@ export async function POST(
       return NextResponse.json({ error: error.issues[0]?.message || "Validation failed" }, { status: 400 });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to cancel order" },
+      { error: safeErrorMessage(error, "Failed to cancel order") },
       { status: 500 }
     );
   }

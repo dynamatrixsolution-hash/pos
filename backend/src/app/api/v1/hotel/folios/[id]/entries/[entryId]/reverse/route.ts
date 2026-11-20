@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { reverseOrAdjustFolioEntry } from "@/lib/services/folio-service";
 import { HotelError } from "@/lib/services/room-availability-service";
 import { z } from "zod";
@@ -17,6 +17,8 @@ export async function POST(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { entryId } = await params;
     const body = await req.json();
@@ -56,7 +58,7 @@ export async function POST(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to reverse or adjust folio entry" },
+      { error: safeErrorMessage(error, "Failed to reverse or adjust folio entry") },
       { status: 500 }
     );
   }

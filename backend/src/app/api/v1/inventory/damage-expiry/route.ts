@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 
 const OWNER_ROLES = ["SUPER_ADMIN", "OWNER"];
 
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
 
       const currentQty = stock ? Number(stock.quantity) : 0;
       if (currentQty < qtyNumber) {
-        throw new Error(`Insufficient stock to write off. Available: ${currentQty}, Requested: ${qtyNumber}`);
+        return { insufficient: currentQty };
       }
 
       const updatedStock = await tx.productStock.update({
@@ -228,6 +228,13 @@ export async function POST(request: Request) {
       return { updatedStock, auditLog };
     });
 
+    if ("insufficient" in result) {
+      return NextResponse.json(
+        { error: `Insufficient stock to write off. Available: ${result.insufficient}, Requested: ${qtyNumber}` },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: `Successfully wrote off ${qtyNumber} units of ${product.name}`,
@@ -236,8 +243,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("POST damage & expiry error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to record damage/expiry write-off" },
-      { status: 400 }
+      { error: safeErrorMessage(error, "Failed to record damage/expiry write-off") },
+      { status: 500 }
     );
   }
 }

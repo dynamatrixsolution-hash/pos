@@ -139,7 +139,7 @@ export const RestaurantReportsContainer: React.FC = () => {
             </div>
             <div className="text-[11px] text-[#71675E]">Manage raw food ingredient invoices</div>
           </div>
-          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] group-hover:translate-x-0.5 transition-all" />
+          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] transition-colors" />
         </Link>
 
         <Link
@@ -152,7 +152,7 @@ export const RestaurantReportsContainer: React.FC = () => {
             </div>
             <div className="text-[11px] text-[#71675E]">Settle vendor dues &amp; bank disbursements</div>
           </div>
-          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] group-hover:translate-x-0.5 transition-all" />
+          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] transition-colors" />
         </Link>
 
         <Link
@@ -165,7 +165,7 @@ export const RestaurantReportsContainer: React.FC = () => {
             </div>
             <div className="text-[11px] text-[#71675E]">Track guest remittances &amp; QR payments</div>
           </div>
-          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] group-hover:translate-x-0.5 transition-all" />
+          <ArrowRight className="h-4 w-4 text-[#71675E] group-hover:text-[#6B2837] transition-colors" />
         </Link>
       </div>
 

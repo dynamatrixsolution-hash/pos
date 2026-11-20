@@ -2,7 +2,7 @@ import { serializable, checkBranch, resolveBranch } from "@/lib/commerce-transac
 import { CommerceError, requireStaff } from "@/lib/commerce-policy";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logActivity } from "@/lib/activity-logger";
 import { z } from "zod";
 
@@ -224,7 +224,10 @@ export async function POST(request: Request) {
     }
   } catch (error: any) {
     console.error("POST opening stock error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create opening stock" }, { status: error instanceof CommerceError ? error.status : 500 });
+    return NextResponse.json(
+      { error: error instanceof CommerceError ? error.message : safeErrorMessage(error, "Failed to create opening stock") },
+      { status: error instanceof CommerceError ? error.status : 500 }
+    );
   }
 }
 

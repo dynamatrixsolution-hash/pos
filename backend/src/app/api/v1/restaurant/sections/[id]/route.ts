@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import {
   updateMenuSection,
   deleteMenuSection,
@@ -21,6 +21,8 @@ export async function PATCH(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     const body = await req.json();
@@ -39,7 +41,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(
-      { error: error.message || "Failed to update section" },
+      { error: safeErrorMessage(error, "Failed to update section") },
       { status: 500 }
     );
   }
@@ -52,6 +54,8 @@ export async function DELETE(
   try {
     const session = await getSessionContext();
     if (!session) return authErrorResponse();
+    const denied = requireRoles(session, ROLE_GROUPS.ADMIN_MANAGER);
+    if (denied) return denied;
 
     const { id } = await params;
     await deleteMenuSection(session.businessId, id);
@@ -61,7 +65,7 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     return NextResponse.json(
-      { error: error.message || "Failed to delete section" },
+      { error: safeErrorMessage(error, "Failed to delete section") },
       { status: 500 }
     );
   }

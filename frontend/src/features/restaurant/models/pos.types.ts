@@ -134,10 +134,11 @@ export interface DeliveryDetails {
 }
 
 export interface TableCancellationTarget {
-  tableId: string;
-  tableNumber: string;
+  tableId?: string;
+  tableNumber?: string;
+  title?: string;
   orderId?: string;
-  sessionId: string;
+  sessionId?: string;
   itemCount: number;
   totalAmount: string;
 }
