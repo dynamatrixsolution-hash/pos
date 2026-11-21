@@ -39,7 +39,7 @@ export const BusinessHeader: React.FC = () => {
           className="h-9 px-3.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
-          <span>+ Provision New Tenant</span>
+          <span>Provision New Tenant</span>
         </button>
       </div>
 

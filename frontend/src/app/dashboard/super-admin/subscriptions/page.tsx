@@ -312,7 +312,7 @@ export default function SubscriptionsDirectoryPage() {
             className="px-3.5 py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>+ Add Subscription</span>
+            <span>Add Subscription</span>
           </button>
         </div>
       </div>
@@ -503,21 +503,6 @@ export default function SubscriptionsDirectoryPage() {
               <option value="ALL">All Billing Cycles</option>
               <option value="MONTHLY">Monthly</option>
               <option value="ANNUAL">Annual</option>
-            </select>
-            <ChevronDown className="h-3.5 w-3.5 text-[#71675E] absolute right-2 top-2 pointer-events-none" />
-          </div>
-
-          {/* Status */}
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="appearance-none border border-[#D8CEC1] rounded-md pl-2.5 pr-7 py-1.5 text-xs font-medium text-[#292320] bg-[#FFFCF7] focus:outline-none focus:ring-1 focus:ring-[#6B2837] cursor-pointer"
-            >
-              <option value="ALL">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="EXPIRING_SOON">Expiring Soon</option>
-              <option value="EXPIRED">Expired</option>
             </select>
             <ChevronDown className="h-3.5 w-3.5 text-[#71675E] absolute right-2 top-2 pointer-events-none" />
           </div>
@@ -759,13 +744,6 @@ export default function SubscriptionsDirectoryPage() {
                             className="p-1 rounded hover:bg-[#EEE7DD] hover:text-[#6B2837] transition-colors cursor-pointer"
                           >
                             <RotateCw className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setInspectItem(s)}
-                            title="More options"
-                            className="p-1 rounded hover:bg-[#EEE7DD] hover:text-[#292320] transition-colors cursor-pointer"
-                          >
-                            <MoreVertical className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>

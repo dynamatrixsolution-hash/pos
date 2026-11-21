@@ -167,27 +167,7 @@ export default function EditBusinessPage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Business
         </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/super-admin/businesses/${businessId}`}
-            className="px-3 py-1.5 text-xs font-medium text-[#71675E] hover:text-[#292320]"
-          >
-            Cancel
-          </Link>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-[#FFFCF7] text-xs font-bold rounded-md transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </button>
-        </div>
+        <span className="text-xs font-semibold text-[#71675E]">Edit Business Profile</span>
       </div>
 
       {/* Main Single Card Form */}

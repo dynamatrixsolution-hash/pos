@@ -277,7 +277,7 @@ export default function PlansAndPricingPage() {
             className="px-3.5 py-1.5 bg-[#6B2837] hover:bg-[#521E2A] text-white rounded-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>+ Create New Plan</span>
+            <span>Create New Plan</span>
           </button>
         </div>
       </div>
@@ -352,21 +352,6 @@ export default function PlansAndPricingPage() {
                         {plan.name}
                       </h3>
                       <p className="text-[11px] text-[#71675E] mt-0.5 line-clamp-1">{plan.subtitle}</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-[#71675E]">
-                      <button
-                        onClick={() => {
-                          setEditingPlanLimits(plan);
-                          setEditTables(plan.limits.tables);
-                          setEditStaff(plan.limits.staff);
-                          setEditBranches(plan.limits.branches);
-                          setEditRooms(plan.limits.rooms || 0);
-                        }}
-                        title="Edit limits"
-                        className="p-1 hover:bg-[#EEE7DD] rounded cursor-pointer"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
                     </div>
                   </div>
 
