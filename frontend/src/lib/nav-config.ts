@@ -41,7 +41,16 @@ import {
   BookOpen,
 } from "lucide-react";
 
-export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "CASHIER";
+export type Role =
+  | "SUPER_ADMIN"
+  | "OWNER"
+  | "MANAGER"
+  | "CASHIER"
+  | "WAITER"
+  | "KITCHEN"
+  | "FRONT_DESK"
+  | "HOUSEKEEPING"
+  | "ACCOUNTANT";
 
 export interface NavItem {
   title: string;
@@ -471,6 +480,13 @@ export const navigationConfig: NavItem[] = [
     href: "/dashboard/settings",
     icon: Settings,
     roles: ["OWNER", "MANAGER"],
+    group: "Administration",
+  },
+  {
+    title: "Support & Messages",
+    href: "/dashboard/support",
+    icon: HelpCircle,
+    roles: ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN", "FRONT_DESK", "HOUSEKEEPING", "ACCOUNTANT"],
     group: "Administration",
   },
 

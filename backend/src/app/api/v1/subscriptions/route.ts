@@ -28,7 +28,7 @@ export async function GET() {
   if (!context) return authErrorResponse();
 
   try {
-    const [subscription, branchCount, userCount, plans, pendingUpgradeInvoice] = await Promise.all([
+    const [subscription, branchCount, userCount, plans, pendingUpgradeInvoice, invoices] = await Promise.all([
       db.subscription.findUnique({
         where: { businessId: context.businessId },
       }),
@@ -46,6 +46,17 @@ export async function GET() {
           notes: { startsWith: "UPGRADE_REQUEST:" },
         },
         orderBy: { createdAt: "desc" },
+      }),
+      db.subscriptionInvoice.findMany({
+        where: { businessId: context.businessId },
+        include: {
+          payments: {
+            select: { id: true, amount: true, paymentMethod: true, reference: true, recordedAt: true },
+            orderBy: { recordedAt: "desc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
       }),
     ]);
 
@@ -71,6 +82,25 @@ export async function GET() {
             createdAt: pendingUpgradeInvoice.createdAt,
           }
         : null,
+      invoices: invoices.map((inv) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        amount: Number(inv.amount),
+        currency: inv.currency,
+        status: inv.status,
+        billingPeriodStart: inv.billingPeriodStart,
+        billingPeriodEnd: inv.billingPeriodEnd,
+        dueDate: inv.dueDate,
+        paidAt: inv.paidAt,
+        notes: inv.notes,
+        payments: inv.payments.map((p) => ({
+          id: p.id,
+          amount: Number(p.amount),
+          paymentMethod: p.paymentMethod,
+          reference: p.reference,
+          recordedAt: p.recordedAt,
+        })),
+      })),
     });
   } catch (error: any) {
     console.error("GET subscription error:", error);

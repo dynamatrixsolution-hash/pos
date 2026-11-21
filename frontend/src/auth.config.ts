@@ -51,6 +51,7 @@ export const authConfig = {
               "/dashboard/products",
               "/dashboard/customers",
               "/dashboard/inventory",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
@@ -68,6 +69,7 @@ export const authConfig = {
               "/dashboard/restaurant/tables",
               "/dashboard/restaurant/pos",
               "/dashboard/restaurant/menu",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
@@ -82,6 +84,7 @@ export const authConfig = {
           if (role === "KITCHEN") {
             const allowedPaths = [
               "/dashboard/restaurant/kds",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
@@ -97,6 +100,7 @@ export const authConfig = {
             const allowedPaths = [
               "/dashboard/hotel",
               "/dashboard/customers",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
@@ -112,6 +116,7 @@ export const authConfig = {
             const allowedPaths = [
               "/dashboard/hotel/rooms",
               "/dashboard/hotel/maintenance",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(
@@ -130,6 +135,7 @@ export const authConfig = {
               "/dashboard/sales",
               "/dashboard/purchases",
               "/dashboard/payments",
+              "/dashboard/support",
               "/dashboard/profile",
             ];
             const isAllowed = allowedPaths.some(

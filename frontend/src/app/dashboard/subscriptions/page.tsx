@@ -59,6 +59,19 @@ interface SubscriptionDetails {
     notes?: string;
     createdAt: string;
   } | null;
+  invoices?: {
+    id: string;
+    invoiceNumber: string;
+    amount: number;
+    currency: string;
+    status: string;
+    billingPeriodStart: string;
+    billingPeriodEnd: string;
+    dueDate: string;
+    paidAt?: string | null;
+    notes?: string | null;
+    payments?: { id: string; amount: number; paymentMethod: string; reference?: string | null; recordedAt: string }[];
+  }[];
 }
 
 export default function SubscriptionsPage() {
@@ -402,6 +415,77 @@ export default function SubscriptionsPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* Billing & Invoices History */}
+      <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
+        <div className="border-b border-[#D8CEC1] bg-[#EEE7DD]/60 px-5 py-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#292320]">
+              Subscription Invoices &amp; Billing History
+            </h2>
+            <p className="text-[11px] text-[#71675E]">
+              Invoices issued by RestroInn Platform Billing and verified payment receipts.
+            </p>
+          </div>
+        </div>
+
+        {!data?.invoices || data.invoices.length === 0 ? (
+          <div className="py-8 text-center text-xs text-[#71675E]">
+            No subscription invoices issued yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="border-b border-[#D8CEC1] bg-[#EEE7DD] text-[10px] font-semibold uppercase tracking-wider text-[#292320]">
+                <tr>
+                  <th className="py-2.5 px-4">Invoice #</th>
+                  <th className="py-2.5 px-4">Billing Period</th>
+                  <th className="py-2.5 px-4">Due Date</th>
+                  <th className="py-2.5 px-4 text-right">Amount</th>
+                  <th className="py-2.5 px-4 text-center">Status</th>
+                  <th className="py-2.5 px-4">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#D8CEC1]/60">
+                {data.invoices.map((inv) => {
+                  const st = inv.status.toUpperCase();
+                  const badgeCls =
+                    st === "PAID"
+                      ? "border-[#C3DED0] bg-[#EAF3EE] text-[#28634B]"
+                      : st === "OVERDUE"
+                      ? "border-[#E9B6B7] bg-[#FAEAEC] text-[#B33432]"
+                      : "border-[#EDD7AD] bg-[#FDF5E7] text-[#946000]";
+                  return (
+                    <tr key={inv.id} className="hover:bg-[#F7F3EC] transition-colors">
+                      <td className="py-2.5 px-4 font-mono font-semibold text-[#292320]">{inv.invoiceNumber}</td>
+                      <td className="py-2.5 px-4 tabular-nums text-[#71675E]">
+                        {new Date(inv.billingPeriodStart).toLocaleDateString()} –{" "}
+                        {new Date(inv.billingPeriodEnd).toLocaleDateString()}
+                      </td>
+                      <td className="py-2.5 px-4 tabular-nums text-[#71675E]">
+                        {new Date(inv.dueDate).toLocaleDateString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-semibold tabular-nums text-[#292320]">
+                        {inv.currency} {inv.amount.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${badgeCls}`}>
+                          {st}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-[11px] text-[#71675E] max-w-xs truncate">
+                        {inv.paidAt
+                          ? `Paid on ${new Date(inv.paidAt).toLocaleDateString()}`
+                          : inv.notes || "Awaiting payment"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Verified Upgrade Request Modal */}
