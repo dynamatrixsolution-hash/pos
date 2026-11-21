@@ -130,9 +130,6 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
     }
   };
 
-  if (!isTicketDrawerOpen) return null;
-
-  const isFirstTimeOrder = existingRounds.length === 0;
   const activeItemCount = useMemo(
     () =>
       existingRounds.reduce(
@@ -145,6 +142,10 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
       ),
     [existingRounds]
   );
+
+  if (!isTicketDrawerOpen) return null;
+
+  const isFirstTimeOrder = existingRounds.length === 0;
 
   const showOrderActionsTrigger = (orderType === "DINE_IN" && Boolean(selectedTable)) || Boolean(activeOrderId);
 
