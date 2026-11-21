@@ -167,7 +167,7 @@ export default function PlatformSettingsPage() {
     }
   };
 
-  if (loading && !hasLoadedRef.current) {
+  if (loading) {
     return (
       <div className="max-w-[1400px] mx-auto space-y-2 text-[#292320]">
         <div className="h-4 w-40 bg-[#EEE7DD] animate-pulse rounded" />

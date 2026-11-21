@@ -20,7 +20,9 @@ export function useVisibilityPolling(
   const callbackRef = useRef(callback);
   const inFlightRef = useRef(false);
 
-  callbackRef.current = callback;
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     if (!enabled) return;
