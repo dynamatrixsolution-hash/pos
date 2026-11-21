@@ -44,6 +44,9 @@ export async function GET() {
           plan: true,
           endDate: true,
           status: true,
+          packageType: true,
+          enabledModules: true,
+          billingCycle: true,
         },
       }),
       db.business.findUnique({
@@ -202,10 +205,23 @@ export async function GET() {
       : getDefaultFeatures(currentPlanName);
 
     const customFeatures = settings.customFeatures || {};
-    const mergedFeatures = {
+    const mergedFeatures: Record<string, boolean> = {
       ...baseFeatures,
       ...customFeatures,
     };
+
+    // Reflect Super Admin module entitlements immediately when configured
+    const enabledModules = Array.isArray(subscription?.enabledModules) ? subscription.enabledModules : [];
+    if (enabledModules.length > 0) {
+      mergedFeatures["RESTAURANT_POS"] = enabledModules.includes("RESTAURANT_POS");
+      mergedFeatures["KITCHEN_KDS"] = enabledModules.includes("KITCHEN_KDS");
+      mergedFeatures["HOTEL_ROOMS"] = enabledModules.includes("HOTEL_ROOMS");
+      mergedFeatures["HOTEL_FOLIOS"] = enabledModules.includes("HOTEL_FOLIOS");
+      mergedFeatures["GUEST_QR_PORTAL"] = enabledModules.includes("GUEST_QR_PORTAL");
+      mergedFeatures["INVENTORY_RECIPES"] = enabledModules.includes("INVENTORY_RECIPES");
+      mergedFeatures["IRD_FISCAL_COMPLIANCE"] = enabledModules.includes("IRD_FISCAL_COMPLIANCE");
+      mergedFeatures["__hasModuleEntitlements"] = true;
+    }
 
     return NextResponse.json({
       branches,

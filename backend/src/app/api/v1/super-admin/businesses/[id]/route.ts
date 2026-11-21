@@ -321,6 +321,20 @@ export async function PUT(
         });
       }
 
+      // Sync packageType into business.settings.businessType so tenant UI reflects it immediately
+      if (packageType) {
+        const currentSettings = ((business.settings as Record<string, any>) || {});
+        await db.business.update({
+          where: { id },
+          data: {
+            settings: {
+              ...currentSettings,
+              businessType: packageType,
+            } as any,
+          },
+        });
+      }
+
       await logPlatformAudit({
         actorId: context.userId,
         actorRole: context.role,

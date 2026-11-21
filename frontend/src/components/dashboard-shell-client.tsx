@@ -83,6 +83,9 @@ interface SubscriptionMeta {
   plan: string;
   endDate: Date | string;
   status: string;
+  packageType?: string;
+  enabledModules?: string[];
+  billingCycle?: string;
 }
 
 function SubscriptionTimer({
@@ -573,8 +576,10 @@ export default function DashboardShellClient({
   const userRole = (effectiveRoleStr as Role) || "CASHIER";
   const allowedNavigation = React.useMemo(() => {
     const isOwner = userRole === "OWNER";
-    const isHotelOnly = businessType === "HOTEL";
-    const isRestaurantOnly = businessType === "RESTAURANT" || businessType === "CAFE";
+    const effectiveDomain = (subscription?.packageType || businessType || "RESTAURANT").toUpperCase();
+    const isHotelOnly = effectiveDomain === "HOTEL";
+    const isRestaurantOnly = effectiveDomain === "RESTAURANT" || effectiveDomain === "CAFE";
+    const hasModuleOverrides = Boolean(features?.__hasModuleEntitlements);
 
     const coreFeatures = [
       "Inventory",
@@ -592,13 +597,19 @@ export default function DashboardShellClient({
         // 1. Role check
         if (!item.roles.includes(userRole)) return false;
 
-        // 2. Business Type checks:
-        // Pure restaurant does not show Hotel & Stays
+        // 2. Business Type / Package Domain checks
         if (isRestaurantOnly && item.title === "Hotel & Stays") return false;
-        // Pure hotel does not show Tables & Cabins or Generate Menu QR
         if (isHotelOnly && (item.title === "Tables & Cabins" || item.title === "Generate Menu QR")) return false;
 
-        // 3. Plan feature check: OWNER always retains full core operational access
+        // 3. Super Admin per-tenant module entitlements (instant sync)
+        if (userRole !== "SUPER_ADMIN" && hasModuleOverrides) {
+          if (item.title === "Hotel & Stays" && !features?.HOTEL_ROOMS && !features?.HOTEL_FOLIOS) return false;
+          if (item.title === "Tables & Cabins" && !features?.RESTAURANT_POS) return false;
+          if (item.title === "Generate Menu QR" && !features?.GUEST_QR_PORTAL) return false;
+          if ((item.title === "Inventory" || item.title === "Purchase" || item.title === "Suppliers") && !features?.INVENTORY_RECIPES) return false;
+        }
+
+        // 4. Plan feature check: OWNER always retains full core operational access
         if (isOwner && item.feature && coreFeatures.includes(item.feature)) {
           return true;
         }

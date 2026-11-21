@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
+import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -154,10 +155,35 @@ export async function POST(request: Request) {
       });
 
       if (isFullyPaid) {
-        await tx.subscription.updateMany({
-          where: { businessId: invoice.businessId, status: "OVERDUE" },
-          data: { status: "ACTIVE" },
-        });
+        const upgradeMatch = invoice.notes?.match(/^UPGRADE_REQUEST:([A-Z0-9_ -]+):(MONTHLY|ANNUAL)/i);
+        if (upgradeMatch) {
+          const requestedPlan = upgradeMatch[1].trim().toUpperCase();
+          const requestedCycle = upgradeMatch[2].toUpperCase();
+          const cfg = await tx.platformSetting.findUnique({ where: { key: "SUBSCRIPTION_CONFIG" } });
+          const plans = Array.isArray((cfg?.value as any)?.plans)
+            ? (cfg?.value as any).plans
+            : DEFAULT_SUBSCRIPTION_PLANS;
+          const matchedPlan = plans.find(
+            (p: any) => p.name?.toUpperCase() === requestedPlan || p.id?.toUpperCase() === requestedPlan
+          );
+
+          await tx.subscription.updateMany({
+            where: { businessId: invoice.businessId },
+            data: {
+              plan: requestedPlan,
+              billingCycle: requestedCycle,
+              status: "ACTIVE",
+              endDate: invoice.billingPeriodEnd,
+              ...(matchedPlan?.limits?.staff ? { userLimit: Number(matchedPlan.limits.staff) } : {}),
+              ...(matchedPlan?.limits?.branches ? { branchLimit: Number(matchedPlan.limits.branches) } : {}),
+            },
+          });
+        } else {
+          await tx.subscription.updateMany({
+            where: { businessId: invoice.businessId, status: "OVERDUE" },
+            data: { status: "ACTIVE" },
+          });
+        }
       }
 
       await tx.platformAuditLog.create({

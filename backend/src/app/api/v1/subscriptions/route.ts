@@ -1,40 +1,57 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
+import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
+
+const upgradeRequestSchema = z.object({
+  plan: z.string().trim().min(1, "Plan is required"),
+  billingCycle: z.enum(["MONTHLY", "ANNUAL"]).default("MONTHLY"),
+  paymentMethod: z.enum(["BANK_TRANSFER", "FONEPAY", "ESEWA", "KHALTI"]).default("BANK_TRANSFER"),
+  paymentReference: z.string().trim().min(3, "Payment transaction reference / voucher ID is required"),
+  notes: z.string().trim().max(300).optional(),
+});
+
+async function loadConfiguredPlans() {
+  const configRecord = await db.platformSetting.findUnique({
+    where: { key: "SUBSCRIPTION_CONFIG" },
+  });
+  const settings = (configRecord?.value as any) || {};
+  return Array.isArray(settings.plans) && settings.plans.length > 0
+    ? settings.plans
+    : DEFAULT_SUBSCRIPTION_PLANS;
+}
 
 export async function GET() {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
 
   try {
-    const subscription = await db.subscription.findUnique({
-      where: { businessId: context.businessId },
-    });
+    const [subscription, branchCount, userCount, plans, pendingUpgradeInvoice] = await Promise.all([
+      db.subscription.findUnique({
+        where: { businessId: context.businessId },
+      }),
+      db.branch.count({
+        where: { businessId: context.businessId, deletedAt: null },
+      }),
+      db.user.count({
+        where: { businessId: context.businessId, deletedAt: null },
+      }),
+      loadConfiguredPlans(),
+      db.subscriptionInvoice.findFirst({
+        where: {
+          businessId: context.businessId,
+          status: "PENDING",
+          notes: { startsWith: "UPGRADE_REQUEST:" },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     if (!subscription) {
       return NextResponse.json({ error: "No active subscription found" }, { status: 404 });
     }
-
-    const branchCount = await db.branch.count({
-      where: { businessId: context.businessId, deletedAt: null },
-    });
-
-    const userCount = await db.user.count({
-      where: { businessId: context.businessId, deletedAt: null },
-    });
-
-    // Fetch plans from platform admin
-    const platform = await db.business.findUnique({
-      where: { slug: "platform-admin" },
-      select: { settings: true },
-    });
-
-    const platformSettings = (platform?.settings as any) || {};
-    const platformPlans = platformSettings.plans || [
-      { id: "Starter", name: "Starter", price: 499, setupPrice: 4999, currency: "NPR", duration: "1 Month", desc: "Perfect for single-terminal independent shops" },
-      { id: "Professional", name: "Professional", price: 999, setupPrice: 11999, currency: "NPR", duration: "1 Month", desc: "For growing local retail shops" },
-      { id: "Enterprise", name: "Enterprise", price: 1499, setupPrice: 24999, currency: "NPR", duration: "1 Month", desc: "For multi-branch retail stores" },
-    ];
 
     return NextResponse.json({
       subscription,
@@ -42,7 +59,18 @@ export async function GET() {
         branchCount,
         userCount,
       },
-      plans: platformPlans,
+      plans,
+      pendingUpgradeInvoice: pendingUpgradeInvoice
+        ? {
+            id: pendingUpgradeInvoice.id,
+            invoiceNumber: pendingUpgradeInvoice.invoiceNumber,
+            amount: Number(pendingUpgradeInvoice.amount),
+            currency: pendingUpgradeInvoice.currency,
+            status: pendingUpgradeInvoice.status,
+            notes: pendingUpgradeInvoice.notes,
+            createdAt: pendingUpgradeInvoice.createdAt,
+          }
+        : null,
     });
   } catch (error: any) {
     console.error("GET subscription error:", error);
@@ -57,49 +85,126 @@ export async function PUT(request: Request) {
   if (denied) return denied;
 
   try {
-    const { plan } = await request.json();
-    if (!plan) {
-      return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = upgradeRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Payment reference and valid plan selection are required." },
+        { status: 400 }
+      );
     }
 
-    // Load limits from platform configuration
-    const platform = await db.business.findUnique({
-      where: { slug: "platform-admin" },
-      select: { settings: true },
+    const { plan, billingCycle, paymentMethod, paymentReference, notes } = parsed.data;
+
+    const [business, subscription, configuredPlans, existingPending] = await Promise.all([
+      db.business.findUnique({ where: { id: context.businessId }, select: { id: true, name: true } }),
+      db.subscription.findUnique({ where: { businessId: context.businessId } }),
+      loadConfiguredPlans(),
+      db.subscriptionInvoice.findFirst({
+        where: {
+          businessId: context.businessId,
+          status: "PENDING",
+          notes: { startsWith: "UPGRADE_REQUEST:" },
+        },
+      }),
+    ]);
+
+    if (!business || !subscription) {
+      return NextResponse.json({ error: "Active business subscription not found" }, { status: 404 });
+    }
+
+    if (existingPending) {
+      return NextResponse.json(
+        { error: `Upgrade invoice ${existingPending.invoiceNumber} is already pending payment verification.` },
+        { status: 409 }
+      );
+    }
+
+    const targetPlan = configuredPlans.find(
+      (p: any) =>
+        p.id?.toUpperCase() === plan.toUpperCase() ||
+        p.name?.toUpperCase() === plan.toUpperCase()
+    );
+    if (!targetPlan) {
+      return NextResponse.json({ error: "Selected subscription plan does not exist." }, { status: 400 });
+    }
+
+    if (subscription.plan.toUpperCase() === targetPlan.name.toUpperCase()) {
+      return NextResponse.json({ error: "You are already on this subscription plan." }, { status: 400 });
+    }
+
+    const amount =
+      billingCycle === "ANNUAL"
+        ? Number(targetPlan.priceAnnual || Number(targetPlan.priceMonthly || 0) * 10)
+        : Number(targetPlan.priceMonthly || 0);
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + (billingCycle === "ANNUAL" ? 12 : 1));
+    const dueDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const suffix = crypto.randomInt(1000, 9999);
+    const invoiceNumber = `INV-UPG-${now.getFullYear()}-${suffix}`;
+    const ticketNumber = `TICK-UPG-${now.getFullYear()}-${suffix}`;
+
+    const invoice = await db.$transaction(async (tx) => {
+      const createdInvoice = await tx.subscriptionInvoice.create({
+        data: {
+          businessId: business.id,
+          subscriptionId: subscription.id,
+          invoiceNumber,
+          amount,
+          currency: targetPlan.currency || "NPR",
+          status: "PENDING",
+          billingPeriodStart: now,
+          billingPeriodEnd: periodEnd,
+          dueDate,
+          notes: `UPGRADE_REQUEST:${targetPlan.name.toUpperCase()}:${billingCycle} | Method: ${paymentMethod} | Ref: ${paymentReference}${notes ? ` | ${notes}` : ""}`,
+        },
+      });
+
+      await tx.platformSupportTicket.create({
+        data: {
+          ticketNumber,
+          businessId: business.id,
+          userId: context.userId,
+          subject: `Plan Upgrade Request: ${business.name} -> ${targetPlan.name} (${billingCycle})`,
+          category: "BILLING",
+          priority: "HIGH",
+          status: "OPEN",
+          description: `Owner requested upgrade from ${subscription.plan} to ${targetPlan.name} (${billingCycle}). Amount: ${targetPlan.currency || "NPR"} ${amount.toLocaleString()}. Payment Method: ${paymentMethod}, Reference: ${paymentReference}. Invoice: ${invoiceNumber}.${notes ? ` Notes: ${notes}` : ""}`,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          businessId: business.id,
+          userId: context.userId,
+          role: context.role,
+          action: "PLAN_UPGRADE_REQUESTED",
+          module: "SUBSCRIPTION",
+          details: `Submitted upgrade request to ${targetPlan.name} (${billingCycle}) with payment ref ${paymentReference} (${invoiceNumber}).`,
+        },
+      });
+
+      return createdInvoice;
     });
 
-    const platformSettings = (platform?.settings as any) || {};
-    const limits = platformSettings.limits || {};
-    
-    // Fetch limits for the selected plan or assign reasonable defaults
-    const planLimits = limits[plan] || (plan.toUpperCase() === "STARTER" ? { users: 1, branches: 1 } : plan.toUpperCase() === "PROFESSIONAL" ? { users: 5, branches: 2 } : { users: 20, branches: 5 });
-
-    // Update the tenant's subscription plan & bounds in database
-    const subscription = await db.subscription.update({
-      where: { businessId: context.businessId },
-      data: {
-        plan: plan.toUpperCase(),
-        status: "ACTIVE",
-        userLimit: planLimits.users || 1,
-        branchLimit: planLimits.branches || 1,
+    return NextResponse.json(
+      {
+        pendingApproval: true,
+        invoice: {
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          amount: Number(invoice.amount),
+          currency: invoice.currency,
+          status: invoice.status,
+        },
+        message: `Upgrade request (${invoice.invoiceNumber}) submitted. Your plan will activate once payment is verified by RestroInn Billing.`,
       },
-    });
-
-    // Create an audit log record for the upgrade action
-    await db.auditLog.create({
-      data: {
-        businessId: context.businessId,
-        userId: context.userId,
-        role: context.role,
-        action: "PLAN_UPGRADE",
-        module: "SUBSCRIPTION",
-        details: `Upgraded subscription tier to ${plan.toUpperCase()}`,
-      },
-    });
-
-    return NextResponse.json({ message: "Subscription upgraded successfully", subscription });
+      { status: 202 }
+    );
   } catch (error: any) {
-    console.error("PUT subscription upgrade error:", error);
-    return NextResponse.json({ error: "Failed to upgrade subscription plan" }, { status: 500 });
+    console.error("PUT subscription upgrade request error:", error);
+    return NextResponse.json({ error: "Failed to submit subscription upgrade request" }, { status: 500 });
   }
 }

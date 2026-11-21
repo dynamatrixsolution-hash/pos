@@ -1,25 +1,45 @@
 "use client";
 
 import * as React from "react";
-import { useSession } from "next-auth/react";
 import {
   CreditCard,
   Check,
-  Zap,
   Users,
   Store,
   Calendar,
   ShieldCheck,
   AlertTriangle,
+  Clock,
   ArrowRight,
+  X,
 } from "lucide-react";
 import { apiClient } from "@/core/api/api-client";
+
+interface PlatformPlan {
+  id: string;
+  name: string;
+  tier?: string;
+  subtitle?: string;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency?: string;
+  isPopular?: boolean;
+  limits?: {
+    tables?: number;
+    staff?: number;
+    branches?: number;
+    rooms?: number;
+  };
+}
 
 interface SubscriptionDetails {
   subscription: {
     id: string;
     plan: string;
     status: string;
+    billingCycle?: string;
+    packageType?: string;
+    enabledModules?: string[];
     startDate: string;
     endDate: string;
     userLimit: number;
@@ -29,310 +49,351 @@ interface SubscriptionDetails {
     branchCount: number;
     userCount: number;
   };
-  plans: {
+  plans: PlatformPlan[];
+  pendingUpgradeInvoice?: {
     id: string;
-    name: string;
-    price: number;
+    invoiceNumber: string;
+    amount: number;
     currency: string;
-    duration: string;
-    desc: string;
-    features?: Record<string, boolean>;
-  }[];
+    status: string;
+    notes?: string;
+    createdAt: string;
+  } | null;
 }
 
 export default function SubscriptionsPage() {
-  const { data: session } = useSession();
-  
   const [data, setData] = React.useState<SubscriptionDetails | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [billingCycle, setBillingCycle] = React.useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [errorMsg, setErrorMsg] = React.useState("");
   const [successMsg, setSuccessMsg] = React.useState("");
-  const [showUpgradeModal, setShowUpgradeModal] = React.useState(false);
-  const [selectedPlan, setSelectedPlan] = React.useState<any | null>(null);
 
-  const loadSubscription = async () => {
+  const [selectedPlan, setSelectedPlan] = React.useState<PlatformPlan | null>(null);
+  const [paymentMethod, setPaymentMethod] = React.useState<"BANK_TRANSFER" | "FONEPAY" | "ESEWA" | "KHALTI">("BANK_TRANSFER");
+  const [paymentReference, setPaymentReference] = React.useState("");
+  const [notes, setNotes] = React.useState("");
+
+  const loadSubscription = React.useCallback(async () => {
     try {
       const json = await apiClient.settings.getSubscription();
       setData(json);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Network error loading subscription metrics");
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Failed to load subscription details.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   React.useEffect(() => {
     loadSubscription();
-  }, []);
+  }, [loadSubscription]);
 
-  const triggerUpgrade = (plan: any) => {
-    setSelectedPlan(plan);
-    setShowUpgradeModal(true);
-  };
+  const handleRequestUpgrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    if (paymentReference.trim().length < 3) {
+      setErrorMsg("Please enter a valid payment transaction reference or voucher ID.");
+      return;
+    }
 
-  const confirmUpgrade = async () => {
-    if (!selectedPlan || !data) return;
-    
-    setIsLoading(true);
-    setShowUpgradeModal(false);
-    
+    setIsSubmitting(true);
+    setErrorMsg("");
+    setSuccessMsg("");
     try {
-      await apiClient.settings.updateSubscription({ plan: selectedPlan.id });
-      setSuccessMsg(`Congratulations! Your workspace has been upgraded to the "${selectedPlan.name}" plan.`);
-      loadSubscription();
+      const res = await apiClient.settings.updateSubscription({
+        plan: selectedPlan.id,
+        billingCycle,
+        paymentMethod,
+        paymentReference: paymentReference.trim(),
+        notes: notes.trim() || undefined,
+      });
+      setSuccessMsg(
+        res?.message ||
+          "Upgrade request submitted. Your plan will activate once payment is verified by RestroInn Billing."
+      );
+      setSelectedPlan(null);
+      setPaymentReference("");
+      setNotes("");
+      await loadSubscription();
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || "Failed to upgrade subscription");
+      setErrorMsg(err?.message || "Failed to submit upgrade request.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="h-96 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-          <p className="text-xs text-muted-foreground">Retrieving active license metrics...</p>
+      <div className="space-y-4">
+        <div className="h-20 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-40 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-72 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] animate-pulse" />
+          ))}
         </div>
       </div>
     );
   }
 
-  const activePlan = data?.subscription.plan || "FREE_TRIAL";
+  const activePlan = data?.subscription.plan || "STARTER";
   const userCount = data?.metrics.userCount || 0;
   const userLimit = data?.subscription.userLimit || 1;
   const branchCount = data?.metrics.branchCount || 0;
   const branchLimit = data?.subscription.branchLimit || 1;
-
-  const userPercent = Math.min((userCount / userLimit) * 100, 100);
-  const branchPercent = Math.min((branchCount / branchLimit) * 100, 100);
-
+  const userPercent = Math.min((userCount / Math.max(1, userLimit)) * 100, 100);
+  const branchPercent = Math.min((branchCount / Math.max(1, branchLimit)) * 100, 100);
   const daysRemaining = data
     ? Math.max(
-        Math.ceil(
-          (new Date(data.subscription.endDate).getTime() - new Date().getTime()) /
-            (1000 * 60 * 60 * 24)
-        ),
+        Math.ceil((new Date(data.subscription.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
         0
       )
     : 0;
+  const pendingInvoice = data?.pendingUpgradeInvoice || null;
+  const plans = data?.plans || [];
 
-  const platformPlans = data?.plans || [];
-  const plansList = platformPlans.map((plan) => {
-    const isCurrentActive =
-      activePlan.toUpperCase() === plan.id.toUpperCase() ||
-      activePlan.toUpperCase() === plan.name.toUpperCase() ||
-      (activePlan === "FREE_TRIAL" && plan.id === "Starter");
-
-    const planFeatures = Object.keys(plan.features || {}).filter(f => plan.features?.[f] !== false);
-    
-    let featuresList = planFeatures;
-    if (planFeatures.length === 0) {
-      if (plan.id.toUpperCase() === "STARTER") {
-        featuresList = ["1 Branch Limit", "1 User Limit", "Up to 100 Products", "Max Category 10", "Daily Reports Only", "No Receipt Printing"];
-      } else if (plan.id.toUpperCase() === "PROFESSIONAL") {
-        featuresList = ["2 Branches Limit", "5 Users (1 Owner, 4 Staff)", "Up to 1000 Products", "Unlimited Categories", "Full Reporting Enabled", "Receipt Printing Enabled"];
-      } else {
-        featuresList = ["5 Branches Limit", "20 Users (1 Owner, 19 Staff)", "Unlimited Products", "Unlimited Categories", "Full Reporting Enabled", "Receipt Printing Enabled"];
-      }
-    }
-
-    return {
-      id: plan.id,
-      name: plan.name,
-      price: `Rs. ${plan.price}`,
-      period: plan.duration || "1 Month",
-      features: featuresList,
-      active: isCurrentActive,
-      disabled: plan.id === "Starter" && !isCurrentActive,
-    };
-  });
+  const formatLimit = (val?: number, label?: string) => {
+    if (!val || val <= 0) return `No ${label}`;
+    if (val >= 999) return `Unlimited ${label}`;
+    return `Up to ${val} ${label}`;
+  };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-5 rounded-lg">
+    <div className="space-y-6 text-[#292320]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5">
         <div>
-          <h1 className="text-2xl font-black">Subscription License</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Monitor limits, check billing renewal schedules, and unlock premium enterprise tools.
+          <h1 className="text-xl font-bold tracking-tight text-[#292320]">Subscription License</h1>
+          <p className="text-xs text-[#71675E] mt-0.5">
+            Monitor active workspace limits, renewal schedule, and request verified plan upgrades.
           </p>
+        </div>
+
+        {/* Monthly / Annual Billing Cycle Toggle */}
+        <div className="inline-flex rounded-lg border border-[#D8CEC1] bg-[#EEE7DD] p-1 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setBillingCycle("MONTHLY")}
+            className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+              billingCycle === "MONTHLY" ? "bg-[#FFFCF7] text-[#292320]" : "text-[#71675E] hover:text-[#292320]"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingCycle("ANNUAL")}
+            className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+              billingCycle === "ANNUAL" ? "bg-[#FFFCF7] text-[#292320]" : "text-[#71675E] hover:text-[#292320]"
+            }`}
+          >
+            Annual (Save 2 mo)
+          </button>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Feedback Banners */}
       {errorMsg && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-4 rounded-md flex items-start gap-2">
-          <AlertTriangle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />
+        <div className="rounded-lg border border-[#E9B6B7] bg-[#FAEAEC] text-[#B33432] text-xs p-3.5 flex items-start gap-2 font-medium">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
       {successMsg && (
-        <div className="bg-primary/10 border border-primary/20 text-primary text-xs p-4 rounded-md flex items-start gap-2">
-          <ShieldCheck className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />
+        <div className="rounded-lg border border-[#C3DED0] bg-[#EAF3EE] text-[#28634B] text-xs p-3.5 flex items-start gap-2 font-medium">
+          <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
-
-      {/* 2. Limits and Details Row */}
-      {data && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Plan Status Card */}
-          <div className="bg-card border border-border rounded-lg p-5 flex flex-col justify-between shadow-sm">
+      {pendingInvoice && (
+        <div className="rounded-lg border border-[#EDD7AD] bg-[#FDF5E7] text-[#946000] text-xs p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-start gap-2.5">
+            <Clock className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
-              <span className="text-[10px] bg-primary/15 text-primary border border-primary/20 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <p className="font-bold">
+                Upgrade Payment Pending Verification ({pendingInvoice.invoiceNumber})
+              </p>
+              <p className="mt-0.5 text-[11px]">
+                Amount: {pendingInvoice.currency} {pendingInvoice.amount.toLocaleString()} • Your plan will activate automatically once RestroInn Billing verifies your payment reference.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-md border border-[#EDD7AD] bg-[#FFFCF7] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
+            Pending Review
+          </span>
+        </div>
+      )}
+
+      {/* Active Subscription & Usage Meters */}
+      {data && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 flex flex-col justify-between">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#C3DED0] bg-[#EAF3EE] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#28634B]">
                 Active Tier
               </span>
-              <h2 className="text-xl font-black mt-2 text-foreground uppercase tracking-wide">
-                {activePlan.replace("_", " ")}
+              <h2 className="text-xl font-bold mt-2 text-[#292320] uppercase tracking-tight">
+                {activePlan.replace(/_/g, " ")}
               </h2>
-              <div className="space-y-3 mt-4 text-xs text-muted-foreground">
+              <div className="space-y-2.5 mt-4 text-xs text-[#71675E]">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>Renews/Expires: {new Date(data.subscription.endDate).toLocaleDateString()}</span>
+                  <Calendar className="h-4 w-4 text-[#6B2837]" />
+                  <span>Expires: {new Date(data.subscription.endDate).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-primary" />
-                  <span>Billing Status: <span className="font-semibold text-primary">{data.subscription.status}</span></span>
+                  <CreditCard className="h-4 w-4 text-[#6B2837]" />
+                  <span>
+                    Status: <span className="font-semibold text-[#292320]">{data.subscription.status}</span>
+                  </span>
                 </div>
               </div>
             </div>
-
-            <div className="border-t border-border pt-4 mt-6 flex justify-between items-center text-xs">
-              <span>Remaining Evaluation Time:</span>
-              <span className="font-black text-foreground">{daysRemaining} Days</span>
+            <div className="border-t border-[#D8CEC1] pt-3 mt-5 flex justify-between items-center text-xs">
+              <span className="text-[#71675E]">Days Remaining</span>
+              <span className="font-bold text-[#292320] tabular-nums">{daysRemaining} Days</span>
             </div>
           </div>
 
-          {/* User Limits Meter */}
-          <div className="bg-card border border-border rounded-lg p-5 flex flex-col justify-between shadow-sm">
+          <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">User Limits</span>
-                <span className="text-xs font-black">{userCount} / {userLimit}</span>
+                <span className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">User Limits</span>
+                <span className="text-xs font-bold tabular-nums">{userCount} / {userLimit}</span>
               </div>
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <Users className="h-4.5 w-4.5 text-primary" />
-                Staff Members Registered
+              <h3 className="text-sm font-bold flex items-center gap-2 text-[#292320]">
+                <Users className="h-4 w-4 text-[#6B2837]" />
+                Staff Accounts Registered
               </h3>
-              
-              {/* Progress bar */}
-              <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden mt-6">
-                <div
-                  className="bg-primary h-full rounded-full transition-all duration-500"
-                  style={{ width: `${userPercent}%` }}
-                />
+              <div className="w-full bg-[#EEE7DD] h-2 rounded-full overflow-hidden mt-5">
+                <div className="bg-[#6B2837] h-full rounded-full" style={{ width: `${userPercent}%` }} />
               </div>
             </div>
-
-            <p className="text-[10px] text-muted-foreground mt-4">
-              Your active plan permits registering up to {userLimit} cashier, manager, or owner logins.
+            <p className="text-[11px] text-[#71675E] mt-4">
+              Your active license allows up to {userLimit} staff logins.
             </p>
           </div>
 
-          {/* Branch Limits Meter */}
-          <div className="bg-card border border-border rounded-lg p-5 flex flex-col justify-between shadow-sm">
+          <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Branch Limits</span>
-                <span className="text-xs font-black">{branchCount} / {branchLimit}</span>
+                <span className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">Branch Limits</span>
+                <span className="text-xs font-bold tabular-nums">{branchCount} / {branchLimit}</span>
               </div>
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <Store className="h-4.5 w-4.5 text-primary" />
+              <h3 className="text-sm font-bold flex items-center gap-2 text-[#292320]">
+                <Store className="h-4 w-4 text-[#6B2837]" />
                 Physical Branch Outlets
               </h3>
-
-              {/* Progress bar */}
-              <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden mt-6">
-                <div
-                  className="bg-primary h-full rounded-full transition-all duration-500"
-                  style={{ width: `${branchPercent}%` }}
-                />
+              <div className="w-full bg-[#EEE7DD] h-2 rounded-full overflow-hidden mt-5">
+                <div className="bg-[#6B2837] h-full rounded-full" style={{ width: `${branchPercent}%` }} />
               </div>
             </div>
-
-            <p className="text-[10px] text-muted-foreground mt-4">
-              Your active plan permits managing up to {branchLimit} parallel store locations.
+            <p className="text-[11px] text-[#71675E] mt-4">
+              Your active license allows up to {branchLimit} branch locations.
             </p>
           </div>
         </div>
       )}
 
-      {/* 3. Tiers pricing list */}
-      <div className="space-y-6">
-        <div className="text-center max-w-xl mx-auto space-y-2 mt-8">
-          <h2 className="text-xl font-extrabold text-[#292320] dark:text-slate-100 tracking-tight">
-            Available Scaling Upgrade Packages
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Select the billing tier that best aligns with your sales volume, branches capacity, and staffing requirements.
-          </p>
+      {/* Synced Platform Plans Grid */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-[#292320]">Platform Plans &amp; Pricing</h2>
+            <p className="text-xs text-[#71675E]">
+              Live pricing and limits synced directly from RestroInn Platform Administration.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch pt-4">
-          {plansList.map((plan) => {
-            const isProfessional = plan.id === "Professional";
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+          {plans.map((plan) => {
+            const isCurrentActive =
+              activePlan.toUpperCase() === plan.id.toUpperCase() ||
+              activePlan.toUpperCase() === plan.name.toUpperCase() ||
+              (activePlan.toUpperCase() === "FREE_TRIAL" && plan.name.toUpperCase() === "STARTER");
+
+            const displayPrice =
+              billingCycle === "ANNUAL"
+                ? Number(plan.priceAnnual || Number(plan.priceMonthly || 0) * 10)
+                : Number(plan.priceMonthly || 0);
+            const currency = plan.currency || "NPR";
+
+            const limitsList = [
+              formatLimit(plan.limits?.tables, "Dining Tables"),
+              formatLimit(plan.limits?.staff, "Staff Accounts"),
+              formatLimit(plan.limits?.branches, "Branches"),
+              plan.limits?.rooms ? formatLimit(plan.limits.rooms, "Hotel Rooms") : "Restaurant & POS Suite",
+            ];
+
             return (
               <div
-                key={plan.name}
-                className={`bg-[#FFFCF7] dark:bg-slate-900 border rounded-lg flex flex-col justify-between relative overflow-hidden transition-colors duration-200 ${
-                  plan.active
-                    ? "border-[#064E3B] ring-2 ring-[#064E3B]/10"
-                    : isProfessional
-                    ? "border-amber-500/40 hover:border-amber-500/70"
-                    : "border-[#D8CEC1] dark:border-slate-800 hover:border-slate-350"
-                } ${isProfessional ? "pt-10" : "pt-6"} pb-6 px-6`}
+                key={plan.id}
+                className={`rounded-lg border bg-[#FFFCF7] p-5 flex flex-col justify-between relative ${
+                  isCurrentActive
+                    ? "border-[#28634B] ring-1 ring-[#28634B]/20"
+                    : plan.isPopular
+                    ? "border-[#6B2837]"
+                    : "border-[#D8CEC1]"
+                }`}
               >
-                {/* Custom Badges */}
-                {isProfessional && (
-                  <div className="absolute top-0 right-0 left-0 bg-[#946000] text-white text-[8px] font-black uppercase tracking-widest py-1 text-center font-mono">
-                    Most Popular Option
-                  </div>
-                )}
-                {plan.active && (
-                  <div className="absolute top-3.5 right-4 bg-[#064E3B] text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-xs">
-                    Active Plan
-                  </div>
-                )}
-
                 <div>
-                  <h3 className="text-sm font-black text-[#292320] dark:text-slate-100 uppercase tracking-wide">
-                    {plan.name} Plan
-                  </h3>
-                  <div className="flex items-baseline gap-1 mt-4 mb-6">
-                    <span className="text-3xl font-extrabold text-[#292320] dark:text-slate-100 tracking-tight">{plan.price}</span>
-                    <span className="text-xs text-muted-foreground font-semibold">/ {plan.period}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-[#292320]">{plan.name}</h3>
+                    {isCurrentActive ? (
+                      <span className="rounded-md border border-[#C3DED0] bg-[#EAF3EE] px-2 py-0.5 text-[10px] font-bold text-[#28634B]">
+                        Active
+                      </span>
+                    ) : plan.isPopular ? (
+                      <span className="rounded-md bg-[#6B2837] px-2 py-0.5 text-[10px] font-bold text-[#FFFCF7]">
+                        Popular
+                      </span>
+                    ) : null}
+                  </div>
+                  {plan.subtitle && (
+                    <p className="text-[11px] text-[#71675E] mt-1 min-h-[30px]">{plan.subtitle}</p>
+                  )}
+
+                  <div className="mt-4 pb-4 border-b border-[#D8CEC1] flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-[#292320] tabular-nums">
+                      {currency} {displayPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-[#71675E]">
+                      /{billingCycle === "ANNUAL" ? "year" : "month"}
+                    </span>
                   </div>
 
-                  <ul className="space-y-4 border-t border-[#D8CEC1] dark:border-slate-800/80 pt-5 text-xs text-[#71675E] dark:text-slate-350 font-medium">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2.5">
-                        <Check className="h-4 w-4 text-[#064E3B] dark:text-[#34D399] flex-shrink-0 mt-0.5" />
-                        <span>{feature}</span>
+                  <ul className="space-y-2.5 pt-4 text-xs text-[#292320]">
+                    {limitsList.map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 text-[#28634B] shrink-0" />
+                        <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="mt-8">
-                  {plan.active ? (
-                    <div className="w-full py-2.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-center font-bold rounded-md text-xs flex items-center justify-center gap-1.5 select-none">
-                      <ShieldCheck className="h-4 w-4" />
-                      <span>Current License Active</span>
+                <div className="mt-6">
+                  {isCurrentActive ? (
+                    <div className="w-full py-2 rounded-lg border border-[#C3DED0] bg-[#EAF3EE] text-[#28634B] text-center font-semibold text-xs flex items-center justify-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Current Active Plan
                     </div>
                   ) : (
                     <button
-                      onClick={() => triggerUpgrade(plan)}
-                      disabled={plan.disabled}
-                      className={`w-full py-2.5 rounded-md text-xs font-black transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none ${
-                        plan.disabled
-                          ? "bg-[#EEE7DD] text-slate-400 border border-[#D8CEC1] cursor-not-allowed opacity-60"
-                          : "bg-[#064E3B] hover:bg-[#053F30] text-white shadow-sm shadow-emerald-900/10 hover:shadow-emerald-900/20"
-                      }`}
+                      type="button"
+                      disabled={Boolean(pendingInvoice)}
+                      onClick={() => {
+                        setErrorMsg("");
+                        setSelectedPlan(plan);
+                      }}
+                      className="w-full py-2 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span>Upgrade Plan</span>
+                      <span>{pendingInvoice ? "Upgrade Pending" : "Request Upgrade"}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -343,49 +404,108 @@ export default function SubscriptionsPage() {
         </div>
       </div>
 
-      {/* Upgrade Checkout Dialog Overlay */}
-      {showUpgradeModal && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200">
-          <div className="bg-[#FFFCF7] dark:bg-slate-900 border border-[#D8CEC1] dark:border-slate-800 w-full max-w-md rounded-lg p-6 shadow-sm space-y-4 animate-in zoom-in-95 duration-200">
-            <div>
-              <h2 className="text-base font-black text-[#292320] dark:text-slate-100 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-amber-500" />
-                Confirm Plan Upgrade
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Upgrading limits will apply instantly to your active workspace.
-              </p>
-            </div>
-
-            <div className="bg-[#F7F3EC] dark:bg-slate-950 border border-[#D8CEC1]/60 dark:border-slate-800/80 p-4 rounded-lg text-xs space-y-2 text-[#71675E] dark:text-slate-350">
-              <div className="flex justify-between">
-                <span>Selected Plan:</span>
-                <span className="font-bold text-[#292320] dark:text-slate-100">{selectedPlan.name}</span>
+      {/* Verified Upgrade Request Modal */}
+      {selectedPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/45 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-[#292320]">Request Plan Upgrade</h2>
+                <p className="text-[11px] text-[#71675E]">
+                  Submit payment proof for RestroInn Billing verification.
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span>Billing Frequency:</span>
-                <span className="font-semibold text-[#292320] dark:text-slate-100">Monthly Recurring</span>
-              </div>
-              <div className="border-t border-[#D8CEC1] dark:border-slate-800 pt-2 flex justify-between font-black text-sm text-[#292320] dark:text-slate-100">
-                <span>Due Immediately:</span>
-                <span className="text-[#064E3B] dark:text-[#34D399]">{selectedPlan.price}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 justify-end pt-2">
               <button
-                onClick={() => setShowUpgradeModal(false)}
-                className="px-4 py-2 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-black text-black text-xs font-bold rounded-md cursor-pointer"
+                type="button"
+                onClick={() => setSelectedPlan(null)}
+                className="p-1 rounded-md text-[#71675E] hover:bg-[#EEE7DD] cursor-pointer"
+                aria-label="Close"
               >
-                Cancel
-              </button>
-              <button
-                onClick={confirmUpgrade}
-                className="px-5 py-2 bg-[#064E3B] hover:bg-[#053F30] text-white rounded-md text-xs font-black shadow-sm transition-all uppercase tracking-wider cursor-pointer border-none"
-              >
-                Confirm & Pay
+                <X className="h-4 w-4" />
               </button>
             </div>
+
+            <form onSubmit={handleRequestUpgrade} className="space-y-3.5 text-xs">
+              <div className="rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] p-3.5 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-[#71675E]">Requested Plan:</span>
+                  <span className="font-bold text-[#292320]">{selectedPlan.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#71675E]">Billing Cycle:</span>
+                  <span className="font-semibold text-[#292320]">
+                    {billingCycle === "ANNUAL" ? "Annual" : "Monthly"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-[#D8CEC1] pt-2 font-bold text-sm">
+                  <span>Amount Payable:</span>
+                  <span className="text-[#6B2837] tabular-nums">
+                    {selectedPlan.currency || "NPR"}{" "}
+                    {(billingCycle === "ANNUAL"
+                      ? Number(selectedPlan.priceAnnual || Number(selectedPlan.priceMonthly || 0) * 10)
+                      : Number(selectedPlan.priceMonthly || 0)
+                    ).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-[#292320]">Payment Method *</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="w-full rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] px-3 py-2 text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
+                >
+                  <option value="BANK_TRANSFER">Bank Transfer / ConnectIPS</option>
+                  <option value="FONEPAY">Fonepay QR</option>
+                  <option value="ESEWA">eSewa</option>
+                  <option value="KHALTI">Khalti</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-[#292320]">
+                  Transaction Reference / Voucher ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="e.g. TXN-98412045 or bank slip number"
+                  className="w-full rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] px-3 py-2 text-xs font-mono text-[#292320] focus:border-[#6B2837] focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-[#71675E]">Notes (Optional)</label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Account holder name or remarks"
+                  className="w-full rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] px-3 py-2 text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-[#D8CEC1] pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlan(null)}
+                  className="px-3.5 py-2 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || paymentReference.trim().length < 3}
+                  className="px-4 py-2 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? "Submitting..." : "Submit Upgrade Request"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

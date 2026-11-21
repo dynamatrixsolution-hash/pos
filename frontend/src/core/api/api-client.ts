@@ -1801,7 +1801,13 @@ export class SettingsEndpoints extends BaseApiClient {
     return this.request<any>("/api/v1/subscriptions");
   }
 
-  async updateSubscription(payload: { plan: string }) {
+  async updateSubscription(payload: {
+    plan: string;
+    billingCycle?: "MONTHLY" | "ANNUAL";
+    paymentMethod?: string;
+    paymentReference?: string;
+    notes?: string;
+  }) {
     return this.request<any>("/api/v1/subscriptions", {
       method: "PUT",
       body: JSON.stringify(payload),
