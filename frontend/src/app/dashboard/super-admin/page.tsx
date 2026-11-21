@@ -350,8 +350,8 @@ export default function SuperAdminDashboardPage() {
 
         {/* Primary KPI Row */}
         {isInitialLoad ? (
-          <section aria-label="Loading metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
+          <section aria-label="Loading metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {[0, 1, 2, 3, 4].map((i) => (
               <div key={i} className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-3">
                 <div className="h-3 w-28 animate-pulse rounded bg-[#EEE7DD]" />
                 <div className="h-7 w-24 animate-pulse rounded bg-[#EEE7DD]" />
@@ -360,7 +360,7 @@ export default function SuperAdminDashboardPage() {
             ))}
           </section>
         ) : (
-          <section aria-label="Platform metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="Platform metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <MetricCard
               href="/dashboard/super-admin/businesses"
               label="Active Tenants"
@@ -371,10 +371,18 @@ export default function SuperAdminDashboardPage() {
             />
             <MetricCard
               href="/dashboard/super-admin/revenue"
+              label="Total Revenue Collected"
+              value={formatNpr(metrics.totalPlatformRevenue)}
+              sublabel={`All-time settled • Est. MRR: ${formatNpr(metrics.estimatedMrr)}`}
+              badge="All-Time"
+              badgeTone="ready"
+            />
+            <MetricCard
+              href="/dashboard/super-admin/revenue"
               label="This Month Collected"
               value={formatNpr(metrics.monthlyRevenue)}
-              sublabel={`All-time: ${formatNpr(metrics.totalPlatformRevenue)} • Est. MRR: ${formatNpr(metrics.estimatedMrr)}`}
-              badge="Live Ledger"
+              sublabel={`Current month • Outstanding: ${formatNpr(metrics.totalOutstandingRevenue)}`}
+              badge="Monthly"
               badgeTone="info"
             />
             <MetricCard
