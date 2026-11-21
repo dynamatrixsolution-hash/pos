@@ -60,26 +60,6 @@ export async function GET(request: Request) {
     const audience = searchParams.get("audience");
     const statusFilter = searchParams.get("status");
 
-    // 1. Seed default notices if table is empty
-    const count = await db.platformNotice.count();
-    if (count === 0) {
-      for (const def of DEFAULT_HOSPITALITY_NOTICES) {
-        await db.platformNotice.create({
-          data: {
-            title: def.title,
-            subheading: def.subheading,
-            body: def.body,
-            priority: def.priority,
-            audience: def.audience,
-            targetRoles: def.targetRoles,
-            channels: def.channels,
-            isActive: def.isActive,
-            createdById: context.userId,
-          },
-        });
-      }
-    }
-
     const where: any = {};
     if (priority && priority !== "ALL") where.priority = priority;
     if (audience && audience !== "ALL") where.audience = audience;

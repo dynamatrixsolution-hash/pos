@@ -1,7 +1,12 @@
 import type { NextAuthConfig } from "next-auth";
 
+const isHttpsAuthUrl =
+  process.env.AUTH_URL?.startsWith("https://") ||
+  process.env.NEXTAUTH_URL?.startsWith("https://");
+
 export const authConfig = {
   trustHost: true,
+  ...(isHttpsAuthUrl ? { useSecureCookies: true } : {}),
   pages: {
     signIn: "/auth/login",
   },
@@ -82,6 +87,7 @@ export const authConfig = {
         token.role = (user as any).role;
         token.businessId = (user as any).businessId;
         token.branchId = (user as any).branchId;
+        token.issuedAt = Date.now();
       }
       // Authority is resolved from the database, never from client session updates.
       return token;
@@ -92,6 +98,7 @@ export const authConfig = {
         (session.user as any).role = token.role as string;
         (session.user as any).businessId = token.businessId as string;
         (session.user as any).branchId = token.branchId as string;
+        (session.user as any).issuedAt = (token.issuedAt as number) || undefined;
       }
       return session;
     },

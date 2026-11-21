@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { pepperPassword } from "@/lib/security";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const businessCreationSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   slug: z.string().min(3, "Slug must be at least 3 characters").regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and hyphens"),
-  currency: z.string().default("USD"),
-  businessType: z.string().default("RETAIL"),
+  currency: z.string().default("NPR"),
+  businessType: z.string().default("RESTAURANT"),
+  packageType: z.enum(["RESTAURANT", "HOTEL", "BOTH"]).optional(),
   logo: z.string().optional().nullable(),
   taxNumber: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
@@ -29,44 +31,83 @@ export async function GET(request: Request) {
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
-    const businesses = await db.business.findMany({
-      where: {
-        slug: { not: "platform-admin" },
-      },
-      include: {
-        subscription: {
-          select: {
-            plan: true,
-            status: true,
-            endDate: true,
-            userLimit: true,
-            branchLimit: true,
-          },
-        },
-        users: {
-          where: {
-            role: "OWNER",
-          },
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-            isActive: true,
-          },
-        },
-        _count: {
-          select: {
-            branches: true,
-            users: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search")?.trim();
+    const status = searchParams.get("status")?.trim().toUpperCase();
+    const plan = searchParams.get("plan")?.trim().toUpperCase();
+    const pageRaw = parseInt(searchParams.get("page") || "", 10);
+    const limitRaw = parseInt(searchParams.get("limit") || "", 10);
 
-    return NextResponse.json({ businesses });
+    const where: any = {
+      deletedAt: null,
+      slug: { not: "platform-admin" },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { slug: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status && status !== "ALL") {
+      if (status === "TRIAL" || status === "EXPIRED") {
+        where.subscription = { ...(where.subscription || {}), status };
+      } else {
+        where.status = status;
+      }
+    }
+
+    if (plan && plan !== "ALL") {
+      where.subscription = { ...(where.subscription || {}), plan };
+    }
+
+    const take = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined;
+    const skip = take && Number.isInteger(pageRaw) && pageRaw > 0 ? (pageRaw - 1) * take : undefined;
+
+    const [rawBusinesses, totalCount] = await Promise.all([
+      db.business.findMany({
+        where,
+        include: {
+          subscription: {
+            select: {
+              plan: true,
+              status: true,
+              billingCycle: true,
+              packageType: true,
+              endDate: true,
+              userLimit: true,
+              branchLimit: true,
+            },
+          },
+          users: {
+            where: { role: "OWNER", deletedAt: null },
+            select: { name: true, email: true, phone: true, isActive: true },
+          },
+          _count: {
+            select: {
+              branches: { where: { deletedAt: null } },
+              users: { where: { deletedAt: null } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        ...(take ? { take, skip } : {}),
+      }),
+      db.business.count({ where }),
+    ]);
+
+    const businesses = rawBusinesses.map((b) => ({
+      ...b,
+      panVat: (b.taxConfig as any)?.taxNumber || null,
+      planName: b.subscription?.plan || "STARTER",
+      branchesCount: b._count.branches,
+      usersCount: b._count.users,
+    }));
+
+    return NextResponse.json({ businesses, totalCount });
   } catch (error: any) {
     console.error("GET businesses error:", error);
     return NextResponse.json({ error: "Failed to fetch businesses" }, { status: 500 });
@@ -94,6 +135,7 @@ export async function POST(request: Request) {
       slug,
       currency,
       businessType,
+      packageType,
       logo,
       taxNumber,
       address,
@@ -120,8 +162,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Business slug (URL identifier) is already taken" }, { status: 400 });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(pepperPassword(password), 10);
+    const resolvedPackageType =
+      packageType ||
+      (["RESTAURANT", "HOTEL", "BOTH"].includes(businessType.toUpperCase())
+        ? businessType.toUpperCase()
+        : "RESTAURANT");
 
     const transaction = await db.$transaction(async (tx) => {
       // 1. Create Business
@@ -161,6 +207,8 @@ export async function POST(request: Request) {
           businessId: newBusiness.id,
           plan: plan.toUpperCase(),
           status: "ACTIVE",
+          billingCycle: billingCycle.toUpperCase(),
+          packageType: resolvedPackageType,
           startDate: new Date(),
           endDate: subEndDate,
           userLimit,

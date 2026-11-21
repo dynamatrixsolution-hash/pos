@@ -2,53 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
-
-const DEFAULT_PLANS = [
-  {
-    id: "Starter",
-    name: "Starter",
-    tier: "BASIC",
-    subtitle: "For small cafes, cloud kitchens & bistros",
-    priceMonthly: 700,
-    priceAnnual: 7000,
-    currency: "NPR",
-    isPopular: false,
-    limits: { tables: 15, staff: 5, branches: 1, rooms: 0 },
-  },
-  {
-    id: "Standard",
-    name: "Standard",
-    tier: "STANDARD",
-    subtitle: "For growing dine-in restaurants & bars",
-    priceMonthly: 1200,
-    priceAnnual: 12000,
-    currency: "NPR",
-    isPopular: false,
-    limits: { tables: 40, staff: 15, branches: 2, rooms: 10 },
-  },
-  {
-    id: "Professional",
-    name: "Professional",
-    tier: "PRO",
-    subtitle: "For high-volume multi-floor restaurants & boutique hotels",
-    priceMonthly: 2000,
-    priceAnnual: 20000,
-    currency: "NPR",
-    isPopular: true,
-    limits: { tables: 100, staff: 50, branches: 5, rooms: 40 },
-  },
-  {
-    id: "Enterprise",
-    name: "Enterprise",
-    tier: "ENTERPRISE",
-    subtitle: "For resort chains, franchises & large hospitality groups",
-    priceMonthly: 5000,
-    priceAnnual: 50000,
-    currency: "NPR",
-    isPopular: false,
-    limits: { tables: 999, staff: 999, branches: 20, rooms: 500 },
-  },
-];
+import { DEFAULT_SUBSCRIPTION_PLANS as DEFAULT_PLANS } from "@/lib/subscription-plans";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();

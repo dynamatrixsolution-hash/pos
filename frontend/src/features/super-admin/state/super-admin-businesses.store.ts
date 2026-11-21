@@ -83,7 +83,10 @@ export const useSuperAdminBusinessesStore = create<SuperAdminBusinessesState>((s
     try {
       const editing = get().editingBusiness;
       if (editing) {
-        await superAdminRepository.updateBusiness(editing.id, payload);
+        await superAdminRepository.updateBusiness(editing.id, {
+          action: "UPDATE_PROFILE",
+          payload,
+        });
       } else {
         await superAdminRepository.createBusiness(payload);
       }
@@ -99,7 +102,12 @@ export const useSuperAdminBusinessesStore = create<SuperAdminBusinessesState>((s
   updateStatus: async (id, status) => {
     set({ isSaving: true, error: null });
     try {
-      await superAdminRepository.updateBusiness(id, { status });
+      const action = status === "SUSPENDED" ? "SUSPEND" : "ACTIVATE";
+      const reason =
+        status === "SUSPENDED"
+          ? "Suspended by Super Admin from tenant directory"
+          : "Reactivated by Super Admin from tenant directory";
+      await superAdminRepository.updateBusiness(id, { action, payload: { reason } });
       await get().loadBusinesses();
       set({ isSaving: false });
       return true;

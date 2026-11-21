@@ -245,14 +245,14 @@ export async function POST(request: Request) {
         ? new Date(business.subscription.endDate).toLocaleDateString()
         : "soon";
 
-      // Create a notice specifically for this business
+      // Scope reminder strictly to this business (never broadcast to ALL tenants)
       await db.platformNotice.create({
         data: {
           title: `Subscription Renewal Notice: ${business.name}`,
           subheading: `Plan expiration on ${endDate}`,
           body: `Your subscription plan (${business.subscription?.plan || "Standard"}) is scheduled to expire on ${endDate}. Please renew promptly to ensure uninterrupted access to POS, Hotel, and Dining services.`,
           priority: "WARNING",
-          audience: "ALL",
+          audience: `BUSINESS:${business.id}`,
           targetRoles: ["OWNER"],
           channels: ["IN_APP"],
           expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),

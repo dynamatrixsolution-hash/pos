@@ -111,54 +111,79 @@ export async function POST(request: Request) {
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
+    if (invoice.status === "PAID" || invoice.status === "VOID") {
+      return NextResponse.json(
+        { error: `Invoice #${invoice.invoiceNumber} is already ${invoice.status}` },
+        { status: 400 }
+      );
+    }
 
-    const settlementAmount = amount ? Number(amount) : Number(invoice.amount);
+    const settlementAmount = amount !== undefined && amount !== null ? Number(amount) : Number(invoice.amount);
+    if (!Number.isFinite(settlementAmount) || settlementAmount <= 0) {
+      return NextResponse.json({ error: "Settlement amount must be a positive number" }, { status: 400 });
+    }
 
-    const payment = await db.subscriptionPayment.create({
-      data: {
-        businessId: invoice.businessId,
-        invoiceId: invoice.id,
-        amount: settlementAmount,
-        currency: invoice.currency || "NPR",
-        paymentMethod: paymentMethod,
-        reference: reference || `SETTLE-${Date.now().toString().slice(-6)}`,
-        notes: notes || "Settled by Super Admin",
-        recordedById: context.userId,
-      },
-    });
+    const { payment, nextStatus } = await db.$transaction(async (tx) => {
+      const existingPayments = await tx.subscriptionPayment.aggregate({
+        where: { invoiceId: invoice.id },
+        _sum: { amount: true },
+      });
+      const totalPaid = Number(existingPayments._sum.amount || 0) + settlementAmount;
+      const isFullyPaid = totalPaid >= Number(invoice.amount);
+      const computedStatus = isFullyPaid ? "PAID" : "PARTIAL";
 
-    await db.subscriptionInvoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: "PAID",
-        paidAt: new Date(),
-      },
-    });
+      const createdPayment = await tx.subscriptionPayment.create({
+        data: {
+          businessId: invoice.businessId,
+          invoiceId: invoice.id,
+          amount: settlementAmount,
+          currency: invoice.currency || "NPR",
+          paymentMethod,
+          reference: reference || `SETTLE-${Date.now().toString().slice(-6)}`,
+          notes: notes || "Settled by Super Admin",
+          recordedById: context.userId,
+        },
+      });
 
-    // Update active business subscription if overdue
-    await db.subscription.updateMany({
-      where: { businessId: invoice.businessId, status: "OVERDUE" },
-      data: { status: "ACTIVE" },
-    });
+      await tx.subscriptionInvoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: computedStatus,
+          ...(isFullyPaid ? { paidAt: new Date() } : {}),
+        },
+      });
 
-    // Audit log
-    await db.platformAuditLog.create({
-      data: {
-        action: "PAYMENT_SETTLED",
-        businessId: invoice.businessId,
-        actorId: context.userId,
-        actorRole: "SUPER_ADMIN",
-        targetType: "SUBSCRIPTION_INVOICE",
-        targetId: invoice.id,
-        reason: `Settled invoice #${invoice.invoiceNumber} for NPR ${settlementAmount}`,
-        afterState: { status: "PAID", amount: settlementAmount, paymentMethod },
-      },
+      if (isFullyPaid) {
+        await tx.subscription.updateMany({
+          where: { businessId: invoice.businessId, status: "OVERDUE" },
+          data: { status: "ACTIVE" },
+        });
+      }
+
+      await tx.platformAuditLog.create({
+        data: {
+          action: "PAYMENT_SETTLED",
+          businessId: invoice.businessId,
+          actorId: context.userId,
+          actorRole: "SUPER_ADMIN",
+          targetType: "SUBSCRIPTION_INVOICE",
+          targetId: invoice.id,
+          reason: `Recorded NPR ${settlementAmount} payment on invoice #${invoice.invoiceNumber} (${computedStatus})`,
+          afterState: { status: computedStatus, amount: settlementAmount, totalPaid, paymentMethod },
+        },
+      });
+
+      return { payment: createdPayment, nextStatus: computedStatus };
     });
 
     return NextResponse.json({
       success: true,
       paymentId: payment.id,
-      message: `Invoice #${invoice.invoiceNumber} settled successfully.`,
+      status: nextStatus,
+      message:
+        nextStatus === "PAID"
+          ? `Invoice #${invoice.invoiceNumber} settled in full.`
+          : `Partial payment recorded for invoice #${invoice.invoiceNumber}.`,
     });
   } catch (error: any) {
     console.error("Super Admin Record Settlement API Error:", error);

@@ -16,11 +16,14 @@ export const BusinessModal: React.FC = () => {
   const [slug, setSlug] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [password, setPassword] = useState("");
   const [panVat, setPanVat] = useState("");
   const [address, setAddress] = useState("");
   const [plan, setPlan] = useState("ENTERPRISE");
   const [status, setStatus] = useState<TenantStatus>("ACTIVE");
   const [error, setError] = useState<string | null>(null);
+  const storeError = useSuperAdminBusinessesStore((s) => s.error);
 
   useEffect(() => {
     if (editingBusiness) {
@@ -28,15 +31,19 @@ export const BusinessModal: React.FC = () => {
       setSlug(editingBusiness.slug || "");
       setPhone(editingBusiness.phone || "");
       setEmail(editingBusiness.email || "");
-      setPanVat(editingBusiness.panVat || "");
+      setOwnerName("");
+      setPassword("");
+      setPanVat(editingBusiness.panVat || (editingBusiness as any).taxConfig?.taxNumber || "");
       setAddress(editingBusiness.address || "");
-      setPlan(editingBusiness.planName || editingBusiness.plan || "ENTERPRISE");
+      setPlan(editingBusiness.planName || editingBusiness.subscription?.plan || editingBusiness.plan || "ENTERPRISE");
       setStatus(editingBusiness.status || "ACTIVE");
     } else {
       setName("");
       setSlug("");
       setPhone("");
       setEmail("");
+      setOwnerName("");
+      setPassword("");
       setPanVat("");
       setAddress("");
       setPlan("ENTERPRISE");
@@ -49,25 +56,58 @@ export const BusinessModal: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError("Business organization name is required");
+    const cleanName = name.trim();
+    const cleanSlug = (slug.trim() || cleanName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+
+    if (cleanName.length < 2) {
+      setError("Business name must be at least 2 characters");
       return;
     }
 
-    const payload = {
-      name: name.trim(),
-      slug: slug.trim() || undefined,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
-      panVat: panVat.trim() || null,
-      address: address.trim() || null,
-      plan,
-      status,
-    };
+    if (!editingBusiness) {
+      if (cleanSlug.length < 3 || !/^[a-z0-9-]+$/.test(cleanSlug)) {
+        setError("URL slug must be at least 3 characters (lowercase letters, numbers, hyphens)");
+        return;
+      }
+      if (ownerName.trim().length < 2) {
+        setError("Owner name is required (min 2 characters)");
+        return;
+      }
+      if (!email.trim()) {
+        setError("Owner / billing email is required");
+        return;
+      }
+      if (password.length < 6) {
+        setError("Initial owner password must be at least 6 characters");
+        return;
+      }
+    }
 
+    const payload = editingBusiness
+      ? {
+          name: cleanName,
+          slug: cleanSlug,
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          taxNumber: panVat.trim() || null,
+          address: address.trim() || null,
+        }
+      : {
+          businessName: cleanName,
+          slug: cleanSlug,
+          phone: phone.trim() || null,
+          email: email.trim(),
+          ownerName: ownerName.trim(),
+          password,
+          taxNumber: panVat.trim() || null,
+          address: address.trim() || null,
+          plan,
+        };
+
+    setError(null);
     const ok = await saveBusiness(payload);
     if (!ok) {
-      setError("Failed to save tenant organization");
+      setError(useSuperAdminBusinessesStore.getState().error || storeError || "Failed to save tenant organization");
     }
   };
 
@@ -162,15 +202,47 @@ export const BusinessModal: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-[#292320]">Billing Email</label>
+            <label className="text-[11px] font-bold text-[#292320]">
+              {editingBusiness ? "Billing Email" : "Owner / Billing Email *"}
+            </label>
             <input
               type="email"
+              required={!editingBusiness}
               placeholder="billing@annapurnaresort.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
             />
           </div>
+
+          {!editingBusiness && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-[#292320]">Owner Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Aarav Shrestha"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="w-full h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-[#292320]">Initial Password *</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Min 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">

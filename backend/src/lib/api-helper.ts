@@ -1,4 +1,7 @@
 import { auth } from "@/auth";
+import { authConfig } from "@/auth.config";
+import { decode } from "next-auth/jwt";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { ROLE_GROUPS, normalizeRole } from "./rbac";
@@ -33,10 +36,43 @@ export const VALID_SYSTEM_ROLES = [
   "DELIVERY",
 ];
 
-export async function getSessionContext(): Promise<SessionContext | null> {
+async function resolveSessionUser(): Promise<{ id?: string; businessId?: string; issuedAt?: number } | undefined> {
   const session = await auth();
-  
-  const sessionUser = session?.user as { id?: string; businessId?: string } | undefined;
+  const sessionUser = session?.user as { id?: string; businessId?: string; issuedAt?: number } | undefined;
+  if (sessionUser?.id && sessionUser.businessId) {
+    return sessionUser;
+  }
+
+  // Fallback for internal HTTP proxy/SSR calls carrying HTTPS __Secure-authjs.session-token
+  const secret = authConfig.secret;
+  if (!secret) return undefined;
+
+  try {
+    const cookieStore = await cookies();
+    for (const cookieName of ["__Secure-authjs.session-token", "authjs.session-token"]) {
+      const rawToken = cookieStore.get(cookieName)?.value;
+      if (!rawToken) continue;
+      const decoded = await decode({ token: rawToken, secret, salt: cookieName });
+      if (decoded?.id && decoded?.businessId) {
+        return {
+          id: String(decoded.id),
+          businessId: String(decoded.businessId),
+          issuedAt: typeof decoded.issuedAt === "number"
+            ? decoded.issuedAt
+            : typeof decoded.iat === "number"
+            ? decoded.iat * 1000
+            : undefined,
+        };
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+export async function getSessionContext(): Promise<SessionContext | null> {
+  const sessionUser = await resolveSessionUser();
   if (!sessionUser?.id || !sessionUser.businessId) {
     return null;
   }
@@ -53,7 +89,9 @@ export async function getSessionContext(): Promise<SessionContext | null> {
       deletedAt: true,
       business: {
         select: {
+          status: true,
           deletedAt: true,
+          settings: true,
           subscription: { select: { status: true } },
         },
       },
@@ -70,12 +108,23 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   ) {
     return null;
   }
-  if (
-    userExists.role !== "SUPER_ADMIN" &&
-    userExists.business?.subscription?.status &&
-    ["SUSPENDED", "CANCELLED"].includes(userExists.business.subscription.status.toUpperCase())
-  ) {
-    return null;
+  if (userExists.role !== "SUPER_ADMIN") {
+    const bizStatus = userExists.business?.status?.toUpperCase();
+    const subStatus = userExists.business?.subscription?.status?.toUpperCase();
+    if (
+      (bizStatus && ["SUSPENDED", "CLOSED", "TERMINATED"].includes(bizStatus)) ||
+      (subStatus && ["SUSPENDED", "CANCELLED"].includes(subStatus))
+    ) {
+      return null;
+    }
+
+    const revokedAtRaw = (userExists.business?.settings as any)?.sessionsRevokedAt;
+    if (revokedAtRaw && sessionUser.issuedAt) {
+      const revokedAtMs = new Date(revokedAtRaw).getTime();
+      if (Number.isFinite(revokedAtMs) && sessionUser.issuedAt < revokedAtMs) {
+        return null;
+      }
+    }
   }
   let resolvedBranchId = userExists.branchId;
   if (!resolvedBranchId) {

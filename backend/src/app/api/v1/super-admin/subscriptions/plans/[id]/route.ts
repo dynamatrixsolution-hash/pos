@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
 
 export async function PATCH(
   request: Request,
@@ -19,17 +20,18 @@ export async function PATCH(
       where: { key: "SUBSCRIPTION_CONFIG" },
     });
     const settings = (configRecord?.value as any) || {};
-    const plans = [...(settings.plans || [])];
+    const plans = [...(settings.plans || DEFAULT_SUBSCRIPTION_PLANS)];
 
     const index = plans.findIndex((p: any) => p.id === id || p.name === id);
     if (index === -1) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
+    const beforePlan = { ...plans[index] };
     const updatedPlan = {
-      ...plans[index],
+      ...beforePlan,
       ...body,
-      id: plans[index].id, // preserve id
+      id: beforePlan.id, // preserve id
     };
 
     plans[index] = updatedPlan;
@@ -47,7 +49,7 @@ export async function PATCH(
       targetType: "SYSTEM",
       targetId: id,
       reason: `Updated subscription plan ${updatedPlan.name}`,
-      beforeState: plans[index],
+      beforeState: beforePlan,
       afterState: updatedPlan,
     });
 
@@ -74,7 +76,7 @@ export async function DELETE(
       where: { key: "SUBSCRIPTION_CONFIG" },
     });
     const settings = (configRecord?.value as any) || {};
-    const plans = [...(settings.plans || [])];
+    const plans = [...(settings.plans || DEFAULT_SUBSCRIPTION_PLANS)];
 
     const filtered = plans.filter((p: any) => p.id !== id && p.name !== id);
 

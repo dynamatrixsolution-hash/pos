@@ -78,23 +78,24 @@ export async function GET(request: Request) {
       },
     });
 
-    // 2. Fetch Businesses
+    // 2. Fetch Businesses (exclude soft-deleted & internal platform-admin)
+    const tenantBusinessFilter = { deletedAt: null, slug: { not: "platform-admin" } };
     const businesses = await db.business.findMany({
-      where: period === "all" ? {} : dateFilterCreatedAt,
+      where: period === "all" ? tenantBusinessFilter : { ...tenantBusinessFilter, ...dateFilterCreatedAt },
       orderBy: { createdAt: "desc" },
       include: {
-        branches: { select: { id: true, name: true } },
-        users: { where: { role: "OWNER" }, select: { name: true, email: true, phone: true } },
+        branches: { where: { deletedAt: null }, select: { id: true, name: true } },
+        users: { where: { role: "OWNER", deletedAt: null }, select: { name: true, email: true, phone: true } },
         subscription: { select: { plan: true, status: true, packageType: true, endDate: true } },
       },
     });
 
     // All-time counts for context
     const [totalAllTimeBusinesses, restroAllCount, hotelAllCount, bothAllCount] = await Promise.all([
-      db.business.count(),
-      db.subscription.count({ where: { packageType: "RESTAURANT" } }),
-      db.subscription.count({ where: { packageType: "HOTEL" } }),
-      db.subscription.count({ where: { packageType: "BOTH" } }),
+      db.business.count({ where: tenantBusinessFilter }),
+      db.subscription.count({ where: { packageType: "RESTAURANT", business: tenantBusinessFilter } }),
+      db.subscription.count({ where: { packageType: "HOTEL", business: tenantBusinessFilter } }),
+      db.subscription.count({ where: { packageType: "BOTH", business: tenantBusinessFilter } }),
     ]);
 
     // 3. Fetch Support Tickets in period

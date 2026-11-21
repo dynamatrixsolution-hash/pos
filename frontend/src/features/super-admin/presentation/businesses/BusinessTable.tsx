@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   Building2,
   Phone,
@@ -76,7 +77,12 @@ export const BusinessTable: React.FC = () => {
                 <tr key={b.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
                   {/* Name */}
                   <td className="px-3.5 py-3">
-                    <div className="font-bold text-[#292320] text-sm">{b.name}</div>
+                    <Link
+                      href={`/dashboard/super-admin/businesses/${b.id}`}
+                      className="font-bold text-[#292320] hover:text-[#6B2837] hover:underline text-sm"
+                    >
+                      {b.name}
+                    </Link>
                     {b.slug && (
                       <div className="text-[10px] font-mono text-[#71675E]">/{b.slug}</div>
                     )}

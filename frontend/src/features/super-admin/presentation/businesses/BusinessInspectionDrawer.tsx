@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { X, Building2, Phone, Mail, MapPin, ShieldCheck, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { X, Building2, ExternalLink } from "lucide-react";
 import { useSuperAdminBusinessesStore } from "../../state/super-admin-businesses.store";
 
 export const BusinessInspectionDrawer: React.FC = () => {
@@ -83,7 +84,15 @@ export const BusinessInspectionDrawer: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-[#D8CEC1] flex items-center justify-end shrink-0">
+        <div className="pt-3 border-t border-[#D8CEC1] flex items-center justify-between shrink-0">
+          <Link
+            href={`/dashboard/super-admin/businesses/${b.id}`}
+            onClick={() => setSelectedBusiness(null)}
+            className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-white inline-flex items-center gap-1.5"
+          >
+            <span>Open Full Profile</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
           <button
             type="button"
             onClick={() => setSelectedBusiness(null)}

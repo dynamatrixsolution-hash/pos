@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { db } from "@/lib/db";
-import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
+import { getSessionContext, authErrorResponse, roleErrorResponse, VALID_SYSTEM_ROLES } from "@/lib/api-helper";
+import { pepperPassword } from "@/lib/security";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -154,7 +156,10 @@ export async function POST(request: Request) {
       if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
       const target = await db.user.findUnique({ where: { id: userId } });
-      if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (!target || target.deletedAt) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (target.role === "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Super Admin accounts cannot be toggled here" }, { status: 403 });
+      }
 
       const updated = await db.user.update({
         where: { id: userId },
@@ -183,8 +188,14 @@ export async function POST(request: Request) {
     // 2. Reset password
     if (action === "RESET_PASSWORD") {
       if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-      const tempPass = password || `Pass_${Math.random().toString(36).slice(-8)}!`;
-      const hashed = await bcrypt.hash(tempPass, 10);
+      const target = await db.user.findUnique({ where: { id: userId } });
+      if (!target || target.deletedAt) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (target.role === "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Super Admin passwords cannot be reset from tenant user controls" }, { status: 403 });
+      }
+
+      const tempPass = password || `Pass_${crypto.randomBytes(6).toString("base64url")}!`;
+      const hashed = await bcrypt.hash(pepperPassword(tempPass), 10);
 
       const updated = await db.user.update({
         where: { id: userId },
@@ -216,20 +227,25 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "businessId, name, and email are required" }, { status: 400 });
       }
 
-      const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
+      const normalizedRole = (role || "OWNER").toUpperCase();
+      if (normalizedRole === "SUPER_ADMIN" || !VALID_SYSTEM_ROLES.includes(normalizedRole)) {
+        return NextResponse.json({ error: "Invalid tenant user role" }, { status: 400 });
+      }
+
+      const existing = await db.user.findUnique({ where: { email: email.toLowerCase().trim() } });
       if (existing) {
         return NextResponse.json({ error: "A user with this email already exists" }, { status: 400 });
       }
 
-      const tempPass = password || `Owner_${Math.random().toString(36).slice(-8)}!`;
-      const hashed = await bcrypt.hash(tempPass, 10);
+      const tempPass = password || `Owner_${crypto.randomBytes(6).toString("base64url")}!`;
+      const hashed = await bcrypt.hash(pepperPassword(tempPass), 10);
 
       const newUser = await db.user.create({
         data: {
           businessId,
           name: name.trim(),
           email: email.toLowerCase().trim(),
-          role: role || "OWNER",
+          role: normalizedRole,
           passwordHash: hashed,
           isActive: true,
         },

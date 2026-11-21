@@ -58,9 +58,9 @@ export async function GET(request: Request) {
 
     // 2. Core Metrics
     const [totalBusinesses, activeBusinesses, totalUsers, paymentsSum, invoicesOutstanding] = await Promise.all([
-      db.business.count({ where: { slug: { not: "platform-admin" } } }),
-      db.business.count({ where: { status: "ACTIVE", slug: { not: "platform-admin" } } }),
-      db.user.count({ where: { business: { slug: { not: "platform-admin" } } } }),
+      db.business.count({ where: { deletedAt: null, slug: { not: "platform-admin" } } }),
+      db.business.count({ where: { deletedAt: null, status: "ACTIVE", slug: { not: "platform-admin" } } }),
+      db.user.count({ where: { deletedAt: null, business: { deletedAt: null, slug: { not: "platform-admin" } } } }),
       db.subscriptionPayment.aggregate({ _sum: { amount: true } }),
       db.subscriptionInvoice.aggregate({
         _sum: { amount: true },
@@ -110,9 +110,10 @@ export async function GET(request: Request) {
     }
 
     // 5. Support Desk Status Widget
-    const [openTickets, inProgressTickets, resolvedTickets] = await Promise.all([
+    const [openTickets, inProgressTickets, waitingTickets, resolvedTickets] = await Promise.all([
       db.platformSupportTicket.count({ where: { status: "OPEN" } }),
       db.platformSupportTicket.count({ where: { status: "IN_PROGRESS" } }),
+      db.platformSupportTicket.count({ where: { status: "WAITING" } }),
       db.platformSupportTicket.count({ where: { status: { in: ["RESOLVED", "CLOSED"] } } }),
     ]);
 
@@ -138,12 +139,12 @@ export async function GET(request: Request) {
         take: 6,
       }),
       db.business.findMany({
-        where: { slug: { not: "platform-admin" } },
+        where: { deletedAt: null, slug: { not: "platform-admin" } },
         orderBy: { createdAt: "desc" },
         take: 8,
         include: {
           subscription: { select: { plan: true, status: true, packageType: true } },
-          users: { where: { role: "OWNER" }, select: { name: true, email: true } },
+          users: { where: { role: "OWNER", deletedAt: null }, select: { name: true, email: true } },
         },
       }),
     ]);
@@ -198,7 +199,7 @@ export async function GET(request: Request) {
         support: {
           open: openTickets,
           inProgress: inProgressTickets,
-          waiting: 1,
+          waiting: waitingTickets,
           resolved: resolvedTickets,
         },
       },
@@ -211,7 +212,7 @@ export async function GET(request: Request) {
           name: b.name,
           slug: b.slug,
           logo: b.logo || null,
-          status: b.subscription?.status || "ACTIVE",
+          status: b.status || b.subscription?.status || "ACTIVE",
           plan: b.subscription?.plan || "STANDARD",
           packageType: b.subscription?.packageType || "RESTAURANT",
           ownerName: b.users[0]?.name || "Unassigned",

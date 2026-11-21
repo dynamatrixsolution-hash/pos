@@ -128,6 +128,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const context = await getSessionContext();
   if (!context) return authErrorResponse();
+  if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
     const body = await request.json();

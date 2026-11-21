@@ -48,6 +48,7 @@ class BaseApiClient {
     try {
       res = await fetch(url, {
         ...options,
+        credentials: options.credentials ?? "include",
         headers,
       });
     } catch {
@@ -1588,8 +1589,15 @@ export class SuperAdminEndpoints extends BaseApiClient {
     return this.request<any>("/api/v1/super-admin/notifications");
   }
 
-  async getReports(params?: any) {
-    const query = new URLSearchParams(params || {});
+  async getReports(params?: Record<string, string | number | boolean | undefined | null>) {
+    const query = new URLSearchParams();
+    if (params) {
+      for (const [key, val] of Object.entries(params)) {
+        if (val !== undefined && val !== null && val !== "") {
+          query.set(key, String(val));
+        }
+      }
+    }
     const qs = query.toString();
     return this.request<any>(`/api/v1/super-admin/reports${qs ? `?${qs}` : ""}`);
   }
@@ -1624,7 +1632,10 @@ export class SuperAdminEndpoints extends BaseApiClient {
   }
 
   async getChat(params?: { userId?: string; ownerId?: string; search?: string }) {
-    const query = new URLSearchParams(params || {});
+    const query = new URLSearchParams();
+    if (params?.userId) query.set("userId", params.userId);
+    if (params?.ownerId) query.set("ownerId", params.ownerId);
+    if (params?.search) query.set("search", params.search);
     const qs = query.toString();
     return this.request<any>(`/api/v1/super-admin/chat${qs ? `?${qs}` : ""}`);
   }

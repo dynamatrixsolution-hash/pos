@@ -131,7 +131,7 @@ export const TablesManagerGrid: React.FC = () => {
                     : isCabin
                     ? "Private Cabin"
                     : isHall
-                    ? "Banquet Hall"
+                    ? "Banquet Hall" 
                     : "Dining Table"}
                 </span>
               </div>

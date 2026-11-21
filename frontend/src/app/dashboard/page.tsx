@@ -87,7 +87,7 @@ interface HospitalityStats {
 const CARD = "bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg shadow-none";
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { currencySymbol } = useSettings();
   const userRole = (session?.user as any)?.role;
 
@@ -131,6 +131,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     setMounted(true);
+    if (sessionStatus === "loading") return;
     if (userRole === "SUPER_ADMIN") {
       setIsLoading(false);
       return;
@@ -147,10 +148,10 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [loadDashboard, userRole]);
+  }, [loadDashboard, userRole, sessionStatus]);
 
   useVisibilityPolling(loadDashboard, 15000, {
-    enabled: userRole !== "SUPER_ADMIN",
+    enabled: sessionStatus === "authenticated" && userRole !== "SUPER_ADMIN",
   });
 
   if (!mounted || isLoading) {

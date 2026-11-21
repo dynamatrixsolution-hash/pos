@@ -337,17 +337,31 @@ export async function PUT(
         return NextResponse.json({ error: "Owner user not registered for this business" }, { status: 404 });
       }
 
-      // Generate cryptographically secure one-time recovery token
+      // Generate cryptographically secure one-time recovery token and persist its SHA-256 hash
       const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetTokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
       const resetExpiresAt = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours validity
 
-      // Update user metadata or settings with reset token hash
-      await db.user.update({
-        where: { id: owner.id },
-        data: {
-          isActive: true,
-        },
-      });
+      const existingSettings = ((business.settings as Record<string, any>) || {});
+      await db.$transaction([
+        db.user.update({
+          where: { id: owner.id },
+          data: { isActive: true },
+        }),
+        db.business.update({
+          where: { id },
+          data: {
+            settings: {
+              ...existingSettings,
+              pendingPasswordReset: {
+                userId: owner.id,
+                tokenHash: resetTokenHash,
+                expiresAt: resetExpiresAt.toISOString(),
+              },
+            } as any,
+          },
+        }),
+      ]);
 
       const inviteUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(owner.email)}`;
 
@@ -380,11 +394,23 @@ export async function PUT(
         return NextResponse.json({ error: "Mandatory reason required for session revocation" }, { status: 400 });
       }
 
-      // Deactivate and reactivate users to bump auth cache / clear sessions
-      await db.user.updateMany({
-        where: { businessId: id },
-        data: { updatedAt: new Date() },
-      });
+      const revokedAt = new Date();
+      const existingSettings = ((business.settings as Record<string, any>) || {});
+      await db.$transaction([
+        db.business.update({
+          where: { id },
+          data: {
+            settings: {
+              ...existingSettings,
+              sessionsRevokedAt: revokedAt.toISOString(),
+            } as any,
+          },
+        }),
+        db.user.updateMany({
+          where: { businessId: id },
+          data: { updatedAt: revokedAt },
+        }),
+      ]);
 
       await logPlatformAudit({
         actorId: context.userId,

@@ -376,16 +376,45 @@ export async function PUT(request: Request) {
 
     if (mode === "GLOBAL_MATRIX") {
       const { code, updates, reason } = body;
-      if (!code || !updates) {
+      if (!code || !updates || typeof updates !== "object") {
         return NextResponse.json({ error: "Module code and updates are required" }, { status: 400 });
+      }
+
+      const allowedFields = [
+        "name",
+        "category",
+        "description",
+        "iconName",
+        "restaurantIncluded",
+        "hotelIncluded",
+        "bothIncluded",
+        "starterIncluded",
+        "standardIncluded",
+        "proIncluded",
+        "enterpriseIncluded",
+        "isActive",
+        "sortOrder",
+      ] as const;
+
+      const safeUpdates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (field in updates && updates[field] !== undefined) {
+          safeUpdates[field] = updates[field];
+        }
+      }
+      if (Object.keys(safeUpdates).length === 0) {
+        return NextResponse.json({ error: "No valid module fields provided" }, { status: 400 });
       }
 
       const auditReason = reason && reason.trim().length >= 3 ? reason.trim() : "Updated global module configuration";
 
       const existing = await db.platformModuleConfig.findUnique({ where: { code } });
+      if (!existing) {
+        return NextResponse.json({ error: "Module not found" }, { status: 404 });
+      }
       const updated = await db.platformModuleConfig.update({
         where: { code },
-        data: updates,
+        data: safeUpdates,
       });
 
       await logPlatformAudit({

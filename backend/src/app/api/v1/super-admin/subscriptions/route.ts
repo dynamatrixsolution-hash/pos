@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -393,7 +394,7 @@ export async function POST(request: Request) {
 
     // 2. UPDATE PLANS CONFIGURATION
     if (action === "UPDATE_PLANS" || action === "CREATE_PLAN") {
-      let updatedPlans = currentSettings.plans || [];
+      let updatedPlans = [...(currentSettings.plans || DEFAULT_SUBSCRIPTION_PLANS)];
       if (plan) {
         const index = updatedPlans.findIndex((p: any) => p.id === plan.id || p.name === plan.name);
         if (index >= 0) {

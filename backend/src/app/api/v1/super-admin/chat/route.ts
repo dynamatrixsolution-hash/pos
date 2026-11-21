@@ -69,28 +69,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Ensure sample messages exist if PlatformDirectMessage table is empty
-    const messageCount = await db.platformDirectMessage.count();
-    if (messageCount === 0 && ownerList.length > 0) {
-      for (const owner of ownerList) {
-        const demoThread = INITIAL_DEMO_MESSAGES[owner.businessSlug];
-        if (demoThread) {
-          for (const item of demoThread) {
-            const msgDate = new Date(Date.now() - item.minutesAgo * 60 * 1000);
-            await db.platformDirectMessage.create({
-              data: {
-                businessId: owner.businessId,
-                senderId: item.fromAdmin ? context.userId : owner.id,
-                receiverId: item.fromAdmin ? owner.id : context.userId,
-                content: item.text,
-                isRead: true,
-                createdAt: msgDate,
-              },
-            });
-          }
-        }
-      }
-    }
+    // 3. Load blocked owner IDs from PlatformSetting
+    const blockedSetting = await db.platformSetting.findUnique({
+      where: { key: "CHAT_BLOCKED_OWNERS" },
+    });
+    const blockedOwnerSet = new Set<string>(
+      Array.isArray((blockedSetting?.value as any)?.ownerIds)
+        ? (blockedSetting?.value as any).ownerIds
+        : []
+    );
 
     // 4. Attach latest message snippet and unread counts for each owner
     const ownersWithChat = await Promise.all(
@@ -113,13 +100,15 @@ export async function GET(request: Request) {
           },
         });
 
-        // Check if owner is blocked
-        const blockedMsg = await db.platformDirectMessage.findFirst({
-          where: {
-            senderId: owner.id,
-            isBlocked: true,
-          },
-        });
+        // Check if owner is blocked (setting is source of truth, fallback to legacy message flag)
+        const isBlocked =
+          blockedOwnerSet.has(owner.id) ||
+          Boolean(
+            await db.platformDirectMessage.findFirst({
+              where: { senderId: owner.id, isBlocked: true },
+              select: { id: true },
+            })
+          );
 
         return {
           ...owner,
@@ -137,7 +126,7 @@ export async function GET(request: Request) {
                 isRead: true,
               },
           unreadCount,
-          isBlocked: !!blockedMsg,
+          isBlocked,
         };
       })
     );
@@ -299,16 +288,42 @@ export async function PUT(request: Request) {
     }
 
     if (action === "TOGGLE_BLOCK") {
-      // Toggle block status on messages from this user
-      const isCurrentlyBlocked = await db.platformDirectMessage.findFirst({
-        where: { senderId: ownerId, isBlocked: true },
+      const blockedSetting = await db.platformSetting.findUnique({
+        where: { key: "CHAT_BLOCKED_OWNERS" },
       });
+      const currentIds: string[] = Array.isArray((blockedSetting?.value as any)?.ownerIds)
+        ? (blockedSetting?.value as any).ownerIds
+        : [];
+      const wasBlockedInSetting = currentIds.includes(ownerId);
+      const wasBlockedInMsgs = Boolean(
+        await db.platformDirectMessage.findFirst({
+          where: { senderId: ownerId, isBlocked: true },
+          select: { id: true },
+        })
+      );
 
-      const nextBlockedState = !isCurrentlyBlocked;
-      await db.platformDirectMessage.updateMany({
-        where: { senderId: ownerId },
-        data: { isBlocked: nextBlockedState },
-      });
+      const nextBlockedState = !(wasBlockedInSetting || wasBlockedInMsgs);
+      const nextIds = nextBlockedState
+        ? Array.from(new Set([...currentIds, ownerId]))
+        : currentIds.filter((id) => id !== ownerId);
+
+      await db.$transaction([
+        db.platformSetting.upsert({
+          where: { key: "CHAT_BLOCKED_OWNERS" },
+          update: { value: { ownerIds: nextIds }, updatedById: context.userId },
+          create: {
+            key: "CHAT_BLOCKED_OWNERS",
+            value: { ownerIds: nextIds },
+            category: "CHAT",
+            description: "Blocked tenant owners in Super Admin direct chat",
+            updatedById: context.userId,
+          },
+        }),
+        db.platformDirectMessage.updateMany({
+          where: { senderId: ownerId },
+          data: { isBlocked: nextBlockedState },
+        }),
+      ]);
 
       await logPlatformAudit({
         actorId: context.userId,

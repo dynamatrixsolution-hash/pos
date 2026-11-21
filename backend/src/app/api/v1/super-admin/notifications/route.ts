@@ -50,15 +50,16 @@ export async function GET(request: Request) {
   if (context.role !== "SUPER_ADMIN") return roleErrorResponse();
 
   try {
-    // 1. Fetch active businesses for selection
+    // 1. Fetch active tenant businesses for selection (exclude internal platform-admin)
     const businesses = await db.business.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, slug: { not: "platform-admin" } },
       select: {
         id: true,
         name: true,
         slug: true,
         address: true,
         users: {
+          where: { deletedAt: null },
           select: {
             id: true,
             role: true,
@@ -68,20 +69,7 @@ export async function GET(request: Request) {
       orderBy: { name: "asc" },
     });
 
-    // 2. Check if we need to seed initial demo broadcasts
-    const count = await db.platformPushBroadcast.count();
-    if (count === 0) {
-      for (const demo of INITIAL_DEMO_BROADCASTS) {
-        await db.platformPushBroadcast.create({
-          data: {
-            ...demo,
-            createdById: context.userId,
-          },
-        });
-      }
-    }
-
-    // 3. Fetch broadcast history
+    // 2. Fetch broadcast history
     const broadcasts = await db.platformPushBroadcast.findMany({
       include: {
         createdBy: {
@@ -180,7 +168,7 @@ export async function POST(request: Request) {
 
     if (targetProperty === "ALL") {
       targetBusinesses = await db.business.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, slug: { not: "platform-admin" } },
         select: { id: true, name: true },
       });
     } else {
