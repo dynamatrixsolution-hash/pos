@@ -18,14 +18,31 @@ export default async function LegacyGuestMenuRedirectPage({
       select: { publicCode: true },
     });
 
-    if (existingQr?.publicCode) {
-      redirect(`/guest/qr/${existingQr.publicCode}`);
-    }
-
     const table = await db.restaurantTable.findFirst({
       where: { id: trimmedTableId, isActive: true },
-      select: { id: true, businessId: true, branchId: true, tableNumber: true },
+      select: { id: true, businessId: true, branchId: true, tableNumber: true, status: true },
     });
+
+    const isSettling =
+      table?.status === "BILLED" ||
+      (table
+        ? Boolean(
+            await db.tableSession.findFirst({
+              where: {
+                businessId: table.businessId,
+                tableId: table.id,
+                status: { in: ["ACTIVE", "BILLED"] },
+              },
+              select: { id: true },
+            })
+          )
+        : false);
+
+    const qs = isSettling ? "?settling=true" : "";
+
+    if (existingQr?.publicCode) {
+      redirect(`/guest/qr/${existingQr.publicCode}${qs}`);
+    }
 
     if (table) {
       const publicCode = `QRL-TB-${randomBytes(4).toString("hex").toUpperCase()}`;
@@ -48,7 +65,7 @@ export default async function LegacyGuestMenuRedirectPage({
         },
         select: { publicCode: true },
       });
-      redirect(`/guest/qr/${created.publicCode}`);
+      redirect(`/guest/qr/${created.publicCode}${qs}`);
     }
   }
 

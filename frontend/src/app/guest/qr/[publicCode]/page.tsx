@@ -921,9 +921,35 @@ export default function GuestQrPortalPage() {
     setCustomModalTab("CUSTOMIZE");
   };
 
+  // Live server check before adding items or submitting order on a Table QR
+  // Prevents stale-screen race conditions if cashier just opened Settlement / Print Bill
+  const verifyTableOpenForOrdering = async (): Promise<boolean> => {
+    if (isRoomQr || !publicCode) return true;
+    try {
+      const fresh = await apiClient.guest.getPublicQr(publicCode);
+      if (fresh?.qrLocation) {
+        setQrLocation(fresh.qrLocation);
+        const t = fresh.qrLocation.table;
+        const billedNow = Boolean(t?.isBilledLocked || t?.isSettling || t?.status === "BILLED");
+        if (billedNow || (!isVerified && t?.isSettled === false)) {
+          setCustomizingItem(null);
+          setIsCartOpen(false);
+          setDismissedUnsettledGate(false);
+          return false;
+        }
+      }
+    } catch {
+      // Fall back to existing client state + server-side lock on submit
+    }
+    return true;
+  };
+
   // Quick 1-tap add from card (if no required modifier options)
-  const handleQuickAddMenuItem = (e: React.MouseEvent, item: MenuItem) => {
+  const handleQuickAddMenuItem = async (e: React.MouseEvent, item: MenuItem) => {
     e.stopPropagation();
+    const canOrder = await verifyTableOpenForOrdering();
+    if (!canOrder) return;
+
     const hasRequiredModifiers =
       Array.isArray(item.modifierGroups) &&
       item.modifierGroups.some(
@@ -982,8 +1008,10 @@ export default function GuestQrPortalPage() {
     showBanner(`Added ${quantity}× ${item.name} to your tray`, "info");
   };
 
-  const handleConfirmCustomItem = () => {
+  const handleConfirmCustomItem = async () => {
     if (!customizingItem) return;
+    const canOrder = await verifyTableOpenForOrdering();
+    if (!canOrder) return;
     const allOptions: ModifierOption[] = [];
     for (const link of customizingItem.modifierGroups || []) {
       for (const opt of link.modifierGroup?.options || []) {
@@ -1006,6 +1034,9 @@ export default function GuestQrPortalPage() {
   // Submit Guest Order
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
+
+    const canOrder = await verifyTableOpenForOrdering();
+    if (!canOrder) return;
 
     let activeToken = sessionToken;
     if (!activeToken) {
@@ -1063,6 +1094,15 @@ export default function GuestQrPortalPage() {
         "success"
       );
     } catch (err: any) {
+      const errCode = err?.data?.code;
+      if (errCode === "TABLE_BILLED_LOCKED" || errCode === "SESSION_CLOSED") {
+        if (errCode === "SESSION_CLOSED") {
+          clearPrivateSessionState();
+        }
+        setIsCartOpen(false);
+        setDismissedUnsettledGate(false);
+        void handleRefreshTableStatus();
+      }
       showBanner(err.message || "Unable to place order", "error");
     } finally {
       setSubmittingOrder(false);
