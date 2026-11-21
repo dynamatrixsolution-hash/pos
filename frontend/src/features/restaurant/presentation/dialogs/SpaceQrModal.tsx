@@ -14,7 +14,10 @@ export const SpaceQrModal: React.FC = () => {
   if (!qrTable) return null;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-  const guestOrderUrl = `${origin}/guest/menu?tableId=${qrTable.id}`;
+  const publicCode = qrTable.qrLocations?.[0]?.publicCode;
+  const guestOrderUrl = publicCode
+    ? `${origin}/guest/qr/${publicCode}`
+    : `${origin}/guest/menu?tableId=${qrTable.id}`;
 
   const handlePrint = () => {
     window.print();

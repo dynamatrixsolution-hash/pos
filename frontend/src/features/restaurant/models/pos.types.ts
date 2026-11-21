@@ -23,6 +23,7 @@ export interface SpaceTable {
   floor?: Floor;
   currentSessionId?: string | null;
   tableSessions?: any[];
+  qrLocations?: { id: string; publicCode: string }[];
   metadata?: {
     category?: "TABLE" | "CABIN" | "VIP_ROOM" | "HALL";
     shape?: string;

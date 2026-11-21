@@ -43,10 +43,17 @@ export const RestaurantQrContainer: React.FC = () => {
     });
   }, [tables, selectedFloorId, search]);
 
-  const handleCopyLink = (tableId: string) => {
-    const url = `${origin}/guest/menu?tableId=${tableId}`;
+  const getTableQrUrl = (table: SpaceTable) => {
+    const publicCode = table.qrLocations?.[0]?.publicCode;
+    return publicCode
+      ? `${origin}/guest/qr/${publicCode}`
+      : `${origin}/guest/menu?tableId=${table.id}`;
+  };
+
+  const handleCopyLink = (table: SpaceTable) => {
+    const url = getTableQrUrl(table);
     navigator.clipboard.writeText(url);
-    setCopiedId(tableId);
+    setCopiedId(table.id);
     setTimeout(() => setCopiedId(null), 1500);
   };
 
@@ -110,7 +117,7 @@ export const RestaurantQrContainer: React.FC = () => {
       {/* QR Plaques Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-8">
         {filteredTables.map((t) => {
-          const url = `${origin}/guest/menu?tableId=${t.id}`;
+          const url = getTableQrUrl(t);
           const isCopied = copiedId === t.id;
 
           return (
@@ -148,7 +155,7 @@ export const RestaurantQrContainer: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => handleCopyLink(t.id)}
+                    onClick={() => handleCopyLink(t)}
                     className="flex-1 py-1.5 px-2 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
                   >
                     {isCopied ? (

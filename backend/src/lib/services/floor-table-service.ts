@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
+import { randomBytes } from "node:crypto";
 
 export class FloorTableError extends Error {
   statusCode: number;
@@ -380,7 +381,8 @@ export async function createTable(
     throw new FloorTableError(`Table "${trimmedNumber}" already exists in this branch`, 409);
   }
 
-  // 4. Create table
+  // 4. Create table with a default active Guest QR location
+  const publicCode = `tbl-${randomBytes(4).toString("hex")}`;
   return await client.restaurantTable.create({
     data: {
       businessId: input.businessId,
@@ -395,9 +397,20 @@ export async function createTable(
       height: input.height ?? 1,
       status: input.status ?? "AVAILABLE",
       isActive: input.isActive ?? true,
+      qrLocations: {
+        create: {
+          businessId: input.businessId,
+          branchId,
+          publicCode,
+          locationType: "TABLE",
+          label: `Table ${trimmedNumber}`,
+          isActive: true,
+        },
+      },
     },
     include: {
       floor: { select: { id: true, name: true, displayOrder: true } },
+      qrLocations: { where: { isActive: true }, select: { id: true, publicCode: true }, take: 1 },
     },
   });
 }
@@ -420,6 +433,7 @@ export async function getTables(
   };
 
   const include: Prisma.RestaurantTableInclude = {
+    qrLocations: { where: { isActive: true }, select: { id: true, publicCode: true }, take: 1 },
     ...(filter.includeFloor
       ? { floor: { select: { id: true, name: true, displayOrder: true } } }
       : {}),
