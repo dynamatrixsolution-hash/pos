@@ -467,6 +467,7 @@ export async function resolvePublicQrLocation(
   // CRITICAL PRIVACY INVARIANT: Never expose guestName, guestPhone, guestEmail,
   // stayId, folio, balance, entries, or prior orders in public QR resolution.
   let activeTableSession: any = null;
+  let unsettledTableOrder: any = null;
   let activeOrderSummary: any = null;
   let isBilledLocked = false;
   let pinRequired = false;
@@ -480,7 +481,10 @@ export async function resolvePublicQrLocation(
       },
       include: {
         restaurantOrders: {
-          where: { settlementStatus: { not: "PAID" } },
+          where: {
+            settlementStatus: { not: "PAID" },
+            fulfillmentStatus: { not: "CANCELLED" },
+          },
           orderBy: { createdAt: "desc" },
           take: 1,
           select: {
@@ -497,22 +501,45 @@ export async function resolvePublicQrLocation(
       orderBy: { openedAt: "desc" },
     });
 
-    if (activeTableSession) {
+    if (!activeTableSession || activeTableSession.restaurantOrders.length === 0) {
+      unsettledTableOrder = await prismaClient.restaurantOrder.findFirst({
+        where: {
+          businessId: qrLocation.businessId,
+          tableId: qrLocation.table.id,
+          settlementStatus: { not: "PAID" },
+          fulfillmentStatus: { not: "CANCELLED" },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          orderNumber: true,
+          totalAmount: true,
+          settlementStatus: true,
+          acceptanceStatus: true,
+          fulfillmentStatus: true,
+          createdAt: true,
+        },
+      });
+    }
+
+    const activeOrd = activeTableSession?.restaurantOrders?.[0] || unsettledTableOrder;
+
+    if (activeTableSession || unsettledTableOrder) {
       if (
-        activeTableSession.status === "BILLED" ||
-        qrLocation.table.status === "BILLED"
+        activeTableSession?.status === "BILLED" ||
+        qrLocation.table.status === "BILLED" ||
+        (!activeTableSession && Boolean(unsettledTableOrder))
       ) {
         isBilledLocked = true;
       }
       pinRequired = true;
-      if (activeTableSession.restaurantOrders.length > 0) {
-        const ord = activeTableSession.restaurantOrders[0];
+      if (activeOrd) {
         activeOrderSummary = {
-          orderNumber: ord.orderNumber,
-          totalAmount: ord.totalAmount.toString(),
-          settlementStatus: ord.settlementStatus,
-          fulfillmentStatus: ord.fulfillmentStatus,
-          createdAt: ord.createdAt.toISOString(),
+          orderNumber: activeOrd.orderNumber,
+          totalAmount: activeOrd.totalAmount.toString(),
+          settlementStatus: activeOrd.settlementStatus,
+          fulfillmentStatus: activeOrd.fulfillmentStatus,
+          createdAt: activeOrd.createdAt.toISOString(),
         };
       }
     }
@@ -548,10 +575,15 @@ export async function resolvePublicQrLocation(
             floorName: qrLocation.table.floor?.name ?? null,
             status: qrLocation.table.status,
             hasActiveSession: Boolean(activeTableSession),
-            isSettled: !activeTableSession && qrLocation.table.status === "AVAILABLE",
+            hasUnsettledBill: Boolean(activeTableSession || unsettledTableOrder),
+            isSettled:
+              !activeTableSession &&
+              !unsettledTableOrder &&
+              qrLocation.table.status === "AVAILABLE",
             isSettling: Boolean(
-              activeTableSession &&
-                (activeTableSession.status === "BILLED" || qrLocation.table.status === "BILLED")
+              (activeTableSession &&
+                (activeTableSession.status === "BILLED" || qrLocation.table.status === "BILLED")) ||
+                (!activeTableSession && Boolean(unsettledTableOrder))
             ),
             pinRequired,
             isBilledLocked,

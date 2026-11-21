@@ -28,7 +28,7 @@ export default async function LegacyGuestMenuRedirectPage({
     });
 
     if (table) {
-      const publicCode = `tbl-${randomBytes(4).toString("hex")}`;
+      const publicCode = `QRL-TB-${randomBytes(4).toString("hex").toUpperCase()}`;
       const created = await db.qrLocation.upsert({
         where: {
           businessId_tableId: {

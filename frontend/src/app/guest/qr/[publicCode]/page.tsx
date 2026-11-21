@@ -212,6 +212,7 @@ interface QrLocationPublicData {
     floorName?: string | null;
     status?: "AVAILABLE" | "OCCUPIED" | "BILLED" | "RESERVED" | string;
     hasActiveSession: boolean;
+    hasUnsettledBill?: boolean;
     isSettled?: boolean;
     isSettling?: boolean;
     pinRequired?: boolean;
@@ -342,6 +343,8 @@ export default function GuestQrPortalPage() {
     () => (publicCode ? `restro_guest_grant_${publicCode}` : ""),
     [publicCode]
   );
+
+  const [dismissedUnsettledGate, setDismissedUnsettledGate] = useState(false);
 
   // Public QR Location & Digital Menu state
   const [qrLocation, setQrLocation] = useState<QrLocationPublicData | null>(null);
@@ -629,7 +632,7 @@ export default function GuestQrPortalPage() {
       } catch {
         // silent poll failure
       }
-    }, 7000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [isVerified, publicCode, qrLocation?.locationType, qrLocation?.table?.isSettled, showBanner]);
@@ -1194,6 +1197,106 @@ export default function GuestQrPortalPage() {
     ? `Room ${qrLocation.room?.roomNumber || qrLocation.label}`
     : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
 
+  const isTableWaitingForSettlement =
+    !isRoomQr &&
+    !isVerified &&
+    Boolean(qrLocation.table) &&
+    qrLocation.table?.isSettled === false;
+
+  if (isTableWaitingForSettlement && !dismissedUnsettledGate) {
+    return (
+      <div className="min-h-screen bg-[#F7F3EC] text-[#292320] flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-6 space-y-5">
+          <div className="flex items-center justify-between gap-2 border-b border-[#EEE7DD] pb-3">
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold text-[#292320] truncate">
+                {qrLocation.business.name}
+              </p>
+              {qrLocation.branch?.name && (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#946000] truncate">
+                  {qrLocation.branch.name}
+                </p>
+              )}
+            </div>
+            <span className="px-2.5 py-1 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-bold text-[#6B2837] shrink-0">
+              {locationBadgeText}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FEF7E6] border border-[#E6D1A3] text-[#946000] text-[11px] font-bold">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Previous Bill Not Settled Yet</span>
+            </div>
+            <h1 className="text-lg font-extrabold text-[#292320] leading-snug">
+              Waiting for {locationBadgeText} to clear
+            </h1>
+            <p className="text-xs text-[#71675E] leading-relaxed">
+              The previous party&apos;s bill for {locationBadgeText} has not been settled at the cashier yet.
+              This page checks automatically every few seconds and will unlock ordering as soon as payment is cleared.
+            </p>
+          </div>
+
+          {tableAlertSent && (
+            <div className="p-3 rounded-lg bg-[#EDF5ED] border border-[#C8DFCD] text-xs text-[#28634B] font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Staff notified. A server is clearing {locationBadgeText} for you now.</span>
+            </div>
+          )}
+
+          <div className="space-y-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleRefreshTableStatus}
+              className="w-full py-2.5 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reload &amp; Check Again</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAlertStaffTurnover}
+              disabled={sendingTurnoverAlert || tableAlertSent}
+              className="w-full py-2.5 px-4 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <Bell className="w-3.5 h-3.5 text-[#6B2837]" />
+              <span>
+                {sendingTurnoverAlert
+                  ? "Calling Service..."
+                  : tableAlertSent
+                  ? "Service Called — Staff Notified"
+                  : "Call Service (Previous Guests Left)"}
+              </span>
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-[#EEE7DD] flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setDismissedUnsettledGate(true)}
+              className="text-[#71675E] hover:text-[#292320] font-semibold underline underline-offset-2 cursor-pointer"
+            >
+              Preview menu while waiting
+            </button>
+            {!qrLocation.table?.isBilledLocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDismissedUnsettledGate(true);
+                  setShowTablePinModal(true);
+                }}
+                className="text-[#6B2837] hover:underline font-bold cursor-pointer"
+              >
+                Joining this table? Enter 4-digit PIN
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614] flex justify-center">
       <div className="w-full max-w-lg min-h-screen flex flex-col border-x border-[#EEE7DD] bg-[#FFFCF7] relative pb-24 shadow-2xs">
@@ -1249,8 +1352,8 @@ export default function GuestQrPortalPage() {
             </div>
           </div>
 
-          {/* Sub-strip ONLY when Table is busy/settling or verified host actions */}
-          {(!isRoomQr && (qrLocation.table?.isSettling || qrLocation.table?.status === "BILLED" || isVerified)) && (
+          {/* Sub-strip ONLY when Table is unsettled/settling or verified host actions */}
+          {(!isRoomQr && (isTableWaitingForSettlement || isVerified)) && (
             <div className="mt-2 pt-1.5 border-t border-[#EEE7DD] flex items-center justify-between text-xs">
               {isVerified ? (
                 <div className="flex items-center justify-between w-full">
@@ -1276,17 +1379,27 @@ export default function GuestQrPortalPage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between w-full gap-2">
-                  <span className="text-amber-800 font-semibold text-[11px] flex items-center gap-1">
-                    <Clock className="w-3 h-3 animate-spin" />
-                    Table busy • Bill settlement in progress
+                  <span className="text-[#946000] font-semibold text-[11px] flex items-center gap-1.5 truncate">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Previous bill not settled yet</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleRefreshTableStatus}
-                    className="px-2 py-0.5 rounded bg-amber-600 text-white font-semibold text-[10px]"
-                  >
-                    Refresh
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleAlertStaffTurnover}
+                      disabled={sendingTurnoverAlert || tableAlertSent}
+                      className="px-2 py-0.5 rounded border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] font-semibold text-[10px] cursor-pointer disabled:opacity-60"
+                    >
+                      {tableAlertSent ? "Staff Alerted" : "Call Service"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRefreshTableStatus}
+                      className="px-2 py-0.5 rounded bg-[#6B2837] text-white font-semibold text-[10px] cursor-pointer"
+                    >
+                      Reload
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

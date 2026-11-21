@@ -382,7 +382,7 @@ export async function createTable(
   }
 
   // 4. Create table with a default active Guest QR location
-  const publicCode = `tbl-${randomBytes(4).toString("hex")}`;
+  const publicCode = `QRL-TB-${randomBytes(4).toString("hex").toUpperCase()}`;
   return await client.restaurantTable.create({
     data: {
       businessId: input.businessId,
