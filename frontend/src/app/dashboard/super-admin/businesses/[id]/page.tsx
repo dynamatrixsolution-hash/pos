@@ -230,6 +230,25 @@ export default function BusinessDetailPage() {
   const [resetInviteUrl, setResetInviteUrl] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Direct Owner Password Reset
+  const [directPassword, setDirectPassword] = useState("");
+  const [showDirectPassword, setShowDirectPassword] = useState(false);
+
+  // Create & Send Invoice Modal
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceAmount, setInvoiceAmount] = useState<number>(700);
+  const [invoicePeriodStart, setInvoicePeriodStart] = useState(() => new Date().toISOString().split("T")[0]);
+  const [invoicePeriodEnd, setInvoicePeriodEnd] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [invoiceDueDate, setInvoiceDueDate] = useState(() => {
+    const d = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+    return d.toISOString().split("T")[0];
+  });
+  const [invoiceNotes, setInvoiceNotes] = useState("");
+
   const fetchBusinessData = useCallback(async () => {
     try {
       setLoading(true);
@@ -334,6 +353,72 @@ export default function BusinessDetailPage() {
       fetchBusinessData();
     } catch (err: any) {
       toast.error(err.message || "Failed to update subscription");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3B. Create & Send SaaS Subscription Invoice to Owner
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoiceAmount || Number(invoiceAmount) <= 0 || !invoiceDueDate) {
+      toast.warning("Enter a valid invoice amount and due date.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await apiClient.superAdmin.updateBusiness(
+        businessId,
+        {
+          action: "CREATE_INVOICE",
+          payload: {
+            amount: Number(invoiceAmount),
+            currency: business?.currency || "NPR",
+            billingPeriodStart: invoicePeriodStart,
+            billingPeriodEnd: invoicePeriodEnd,
+            dueDate: invoiceDueDate,
+            notes: invoiceNotes.trim() || `${business?.subscription?.plan || "Standard"} plan subscription invoice`,
+            reason: `Issued subscription invoice (${business?.currency || "NPR"} ${Number(invoiceAmount).toLocaleString()})`,
+          },
+        },
+        "PUT"
+      );
+      toast.success("Invoice created and sent to business owner.");
+      setInvoiceModalOpen(false);
+      setInvoiceNotes("");
+      fetchBusinessData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create invoice");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3C. Direct Owner Password Reset
+  const handleDirectPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (directPassword.length < 6) {
+      toast.warning("Password must be at least 6 characters.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await apiClient.superAdmin.updateBusiness(
+        businessId,
+        {
+          action: "RESET_OWNER_PASSWORD",
+          payload: {
+            password: directPassword,
+            reason: "Super Admin reset owner account password directly",
+          },
+        },
+        "PUT"
+      );
+      toast.success("Owner password updated and previous sessions revoked.");
+      setDirectPassword("");
+      fetchBusinessData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reset owner password");
     } finally {
       setActionLoading(false);
     }
@@ -851,13 +936,32 @@ export default function BusinessDetailPage() {
           <div className="space-y-6">
             {/* SaaS Invoices Table */}
             <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6">
-              <div className="flex items-center justify-between border-b border-[#EEE7DD] pb-4 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EEE7DD] pb-4 mb-4">
                 <div>
                   <h3 className="text-sm font-bold text-[#292320]">RestroInn Platform Subscription Invoices</h3>
                   <p className="text-xs text-[#71675E]">
-                    SaaS subscription charges payable to RestroInn. (Tenant restaurant sales are kept strictly separate).
+                    Issue SaaS subscription invoices directly to the business owner and record settlements.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const planKey = (business.subscription?.plan || "STARTER").toUpperCase();
+                    const cycle = (business.subscription?.billingCycle || "MONTHLY").toUpperCase();
+                    const monthlyMap: Record<string, number> = {
+                      STARTER: 700,
+                      STANDARD: 1200,
+                      PROFESSIONAL: 2000,
+                      ENTERPRISE: 5000,
+                    };
+                    const base = monthlyMap[planKey] ?? 1200;
+                    setInvoiceAmount(cycle === "ANNUAL" ? base * 10 : base);
+                    setInvoiceModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold rounded-lg transition-colors cursor-pointer shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create &amp; Send Invoice
+                </button>
               </div>
 
               {business.subscriptionInvoices.length === 0 ? (
@@ -972,32 +1076,32 @@ export default function BusinessDetailPage() {
                 Support & Credential Recovery
               </h3>
               <p className="text-xs text-[#71675E] mb-4">
-                RestroInn enforces strict zero-knowledge security: super admins can never view or manually set passwords
-                for business owners. Use one-time invitations or session termination.
+                Manage owner account recovery via one-time reset links, direct password reset, or immediate session termination.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="bg-[#F7F3EC] p-4 rounded-md border border-[#EEE7DD] space-y-2">
                   <div className="flex items-center gap-2 font-bold text-xs text-[#292320]">
                     <KeyRound className="h-4 w-4 text-[#6B2837]" />
-                    Send Owner Password Reset Invitation
+                    Send Password Reset Link
                   </div>
                   <p className="text-[11px] text-[#71675E]">
-                    Generates a cryptographically secure 24-hour single-use token sent to{" "}
-                    <span className="font-mono font-bold text-[#292320]">{owner?.email}</span>.
+                    Generates a 24-hour single-use reset link for{" "}
+                    <span className="font-mono font-bold text-[#292320]">{owner?.email || "owner"}</span>.
                   </p>
                   <button
+                    type="button"
                     onClick={handleDispatchPasswordReset}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#6B2837] text-[#FFFCF7] text-xs font-bold rounded hover:bg-[#6B2837]/90 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#6B2837] text-[#FFFCF7] text-xs font-bold rounded hover:bg-[#541E2A] transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Send className="h-3.5 w-3.5" /> Generate Reset Link
                   </button>
 
                   {resetInviteUrl && (
                     <div className="mt-3 p-3 bg-[#FFFCF7] border border-[#D8CEC1] rounded-md space-y-1">
-                      <div className="text-[10px] font-bold text-[#15803D] flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> One-Time Invitation Link Ready:
+                      <div className="text-[10px] font-bold text-[#28634B] flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> One-Time Link Ready:
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -1007,33 +1111,91 @@ export default function BusinessDetailPage() {
                           className="w-full text-[11px] font-mono bg-[#F7F3EC] p-1.5 rounded border border-[#D8CEC1]"
                         />
                         <button
+                          type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(resetInviteUrl);
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
                             toast.success("Invitation link copied to clipboard.");
                           }}
-                          className="px-2.5 py-1.5 bg-[#EEE7DD] hover:bg-[#D8CEC1] rounded text-xs font-bold"
+                          className="px-2.5 py-1.5 bg-[#EEE7DD] hover:bg-[#D8CEC1] rounded text-xs font-bold cursor-pointer"
                         >
-                          {copiedLink ? <Check className="h-3.5 w-3.5 text-[#15803D]" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedLink ? <Check className="h-3.5 w-3.5 text-[#28634B]" /> : <Copy className="h-3.5 w-3.5" />}
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
 
+                {/* Direct Owner Password Reset */}
+                <form
+                  onSubmit={handleDirectPasswordReset}
+                  className="bg-[#F7F3EC] p-4 rounded-md border border-[#EEE7DD] space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-bold text-xs text-[#292320]">
+                      <Shield className="h-4 w-4 text-[#6B2837]" />
+                      Set Owner Password Directly
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
+                        let generated = "";
+                        for (let i = 0; i < 10; i++) {
+                          generated += chars[Math.floor(Math.random() * chars.length)];
+                        }
+                        setDirectPassword(generated);
+                        setShowDirectPassword(true);
+                      }}
+                      className="text-[10px] font-semibold text-[#6B2837] hover:underline cursor-pointer"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#71675E]">
+                    Immediately set a new login password for <span className="font-mono font-semibold text-[#292320]">{owner?.email || "owner"}</span>.
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type={showDirectPassword ? "text" : "password"}
+                      minLength={6}
+                      required
+                      value={directPassword}
+                      onChange={(e) => setDirectPassword(e.target.value)}
+                      placeholder="New password (min 6 chars)"
+                      className="w-full text-xs px-2.5 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] font-mono focus:border-[#6B2837] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDirectPassword((v) => !v)}
+                      className="px-2 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-[10px] font-semibold text-[#71675E] hover:bg-[#EEE7DD] cursor-pointer"
+                    >
+                      {showDirectPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={actionLoading || directPassword.length < 6}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#6B2837] text-[#FFFCF7] text-xs font-bold rounded hover:bg-[#541E2A] transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" /> Reset Owner Password
+                  </button>
+                </form>
+
                 <div className="bg-[#F7F3EC] p-4 rounded-md border border-[#EEE7DD] space-y-2">
                   <div className="flex items-center gap-2 font-bold text-xs text-[#292320]">
-                    <Lock className="h-4 w-4 text-[#B91C1C]" />
+                    <Lock className="h-4 w-4 text-[#B33432]" />
                     Revoke Active Tenant Sessions
                   </div>
                   <p className="text-[11px] text-[#71675E]">
                     Terminates all open client sessions immediately if compromise or credential leakage is suspected.
                   </p>
                   <button
+                    type="button"
                     onClick={handleRevokeSessions}
                     disabled={actionLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B91C1C] text-[#FFFCF7] text-xs font-bold rounded hover:bg-[#B91C1C]/90 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B33432] text-[#FFFCF7] text-xs font-bold rounded hover:bg-[#992826] transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Ban className="h-3.5 w-3.5" /> Revoke All Sessions Now
                   </button>
@@ -1098,53 +1260,99 @@ export default function BusinessDetailPage() {
               Platform Audit Trail & Change Diff
             </h3>
             <p className="text-xs text-[#71675E] mb-4">
-              All sensitive administrative actions (suspensions, entitlement changes, access recovery) require mandatory
-              reasons and are logged permanently.
+              Permanent chronological record of all administrative changes, billing events, and security actions for this tenant.
             </p>
 
             {business.platformAuditLogs.length === 0 ? (
               <div className="py-8 text-center text-xs text-[#71675E]">No audit logs recorded for this business.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg border border-[#D8CEC1]">
                 <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#D8CEC1] text-[#71675E] font-bold uppercase tracking-wider text-[10px] pb-2">
-                      <th className="py-2.5 px-3">Timestamp</th>
-                      <th className="py-2.5 px-3">Actor</th>
-                      <th className="py-2.5 px-3">Action</th>
-                      <th className="py-2.5 px-3">Mandatory Reason</th>
-                      <th className="py-2.5 px-3">Diff / State</th>
+                  <thead className="bg-[#EEE7DD] text-[#292320] font-semibold uppercase tracking-wider text-[10px] border-b border-[#D8CEC1]">
+                    <tr>
+                      <th className="py-2.5 px-3">Date &amp; Time</th>
+                      <th className="py-2.5 px-3">Performed By</th>
+                      <th className="py-2.5 px-3">Event</th>
+                      <th className="py-2.5 px-3">Summary / Note</th>
+                      <th className="py-2.5 px-3">Changes</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#EEE7DD]">
-                    {business.platformAuditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-[#F7F3EC]/50 transition-colors">
-                        <td className="py-3 px-3 tabular-nums text-[#71675E] whitespace-nowrap">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                        <td className="py-3 px-3 font-semibold text-[#292320] whitespace-nowrap">
-                          {log.actor?.name || "System"}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="font-mono text-[10px] bg-[#EEE7DD] text-[#71675E] px-2 py-0.5 rounded font-bold">
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-[#292320] max-w-xs">{log.reason}</td>
-                        <td className="py-3 px-3 font-mono text-[10px] text-[#71675E]">
-                          {log.afterState ? (
-                            <details className="cursor-pointer">
-                              <summary className="text-[#6B2837] hover:underline">View details</summary>
-                              <pre className="p-2 bg-[#F7F3EC] rounded mt-1 overflow-x-auto max-w-sm text-[9px]">
-                                {JSON.stringify({ before: log.beforeState, after: log.afterState }, null, 2)}
-                              </pre>
-                            </details>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-[#D8CEC1]/60">
+                    {business.platformAuditLogs.map((log) => {
+                      const actionLabels: Record<string, { label: string; cls: string }> = {
+                        SUBSCRIPTION_UPDATED: { label: "Subscription Updated", cls: "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]" },
+                        SAAS_INVOICE_CREATED: { label: "Invoice Issued", cls: "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]" },
+                        PAYMENT_RECORDED: { label: "Payment Recorded", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" },
+                        PAYMENT_SETTLED: { label: "Invoice Settled", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" },
+                        PASSWORD_RESET_DISPATCHED: { label: "Reset Link Sent", cls: "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]" },
+                        OWNER_PASSWORD_RESET: { label: "Password Reset", cls: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" },
+                        SESSIONS_REVOKED: { label: "Sessions Revoked", cls: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" },
+                        BUSINESS_SUSPENDED: { label: "Account Suspended", cls: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" },
+                        BUSINESS_REACTIVATED: { label: "Account Activated", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" },
+                        BUSINESS_PROFILE_UPDATED: { label: "Profile Updated", cls: "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]" },
+                        REGISTRATION_APPROVED: { label: "Registration Approved", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" },
+                      };
+                      const meta = actionLabels[log.action] || {
+                        label: log.action.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()),
+                        cls: "bg-[#EEE7DD] text-[#292320] border-[#D8CEC1]",
+                      };
+
+                      const afterObj = log.afterState && typeof log.afterState === "object" ? log.afterState : null;
+                      const beforeObj = log.beforeState && typeof log.beforeState === "object" ? log.beforeState : null;
+                      const diffEntries = afterObj
+                        ? Object.entries(afterObj).filter(([k, v]) => v !== undefined && v !== null && k !== "customLimits")
+                        : [];
+
+                      return (
+                        <tr key={log.id} className="hover:bg-[#F7F3EC] transition-colors align-top">
+                          <td className="py-3 px-3 tabular-nums text-[#71675E] whitespace-nowrap">
+                            {new Date(log.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-[#292320] whitespace-nowrap">
+                            {log.actor?.name || "System"}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-semibold ${meta.cls}`}>
+                              {meta.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-[#292320] max-w-xs">{log.reason}</td>
+                          <td className="py-3 px-3">
+                            {diffEntries.length > 0 ? (
+                              <div className="space-y-1 text-[11px]">
+                                {diffEntries.slice(0, 4).map(([key, val]) => {
+                                  const prev = beforeObj?.[key];
+                                  const fmt = (x: any) =>
+                                    Array.isArray(x)
+                                      ? `${x.length} modules`
+                                      : typeof x === "object" && x !== null
+                                      ? JSON.stringify(x)
+                                      : String(x);
+                                  return (
+                                    <div key={key} className="flex flex-wrap items-center gap-1 text-[#71675E]">
+                                      <span className="font-semibold text-[#292320] capitalize">
+                                        {key.replace(/([A-Z])/g, " $1")}:
+                                      </span>
+                                      {prev !== undefined && prev !== null && fmt(prev) !== fmt(val) ? (
+                                        <>
+                                          <span className="line-through opacity-70">{fmt(prev)}</span>
+                                          <span>→</span>
+                                          <span className="font-semibold text-[#28634B]">{fmt(val)}</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-[#292320]">{fmt(val)}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-[#71675E]">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1522,6 +1730,105 @@ export default function BusinessDetailPage() {
         </div>
       )}
 
+      {/* MODAL: CREATE & SEND SAAS INVOICE */}
+      {invoiceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#292320]/45 flex items-center justify-center p-4">
+          <div className="bg-[#FFFCF7] border border-[#D8CEC1] rounded-xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#292320]">Create &amp; Send Subscription Invoice</h3>
+                <p className="text-[11px] text-[#71675E]">
+                  Generates an invoice and notifies {business.name} immediately.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInvoiceModalOpen(false)}
+                className="p-1 rounded-md text-[#71675E] hover:bg-[#EEE7DD] cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateInvoice} className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-[#292320]">Amount ({business.currency || "NPR"}) *</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(Number(e.target.value))}
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-[#71675E]">Period Start *</label>
+                  <input
+                    type="date"
+                    required
+                    value={invoicePeriodStart}
+                    onChange={(e) => setInvoicePeriodStart(e.target.value)}
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-[#71675E]">Period End *</label>
+                  <input
+                    type="date"
+                    required
+                    value={invoicePeriodEnd}
+                    onChange={(e) => setInvoicePeriodEnd(e.target.value)}
+                    className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-[#292320]">Due Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={invoiceDueDate}
+                  onChange={(e) => setInvoiceDueDate(e.target.value)}
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-[#71675E]">Notes (Optional)</label>
+                <input
+                  type="text"
+                  value={invoiceNotes}
+                  onChange={(e) => setInvoiceNotes(e.target.value)}
+                  placeholder="e.g. Monthly subscription renewal"
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#D8CEC1]">
+                <button
+                  type="button"
+                  onClick={() => setInvoiceModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-1.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? "Sending..." : "Create & Send Invoice"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

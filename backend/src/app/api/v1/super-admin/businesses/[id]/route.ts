@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
+import { pepperPassword } from "@/lib/security";
 import { logPlatformAudit } from "@/lib/platform-audit";
 import { PACKAGE_DEFAULT_MODULES, HospitalityModule } from "@/lib/module-gatekeeper";
+import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 
 export async function GET(
@@ -572,6 +574,16 @@ export async function PUT(
         },
       });
 
+      // Notify business owner in-app immediately
+      await db.notification.create({
+        data: {
+          businessId: id,
+          title: `New Subscription Invoice (${invoiceNumber})`,
+          message: `Invoice ${invoiceNumber} for ${currency} ${Number(amount).toLocaleString()} has been issued. Due date: ${new Date(dueDate).toLocaleDateString()}.`,
+          type: "BILLING",
+        },
+      });
+
       await logPlatformAudit({
         actorId: context.userId,
         actorRole: context.role,
@@ -582,14 +594,65 @@ export async function PUT(
         reason: reason.trim(),
         afterState: {
           invoiceNumber,
-          amount,
+          amount: Number(amount),
+          currency,
           dueDate,
         },
       });
 
       return NextResponse.json({
-        message: "Subscription invoice generated successfully.",
+        message: "Subscription invoice generated and sent to owner.",
         invoice,
+      });
+    }
+
+    // 7B. DIRECTLY RESET OWNER PASSWORD (SUPER_ADMIN)
+    if (action === "RESET_OWNER_PASSWORD") {
+      if (!owner) {
+        return NextResponse.json({ error: "Owner user not registered for this business" }, { status: 404 });
+      }
+      const newPassword = typeof payload.password === "string" ? payload.password : "";
+      if (newPassword.length < 6) {
+        return NextResponse.json({ error: "New password must be at least 6 characters." }, { status: 400 });
+      }
+
+      const passwordHash = await bcrypt.hash(pepperPassword(newPassword), 10);
+      const revokedAt = new Date();
+      const existingSettings = (business.settings as Record<string, any>) || {};
+      const { pendingPasswordReset: _cleared, ...restSettings } = existingSettings;
+
+      await db.$transaction([
+        db.user.update({
+          where: { id: owner.id },
+          data: { passwordHash, isActive: true, updatedAt: revokedAt },
+        }),
+        db.business.update({
+          where: { id },
+          data: {
+            settings: {
+              ...restSettings,
+              sessionsRevokedAt: revokedAt.toISOString(),
+            } as any,
+          },
+        }),
+      ]);
+
+      await logPlatformAudit({
+        actorId: context.userId,
+        actorRole: context.role,
+        action: "OWNER_PASSWORD_RESET",
+        targetType: "USER",
+        targetId: owner.id,
+        businessId: id,
+        reason: payload.reason?.trim() || `Super Admin directly reset password for ${owner.email}`,
+        afterState: {
+          ownerEmail: owner.email,
+          sessionsRevoked: true,
+        },
+      });
+
+      return NextResponse.json({
+        message: `Password updated for ${owner.email} and previous sessions revoked.`,
       });
     }
 
