@@ -175,6 +175,8 @@ export default function BusinessDetailPage() {
   const [editPlan, setEditPlan] = useState("STARTER");
   const [editPackage, setEditPackage] = useState("RESTAURANT");
   const [editBillingCycle, setEditBillingCycle] = useState("MONTHLY");
+  const [editSubStatus, setEditSubStatus] = useState("ACTIVE");
+  const [editEndDate, setEditEndDate] = useState("");
   const [editModules, setEditModules] = useState<string[]>([]);
   const [editUserLimit, setEditUserLimit] = useState(5);
   const [editBranchLimit, setEditBranchLimit] = useState(1);
@@ -208,6 +210,8 @@ export default function BusinessDetailPage() {
         setEditPlan(sub.plan || "STARTER");
         setEditPackage(sub.packageType || "RESTAURANT");
         setEditBillingCycle(sub.billingCycle || "MONTHLY");
+        setEditSubStatus(sub.status || "ACTIVE");
+        setEditEndDate(sub.endDate ? new Date(sub.endDate).toISOString().split("T")[0] : "");
         setEditModules(sub.enabledModules || []);
         setEditUserLimit(sub.userLimit || 5);
         setEditBranchLimit(sub.branchLimit || 1);
@@ -286,6 +290,8 @@ export default function BusinessDetailPage() {
           plan: editPlan,
           packageType: editPackage,
           billingCycle: editBillingCycle,
+          status: editSubStatus,
+          endDate: editEndDate || undefined,
           enabledModules: editModules,
           userLimit: Number(editUserLimit),
           branchLimit: Number(editBranchLimit),
@@ -1173,6 +1179,7 @@ export default function BusinessDetailPage() {
                   className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
                 >
                   <option value="STARTER">Starter</option>
+                  <option value="STANDARD">Standard</option>
                   <option value="PROFESSIONAL">Professional</option>
                   <option value="ENTERPRISE">Enterprise</option>
                 </select>
@@ -1202,9 +1209,53 @@ export default function BusinessDetailPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-[#71675E]">Subscription Status</label>
+                <select
+                  value={editSubStatus}
+                  onChange={(e) => setEditSubStatus(e.target.value)}
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="TRIAL">Trial</option>
+                  <option value="EXPIRED">Expired</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-[#71675E]">Subscription Expiry Date</label>
+                <input
+                  type="date"
+                  value={editEndDate}
+                  onChange={(e) => setEditEndDate(e.target.value)}
+                  className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC] font-mono"
+                />
+              </div>
+            </div>
+
             {/* Modules Checkbox Selector */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-[#292320]">Enabled Hospitality Modules</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#292320]">Enabled Hospitality Modules</label>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setEditModules(ALL_HOSPITALITY_MODULES.map((m) => m.key))}
+                    className="font-semibold text-[#6B2837] hover:underline cursor-pointer"
+                  >
+                    Enable All
+                  </button>
+                  <span className="text-[#D8CEC1]">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditModules([])}
+                    className="font-semibold text-[#71675E] hover:text-[#292320] cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {ALL_HOSPITALITY_MODULES.map((mod) => (
                   <label

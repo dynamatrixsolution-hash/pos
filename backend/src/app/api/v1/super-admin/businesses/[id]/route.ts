@@ -248,6 +248,8 @@ export async function PUT(
         plan,
         packageType = "RESTAURANT",
         billingCycle = "MONTHLY",
+        status: requestedStatus,
+        endDate: requestedEndDate,
         enabledModules = [],
         customLimits = {},
         userLimit,
@@ -263,16 +265,28 @@ export async function PUT(
       const beforeState = {
         plan: business.subscription?.plan,
         packageType: business.subscription?.packageType,
+        status: business.subscription?.status,
         enabledModules: business.subscription?.enabledModules,
         customLimits: business.subscription?.customLimits,
         endDate: business.subscription?.endDate,
       };
 
       let newEndDate = business.subscription ? new Date(business.subscription.endDate) : new Date();
-      if (durationMonths && Number(durationMonths) > 0) {
+      if (requestedEndDate) {
+        const parsedEnd = new Date(requestedEndDate);
+        if (!isNaN(parsedEnd.getTime())) {
+          newEndDate = parsedEnd;
+        }
+      } else if (durationMonths && Number(durationMonths) > 0) {
         newEndDate = new Date();
         newEndDate.setMonth(newEndDate.getMonth() + Number(durationMonths));
       }
+
+      const validSubStatuses = ["ACTIVE", "TRIAL", "EXPIRED", "SUSPENDED", "CANCELLED"];
+      const resolvedSubStatus =
+        requestedStatus && validSubStatuses.includes(String(requestedStatus).toUpperCase())
+          ? String(requestedStatus).toUpperCase()
+          : business.subscription?.status || "ACTIVE";
 
       if (business.subscription) {
         await db.subscription.update({
@@ -286,7 +300,7 @@ export async function PUT(
             userLimit: userLimit ? Number(userLimit) : business.subscription.userLimit,
             branchLimit: branchLimit ? Number(branchLimit) : business.subscription.branchLimit,
             endDate: newEndDate,
-            status: "ACTIVE",
+            status: resolvedSubStatus,
           },
         });
       } else {
@@ -302,7 +316,7 @@ export async function PUT(
             branchLimit: branchLimit ? Number(branchLimit) : 1,
             startDate: new Date(),
             endDate: newEndDate,
-            status: "ACTIVE",
+            status: resolvedSubStatus,
           },
         });
       }
@@ -363,7 +377,12 @@ export async function PUT(
         }),
       ]);
 
-      const inviteUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(owner.email)}`;
+      const baseUrl =
+        process.env.NEXTAUTH_URL ||
+        process.env.AUTH_URL ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:3000";
+      const inviteUrl = `${baseUrl.replace(/\/$/, "")}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(owner.email)}`;
 
       await logPlatformAudit({
         actorId: context.userId,
