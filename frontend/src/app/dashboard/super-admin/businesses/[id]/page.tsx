@@ -157,6 +157,37 @@ const ALL_HOSPITALITY_MODULES = [
   { key: "ROOM_SERVICE", label: "Room Service Orders", desc: "Cross-charging restaurant bills to room folios" },
 ];
 
+function getPlanPreset(plan: string, packageDomain: string) {
+  const tier = plan.toUpperCase();
+  const domain = packageDomain.toUpperCase();
+
+  const restaurantModules =
+    tier === "STARTER" ? ["POS", "TABLES", "MENU"] : ["POS", "TABLES", "MENU", "KDS"];
+  const hotelModules =
+    tier === "STARTER"
+      ? ["ROOMS", "RESERVATIONS"]
+      : tier === "STANDARD"
+      ? ["ROOMS", "RESERVATIONS", "HOUSEKEEPING"]
+      : ["ROOMS", "RESERVATIONS", "HOUSEKEEPING", "FOLIOS", "ROOM_SERVICE"];
+
+  const modules =
+    domain === "HOTEL"
+      ? hotelModules
+      : domain === "BOTH"
+      ? [...restaurantModules, ...hotelModules]
+      : restaurantModules;
+
+  const limitsByTier: Record<string, { userLimit: number; branchLimit: number }> = {
+    STARTER: { userLimit: 5, branchLimit: 1 },
+    STANDARD: { userLimit: 15, branchLimit: 2 },
+    PROFESSIONAL: { userLimit: 50, branchLimit: 5 },
+    ENTERPRISE: { userLimit: 999, branchLimit: 20 },
+  };
+  const limits = limitsByTier[tier] || limitsByTier.STARTER;
+
+  return { modules, ...limits };
+}
+
 export default function BusinessDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -1175,7 +1206,14 @@ export default function BusinessDetailPage() {
                 <label className="text-xs font-bold text-[#71675E]">Plan Tier</label>
                 <select
                   value={editPlan}
-                  onChange={(e) => setEditPlan(e.target.value)}
+                  onChange={(e) => {
+                    const nextPlan = e.target.value;
+                    setEditPlan(nextPlan);
+                    const preset = getPlanPreset(nextPlan, editPackage);
+                    setEditModules(preset.modules);
+                    setEditUserLimit(preset.userLimit);
+                    setEditBranchLimit(preset.branchLimit);
+                  }}
                   className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
                 >
                   <option value="STARTER">Starter</option>
@@ -1188,7 +1226,12 @@ export default function BusinessDetailPage() {
                 <label className="text-xs font-bold text-[#71675E]">Package Domain</label>
                 <select
                   value={editPackage}
-                  onChange={(e) => setEditPackage(e.target.value)}
+                  onChange={(e) => {
+                    const nextPkg = e.target.value;
+                    setEditPackage(nextPkg);
+                    const preset = getPlanPreset(editPlan, nextPkg);
+                    setEditModules(preset.modules);
+                  }}
                   className="w-full text-xs p-2 mt-1 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
                 >
                   <option value="RESTAURANT">Restaurant Only</option>

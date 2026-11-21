@@ -210,16 +210,17 @@ export async function GET() {
       ...customFeatures,
     };
 
-    // Reflect Super Admin module entitlements immediately when configured
+    // Reflect Super Admin module entitlements immediately when configured (supports both key conventions)
     const enabledModules = Array.isArray(subscription?.enabledModules) ? subscription.enabledModules : [];
     if (enabledModules.length > 0) {
-      mergedFeatures["RESTAURANT_POS"] = enabledModules.includes("RESTAURANT_POS");
-      mergedFeatures["KITCHEN_KDS"] = enabledModules.includes("KITCHEN_KDS");
-      mergedFeatures["HOTEL_ROOMS"] = enabledModules.includes("HOTEL_ROOMS");
-      mergedFeatures["HOTEL_FOLIOS"] = enabledModules.includes("HOTEL_FOLIOS");
-      mergedFeatures["GUEST_QR_PORTAL"] = enabledModules.includes("GUEST_QR_PORTAL");
-      mergedFeatures["INVENTORY_RECIPES"] = enabledModules.includes("INVENTORY_RECIPES");
-      mergedFeatures["IRD_FISCAL_COMPLIANCE"] = enabledModules.includes("IRD_FISCAL_COMPLIANCE");
+      const hasAny = (...keys: string[]) => keys.some((k) => enabledModules.includes(k));
+      mergedFeatures["RESTAURANT_POS"] = hasAny("RESTAURANT_POS", "POS", "TABLES");
+      mergedFeatures["KITCHEN_KDS"] = hasAny("KITCHEN_KDS", "KDS");
+      mergedFeatures["HOTEL_ROOMS"] = hasAny("HOTEL_ROOMS", "ROOMS", "RESERVATIONS", "HOUSEKEEPING");
+      mergedFeatures["HOTEL_FOLIOS"] = hasAny("HOTEL_FOLIOS", "FOLIOS", "ROOM_SERVICE");
+      mergedFeatures["GUEST_QR_PORTAL"] = hasAny("GUEST_QR_PORTAL", "MENU", "TABLES");
+      mergedFeatures["INVENTORY_RECIPES"] = hasAny("INVENTORY_RECIPES", "POS", "MENU");
+      mergedFeatures["IRD_FISCAL_COMPLIANCE"] = hasAny("IRD_FISCAL_COMPLIANCE", "POS");
       mergedFeatures["__hasModuleEntitlements"] = true;
     }
 
