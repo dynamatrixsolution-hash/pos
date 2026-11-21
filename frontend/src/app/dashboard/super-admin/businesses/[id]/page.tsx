@@ -309,12 +309,10 @@ export default function BusinessDetailPage() {
 
   // 3. Save Subscription & Module Entitlements
   const handleSaveSubscription = async () => {
-    if (!editReason.trim()) {
-      toast.warning("A mandatory audit reason is required when modifying tenant subscription & modules.");
-      return;
-    }
     setActionLoading(true);
     try {
+      const auditReason =
+        editReason.trim() || `Updated subscription to ${editPlan} (${editPackage})`;
       await apiClient.superAdmin.updateBusiness(businessId, {
         action: "UPDATE_SUBSCRIPTION",
         payload: {
@@ -326,7 +324,7 @@ export default function BusinessDetailPage() {
           enabledModules: editModules,
           userLimit: Number(editUserLimit),
           branchLimit: Number(editBranchLimit),
-          reason: editReason.trim(),
+          reason: auditReason,
         },
       }, "PUT");
 
@@ -1342,13 +1340,13 @@ export default function BusinessDetailPage() {
               </div>
             </div>
 
-            {/* Mandatory Reason */}
+            {/* Optional Audit Note */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#292320]">Mandatory Audit Reason *</label>
+              <label className="text-xs font-bold text-[#292320]">Audit Note (Optional)</label>
               <textarea
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
-                placeholder="Explain why this tier or module entitlement was changed..."
+                placeholder="Optional note for platform audit log..."
                 rows={2}
                 className="w-full text-xs p-2 border border-[#D8CEC1] rounded-md bg-[#F7F3EC]"
               />
@@ -1356,17 +1354,19 @@ export default function BusinessDetailPage() {
 
             <div className="flex justify-end gap-2 pt-2 border-t border-[#EEE7DD]">
               <button
+                type="button"
                 onClick={() => setSubEditModalOpen(false)}
-                className="px-3 py-1.5 text-xs font-bold text-[#71675E]"
+                className="px-3 py-1.5 text-xs font-bold text-[#71675E] cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveSubscription}
-                disabled={actionLoading || !editReason.trim()}
-                className="px-4 py-1.5 bg-[#6B2837] hover:bg-[#6B2837]/90 text-[#FFFCF7] text-xs font-bold rounded-md disabled:opacity-50"
+                disabled={actionLoading}
+                className="px-4 py-1.5 bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold rounded-md disabled:opacity-50 cursor-pointer"
               >
-                {actionLoading ? "Saving..." : "Save Entitlements"}
+                {actionLoading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

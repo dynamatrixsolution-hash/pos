@@ -258,9 +258,10 @@ export async function PUT(
         reason = "Administrative plan and entitlement modification",
       } = payload;
 
-      if (!reason.trim()) {
-        return NextResponse.json({ error: "A valid audit reason is required when modifying subscription entitlements" }, { status: 400 });
-      }
+      const auditReason =
+        typeof reason === "string" && reason.trim()
+          ? reason.trim()
+          : `Updated subscription to ${plan || business.subscription?.plan || "STARTER"} (${packageType})`;
 
       const beforeState = {
         plan: business.subscription?.plan,
@@ -342,7 +343,7 @@ export async function PUT(
         targetType: "SUBSCRIPTION",
         targetId: business.subscription?.id,
         businessId: id,
-        reason: reason.trim(),
+        reason: auditReason,
         beforeState,
         afterState: {
           plan,
