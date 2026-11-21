@@ -74,11 +74,36 @@ export const SettlementModal = React.memo(function SettlementModal() {
   const [selectedStayId, setSelectedStayId] = useState<string>("");
   const [loadingStays, setLoadingStays] = useState<boolean>(false);
   const [isSettling, setIsSettling] = useState<boolean>(false);
+  const [isPrintingBill, setIsPrintingBill] = useState<boolean>(false);
   const settleKeyRef = useRef<string | null>(null);
+  const billedLockAppliedRef = useRef<boolean>(false);
+  const printedProFormaRef = useRef<boolean>(false);
+
+  const selectedTable = useMemo(
+    () => tables.find((t) => t.id === selectedTableId),
+    [tables, selectedTableId]
+  );
+
+  const activeTableSessionId = usePosUiStore((s) => s.selectedSessionId) || selectedTable?.currentSessionId || "";
+
+  const updateSessionBillingLock = async (sessionId: string, status: "BILLED" | "ACTIVE") => {
+    if (!sessionId) return;
+    try {
+      await fetch(`/api/v1/restaurant/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+    } catch {
+      // non-fatal background lock sync
+    }
+  };
 
   useEffect(() => {
     if (show) {
       settleKeyRef.current = null;
+      printedProFormaRef.current = false;
+      billedLockAppliedRef.current = false;
       setPaymentMethod("CASH");
       setDiscountType("FLAT");
       setDiscountVal(0);
@@ -87,8 +112,14 @@ export const SettlementModal = React.memo(function SettlementModal() {
       setCustomerName("");
       setCustomerPhone("");
       setSelectedStayId("");
+
+      // Lock table session as BILLED while cashier is in the payment dialog so QR orders cannot conflict
+      if (orderType === "DINE_IN" && activeTableSessionId && selectedTable?.status !== "BILLED") {
+        billedLockAppliedRef.current = true;
+        void updateSessionBillingLock(activeTableSessionId, "BILLED");
+      }
     }
-  }, [show, settings.enableVat]);
+  }, [show, settings.enableVat, orderType, activeTableSessionId, selectedTable?.status]);
 
   useEffect(() => {
     settleKeyRef.current = null;
@@ -116,11 +147,6 @@ export const SettlementModal = React.memo(function SettlementModal() {
       cancelled = true;
     };
   }, [show, paymentMethod]);
-
-  const selectedTable = useMemo(
-    () => tables.find((t) => t.id === selectedTableId),
-    [tables, selectedTableId]
-  );
 
   // Compute totals strictly from pre-tax subtotals (existing order pre-tax + draft pre-tax)
   const draftTotal = draftLines.reduce((acc, l) => acc + l.totalPrice, 0);
@@ -259,6 +285,72 @@ export const SettlementModal = React.memo(function SettlementModal() {
     }
   };
 
+  const handleClose = () => {
+    if (billedLockAppliedRef.current && !printedProFormaRef.current && activeTableSessionId) {
+      billedLockAppliedRef.current = false;
+      void updateSessionBillingLock(activeTableSessionId, "ACTIVE");
+    }
+    setShow(false);
+  };
+
+  const handlePrintBillOnly = async () => {
+    setIsPrintingBill(true);
+    try {
+      if (orderType === "DINE_IN" && activeTableSessionId) {
+        printedProFormaRef.current = true;
+        await updateSessionBillingLock(activeTableSessionId, "BILLED");
+        await loadInitialCatalog();
+      }
+
+      const freshTickets = usePosTicketsStore.getState();
+      const submittedItems = freshTickets.existingRounds.flatMap((r) =>
+        r.lines
+          .filter(
+            (l) => l.acceptanceStatus !== "REJECTED" && l.fulfillmentStatus !== "CANCELLED"
+          )
+          .map((l) => ({
+            id: l.id,
+            name: l.itemName,
+            quantity: l.quantity,
+            price: Number(l.unitPrice) || 0,
+          }))
+      );
+      const pendingDraftItems = draftLines.map((l, idx) => ({
+        id: `draft-${idx}`,
+        name: l.item.name,
+        quantity: l.quantity,
+        price: l.quantity > 0 ? Number((l.totalPrice / l.quantity).toFixed(2)) : Number(l.item.basePrice) || 0,
+      }));
+
+      const receiptData: ReceiptData = {
+        invoiceNumber: freshTickets.orderNumber || activeOrderId || "PRO-FORMA",
+        createdAt: new Date().toISOString(),
+        tableNumber: selectedTable?.tableNumber,
+        customerName: customerName.trim() || undefined,
+        customerPhone: customerPhone.trim() || undefined,
+        items: [...submittedItems, ...pendingDraftItems],
+        subtotal: itemsSubtotal,
+        discount: discountAmount,
+        taxableValue: afterDiscount,
+        tax: vatAmount,
+        total: netPayableTotal,
+        paidAmount: 0,
+        paymentMethod: "UNPAID (SCAN QR TO PAY)",
+      };
+
+      await printThermalReceipt(receiptData, {
+        ...settings,
+        showQrCode: true,
+        receiptTitle: "BILL / SCAN QR TO PAY",
+      });
+      toast.success("Pro-forma bill printed with payment QR. Table locked for settlement.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to print bill");
+    } finally {
+      setIsPrintingBill(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
       <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 max-h-[92vh] flex flex-col">
@@ -281,7 +373,7 @@ export const SettlementModal = React.memo(function SettlementModal() {
           </div>
           <button
             type="button"
-            onClick={() => setShow(false)}
+            onClick={handleClose}
             className="text-[#71675E] hover:text-[#292320] cursor-pointer"
           >
             <X className="h-4 w-4" />
@@ -519,8 +611,8 @@ export const SettlementModal = React.memo(function SettlementModal() {
         <div className="pt-3 border-t border-[#D8CEC1] flex items-center justify-end gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setShow(false)}
-            disabled={isSettling}
+            onClick={handleClose}
+            disabled={isSettling || isPrintingBill}
             className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] cursor-pointer transition-colors"
           >
             Cancel
@@ -528,23 +620,23 @@ export const SettlementModal = React.memo(function SettlementModal() {
 
           <button
             type="button"
-            onClick={() => handleSettle(true)}
-            disabled={isSettling}
-            className="px-4 py-2 text-xs font-bold rounded-lg border border-[#C3DED0] bg-[#EAF3EE] hover:bg-[#DCECE3] disabled:opacity-50 text-[#28634B] flex items-center gap-1.5 cursor-pointer transition-colors"
+            onClick={handlePrintBillOnly}
+            disabled={isSettling || isPrintingBill}
+            className="px-4 py-2 text-xs font-bold rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] disabled:opacity-50 text-[#6B2837] flex items-center gap-1.5 cursor-pointer transition-colors"
           >
-            <Printer className="h-3.5 w-3.5" />
-            <span>Settle &amp; Print</span>
+            <QrCode className="h-3.5 w-3.5" />
+            <span>{isPrintingBill ? "Printing Bill..." : "Print Bill"}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => handleSettle(false)}
-            disabled={isSettling}
+            onClick={() => handleSettle(true)}
+            disabled={isSettling || isPrintingBill}
             className="px-4 py-2 text-xs font-bold rounded-lg bg-[#28634B] hover:bg-[#1F4F3B] disabled:opacity-50 text-white flex items-center gap-1.5 cursor-pointer transition-colors"
           >
-            <CheckCircle2 className="h-4 w-4" />
+            <Printer className="h-3.5 w-3.5" />
             <span className="tabular-nums">
-              {isSettling ? "Settling..." : `Complete Settlement (${formatNPR(netPayableTotal)})`}
+              {isSettling ? "Settling..." : `Pay & Print (${formatNPR(netPayableTotal)})`}
             </span>
           </button>
         </div>

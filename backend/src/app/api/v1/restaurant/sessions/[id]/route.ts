@@ -10,6 +10,7 @@ import { z } from "zod";
 const updateSessionSchema = z.object({
   guestCount: z.coerce.number().int().min(1).optional(),
   notes: z.string().max(500).optional().nullable(),
+  status: z.enum(["ACTIVE", "BILLED"]).optional(),
   expectedVersion: z.coerce.number().int().optional(),
 });
 
@@ -55,6 +56,7 @@ export async function PATCH(
       sessionId: id,
       guestCount: parsed.guestCount,
       notes: parsed.notes,
+      status: parsed.status,
       expectedVersion: parsed.expectedVersion,
       actorId: session.userId,
     });

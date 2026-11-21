@@ -615,10 +615,12 @@ export default function GuestQrPortalPage() {
     showBanner,
   ]);
 
-  // Real-time auto-poll table status when waiting for previous party's bill settlement
+  // Real-time auto-poll table status when waiting for previous party's bill settlement or BILLED lock
   useEffect(() => {
-    if (isVerified || !publicCode || qrLocation?.locationType === "ROOM") return;
-    if (qrLocation?.table?.isSettled) return;
+    if (!publicCode || qrLocation?.locationType === "ROOM") return;
+    const isBilled = Boolean(qrLocation?.table?.isBilledLocked || qrLocation?.table?.status === "BILLED");
+    if (isVerified && !isBilled) return;
+    if (!isVerified && qrLocation?.table?.isSettled) return;
 
     const interval = setInterval(async () => {
       try {
@@ -626,6 +628,9 @@ export default function GuestQrPortalPage() {
         if (data.qrLocation) {
           setQrLocation(data.qrLocation);
           if (data.qrLocation.table?.isSettled) {
+            if (isVerified) {
+              clearPrivateSessionState();
+            }
             showBanner("Previous bill settled! Table is now ready for your order.", "success");
           }
         }
@@ -635,7 +640,16 @@ export default function GuestQrPortalPage() {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [isVerified, publicCode, qrLocation?.locationType, qrLocation?.table?.isSettled, showBanner]);
+  }, [
+    isVerified,
+    publicCode,
+    qrLocation?.locationType,
+    qrLocation?.table?.isSettled,
+    qrLocation?.table?.isBilledLocked,
+    qrLocation?.table?.status,
+    clearPrivateSessionState,
+    showBanner,
+  ]);
 
   // Cooldown countdown tick every 1 second
   useEffect(() => {
@@ -1197,11 +1211,14 @@ export default function GuestQrPortalPage() {
     ? `Room ${qrLocation.room?.roomNumber || qrLocation.label}`
     : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
 
+  const isBilledLockedNow =
+    !isRoomQr &&
+    Boolean(qrLocation.table?.isBilledLocked || qrLocation.table?.status === "BILLED");
+
   const isTableWaitingForSettlement =
     !isRoomQr &&
-    !isVerified &&
     Boolean(qrLocation.table) &&
-    qrLocation.table?.isSettled === false;
+    ((!isVerified && qrLocation.table?.isSettled === false) || isBilledLockedNow);
 
   if (isTableWaitingForSettlement && !dismissedUnsettledGate) {
     return (

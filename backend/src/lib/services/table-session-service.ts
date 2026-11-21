@@ -41,6 +41,7 @@ export interface UpdateSessionInput {
   sessionId: string;
   guestCount?: number;
   notes?: string | null;
+  status?: "ACTIVE" | "BILLED";
   expectedVersion?: number;
   actorId?: string | null;
 }
@@ -1100,10 +1101,27 @@ export async function updateTableSession(
       updateData.notes = input.notes;
     }
 
+    if (input.status !== undefined && input.status !== session.status) {
+      updateData.status = input.status;
+    }
+
     const updated = await tx.tableSession.update({
       where: { id: session.id },
       data: updateData,
     });
+
+    if (input.status !== undefined && input.status !== session.status) {
+      await tx.restaurantTable.updateMany({
+        where: {
+          id: session.tableId,
+          businessId: input.businessId,
+          currentSessionId: session.id,
+        },
+        data: {
+          status: input.status === "BILLED" ? "BILLED" : "OCCUPIED",
+        },
+      });
+    }
 
     await createAuditEvent(
       {

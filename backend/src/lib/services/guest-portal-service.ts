@@ -1466,6 +1466,38 @@ export async function submitGuestOrder(
   }
 
   return await withHotelTransaction(prismaClient, async (tx) => {
+    // Hard server-side lock: reject QR orders while cashier is billing/settling or after session closed
+    if (qrLocation.locationType === "TABLE" && qrLocation.tableId) {
+      const liveTable = await tx.restaurantTable.findFirst({
+        where: { id: qrLocation.tableId, businessId: session.businessId },
+        select: { status: true },
+      });
+      const liveSession = session.tableSessionId
+        ? await tx.tableSession.findFirst({
+            where: { id: session.tableSessionId, businessId: session.businessId },
+            select: { status: true },
+          })
+        : null;
+
+      if (liveTable?.status === "BILLED" || liveSession?.status === "BILLED") {
+        throw new HotelError(
+          "Bill settlement is in progress for this table. Please ask staff if you need to add more items.",
+          409,
+          "TABLE_BILLED_LOCKED"
+        );
+      }
+      if (
+        liveSession &&
+        ["COMPLETED", "CLOSED", "CANCELLED"].includes(liveSession.status)
+      ) {
+        throw new HotelError(
+          "This table session has already been settled. Please reload the page to start a new order.",
+          409,
+          "SESSION_CLOSED"
+        );
+      }
+    }
+
     const uniqueMenuItemIds = Array.from(
       new Set(input.items.map((i) => i.menuItemId))
     );
