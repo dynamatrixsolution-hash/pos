@@ -370,11 +370,19 @@ export default function DashboardShellClient({
   const [superAdminSearchQuery, setSuperAdminSearchQuery] = React.useState("");
 
   const superAdminPageTitle = React.useMemo(() => {
+    if (pathname.includes("/businesses/pending")) return "Pending approvals";
+    if (pathname.includes("/businesses/expiring")) return "Expiring subscriptions";
     if (pathname.includes("/businesses")) return "Businesses";
+    if (pathname.includes("/onboarding")) return "Onboarding";
     if (pathname.includes("/requests")) return "Approvals";
     if (pathname.includes("/subscriptions/plans")) return "Plans & Pricing";
     if (pathname.includes("/subscriptions")) return "Subscriptions & Plans";
     if (pathname.includes("/revenue")) return "Billing & payments";
+    if (pathname.includes("/modules")) return "Modules & Features";
+    if (pathname.includes("/notices")) return "Broadcast notices";
+    if (pathname.includes("/notifications")) return "Push notifications";
+    if (pathname.includes("/chat")) return "Direct chat";
+    if (pathname.includes("/reports")) return "Platform reports";
     if (pathname.includes("/users")) return "Users & access";
     if (pathname.includes("/support")) return "Support";
     if (pathname.includes("/activity-logs")) return "Audit log";

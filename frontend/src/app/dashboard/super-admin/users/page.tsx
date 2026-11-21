@@ -519,7 +519,7 @@ export default function SuperAdminUsersPage() {
                           <div className="min-w-0">
                             <div className="font-semibold text-xs text-[#292320] leading-tight truncate">{u.name}</div>
                             <div className="text-[10px] text-[#71675E] leading-tight font-mono truncate">
-                              @{u.username}
+                              @{(u.username || "").replace(/^@+/, "")}
                             </div>
                           </div>
                         </div>
@@ -818,7 +818,7 @@ export default function SuperAdminUsersPage() {
               <div className="p-2.5 bg-[#F7F3EC] rounded-md border border-[#D8CEC1] space-y-0.5">
                 <p className="text-[10px] font-bold text-[#71675E] uppercase tracking-wider">Identity</p>
                 <p className="font-bold text-[#292320]">{inspectUser.name}</p>
-                <p className="text-[#71675E] font-mono text-[11px]">@{inspectUser.username} • {inspectUser.email}</p>
+                <p className="text-[#71675E] font-mono text-[11px]">@{(inspectUser.username || "").replace(/^@+/, "")} • {inspectUser.email}</p>
                 <p className="text-[#71675E] font-mono text-[11px]">Phone: {inspectUser.phone || "None"}</p>
               </div>
 

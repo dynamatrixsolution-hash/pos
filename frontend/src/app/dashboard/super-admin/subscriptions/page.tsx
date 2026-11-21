@@ -86,10 +86,11 @@ export default function SubscriptionsDirectoryPage() {
     expiring7Days: 0,
     mrr: 0,
     overdueCount: 0,
-    renewalRate: 98.5,
+    renewalRate: 0,
   });
   const [planDistribution, setPlanDistribution] = useState<PlanDistItem[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+  const [revenueTrend, setRevenueTrend] = useState<{ month: string; revenue: number }[]>([]);
 
   // Navigation Tabs & Filters
   const [activeTab, setActiveTab] = useState<"all" | "active" | "expiring" | "overdue" | "suspended">("all");
@@ -131,6 +132,7 @@ export default function SubscriptionsDirectoryPage() {
       if (data.kpis) setKpis(data.kpis);
       if (data.planDistribution) setPlanDistribution(data.planDistribution);
       if (data.recentActivity) setRecentActivity(data.recentActivity);
+      if (Array.isArray(data.revenueTrend)) setRevenueTrend(data.revenueTrend);
     } catch (err: any) {
       setFeedback({ type: "error", message: err?.message || "Network connection error loading subscriptions." });
     } finally {
@@ -862,42 +864,36 @@ export default function SubscriptionsDirectoryPage() {
                 <span className="text-base font-bold text-[#292320] tabular-nums">
                   NPR {(Number(kpis.mrr || 0) / 1000).toFixed(2)}k
                 </span>
-                <span className="text-[10px] text-emerald-700 font-semibold flex items-center">
-                  <ArrowUpRight className="h-3 w-3" /> +15.3% vs last month
+                <span className="text-[10px] text-[#71675E] font-medium">
+                  Active recurring run-rate
                 </span>
               </div>
             </div>
             <span className="text-[10px] text-[#71675E] border border-[#D8CEC1] px-2 py-0.5 rounded">
-              This Month
+              Last 5 Months
             </span>
           </div>
 
-          {/* Area chart simulation */}
-          <div className="h-20 w-full pt-2">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="mrrGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#6B2837" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#6B2837" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,50 Q40,35 80,40 T160,20 T200,10 L200,60 L0,60 Z"
-                fill="url(#mrrGrad)"
-              />
-              <path
-                d="M0,50 Q40,35 80,40 T160,20 T200,10"
-                fill="none"
-                stroke="#6B2837"
-                strokeWidth="2"
-              />
-            </svg>
-            <div className="flex justify-between text-[9px] text-[#71675E] pt-1">
-              <span>May 1</span>
-              <span>May 8</span>
-              <span>May 15</span>
-              <span>May 22</span>
-              <span>May 30</span>
+          <div className="h-20 w-full pt-2 flex flex-col justify-end">
+            <div className="grid grid-cols-5 gap-2 items-end h-14">
+              {(revenueTrend.length > 0 ? revenueTrend : [{ month: "—", revenue: 0 }]).map((pt, idx) => {
+                const maxRev = Math.max(1, ...revenueTrend.map((r) => r.revenue));
+                const pct = pt.revenue > 0 ? Math.max(12, Math.round((pt.revenue / maxRev) * 100)) : 4;
+                return (
+                  <div key={`${pt.month}-${idx}`} className="flex flex-col items-center justify-end h-full">
+                    <div
+                      className="w-full rounded-t bg-[#6B2837]/80 transition-all"
+                      style={{ height: `${pct}%` }}
+                      title={`${pt.month}: NPR ${pt.revenue.toLocaleString()}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-5 gap-2 text-center text-[9px] text-[#71675E] pt-1">
+              {revenueTrend.map((pt, idx) => (
+                <span key={`${pt.month}-${idx}`}>{pt.month}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -915,22 +911,28 @@ export default function SubscriptionsDirectoryPage() {
           </div>
 
           <div className="space-y-2.5">
-            {recentActivity.map((act) => (
-              <div key={act.id} className="flex items-start gap-2 text-xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[#292320] font-medium leading-tight truncate">
-                    {act.title}
-                  </p>
-                  <p className="text-[10px] text-[#71675E] tabular-nums mt-0.5">
-                    {act.currency} {act.amount?.toLocaleString()} • {act.invoiceNumber}
-                  </p>
+            {recentActivity.length === 0 ? (
+              <p className="text-xs text-[#71675E] py-4 text-center">
+                No recent billing activity yet.
+              </p>
+            ) : (
+              recentActivity.map((act) => (
+                <div key={act.id} className="flex items-start gap-2 text-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#292320] font-medium leading-tight truncate">
+                      {act.title}
+                    </p>
+                    <p className="text-[10px] text-[#71675E] tabular-nums mt-0.5">
+                      {act.currency} {act.amount?.toLocaleString()} • {act.invoiceNumber}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-[#71675E] shrink-0">
+                    {new Date(act.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
                 </div>
-                <span className="text-[10px] text-[#71675E] shrink-0">
-                  {new Date(act.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

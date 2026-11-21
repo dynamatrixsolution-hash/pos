@@ -107,13 +107,14 @@ export async function GET(request: Request) {
         };
       });
 
-    // Counts across full set
+    // Counts across expiring/expired queue
+    const renewalQueue = mapped.filter((b) => b.subscription.daysLeft <= 30 || b.subscription.status === "EXPIRED");
     const counts = {
       critical: mapped.filter((b) => b.subscription.daysLeft >= 0 && b.subscription.daysLeft <= 7).length,
       atRisk: mapped.filter((b) => b.subscription.daysLeft >= 8 && b.subscription.daysLeft <= 14).length,
       expiringSoon: mapped.filter((b) => b.subscription.daysLeft >= 0 && b.subscription.daysLeft <= 30).length,
       expired: mapped.filter((b) => b.subscription.daysLeft < 0 || b.subscription.status === "EXPIRED").length,
-      total: mapped.length,
+      total: renewalQueue.length,
     };
 
     // Filter by timeframe

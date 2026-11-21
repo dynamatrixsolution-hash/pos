@@ -193,10 +193,10 @@ export async function GET(request: Request) {
       if (isExpired) status = "EXPIRED";
       else if (isExpiringSoon) status = "EXPIRING_SOON";
 
-      const tablesUsed = b.restaurantTables?.length || (b.name.includes("Hotel") ? 24 : 12);
+      const tablesUsed = b.restaurantTables?.length ?? 0;
       const tableLimit = matchedPlan.limits?.tables || 50;
 
-      const staffUsed = b.users?.length || 4;
+      const staffUsed = b.users?.length ?? 0;
       const staffLimit = matchedPlan.limits?.staff || 15;
 
       const paymentStatus = isExpired ? "UNPAID" : "PAID";
@@ -250,7 +250,8 @@ export async function GET(request: Request) {
       return sum + (s.status !== "EXPIRED" && s.status !== "CANCELLED" ? monthlyVal : 0);
     }, 0);
     const overdueCount = subscriptions.filter((s) => s.paymentStatus === "UNPAID" || s.status === "EXPIRED").length;
-    const renewalRate = 98.5;
+    const renewalRate =
+      subscriptions.length > 0 ? Math.round((totalActive / subscriptions.length) * 1000) / 10 : 0;
 
     // 4. Plan distribution for Donut Chart
     const planCounts: Record<string, number> = {
@@ -275,36 +276,46 @@ export async function GET(request: Request) {
       { name: "Enterprise", count: planCounts.Enterprise, percentage: Math.round((planCounts.Enterprise / totalSubs) * 100), color: "#F59E0B" },
     ];
 
-    // 5. Recent billing activities
-    const recentActivity = [
-      {
-        id: "act-1",
-        type: "INVOICE_GENERATED",
-        title: `Invoice generated for ${subscriptions[0]?.businessName || "Pokhara Lakeside Suites"}`,
-        amount: subscriptions[0]?.amount || 2000,
-        currency: "NPR",
-        date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        invoiceNumber: "INV-2026-0034",
-      },
-      {
-        id: "act-2",
-        type: "PAYMENT_RECEIVED",
-        title: `Payment received from ${subscriptions[1]?.businessName || "Himalayan Coffee Roasters"}`,
-        amount: subscriptions[1]?.amount || 1200,
-        currency: "NPR",
-        date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        invoiceNumber: "INV-2026-0031",
-      },
-      {
-        id: "act-3",
-        type: "PLAN_UPGRADE",
-        title: `Plan upgraded to Professional for ${subscriptions[2]?.businessName || "RestroInn Grand Hotel"}`,
-        amount: 2000,
-        currency: "NPR",
-        date: new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-        invoiceNumber: "INV-2026-0028",
-      },
-    ];
+    // 5. Real recent billing activities from SubscriptionInvoice
+    const recentInvoices = await db.subscriptionInvoice.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { business: { select: { name: true } } },
+    });
+
+    const recentActivity = recentInvoices.map((inv) => ({
+      id: inv.id,
+      type: inv.status === "PAID" ? "PAYMENT_RECEIVED" : "INVOICE_GENERATED",
+      title:
+        inv.status === "PAID"
+          ? `Payment received from ${inv.business?.name || "Tenant"}`
+          : `Invoice generated for ${inv.business?.name || "Tenant"}`,
+      amount: Number(inv.amount || 0),
+      currency: inv.currency || "NPR",
+      date: (inv.paidAt || inv.createdAt).toISOString(),
+      invoiceNumber: inv.invoiceNumber,
+    }));
+
+    // 6. Real monthly revenue trend (last 5 months from SubscriptionPayment)
+    const fiveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 4, 1);
+    const recentPayments = await db.subscriptionPayment.findMany({
+      where: { recordedAt: { gte: fiveMonthsAgo } },
+      select: { amount: true, recordedAt: true },
+    });
+
+    const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const revenueTrend = Array.from({ length: 5 }, (_, idx) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (4 - idx), 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const revenue = recentPayments
+        .filter((p) => {
+          const pd = new Date(p.recordedAt);
+          return pd.getFullYear() === y && pd.getMonth() === m;
+        })
+        .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      return { month: `${monthShort[m]} ${String(y).slice(-2)}`, revenue };
+    });
 
     return NextResponse.json({
       subscriptions: filtered,
@@ -320,13 +331,7 @@ export async function GET(request: Request) {
       globalSettings,
       planDistribution,
       recentActivity,
-      revenueTrend: [
-        { month: "May 1", revenue: 8400 },
-        { month: "May 8", revenue: 11200 },
-        { month: "May 15", revenue: 14500 },
-        { month: "May 22", revenue: 17200 },
-        { month: "May 30", revenue: mrr > 0 ? mrr : 18740 },
-      ],
+      revenueTrend,
     });
   } catch (error: any) {
     console.error("GET subscriptions error:", error);
