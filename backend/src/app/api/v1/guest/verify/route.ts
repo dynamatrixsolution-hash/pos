@@ -15,7 +15,8 @@ const verifyGuestSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const rateLimitError = enforceRateLimit(req, "guest:verify", 15, 60);
+  // Support busy restaurant shared Wi-Fi (up to 120 QR scans/min per IP)
+  const rateLimitError = enforceRateLimit(req, "guest:verify", 120, 60);
   if (rateLimitError) return rateLimitError;
 
   try {
