@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { pepperPassword } from "@/lib/security";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { dispatchNotification } from "@/lib/notifications";
 import { PACKAGE_DEFAULT_MODULES, HospitalityModule } from "@/lib/module-gatekeeper";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -358,6 +359,18 @@ export async function PUT(
         },
       });
 
+      void dispatchNotification({
+        businessId: id,
+        targetRoles: ["OWNER"],
+        category: "SUBSCRIPTION",
+        priority: "HIGH",
+        title: "Subscription & Modules Updated",
+        message: `Platform Admin updated your plan to ${plan || business.subscription?.plan || "Standard"} (${packageType}).`,
+        actionUrl: "/dashboard/subscriptions",
+        dedupeKey: `sub-upd:${id}:${plan || business.subscription?.plan}:${packageType}:${resolvedSubStatus}`,
+        dedupeWindowMs: 15_000,
+      }).catch(() => {});
+
       return NextResponse.json({ message: "Subscription, hospitality package, and limits updated successfully." });
     }
 
@@ -574,15 +587,17 @@ export async function PUT(
         },
       });
 
-      // Notify business owner in-app immediately
-      await db.notification.create({
-        data: {
-          businessId: id,
-          title: `New Subscription Invoice (${invoiceNumber})`,
-          message: `Invoice ${invoiceNumber} for ${currency} ${Number(amount).toLocaleString()} has been issued. Due date: ${new Date(dueDate).toLocaleDateString()}.`,
-          type: "BILLING",
-        },
-      });
+      // Notify business owner in-app + FCM push immediately
+      void dispatchNotification({
+        businessId: id,
+        targetRoles: ["OWNER"],
+        category: "BILLING",
+        priority: "HIGH",
+        title: `New Subscription Invoice (${invoiceNumber})`,
+        message: `Invoice ${invoiceNumber} for ${currency} ${Number(amount).toLocaleString()} has been issued. Due date: ${new Date(dueDate).toLocaleDateString()}.`,
+        actionUrl: "/dashboard/subscriptions",
+        dedupeKey: `inv-created:${invoice.id}`,
+      }).catch(() => {});
 
       await logPlatformAudit({
         actorId: context.userId,
@@ -778,6 +793,16 @@ export async function PUT(
           currency: updated.currency,
         },
       });
+
+      void dispatchNotification({
+        businessId: id,
+        targetRoles: ["OWNER"],
+        category: "SYSTEM",
+        title: "Business Profile Updated",
+        message: "RestroInn Platform Admin updated your business profile information.",
+        actionUrl: "/dashboard/settings",
+        dedupeKey: `prof-upd:${id}:${updated.updatedAt.getTime()}`,
+      }).catch(() => {});
 
       return NextResponse.json({
         message: "Business profile and branding updated successfully.",

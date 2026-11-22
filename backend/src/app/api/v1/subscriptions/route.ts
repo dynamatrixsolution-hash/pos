@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
+import { notifySuperAdmins } from "@/lib/notifications";
 
 const upgradeRequestSchema = z.object({
   plan: z.string().trim().min(1, "Plan is required"),
@@ -218,6 +219,15 @@ export async function PUT(request: Request) {
 
       return createdInvoice;
     });
+
+    void notifySuperAdmins({
+      category: "BILLING",
+      priority: "HIGH",
+      title: `Plan Upgrade Request: ${business.name}`,
+      message: `${business.name} requested ${targetPlan.name} (${billingCycle}) — ${targetPlan.currency || "NPR"} ${amount.toLocaleString()} (Ref: ${paymentReference}).`,
+      actionUrl: "/dashboard/super-admin/revenue",
+      dedupeKey: `upg-req:${invoice.id}`,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

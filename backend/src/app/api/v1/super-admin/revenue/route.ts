@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { DEFAULT_SUBSCRIPTION_PLANS } from "@/lib/subscription-plans";
+import { dispatchNotification } from "@/lib/notifications";
 
 export async function GET(request: Request) {
   const context = await getSessionContext();
@@ -201,6 +202,23 @@ export async function POST(request: Request) {
 
       return { payment: createdPayment, nextStatus: computedStatus };
     });
+
+    void dispatchNotification({
+      businessId: invoice.businessId,
+      targetRoles: ["OWNER"],
+      category: "BILLING",
+      priority: "HIGH",
+      title:
+        nextStatus === "PAID"
+          ? `Payment Confirmed (${invoice.invoiceNumber})`
+          : `Partial Payment Recorded (${invoice.invoiceNumber})`,
+      message:
+        nextStatus === "PAID"
+          ? `Your payment of ${invoice.currency || "NPR"} ${settlementAmount.toLocaleString()} has been verified and your subscription is active.`
+          : `Partial payment of ${invoice.currency || "NPR"} ${settlementAmount.toLocaleString()} was recorded on invoice ${invoice.invoiceNumber}.`,
+      actionUrl: "/dashboard/subscriptions",
+      dedupeKey: `inv-settle:${payment.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

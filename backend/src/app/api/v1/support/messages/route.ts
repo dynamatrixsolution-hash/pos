@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { notifySuperAdmins } from "@/lib/notifications";
 
 const sendMessageSchema = z.object({
   content: z.string().trim().min(1, "Message cannot be empty").max(1500),
@@ -120,6 +121,15 @@ export async function POST(request: Request) {
         isRead: false,
       },
     });
+
+    void notifySuperAdmins({
+      category: "CHAT",
+      priority: "HIGH",
+      title: "New Direct Message from Tenant",
+      message: parsed.data.content,
+      actionUrl: "/dashboard/super-admin/chat",
+      dedupeKey: `tenant-chat:${created.id}`,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

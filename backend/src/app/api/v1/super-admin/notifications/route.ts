@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { dispatchNotification } from "@/lib/notifications";
 
 // Initial demo broadcasts if database table is empty
 const INITIAL_DEMO_BROADCASTS = [
@@ -236,17 +237,36 @@ export async function POST(request: Request) {
       },
     });
 
-    // 2. Fan-out in-app Notification records so tenant notification bells receive the broadcast
-    if (channels.includes("IN_APP") && targetBusinesses.length > 0) {
-      await db.notification.createMany({
-        data: targetBusinesses.map((biz) => ({
-          businessId: biz.id,
-          title: title.trim(),
-          message: messageBody.trim(),
-          type: "SYSTEM",
-          isRead: false,
-        })),
-      });
+    // 2. Fan-out in-app + FCM Push notifications to target businesses and roles
+    if (targetBusinesses.length > 0) {
+      const targetRoles =
+        targetRole === "OWNER"
+          ? ["OWNER"]
+          : targetRole === "MANAGER"
+          ? ["MANAGER"]
+          : targetRole === "CASHIER"
+          ? ["CASHIER"]
+          : targetRole === "STAFF"
+          ? ["WAITER", "KITCHEN", "FRONT_DESK", "HOUSEKEEPING"]
+          : [];
+      const inAppOnly = !broadcast.channels.includes("PUSH");
+
+      await Promise.all(
+        targetBusinesses.map((biz) =>
+          dispatchNotification({
+            businessId: biz.id,
+            targetRoles,
+            title: title.trim(),
+            message: messageBody.trim(),
+            category: "BROADCAST",
+            type: "SYSTEM",
+            priority: "HIGH",
+            actionUrl: "/dashboard",
+            dedupeKey: `broadcast:${broadcast.id}:${biz.id}`,
+            inAppOnly,
+          })
+        )
+      );
     }
 
     // 3. Platform audit log

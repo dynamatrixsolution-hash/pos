@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { dispatchNotification } from "@/lib/notifications";
 
 function parseTicketConversation(ticket: any) {
   const messages: any[] = [];
@@ -281,6 +282,20 @@ export async function PUT(request: Request) {
       beforeState: { status: existing.status, assignedTo: existing.assignedTo },
       afterState: { status: updated.status, assignedTo: updated.assignedTo, resolution: updated.resolution },
     });
+
+    void dispatchNotification({
+      businessId: existing.businessId,
+      userId: existing.userId || undefined,
+      targetRoles: existing.userId ? undefined : ["OWNER"],
+      category: "SUPPORT",
+      priority: "HIGH",
+      title: `Support Ticket Updated (${existing.ticketNumber})`,
+      message: replyMessage?.trim()
+        ? replyMessage.trim()
+        : `Your support ticket "${existing.subject}" is now ${updated.status}.`,
+      actionUrl: "/dashboard/support",
+      dedupeKey: `sa-ticket:${existing.id}:${updated.status}:${(replyMessage || "").trim().slice(0, 24)}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

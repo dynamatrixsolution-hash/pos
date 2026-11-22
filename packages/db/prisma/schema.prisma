@@ -903,16 +903,49 @@ model AuditLog {
 }
 
 model Notification {
-  id         String   @id @default(uuid())
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  title      String
-  message    String
-  type       String   @default("STOCK") // STOCK, PAYMENT, SYSTEM, INFO
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id             String    @id @default(uuid())
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId         String?
+  targetRoles    String[]  @default([])
+  guestSessionId String?
+  title          String
+  message        String
+  type           String    @default("STOCK") // STOCK, PAYMENT, BILLING, ORDER, KITCHEN, SERVICE_REQUEST, SUPPORT, CHAT, BROADCAST, SYSTEM, INFO
+  category       String    @default("SYSTEM")
+  priority       String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  actionUrl      String?
+  metadata       Json?
+  dedupeKey      String?
+  isRead         Boolean   @default(false)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
 
   @@unique([businessId, id])
+  @@index([businessId, isRead, createdAt])
+  @@index([userId, isRead, createdAt])
+  @@index([guestSessionId, createdAt])
+  @@index([dedupeKey, createdAt])
+  @@index([expiresAt])
+}
+
+model DevicePushToken {
+  id             String   @id @default(uuid())
+  token          String   @unique
+  platform       String   @default("WEB") // WEB, ANDROID, IOS
+  userId         String?
+  businessId     String?
+  role           String?
+  guestSessionId String?
+  deviceLabel    String?
+  isActive       Boolean  @default(true)
+  lastUsedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@index([businessId, role, isActive])
+  @@index([guestSessionId, isActive])
 }
 
 model OpeningStock {

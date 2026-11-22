@@ -10,6 +10,8 @@ import { clearCaches } from "@/lib/cache-utils";
 import { apiClient } from "@/core/api/api-client";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { navigationConfig, NavItem, Role } from "@/lib/nav-config";
+import { isFirebaseWebConfigured, registerWebPushToken, subscribeForegroundPush } from "@/lib/firebase-client";
+import { toast } from "@/components/toast";
 import { OpenShiftModal } from "@/components/shifts/open-shift-modal";
 import {
   LogOut,
@@ -75,8 +77,11 @@ interface NotificationMeta {
   title: string;
   message: string;
   type: string;
+  category?: string;
+  priority?: string;
+  actionUrl?: string | null;
   isRead: boolean;
-  createdAt: Date;
+  createdAt: Date | string;
 }
 
 interface SubscriptionMeta {
@@ -182,24 +187,66 @@ export default function DashboardShellClient({
   const [broadcastsList, setBroadcastsList] = React.useState<any[]>([]);
   const [dismissedNoticeIds, setDismissedNoticeIds] = React.useState<string[]>([]);
   const [notifications, setNotifications] = React.useState<NotificationMeta[]>(initialNotifications);
+  const [unreadAlertCount, setUnreadAlertCount] = React.useState<number>(
+    initialNotifications.filter((n: any) => !n.isRead).length
+  );
   const [notifTab, setNotifTab] = React.useState<"all" | "notices" | "alerts">("all");
+  const [pushReady, setPushReady] = React.useState(false);
 
   const unreadBroadcasts = React.useMemo(() => {
     return broadcastsList.filter((b) => !dismissedNoticeIds.includes(b.id));
   }, [broadcastsList, dismissedNoticeIds]);
 
-  const totalNotificationsCount = notifications ? notifications.length + unreadBroadcasts.length : unreadBroadcasts.length;
+  const totalNotificationsCount = unreadAlertCount + unreadBroadcasts.length;
+
+  const fetchLiveNotifications = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/notifications?limit=25", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.notifications)) {
+        setNotifications(data.notifications);
+        setUnreadAlertCount(typeof data.unreadCount === "number" ? data.unreadCount : data.notifications.filter((n: any) => !n.isRead).length);
+      }
+    } catch {
+      // keep existing notifications on transient network error
+    }
+  }, []);
+
+  useVisibilityPolling(fetchLiveNotifications, 15000, { enabled: true });
 
   React.useEffect(() => {
-    apiClient.settings
-      .getBroadcasts()
-      .then((data) => {
-        if (Array.isArray(data?.broadcasts)) {
-          setBroadcastsList(data.broadcasts);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    fetchLiveNotifications();
+    if (user.role !== "SUPER_ADMIN") {
+      apiClient.settings
+        .getBroadcasts()
+        .then((data) => {
+          if (Array.isArray(data?.broadcasts)) {
+            setBroadcastsList(data.broadcasts);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Auto-register FCM push token if browser permission already granted
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      registerWebPushToken().then((t) => {
+        if (t) setPushReady(true);
+      });
+    }
+
+    let unsubscribe: (() => void) | undefined;
+    subscribeForegroundPush((payload) => {
+      toast.info(`${payload.title}: ${payload.body}`);
+      fetchLiveNotifications();
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchLiveNotifications, user.role]);
   const [superAdminSidebarCollapsed, setSuperAdminSidebarCollapsed] = React.useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = React.useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = React.useState(false);
@@ -676,7 +723,37 @@ export default function DashboardShellClient({
     window.location.reload(); 
   };
 
-  const handleMarkAllNotificationsRead = () => setNotifications([]);
+  const handleMarkAllNotificationsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadAlertCount(0);
+    try {
+      await fetch("/api/v1/notifications", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAll: true }),
+      });
+    } catch {
+      // non-blocking
+    }
+  };
+
+  const handleClickNotification = async (n: NotificationMeta) => {
+    setNotificationsOpen(false);
+    if (!n.isRead && !String(n.id).startsWith("low-stock-")) {
+      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, isRead: true } : item)));
+      setUnreadAlertCount((c) => Math.max(0, c - 1));
+      void fetch("/api/v1/notifications", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: n.id }),
+      }).catch(() => {});
+    }
+    if (n.actionUrl) {
+      router.push(n.actionUrl);
+    }
+  };
 
   const [currentSearch, setCurrentSearch] = React.useState("");
   React.useEffect(() => {
@@ -1030,13 +1107,75 @@ export default function DashboardShellClient({
                 />
               </div>
 
-              <button
-                onClick={() => router.push("/dashboard/super-admin/monitoring")}
-                className="p-2 rounded-lg border border-[#D8CEC1] hover:bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] transition-colors relative cursor-pointer"
-                title="System Notifications & Diagnostics"
-              >
-                <Bell className="h-4.5 w-4.5" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  className="p-2 rounded-lg border border-[#D8CEC1] hover:bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] transition-colors relative cursor-pointer"
+                  title="Platform Notifications"
+                >
+                  <Bell className="h-4.5 w-4.5" />
+                  {unreadAlertCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-[#6B2837] text-[#FFFCF7] text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#FFFCF7] tabular-nums">
+                      {unreadAlertCount}
+                    </span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-96 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] z-50 p-2 text-left">
+                      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#D8CEC1]">
+                        <div>
+                          <span className="text-xs font-bold text-[#292320]">Platform Alerts</span>
+                          <div className="text-[10px] text-[#71675E] font-medium">{unreadAlertCount} unread</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isFirebaseWebConfigured() && !pushReady && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
+                            <button
+                              type="button"
+                              onClick={() => registerWebPushToken().then((t) => { if (t) { setPushReady(true); toast.success("Push notifications enabled."); } })}
+                              className="text-[10px] text-[#315F85] hover:underline font-semibold cursor-pointer"
+                            >
+                              Enable Push
+                            </button>
+                          )}
+                          {unreadAlertCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllNotificationsRead}
+                              className="text-[10px] text-[#6B2837] hover:underline font-bold cursor-pointer"
+                            >
+                              Mark all read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto divide-y divide-[#D8CEC1]/50">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center text-xs text-[#71675E]">
+                            No platform alerts yet
+                          </div>
+                        ) : (
+                          notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => handleClickNotification(n)}
+                              className={`w-full text-left p-2.5 hover:bg-[#F7F3EC] rounded-md flex items-start gap-2.5 cursor-pointer ${!n.isRead ? "bg-[#F7F3EC]/70" : ""}`}
+                            >
+                              <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${!n.isRead ? "bg-[#6B2837]" : "bg-[#D8CEC1]"}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-[#292320] truncate">{n.title}</div>
+                                <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </header>
         ) : (
@@ -1441,15 +1580,20 @@ export default function DashboardShellClient({
 
                       {/* System Alerts */}
                       {(notifTab === "all" || notifTab === "alerts") && notifications.map((n) => (
-                        <div key={n.id} className="p-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 rounded-md flex items-start gap-2.5">
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => handleClickNotification(n)}
+                          className={`w-full text-left p-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-800/50 rounded-md flex items-start gap-2.5 cursor-pointer ${!n.isRead ? "bg-[#F7F3EC]/70" : ""}`}
+                        >
                           <div className="p-1 rounded bg-amber-500/10 text-amber-600 mt-0.5 shrink-0">
                             <AlertTriangle className="h-3.5 w-3.5" />
                           </div>
-                          <div className="flex-1">
-                            <div className="text-xs font-bold text-[#292320] dark:text-slate-200">{n.title}</div>
-                            <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-[#292320] dark:text-slate-200 truncate">{n.title}</div>
+                            <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug line-clamp-2">{n.message}</p>
                           </div>
-                        </div>
+                        </button>
                       ))}
 
                       {totalNotificationsCount === 0 && (

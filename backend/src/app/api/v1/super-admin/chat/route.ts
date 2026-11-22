@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, roleErrorResponse, safeErrorMessage } from "@/lib/api-helper";
 import { logPlatformAudit } from "@/lib/platform-audit";
+import { dispatchNotification } from "@/lib/notifications";
 
 // Default initial sample messages if thread is empty
 const INITIAL_DEMO_MESSAGES: Record<string, Array<{ text: string; fromAdmin: boolean; minutesAgo: number }>> = {
@@ -247,6 +248,17 @@ export async function POST(request: Request) {
       reason: `Direct message sent to ${receiver.name} (${receiver.business.name})`,
       afterState: { id: message.id, receiverId, contentLength: content.length },
     });
+
+    void dispatchNotification({
+      businessId: receiver.businessId,
+      userId: receiver.id,
+      category: "CHAT",
+      priority: "HIGH",
+      title: "New message from RestroInn Support",
+      message: content.trim(),
+      actionUrl: "/dashboard/support",
+      dedupeKey: `sa-chat:${message.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

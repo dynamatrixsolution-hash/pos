@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { safeErrorMessage } from "@/lib/api-helper";
+import { db } from "@/lib/db";
+import { dispatchNotification } from "@/lib/notifications";
 import {
   getGuestOrdersAndTracking,
   submitGuestOrder,
@@ -79,6 +81,77 @@ export async function POST(req: Request) {
       items: parsed.items,
       notes: parsed.notes,
     });
+
+    // Fire-and-forget 3-way notification: Floor/Billing Staff + Kitchen + Guest confirmation
+    void (async () => {
+      try {
+        const orderId = (result as any)?.order?.id || (result as any)?.orderId;
+        const roundId = (result as any)?.round?.id || (result as any)?.roundId || "r1";
+        if (!orderId) return;
+
+        const order = await db.restaurantOrder.findUnique({
+          where: { id: orderId },
+          select: {
+            id: true,
+            businessId: true,
+            orderNumber: true,
+            tableSessionId: true,
+            table: { select: { tableNumber: true } },
+          },
+        });
+        if (!order) return;
+
+        const locLabel = order.table?.tableNumber
+          ? `Table ${order.table.tableNumber}`
+          : "Guest Order";
+        const itemCount = parsed.items.reduce((s, i) => s + i.quantity, 0);
+
+        // 1. Notify Cashier, Waiter, Accountant, Manager, Owner
+        await dispatchNotification({
+          businessId: order.businessId,
+          targetRoles: ["CASHIER", "WAITER", "ACCOUNTANT", "MANAGER", "OWNER"],
+          category: "ORDER",
+          priority: "HIGH",
+          title: `New Guest Order — ${locLabel}`,
+          message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) received from ${locLabel} and routed to kitchen.`,
+          actionUrl: "/dashboard/restaurant/pos",
+          dedupeKey: `guest-order-staff:${order.id}:${roundId}`,
+        });
+
+        // 2. Notify Kitchen Display staff
+        await dispatchNotification({
+          businessId: order.businessId,
+          targetRoles: ["KITCHEN"],
+          category: "KITCHEN",
+          priority: "URGENT",
+          title: `New KOT — ${locLabel}`,
+          message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) queued for preparation.`,
+          actionUrl: "/dashboard/restaurant/kds",
+          dedupeKey: `guest-order-kds:${order.id}:${roundId}`,
+        });
+
+        // 3. Notify Guest session that order is confirmed
+        if (order.tableSessionId) {
+          const guestSession = await db.guestSession.findFirst({
+            where: { tableSessionId: order.tableSessionId, status: "ACTIVE" },
+            orderBy: { lastActiveAt: "desc" },
+            select: { id: true },
+          });
+          if (guestSession) {
+            await dispatchNotification({
+              businessId: order.businessId,
+              guestSessionId: guestSession.id,
+              category: "ORDER",
+              title: `Order #${order.orderNumber} Confirmed`,
+              message: `Your order for ${locLabel} has been accepted and sent to the kitchen.`,
+              dedupeKey: `guest-order-ack:${order.id}:${roundId}`,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[Notifications] Guest order dispatch error:", err);
+      }
+    })();
 
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {

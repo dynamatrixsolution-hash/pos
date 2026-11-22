@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { notifySuperAdmins } from "@/lib/notifications";
 
 const createTicketSchema = z.object({
   subject: z.string().trim().min(3, "Subject must be at least 3 characters").max(160),
@@ -64,6 +65,15 @@ export async function POST(request: Request) {
         user: { select: { id: true, name: true, email: true, role: true } },
       },
     });
+
+    void notifySuperAdmins({
+      category: "SUPPORT",
+      priority: priority === "URGENT" ? "URGENT" : "HIGH",
+      title: `New Support Ticket (${ticketNumber})`,
+      message: `${subject} — Priority: ${priority}`,
+      actionUrl: "/dashboard/super-admin/support",
+      dedupeKey: `ticket-new:${ticket.id}`,
+    }).catch(() => {});
 
     return NextResponse.json(
       { success: true, ticket, message: `Support ticket ${ticketNumber} submitted.` },
