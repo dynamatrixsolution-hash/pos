@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { formatNPR, toCents, fromCents } from "@/lib/currency";
 import { DeterministicQrMatrixSvg } from "@/components/qr-matrix-svg";
 import { apiClient } from "@/core/api/api-client";
+import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@/lib/notification-alert";
 import {
   UtensilsCrossed,
   Clock,
@@ -409,6 +410,22 @@ export default function GuestQrPortalPage() {
   );
   const [refreshingData, setRefreshingData] = useState<boolean>(false);
 
+  // Live Guest Push / Order Status Notifications
+  interface GuestNotificationItem {
+    id: string;
+    title: string;
+    message: string;
+    category: string;
+    priority: string;
+    createdAt: string;
+  }
+  const [guestNotifications, setGuestNotifications] = useState<GuestNotificationItem[]>([]);
+  const [guestNotifOpen, setGuestNotifOpen] = useState<boolean>(false);
+  const [unreadGuestNotifs, setUnreadGuestNotifs] = useState<number>(0);
+  const [liveStatusAlert, setLiveStatusAlert] = useState<GuestNotificationItem | null>(null);
+  const seenGuestNotifIdsRef = useRef<Set<string>>(new Set());
+  const guestNotifHydratedRef = useRef<boolean>(false);
+
   const isRoomQr = qrLocation?.locationType === "ROOM";
   const isVerified = Boolean(sessionToken);
 
@@ -436,6 +453,11 @@ export default function GuestQrPortalPage() {
     setOrders([]);
     setLocalServiceRequests([]);
     setTablePin(null);
+    setGuestNotifications([]);
+    setUnreadGuestNotifs(0);
+    setLiveStatusAlert(null);
+    seenGuestNotifIdsRef.current.clear();
+    guestNotifHydratedRef.current = false;
   }, [storageKey, grantStorageKey]);
 
   // Direct Companion Share URL (embedded in screen QR code and WhatsApp share)
@@ -668,6 +690,73 @@ export default function GuestQrPortalPage() {
 
     return () => clearInterval(timer);
   }, [cooldowns]);
+
+  // Live 4-second guest notification poller (works on ALL tabs once guest has a session)
+  useEffect(() => {
+    if (!sessionToken) return;
+    let cancelled = false;
+
+    const pollGuestNotifications = async () => {
+      if (cancelled) return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      try {
+        const res = await fetch("/api/v1/guest/notifications?limit=25", {
+          headers: { "x-guest-session-token": sessionToken },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = (Array.isArray(data.notifications) ? data.notifications : []) as GuestNotificationItem[];
+
+        if (guestNotifHydratedRef.current) {
+          const fresh = list.filter((n) => !seenGuestNotifIdsRef.current.has(n.id));
+          if (fresh.length > 0) {
+            const latest = fresh[0];
+            setLiveStatusAlert(latest);
+            setUnreadGuestNotifs((prev) => prev + fresh.length);
+            const isReadyOrServed = /ready|served/i.test(latest.title);
+            playNotificationChime(isReadyOrServed ? "ready" : "info");
+            vibrateMobile(isReadyOrServed ? [140, 60, 140] : [90]);
+            showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+            // Keep tracker in sync immediately when kitchen updates status
+            void fetchGuestSessionData(sessionToken, true);
+          }
+        }
+
+        list.forEach((n) => seenGuestNotifIdsRef.current.add(n.id));
+        guestNotifHydratedRef.current = true;
+        setGuestNotifications(list);
+      } catch {
+        // silent network retry
+      }
+    };
+
+    void pollGuestNotifications();
+    const interval = setInterval(() => {
+      void pollGuestNotifications();
+    }, 4000);
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        void pollGuestNotifications();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [sessionToken, fetchGuestSessionData]);
+
+  // Auto-dismiss floating guest live status alert after 9 seconds
+  useEffect(() => {
+    if (!liveStatusAlert) return;
+    const t = setTimeout(() => {
+      setLiveStatusAlert((prev) => (prev?.id === liveStatusAlert.id ? null : prev));
+    }, 9000);
+    return () => clearTimeout(t);
+  }, [liveStatusAlert]);
 
   // Background poll when on TRACKER or BILL or SERVICES tab with an active session
   useEffect(() => {
@@ -1504,7 +1593,24 @@ export default function GuestQrPortalPage() {
                       </span>
                     )}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGuestNotifOpen((prev) => !prev);
+                        setUnreadGuestNotifs(0);
+                      }}
+                      className="relative inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] font-semibold text-[11px] hover:bg-[#FAF6F0] transition cursor-pointer"
+                      title="Order Status Alerts"
+                    >
+                      <ChefHat className="w-3 h-3 text-[#6B2837]" />
+                      <span>Updates</span>
+                      {unreadGuestNotifs > 0 && (
+                        <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-[#6B2837] text-[#FFFCF7] text-[9px] font-bold tabular-nums">
+                          {unreadGuestNotifs}
+                        </span>
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowGroupShareModal(true)}
@@ -1543,6 +1649,79 @@ export default function GuestQrPortalPage() {
             </div>
           )}
         </header>
+
+        {/* Live Kitchen / Order Status Push Alert Banner */}
+        {liveStatusAlert && (
+          <div className="sticky top-[62px] z-30 mx-4 mt-3 p-3 rounded-lg border border-[#6B2837] bg-[#6B2837] text-[#FFFCF7] flex items-start justify-between gap-2.5">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <ChefHat className="w-4 h-4 text-[#F3E5AB] shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold leading-snug">{liveStatusAlert.title}</p>
+                <p className="text-[11px] text-[#FFFCF7]/90 leading-snug mt-0.5">{liveStatusAlert.message}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLiveStatusAlert(null)}
+              className="text-[#FFFCF7]/80 hover:text-[#FFFCF7] p-0.5 cursor-pointer shrink-0"
+              aria-label="Dismiss order update"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Guest Order Updates History Drawer */}
+        {guestNotifOpen && (
+          <div className="mx-4 mt-2 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-[#F7F3EC] border-b border-[#D8CEC1]">
+              <span className="text-xs font-bold text-[#292320]">Live Order Updates</span>
+              <div className="flex items-center gap-2">
+                {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      Notification.requestPermission().then((perm) => {
+                        if (perm === "granted") {
+                          showBanner("Browser order alerts enabled!", "success");
+                        }
+                      });
+                    }}
+                    className="text-[10px] font-bold text-[#6B2837] underline cursor-pointer"
+                  >
+                    Enable Browser Alerts
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setGuestNotifOpen(false)}
+                  className="text-[#71675E] hover:text-[#292320] cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="max-h-56 overflow-y-auto divide-y divide-[#EEE7DD]">
+              {guestNotifications.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-[#71675E]">
+                  Order updates from the kitchen will appear here in real time.
+                </p>
+              ) : (
+                guestNotifications.map((n) => (
+                  <div key={n.id} className="px-3 py-2.5 text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-[#292320]">{n.title}</span>
+                      <span className="text-[10px] text-[#71675E] tabular-nums shrink-0">
+                        {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Floating Toast Notification */}
         {toast && (

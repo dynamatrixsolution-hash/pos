@@ -35,8 +35,8 @@ export async function PATCH(
       actorId: session.userId,
     });
 
-    // Notify Guest & Floor Staff on PREPARING / READY transitions
-    if (parsed.status === "PREPARING" || parsed.status === "READY") {
+    // Notify Guest & Floor Staff on PREPARING / READY / SERVED / CANCELLED transitions
+    if (["PREPARING", "READY", "SERVED", "CANCELLED"].includes(parsed.status)) {
       void (async () => {
         try {
           const fullTicket = await db.kitchenTicket.findUnique({
@@ -83,28 +83,70 @@ export async function PATCH(
           }
 
           if (parsed.status === "READY") {
-            if (guestSession) {
-              await dispatchNotification({
+            await Promise.all([
+              ...(guestSession
+                ? [
+                    dispatchNotification({
+                      businessId: session.businessId,
+                      guestSessionId: guestSession.id,
+                      category: "KITCHEN",
+                      priority: "HIGH",
+                      title: "Your Food is Ready!",
+                      message: `Your order is freshly cooked and on its way to ${locLabel}.`,
+                      dedupeKey: `kds-ready-guest:${fullTicket.id}`,
+                    }),
+                  ]
+                : []),
+              dispatchNotification({
                 businessId: session.businessId,
-                guestSessionId: guestSession.id,
+                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
                 category: "KITCHEN",
                 priority: "HIGH",
-                title: "Your Food is Ready!",
-                message: `Your order is freshly cooked and on its way to ${locLabel}.`,
-                dedupeKey: `kds-ready-guest:${fullTicket.id}`,
-              });
-            }
+                title: `Pickup Ready — ${locLabel}`,
+                message: `KOT #${fullTicket.ticketNumber} is ready at the kitchen pass for ${locLabel}.`,
+                actionUrl: "/dashboard/restaurant/tables",
+                dedupeKey: `kds-ready-staff:${fullTicket.id}`,
+              }),
+            ]);
+          }
 
+          if (parsed.status === "SERVED" && guestSession) {
             await dispatchNotification({
               businessId: session.businessId,
-              targetRoles: ["WAITER", "CASHIER"],
+              guestSessionId: guestSession.id,
               category: "KITCHEN",
-              priority: "HIGH",
-              title: `Pickup Ready — ${locLabel}`,
-              message: `KOT #${fullTicket.ticketNumber} is ready at the kitchen pass for ${locLabel}.`,
-              actionUrl: "/dashboard/restaurant/tables",
-              dedupeKey: `kds-ready-staff:${fullTicket.id}`,
+              title: "Order Served — Enjoy Your Meal!",
+              message: `Order #${fullTicket.order?.orderNumber || fullTicket.ticketNumber} has been served to ${locLabel}. Tap Services anytime to call a waiter or request your bill.`,
+              dedupeKey: `kds-served-guest:${fullTicket.id}`,
             });
+          }
+
+          if (parsed.status === "CANCELLED") {
+            await Promise.all([
+              ...(guestSession
+                ? [
+                    dispatchNotification({
+                      businessId: session.businessId,
+                      guestSessionId: guestSession.id,
+                      category: "KITCHEN",
+                      priority: "HIGH",
+                      title: "Order Update — Item Cancelled",
+                      message: `KOT #${fullTicket.ticketNumber} for ${locLabel} was cancelled by the kitchen. Please check with our staff if you have questions.`,
+                      dedupeKey: `kds-cancelled-guest:${fullTicket.id}`,
+                    }),
+                  ]
+                : []),
+              dispatchNotification({
+                businessId: session.businessId,
+                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                category: "KITCHEN",
+                priority: "HIGH",
+                title: `KOT Cancelled — ${locLabel}`,
+                message: `KOT #${fullTicket.ticketNumber} for ${locLabel} was marked cancelled.`,
+                actionUrl: "/dashboard/restaurant/kds",
+                dedupeKey: `kds-cancelled-staff:${fullTicket.id}`,
+              }),
+            ]);
           }
         } catch (err) {
           console.error("[Notifications] KDS status notification error:", err);

@@ -11,6 +11,7 @@ import { apiClient } from "@/core/api/api-client";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { navigationConfig, NavItem, Role } from "@/lib/nav-config";
 import { isFirebaseWebConfigured, registerWebPushToken, subscribeForegroundPush } from "@/lib/firebase-client";
+import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@/lib/notification-alert";
 import { toast } from "@/components/toast";
 import { OpenShiftModal } from "@/components/shifts/open-shift-modal";
 import {
@@ -199,21 +200,69 @@ export default function DashboardShellClient({
 
   const totalNotificationsCount = unreadAlertCount + unreadBroadcasts.length;
 
+  const seenNotificationIdsRef = React.useRef<Set<string>>(
+    new Set(initialNotifications.map((n: any) => n.id))
+  );
+  const notificationsHydratedRef = React.useRef<boolean>(initialNotifications.length > 0);
+
   const fetchLiveNotifications = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/notifications?limit=25", { credentials: "include" });
+      const res = await fetch("/api/v1/notifications?limit=40", { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data.notifications)) {
-        setNotifications(data.notifications);
-        setUnreadAlertCount(typeof data.unreadCount === "number" ? data.unreadCount : data.notifications.filter((n: any) => !n.isRead).length);
+        const list = data.notifications as NotificationMeta[];
+
+        // Detect brand-new unread notifications arriving while user is online
+        if (notificationsHydratedRef.current) {
+          const newlyArrived = list.filter(
+            (n) => !n.isRead && !seenNotificationIdsRef.current.has(n.id)
+          );
+          if (newlyArrived.length > 0) {
+            const hasUrgent = newlyArrived.some(
+              (n) => n.priority === "URGENT" || n.priority === "HIGH" || n.category === "ORDER" || n.category === "KITCHEN"
+            );
+            playNotificationChime(hasUrgent ? "order" : "info");
+            vibrateMobile([100, 50, 100]);
+
+            // Flood-safe toast batching (handles 20+ simultaneous orders cleanly)
+            const toShow = newlyArrived.slice(0, 2);
+            toShow.forEach((n) => {
+              const text = `${n.title}: ${n.message}`;
+              if (n.priority === "URGENT" || n.priority === "HIGH") {
+                toast.warning(text, 6500);
+              } else {
+                toast.info(text, 5500);
+              }
+              showBrowserNotification(n.title, n.message, {
+                tag: n.id,
+                actionUrl: n.actionUrl,
+              });
+            });
+            if (newlyArrived.length > 2) {
+              toast.info(
+                `+${newlyArrived.length - 2} more new notifications — click the bell to review all.`,
+                5500
+              );
+            }
+          }
+        }
+
+        list.forEach((n) => seenNotificationIdsRef.current.add(n.id));
+        notificationsHydratedRef.current = true;
+        setNotifications(list);
+        setUnreadAlertCount(
+          typeof data.unreadCount === "number"
+            ? data.unreadCount
+            : list.filter((n) => !n.isRead).length
+        );
       }
     } catch {
       // keep existing notifications on transient network error
     }
   }, []);
 
-  useVisibilityPolling(fetchLiveNotifications, 15000, { enabled: true });
+  useVisibilityPolling(fetchLiveNotifications, 5000, { enabled: true });
 
   React.useEffect(() => {
     fetchLiveNotifications();
@@ -1513,6 +1562,26 @@ export default function DashboardShellClient({
                         <div className="text-[10px] text-[#71675E] font-medium">{totalNotificationsCount} unread items</div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {!pushReady && typeof window !== "undefined" && "Notification" in window && Notification.permission !== "granted" && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const perm = await Notification.requestPermission();
+                              if (perm === "granted") {
+                                if (isFirebaseWebConfigured()) {
+                                  await registerWebPushToken();
+                                }
+                                setPushReady(true);
+                                toast.success("Browser push notifications enabled.");
+                              } else {
+                                toast.warning("Browser notification permission was not granted.");
+                              }
+                            }}
+                            className="text-[10px] text-[#315F85] hover:underline font-semibold cursor-pointer"
+                          >
+                            Enable Alerts
+                          </button>
+                        )}
                         {totalNotificationsCount > 0 && (
                           <button
                             onClick={() => {
