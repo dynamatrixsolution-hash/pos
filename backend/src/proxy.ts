@@ -18,16 +18,16 @@ export default function proxy(request: NextRequest) {
   // Determine client IP
   const ip = getClientIp(request);
 
-  // Tiered rate limit based on path sensitivity
-  let limit = 300; // 300 requests/minute for general POS, Hotel & Restaurant operations
+  // Tiered rate limit based on path sensitivity (sized for busy restaurant shared Wi-Fi IPs)
+  let limit = 1200; // 1200 requests/minute (~20/sec) for 50+ QR guests + staff POS/KDS on shared Wi-Fi
   let windowSeconds = 60;
   let action = "api-general";
 
   if (pathname.startsWith("/api/v1/auth")) {
-    limit = 30; // 30 requests/minute for authentication endpoints
+    limit = 40; // 40 requests/minute for authentication endpoints
     action = "api-auth";
   } else if (pathname.startsWith("/api/v1/guest/verify")) {
-    limit = 20; // 20 scans/minute for QR table verification
+    limit = 120; // 120 scans/minute for busy restaurant QR table verification on shared Wi-Fi
     action = "api-guest-verify";
   }
 
