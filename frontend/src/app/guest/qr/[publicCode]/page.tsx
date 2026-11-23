@@ -8,6 +8,7 @@ import { apiClient } from "@/core/api/api-client";
 import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@/lib/notification-alert";
 import { GoogleReviewCard } from "@/features/guest-portal/components/GoogleReviewCard";
 import { GuestProfileAndAppCard } from "@/features/guest-portal/components/GuestProfileAndAppCard";
+import { InstallAppPopup } from "@/features/guest-portal/components/InstallAppPopup";
 import {
   UtensilsCrossed,
   Clock,
@@ -430,6 +431,7 @@ export default function GuestQrPortalPage() {
   }
   const [guestNotifications, setGuestNotifications] = useState<GuestNotificationItem[]>([]);
   const [guestNotifOpen, setGuestNotifOpen] = useState<boolean>(false);
+  const [showRateUsModal, setShowRateUsModal] = useState<boolean>(false);
   const [unreadGuestNotifs, setUnreadGuestNotifs] = useState<number>(0);
   const [liveStatusAlert, setLiveStatusAlert] = useState<GuestNotificationItem | null>(null);
   const seenGuestNotifIdsRef = useRef<Set<string>>(new Set());
@@ -1711,23 +1713,6 @@ export default function GuestQrPortalPage() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setGuestNotifOpen((prev) => !prev);
-                        setUnreadGuestNotifs(0);
-                      }}
-                      className="relative inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] font-semibold text-[11px] hover:bg-[#FAF6F0] transition cursor-pointer"
-                      title="Order Status Alerts"
-                    >
-                      <ChefHat className="w-3 h-3 text-[#6B2837]" />
-                      <span>Updates</span>
-                      {unreadGuestNotifs > 0 && (
-                        <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-[#6B2837] text-[#FFFCF7] text-[9px] font-bold tabular-nums">
-                          {unreadGuestNotifs}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setShowGroupShareModal(true)}
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#6B2837] text-white font-bold text-[11px] hover:bg-[#541E2A] transition cursor-pointer"
                     >
@@ -1765,97 +1750,108 @@ export default function GuestQrPortalPage() {
           )}
         </header>
 
-        {/* Live Kitchen / Order Status Push Alert Banner */}
+        {/* Floating Live Kitchen / Offer Push Alert (does NOT shift page body) */}
         {liveStatusAlert && (
-          <div className="sticky top-[62px] z-30 mx-4 mt-3 p-3 rounded-lg border border-[#6B2837] bg-[#6B2837] text-[#FFFCF7] flex items-start justify-between gap-2.5">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <ChefHat className="w-4 h-4 text-[#F3E5AB] shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-xs font-bold leading-snug">{liveStatusAlert.title}</p>
-                <p className="text-[11px] text-[#FFFCF7]/90 leading-snug mt-0.5">{liveStatusAlert.message}</p>
+          <div className="fixed top-16 left-0 right-0 z-50 max-w-lg mx-auto px-3 pointer-events-none">
+            <div className="pointer-events-auto p-3 rounded-lg border border-[#853547] bg-[#6B2837] text-[#FFFCF7] flex items-start justify-between gap-2.5 shadow-xs">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <ChefHat className="w-4 h-4 text-[#F3E5AB] shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-snug">{liveStatusAlert.title}</p>
+                  <p className="text-[11px] text-[#FFFCF7]/90 leading-snug mt-0.5">{liveStatusAlert.message}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setLiveStatusAlert(null)}
+                className="text-[#FFFCF7]/80 hover:text-[#FFFCF7] p-0.5 cursor-pointer shrink-0"
+                aria-label="Dismiss order update"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setLiveStatusAlert(null)}
-              className="text-[#FFFCF7]/80 hover:text-[#FFFCF7] p-0.5 cursor-pointer shrink-0"
-              aria-label="Dismiss order update"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         )}
 
-        {/* Guest Order Updates History Drawer */}
+        {/* Floating Notifications Popover (triggered by top-right Bell; does NOT push body down) */}
         {guestNotifOpen && (
-          <div className="mx-4 mt-2 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-[#F7F3EC] border-b border-[#D8CEC1]">
-              <span className="text-xs font-bold text-[#292320]">Live Order Updates</span>
-              <div className="flex items-center gap-2">
-                {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      Notification.requestPermission().then((perm) => {
-                        if (perm === "granted") {
-                          showBanner("Browser order alerts enabled!", "success");
-                        }
-                      });
-                    }}
-                    className="text-[10px] font-bold text-[#6B2837] underline cursor-pointer"
-                  >
-                    Enable Browser Alerts
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setGuestNotifOpen(false)}
-                  className="text-[#71675E] hover:text-[#292320] cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+          <>
+            <div className="fixed inset-0 z-40 bg-[#292320]/20" onClick={() => setGuestNotifOpen(false)} />
+            <div className="fixed top-14 left-0 right-0 z-50 max-w-lg mx-auto px-3">
+              <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden shadow-xs">
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#F7F3EC] border-b border-[#D8CEC1]">
+                  <span className="text-xs font-bold text-[#292320]">Notifications &amp; Offers</span>
+                  <div className="flex items-center gap-2.5">
+                    {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          Notification.requestPermission().then((perm) => {
+                            if (perm === "granted") {
+                              showBanner("Browser alerts enabled!", "success");
+                            }
+                          });
+                        }}
+                        className="text-[10px] font-bold text-[#6B2837] underline cursor-pointer"
+                      >
+                        Enable Alerts
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Close notifications"
+                      onClick={() => setGuestNotifOpen(false)}
+                      className="text-[#71675E] hover:text-[#292320] cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-[#EEE7DD]">
+                  {guestNotifications.length === 0 ? (
+                    <p className="px-4 py-6 text-center text-xs text-[#71675E]">
+                      Kitchen order updates and restaurant offers will appear here in real time.
+                    </p>
+                  ) : (
+                    guestNotifications.map((n) => (
+                      <div key={n.id} className="px-3.5 py-2.5 text-left">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-[#292320]">{n.title}</span>
+                          <span className="text-[10px] text-[#71675E] tabular-nums shrink-0">
+                            {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
-            <div className="max-h-56 overflow-y-auto divide-y divide-[#EEE7DD]">
-              {guestNotifications.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-[#71675E]">
-                  Order updates from the kitchen will appear here in real time.
-                </p>
-              ) : (
-                guestNotifications.map((n) => (
-                  <div key={n.id} className="px-3 py-2.5 text-left">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-[#292320]">{n.title}</span>
-                      <span className="text-[10px] text-[#71675E] tabular-nums shrink-0">
-                        {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          </>
         )}
 
-        {/* Floating Toast Notification */}
+        {/* Floating Toast Notification (fixed overlay — never shifts page body) */}
         {toast && (
-          <div className="mx-4 mt-3 p-3 rounded-xl shadow-md border text-xs font-medium flex items-center justify-between gap-2 bg-[#FFFCF7] border-[#A77B38]/40 text-[#1E1B18]">
-            <div className="flex items-center gap-2">
-              {toast.type === "error" ? (
-                <AlertCircle className="w-4 h-4 text-[#9E2A2B] shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-[#2D6A4F] shrink-0" />
-              )}
-              <span>{toast.text}</span>
+          <div className="fixed top-16 left-0 right-0 z-50 max-w-lg mx-auto px-3 pointer-events-none">
+            <div className="pointer-events-auto p-3 rounded-lg border text-xs font-medium flex items-center justify-between gap-2 bg-[#FFFCF7] border-[#D8CEC1] text-[#292320] shadow-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                {toast.type === "error" ? (
+                  <AlertCircle className="w-4 h-4 text-[#B33432] shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-[#28634B] shrink-0" />
+                )}
+                <span className="truncate">{toast.text}</span>
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss notification"
+                onClick={() => setToast(null)}
+                className="text-[#71675E] hover:text-[#292320] cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="text-[#8C827A] hover:text-[#1E1B18]"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         )}
 
@@ -2666,7 +2662,7 @@ export default function GuestQrPortalPage() {
                   </div>
                 </div>
               )}
-              {/* Optional Guest Details, Installable PWA App & Google Review Helper */}
+              {/* Optional Guest Details, Installable PWA App & Rate Us Trigger */}
               <GuestProfileAndAppCard
                 businessName={qrLocation.business.name}
                 sessionToken={sessionToken}
@@ -2674,11 +2670,19 @@ export default function GuestQrPortalPage() {
                 onNotify={showBanner}
               />
 
-              <GoogleReviewCard
-                publicCode={publicCode}
-                businessName={qrLocation.business.name}
-                initialReviewUrl={qrLocation.business.googleReviewUrl}
-              />
+              {qrLocation.business.googleReviewUrl && (
+                <button
+                  type="button"
+                  onClick={() => setShowRateUsModal(true)}
+                  className="w-full h-11 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#F7F3EC] px-4 flex items-center justify-between text-xs font-bold text-[#292320] cursor-pointer transition-colors"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Star className="w-4 h-4 text-[#A77B38] fill-[#A77B38]" />
+                    <span>Rate Us on Google</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-[#71675E]" />
+                </button>
+              )}
             </div>
           )}
 
@@ -2821,12 +2825,20 @@ export default function GuestQrPortalPage() {
                     </div>
                   ))}
 
-                  {/* Post-Meal Google Review Helper on Table Bill */}
-                  <GoogleReviewCard
-                    publicCode={publicCode}
-                    businessName={qrLocation.business.name}
-                    initialReviewUrl={qrLocation.business.googleReviewUrl}
-                  />
+                  {/* Post-Order Rate Us Button on Table Bill */}
+                  {qrLocation.business.googleReviewUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRateUsModal(true)}
+                      className="w-full h-11 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#F7F3EC] px-4 flex items-center justify-between text-xs font-bold text-[#292320] cursor-pointer transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Star className="w-4 h-4 text-[#A77B38] fill-[#A77B38]" />
+                        <span>Enjoyed your meal? Rate Us on Google</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-[#71675E]" />
+                    </button>
+                  )}
 
                   {/* 1-Tap Bill Settlement Request */}
                   <div className="rounded-2xl bg-[#FFFCF7] border border-[#EEE7DD] p-4 shadow-xs space-y-2.5">
@@ -3959,6 +3971,45 @@ export default function GuestQrPortalPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+        {/* Floating Install Mobile App Popup (shown when cart bar isn't covering bottom) */}
+        {!(activeTab === "MENU" && !isCartOpen && cartSummary.count > 0) && (
+          <InstallAppPopup businessName={qrLocation.business.name} />
+        )}
+
+        {/* Floating Rate Us on Google Modal */}
+        {showRateUsModal && (
+          <div
+            className="fixed inset-0 z-50 bg-[#292320]/45 flex items-end sm:items-center justify-center p-0 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rate us on Google"
+            onClick={() => setShowRateUsModal(false)}
+          >
+            <div
+              className="w-full max-w-lg sm:max-w-md rounded-t-xl sm:rounded-xl bg-[#FFFCF7] border-t sm:border border-[#D8CEC1] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#6B2837]">
+                  Google Review
+                </span>
+                <button
+                  type="button"
+                  aria-label="Close review dialog"
+                  onClick={() => setShowRateUsModal(false)}
+                  className="p-1 rounded-md text-[#71675E] hover:bg-[#EEE7DD] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <GoogleReviewCard
+                publicCode={publicCode}
+                businessName={qrLocation.business.name}
+                initialReviewUrl={qrLocation.business.googleReviewUrl}
+              />
             </div>
           </div>
         )}
