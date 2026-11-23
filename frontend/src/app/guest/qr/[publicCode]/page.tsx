@@ -703,17 +703,17 @@ export default function GuestQrPortalPage() {
     return () => clearInterval(timer);
   }, [cooldowns]);
 
-  // Live 4-second guest notification poller (works on ALL tabs once guest has a session)
+  // Live guest notification poller (runs in BOTH foreground & background tabs so OS notifications fire when user switches tabs/apps)
   useEffect(() => {
     if (!sessionToken) return;
     let cancelled = false;
 
     const pollGuestNotifications = async () => {
       if (cancelled) return;
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const res = await fetch("/api/v1/guest/notifications?limit=25", {
           headers: { "x-guest-session-token": sessionToken },
+          cache: "no-store",
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -728,7 +728,28 @@ export default function GuestQrPortalPage() {
             const isReadyOrServed = /ready|served/i.test(latest.title);
             playNotificationChime(isReadyOrServed ? "ready" : "info");
             vibrateMobile(isReadyOrServed ? [140, 60, 140] : [90]);
-            showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+
+            // Show OS notification via ServiceWorker (works cleanly in background tabs & mobile notification shade)
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.ready
+                  .then((reg) =>
+                    reg.showNotification(latest.title, {
+                      body: latest.message,
+                      icon: "/icons/icon-192.png",
+                      badge: "/icons/icon-192.png",
+                      tag: latest.id,
+                      data: { actionUrl: window.location.pathname },
+                    })
+                  )
+                  .catch(() => {
+                    showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+                  });
+              } else {
+                showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+              }
+            }
+
             // Keep tracker in sync immediately when kitchen updates status
             void fetchGuestSessionData(sessionToken, true);
           }
@@ -745,7 +766,7 @@ export default function GuestQrPortalPage() {
     void pollGuestNotifications();
     const interval = setInterval(() => {
       void pollGuestNotifications();
-    }, 4000);
+    }, 5000);
 
     const onVis = () => {
       if (document.visibilityState === "visible") {
@@ -806,14 +827,29 @@ export default function GuestQrPortalPage() {
     }
   }, [cartStorageKey, cart, orderNotes]);
 
-  // Dynamic page <title> with restaurant & table/room name
+  // Dynamic page <title> + persist last visited restaurant for installed PWA /guest launcher
   useEffect(() => {
     if (!qrLocation?.business?.name) return;
     const loc = qrLocation.locationType === "ROOM"
       ? `Room ${qrLocation.room?.roomNumber || ""}`
       : `Table ${qrLocation.table?.tableNumber || ""}`;
     document.title = `${qrLocation.business.name} — ${loc} Menu`;
-  }, [qrLocation]);
+
+    try {
+      localStorage.setItem(
+        "restroinn_last_guest_restaurant_v1",
+        JSON.stringify({
+          publicCode,
+          businessName: qrLocation.business.name,
+          branchName: qrLocation.branch?.name || null,
+          locationLabel: loc,
+          visitedAt: Date.now(),
+        })
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [qrLocation, publicCode]);
 
   // Flatten all sections across active menus
   const allSections = useMemo(() => {
@@ -1235,6 +1271,11 @@ export default function GuestQrPortalPage() {
   // Submit Guest Order
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
+
+    // Request OS notification permission on user gesture so background tab/app alerts work immediately
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission().catch(() => {});
+    }
 
     const canOrder = await verifyTableOpenForOrdering();
     if (!canOrder) return;

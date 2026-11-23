@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse } from "@/lib/api-helper";
+import { hashGuestSecret } from "@/lib/services/guest-portal-service";
 
 const registerSchema = z.object({
   token: z.string().trim().min(20, "Valid FCM token is required").max(512),
   platform: z.enum(["WEB", "ANDROID", "IOS"]).default("WEB"),
   deviceLabel: z.string().trim().max(120).optional(),
   guestSessionId: z.string().trim().optional(),
+  guestSessionToken: z.string().trim().optional(),
 });
 
 // POST /api/v1/notifications/register-token
@@ -22,10 +24,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const { token, platform, deviceLabel, guestSessionId } = parsed.data;
+    const { token, platform, deviceLabel, guestSessionId, guestSessionToken } = parsed.data;
+    const headerGuestToken = request.headers.get("x-guest-session-token")?.trim() || null;
+    const effectiveGuestToken = guestSessionToken || headerGuestToken;
     const context = await getSessionContext();
 
-    if (!context && !guestSessionId) {
+    if (!context && !guestSessionId && !effectiveGuestToken) {
       return authErrorResponse();
     }
 
@@ -55,11 +59,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Guest QR session registration
-    const guestSession = await db.guestSession.findUnique({
-      where: { id: guestSessionId! },
-      select: { id: true, businessId: true, status: true },
-    });
+    // Guest QR session registration (prefers opaque guestSessionToken via sessionTokenHash)
+    const guestSession = effectiveGuestToken
+      ? await db.guestSession.findUnique({
+          where: { sessionTokenHash: hashGuestSecret(effectiveGuestToken) },
+          select: { id: true, businessId: true, status: true },
+        })
+      : await db.guestSession.findUnique({
+          where: { id: guestSessionId! },
+          select: { id: true, businessId: true, status: true },
+        });
     if (!guestSession || guestSession.status !== "ACTIVE") {
       return NextResponse.json({ error: "Active guest session not found" }, { status: 404 });
     }

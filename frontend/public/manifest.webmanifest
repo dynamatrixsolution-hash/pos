@@ -1,9 +1,9 @@
 {
-  "id": "/",
+  "id": "/guest",
   "name": "RestroInn Dining",
   "short_name": "RestroInn",
   "description": "Scan, order, track kitchen updates in real time, and get exclusive restaurant offers.",
-  "start_url": "/",
+  "start_url": "/guest",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
