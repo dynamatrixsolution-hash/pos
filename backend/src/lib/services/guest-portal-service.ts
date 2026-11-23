@@ -501,7 +501,12 @@ export async function resolvePublicQrLocation(
       orderBy: { openedAt: "desc" },
     });
 
-    if (!activeTableSession || activeTableSession.restaurantOrders.length === 0) {
+    // Only look for a fallback unsettled order if the table is NOT explicitly AVAILABLE
+    // (prevents historical orphaned orders from closed sessions from falsely locking a free table).
+    if (
+      qrLocation.table.status !== "AVAILABLE" &&
+      (!activeTableSession || activeTableSession.restaurantOrders.length === 0)
+    ) {
       unsettledTableOrder = await prismaClient.restaurantOrder.findFirst({
         where: {
           businessId: qrLocation.businessId,
