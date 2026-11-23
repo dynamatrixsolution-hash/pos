@@ -2,10 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, ShieldAlert, Lock, UserCheck, LogOut } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { ArrowLeft, Home, ShieldAlert, Lock, LogOut } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { getDefaultDashboardRoute } from "@/lib/rbac";
 
 export default function DashboardUnauthorizedPage() {
+  const { data: session } = useSession();
+  const homeHref = getDefaultDashboardRoute((session?.user as any)?.role || "CASHIER");
   return (
     <div className="min-h-[75vh] flex items-center justify-center p-6 text-[#292320]">
       <div className="max-w-xl w-full bg-[#FFFCF7] border border-[#D8CEC1] rounded-lg p-6 sm:p-8 space-y-6 shadow-2xs">
@@ -51,7 +54,7 @@ export default function DashboardUnauthorizedPage() {
               type="button"
               onClick={() => {
                 if (typeof window !== "undefined") {
-                  window.history.length > 1 ? window.history.back() : (window.location.href = "/dashboard");
+                  window.history.length > 1 ? window.history.back() : (window.location.href = homeHref);
                 }
               }}
               className="px-3 py-1.5 rounded border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#EEE7DD] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -61,11 +64,11 @@ export default function DashboardUnauthorizedPage() {
             </button>
 
             <Link
-              href="/dashboard"
+              href={homeHref}
               className="px-3.5 py-1.5 rounded bg-[#6B2837] hover:bg-[#521E2A] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
             >
               <Home className="w-3.5 h-3.5" />
-              <span>Workspace Dashboard</span>
+              <span>Workspace Home</span>
             </Link>
           </div>
 

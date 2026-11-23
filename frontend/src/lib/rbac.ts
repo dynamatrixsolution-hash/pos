@@ -117,29 +117,40 @@ export const rolePermissions: RolePermissions = {
 };
 
 // Define accessible resource patterns for each role
+// Note: "/dashboard" is matched EXACTLY in canAccessRoute() so it never acts as a wildcard prefix.
 export const accessibleResources: Record<string, string[]> = {
   WAITER: [
     "/dashboard/restaurant",
     "/dashboard/restaurant/tables",
     "/dashboard/restaurant/pos",
     "/dashboard/restaurant/menu",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   KITCHEN: [
     "/dashboard/restaurant/kds",
     "/dashboard/restaurant/menu",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   FRONT_DESK: [
     "/dashboard/hotel",
     "/dashboard/hotel/rooms",
     "/dashboard/hotel/stays",
+    "/dashboard/hotel/reservations",
     "/dashboard/hotel/folios",
-    "/dashboard/hotel/guest-services",
+    "/dashboard/hotel/housekeeping",
+    "/dashboard/hotel/qr-portal",
     "/dashboard/hotel/pilot-ops",
     "/dashboard/customers",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   HOUSEKEEPING: [
+    "/dashboard/hotel/housekeeping",
     "/dashboard/hotel/rooms",
-    "/dashboard/hotel/maintenance",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   ACCOUNTANT: [
     "/dashboard/reports",
@@ -148,6 +159,33 @@ export const accessibleResources: Record<string, string[]> = {
     "/dashboard/purchases",
     "/dashboard/payments",
     "/dashboard/shifts",
+    "/dashboard/profile",
+    "/dashboard/support",
+  ],
+  STOREKEEPER: [
+    "/dashboard/inventory",
+    "/dashboard/products",
+    "/dashboard/categories",
+    "/dashboard/purchases",
+    "/dashboard/suppliers",
+    "/dashboard/profile",
+    "/dashboard/support",
+  ],
+  SALESPERSON: [
+    "/dashboard/sales",
+    "/dashboard/pos",
+    "/dashboard/restaurant/pos",
+    "/dashboard/customers",
+    "/dashboard/products",
+    "/dashboard/profile",
+    "/dashboard/support",
+  ],
+  DELIVERY: [
+    "/dashboard/sales",
+    "/dashboard/restaurant/tables",
+    "/dashboard/customers",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   CASHIER: [
     "/dashboard/shifts",
@@ -159,6 +197,8 @@ export const accessibleResources: Record<string, string[]> = {
     "/dashboard/customers",
     "/dashboard/products",
     "/dashboard/sales",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   MANAGER: [
     "/dashboard",
@@ -177,6 +217,8 @@ export const accessibleResources: Record<string, string[]> = {
     "/dashboard/reports",
     "/dashboard/expenses",
     "/dashboard/sales",
+    "/dashboard/profile",
+    "/dashboard/support",
   ],
   OWNER: [
     "/dashboard",
@@ -195,18 +237,51 @@ export const accessibleResources: Record<string, string[]> = {
     "/dashboard/reports",
     "/dashboard/expenses",
     "/dashboard/sales",
-    "/dashboard/users",
-    "/dashboard/settings",
-  ],
-  SUPER_ADMIN: [
-    "/dashboard",
-    "/dashboard/shifts",
-    "/dashboard/super-admin",
     "/dashboard/branches",
     "/dashboard/users",
-    "/dashboard/reports",
+    "/dashboard/settings",
+    "/dashboard/subscriptions",
+    "/dashboard/profile",
+    "/dashboard/support",
+  ],
+  SUPER_ADMIN: [
+    "/dashboard/super-admin",
+    "/dashboard/profile",
   ],
 };
+
+/**
+ * Single source of truth for each role's landing route after sign-in or on /dashboard fallback.
+ */
+export function getDefaultDashboardRoute(role: Role | string): string {
+  const effectiveRole = (role === "ADMIN" ? "OWNER" : (role || "CASHIER").toUpperCase());
+  switch (effectiveRole) {
+    case "SUPER_ADMIN":
+      return "/dashboard/super-admin";
+    case "OWNER":
+    case "MANAGER":
+      return "/dashboard";
+    case "CASHIER":
+      return "/dashboard/restaurant/pos?view=menu";
+    case "WAITER":
+      return "/dashboard/restaurant/tables";
+    case "KITCHEN":
+      return "/dashboard/restaurant/kds";
+    case "FRONT_DESK":
+      return "/dashboard/hotel/rooms";
+    case "HOUSEKEEPING":
+      return "/dashboard/hotel/housekeeping";
+    case "ACCOUNTANT":
+      return "/dashboard/reports";
+    case "STOREKEEPER":
+      return "/dashboard/inventory";
+    case "SALESPERSON":
+    case "DELIVERY":
+      return "/dashboard/sales";
+    default:
+      return "/dashboard/restaurant/pos?view=menu";
+  }
+}
 
 /**
  * Check if a role has permission to perform an action on a resource
@@ -225,12 +300,16 @@ export function hasPermission(role: Role | string, resource: string, action: str
  */
 export function canAccessRoute(role: Role | string, path: string): boolean {
   if (path === "/dashboard/unauthorized" || path.startsWith("/dashboard/unauthorized/")) return true;
-  const effectiveRole = (role === "ADMIN" ? "OWNER" : role) as Role;
+  const effectiveRole = (role === "ADMIN" ? "OWNER" : (role || "").toUpperCase()) as Role;
   const accessible = accessibleResources[effectiveRole];
   if (!accessible) return false;
 
-  // Check exact match or prefix match
-  return accessible.some((route) => path === route || path.startsWith(route + "/"));
+  // "/dashboard" must match strictly so it never acts as a wildcard over /dashboard/super-admin or /dashboard/settings
+  return accessible.some((route) =>
+    route === "/dashboard"
+      ? path === "/dashboard"
+      : path === route || path.startsWith(route + "/")
+  );
 }
 
 /**

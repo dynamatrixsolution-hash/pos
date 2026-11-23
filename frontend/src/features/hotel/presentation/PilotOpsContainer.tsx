@@ -74,13 +74,30 @@ export function PilotOpsContainer() {
         apiClient.restaurant.getKitchenStations().catch(() => ({ stations: [] })),
       ]);
 
-      if (ff && typeof ff === "object") {
-        setFeatureFlags((prev: any) => ({ ...prev, ...(ff.featureFlags || ff) }));
+      const unwrap = (res: any) => (res && typeof res === "object" && "data" in res ? res.data : res);
+
+      const ffData = unwrap(ff);
+      if (ffData && typeof ffData === "object") {
+        setFeatureFlags((prev: any) => ({ ...prev, ...(ffData.featureFlags || ffData) }));
       }
-      if (pj && pj.printJobs) setPrintJobs(pj.printJobs);
-      if (os) setOfflineSyncStats((prev: any) => ({ ...prev, ...os }));
-      if (rc) setReconciliation((prev: any) => ({ ...prev, ...rc }));
-      if (hl) setHealthStatus((prev: any) => ({ ...prev, ...hl }));
+      const pjData = unwrap(pj);
+      if (Array.isArray(pjData)) {
+        setPrintJobs(pjData);
+      } else if (pjData && Array.isArray(pjData.printJobs || pjData.jobs)) {
+        setPrintJobs(pjData.printJobs || pjData.jobs);
+      }
+      const osData = unwrap(os);
+      if (osData && typeof osData === "object") {
+        setOfflineSyncStats((prev: any) => ({ ...prev, ...osData }));
+      }
+      const rcData = unwrap(rc);
+      if (rcData && typeof rcData === "object") {
+        setReconciliation((prev: any) => ({ ...prev, ...rcData }));
+      }
+      const hlData = unwrap(hl);
+      if (hlData && typeof hlData === "object") {
+        setHealthStatus((prev: any) => ({ ...prev, ...hlData }));
+      }
       if (st && st.stations) setStations(st.stations);
     } catch (err) {
       console.error("Pilot ops load error:", err);
@@ -189,7 +206,7 @@ export function PilotOpsContainer() {
 
         <div className="p-4 bg-[#FFFCF7] border border-[#EEE7DD] rounded-lg space-y-1">
           <div className="flex items-center justify-between text-xs font-semibold text-[#71675E]">
-            <span>Hardware Printe Failover</span>
+            <span>Hardware Printer Failover</span>
             <Printer className="h-4 w-4 text-[#6B2837]" />
           </div>
           <div className="text-lg font-bold text-[#292320]">

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getDefaultDashboardRoute } from "@/lib/rbac";
 
 export default async function Page() {
   const session = await auth();
@@ -9,9 +10,5 @@ export default async function Page() {
   }
 
   const role = (session.user as any)?.role || "CASHIER";
-  if (role === "CASHIER") {
-    redirect("/dashboard/restaurant/pos?view=menu");
-  } else {
-    redirect("/dashboard");
-  }
+  redirect(getDefaultDashboardRoute(role));
 }

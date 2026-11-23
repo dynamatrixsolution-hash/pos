@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import ToastContainer from "@/components/toast";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -2050,8 +2049,6 @@ export default function DashboardShellClient({
           cashierName={user.name}
         />
       )}
-
-      <ToastContainer />
     </div>
   );
 }

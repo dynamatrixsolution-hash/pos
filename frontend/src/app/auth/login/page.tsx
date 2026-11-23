@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -82,24 +82,6 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const deviceId = getDeviceId();
-      const deviceName = getDeviceName();
-
-      const checkData = await apiClient.auth.checkDevice({
-        email: data.email,
-        deviceId,
-        deviceName,
-      });
-
-      if (checkData?.success === false) {
-        Notify.failure(
-          checkData.message ||
-            "Unauthorized device. This account is locked to another terminal. Please contact your administrator."
-        );
-        setIsLoading(false);
-        return;
-      }
-
       const res = await signIn("credentials", {
         email: data.email,
         password: data.password,
@@ -112,10 +94,30 @@ function LoginForm() {
           "Your email or password does not match. Please check and try again."
         );
         setIsLoading(false);
-      } else {
-        Notify.success("Login successful. Opening sales terminal...");
-        window.location.href = "/dashboard";
+        return;
       }
+
+      // Verify/bind terminal device ONLY after password authentication succeeds
+      const deviceId = getDeviceId();
+      const deviceName = getDeviceName();
+      const checkData = await apiClient.auth.checkDevice({
+        email: data.email,
+        deviceId,
+        deviceName,
+      });
+
+      if (checkData?.success === false) {
+        await signOut({ redirect: false });
+        Notify.failure(
+          checkData.message ||
+            "Unauthorized device. This account is locked to another terminal. Please contact your administrator."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      Notify.success("Login successful. Opening workspace...");
+      window.location.href = "/dashboard";
     } catch (err) {
       Notify.fromError(
         err,
@@ -274,38 +276,47 @@ function LoginForm() {
                 </a>
               </p>
 
-              <div className="pt-1 flex items-center justify-center gap-2.5 text-sm text-[#8C8074]">
-                <span>Demo login:</span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("superadmin@dynapos.com", "superadmin123")}
-                  className="text-[#6A2635] hover:underline font-bold cursor-pointer"
-                >
-                  Super Admin
-                </button>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("owner@dynapos.com", "admin123")}
-                  className="text-[#6A2635] hover:underline font-bold cursor-pointer"
-                >
-                  Owner
-                </button>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("cashier@dynapos.com", "cashier123")}
-                  className="text-[#6A2635] hover:underline font-bold cursor-pointer"
-                >
-                  Cashier
-                </button>
-              </div>
+              {process.env.NODE_ENV !== "production" && (
+                <div className="pt-1 flex items-center justify-center gap-2.5 text-sm text-[#8C8074]">
+                  <span>Demo login:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill("superadmin@dynapos.com", "superadmin123")}
+                    className="text-[#6A2635] hover:underline font-bold cursor-pointer"
+                  >
+                    Super Admin
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill("owner@dynapos.com", "owner123")}
+                    className="text-[#6A2635] hover:underline font-bold cursor-pointer"
+                  >
+                    Owner
+                  </button>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill("cashier@dynapos.com", "cashier123")}
+                    className="text-[#6A2635] hover:underline font-bold cursor-pointer"
+                  >
+                    Cashier
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Bottom Footer Note */}
-          <div className="text-center text-xs sm:text-sm text-[#8C8074] pt-2">
-            RestroInn • Hotel & restaurant software
+          <div className="text-center text-xs sm:text-sm text-[#8C8074] pt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <span>RestroInn • Hotel & restaurant software</span>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-[#6A2635] underline underline-offset-2">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="hover:text-[#6A2635] underline underline-offset-2">
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </div>

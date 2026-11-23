@@ -19,22 +19,15 @@ export async function GET(request: Request) {
     const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 25;
 
     const sessionToken = extractGuestToken(request);
-    const legacySessionId = searchParams.get("sessionId")?.trim() || null;
-
-    let session: { id: string; status: string; tableSessionId: string | null } | null = null;
-
-    if (sessionToken) {
-      const sessionTokenHash = hashGuestSecret(sessionToken);
-      session = await db.guestSession.findUnique({
-        where: { sessionTokenHash },
-        select: { id: true, status: true, tableSessionId: true },
-      });
-    } else if (legacySessionId) {
-      session = await db.guestSession.findUnique({
-        where: { id: legacySessionId },
-        select: { id: true, status: true, tableSessionId: true },
-      });
+    if (!sessionToken) {
+      return NextResponse.json({ notifications: [] });
     }
+
+    const sessionTokenHash = hashGuestSecret(sessionToken);
+    const session = await db.guestSession.findUnique({
+      where: { sessionTokenHash },
+      select: { id: true, status: true, tableSessionId: true },
+    });
 
     if (!session || session.status !== "ACTIVE") {
       return NextResponse.json({ notifications: [] });

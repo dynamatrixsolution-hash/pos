@@ -1,29 +1,39 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getBusinessLimits } from "@/lib/api-helper";
+import { authErrorResponse, getBusinessLimits, getSessionContext } from "@/lib/api-helper";
 
+// POST /api/v1/auth/device-check — Authenticated terminal/device binding verification
 export async function POST(request: Request) {
-  try {
-    const { email, deviceId, deviceName } = await request.json();
+  const context = await getSessionContext();
+  if (!context) return authErrorResponse();
 
-    if (!email || !deviceId) {
-      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+  try {
+    const body = await request.json().catch(() => ({}));
+    const deviceId = typeof body?.deviceId === "string" ? body.deviceId.trim() : "";
+    const deviceName = typeof body?.deviceName === "string" ? body.deviceName.trim().slice(0, 120) : "";
+
+    if (!deviceId || deviceId.length < 4 || deviceId.length > 160) {
+      return NextResponse.json({ error: "Valid deviceId is required" }, { status: 400 });
     }
 
     const user = await db.user.findFirst({
       where: {
-        email: email.toLowerCase().trim(),
+        id: context.userId,
         deletedAt: null,
+      },
+      select: {
+        id: true,
+        role: true,
+        businessId: true,
+        allowedDeviceId: true,
       },
     });
 
     if (!user) {
-      // Return success if user does not exist to prevent account enumeration
-      return NextResponse.json({ success: true });
+      return authErrorResponse();
     }
 
-    // OWNER and SUPER_ADMIN users should bypass device-locking block and auto-update their binding
-    // to prevent administrative lockouts (e.g. from switching HTTP/HTTPS protocols, clearing storage, etc.)
+    // OWNER and SUPER_ADMIN roam across devices without lockout
     if (user.role === "OWNER" || user.role === "SUPER_ADMIN") {
       if (user.allowedDeviceId !== deviceId) {
         await db.user.update({
@@ -37,11 +47,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // If no device is currently registered for this staff user, bind this device on first login if under limits
+    // Bind unbound staff user on first authenticated login if within plan device limits
     if (!user.allowedDeviceId) {
       const limits = await getBusinessLimits(user.businessId);
       if (limits) {
-        // Query registered staff devices (excluding administrative roaming accounts)
         const staffWithDevices = await db.user.findMany({
           where: {
             businessId: user.businessId,
@@ -55,17 +64,13 @@ export async function POST(request: Request) {
         const distinctDevices = new Set(
           staffWithDevices.map((s) => s.allowedDeviceId).filter(Boolean)
         );
-
-        // Allow sharing of an already registered counter terminal
-        const isDeviceAlreadyRegistered = distinctDevices.has(deviceId);
-
         const allowedDevicesCount = Math.max(Number(limits.devices) || 1, Number(limits.users) || 1);
 
-        if (!isDeviceAlreadyRegistered && distinctDevices.size >= allowedDevicesCount) {
+        if (!distinctDevices.has(deviceId) && distinctDevices.size >= allowedDevicesCount) {
           return NextResponse.json({
             success: false,
             error: "DEVICE_LIMIT_REACHED",
-            message: `Terminal device registration limit reached for your business. Your plan allows a maximum of ${allowedDevicesCount} registered devices. Please upgrade your subscription or contact support.`,
+            message: `Terminal device registration limit reached for your business (max ${allowedDevicesCount} devices). Please upgrade your subscription or contact support.`,
           });
         }
       }
@@ -77,22 +82,19 @@ export async function POST(request: Request) {
           deviceName: deviceName || "POS Terminal",
         },
       });
-
       return NextResponse.json({ success: true });
     }
 
-    // Verify if the device matches
     if (user.allowedDeviceId === deviceId) {
       return NextResponse.json({ success: true });
     }
 
-    // Mismatch - return device locked error message
     return NextResponse.json({
       success: false,
       error: "DEVICE_LOCKED",
-      message: "Unauthorized device. This account is locked to a different terminal/device. Please contact your system administrator.",
+      message: "Unauthorized device. This account is locked to a different terminal. Please contact your administrator.",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Device check error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
