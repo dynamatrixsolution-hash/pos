@@ -428,6 +428,7 @@ export default function GuestQrPortalPage() {
     message: string;
     category: string;
     priority: string;
+    metadata?: { imageUrl?: string } | null;
     createdAt: string;
   }
   const [guestNotifications, setGuestNotifications] = useState<GuestNotificationItem[]>([]);
@@ -703,18 +704,18 @@ export default function GuestQrPortalPage() {
     return () => clearInterval(timer);
   }, [cooldowns]);
 
-  // Live guest notification poller (runs in BOTH foreground & background tabs so OS notifications fire when user switches tabs/apps)
+  // Live guest notification poller (works EVEN BEFORE ordering via publicCode + runs in foreground & background tabs)
   useEffect(() => {
-    if (!sessionToken) return;
+    if (!publicCode && !sessionToken) return;
     let cancelled = false;
 
     const pollGuestNotifications = async () => {
       if (cancelled) return;
       try {
-        const res = await fetch("/api/v1/guest/notifications?limit=25", {
-          headers: { "x-guest-session-token": sessionToken },
-          cache: "no-store",
-        });
+        const headers: Record<string, string> = {};
+        if (sessionToken) headers["x-guest-session-token"] = sessionToken;
+        const url = `/api/v1/guest/notifications?limit=25${publicCode ? `&publicCode=${encodeURIComponent(publicCode)}` : ""}`;
+        const res = await fetch(url, { headers, cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
         const list = (Array.isArray(data.notifications) ? data.notifications : []) as GuestNotificationItem[];
@@ -729,6 +730,7 @@ export default function GuestQrPortalPage() {
             playNotificationChime(isReadyOrServed ? "ready" : "info");
             vibrateMobile(isReadyOrServed ? [140, 60, 140] : [90]);
 
+            const bannerImg = latest.metadata?.imageUrl;
             // Show OS notification via ServiceWorker (works cleanly in background tabs & mobile notification shade)
             if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
               if ("serviceWorker" in navigator) {
@@ -738,9 +740,10 @@ export default function GuestQrPortalPage() {
                       body: latest.message,
                       icon: "/icons/icon-192.png",
                       badge: "/icons/icon-192.png",
+                      ...(bannerImg && /^https?:\/\//i.test(bannerImg) ? { image: bannerImg } : {}),
                       tag: latest.id,
                       data: { actionUrl: window.location.pathname },
-                    })
+                    } as NotificationOptions)
                   )
                   .catch(() => {
                     showBrowserNotification(latest.title, latest.message, { tag: latest.id });
@@ -750,8 +753,9 @@ export default function GuestQrPortalPage() {
               }
             }
 
-            // Keep tracker in sync immediately when kitchen updates status
-            void fetchGuestSessionData(sessionToken, true);
+            if (sessionToken) {
+              void fetchGuestSessionData(sessionToken, true);
+            }
           }
         }
 
@@ -780,7 +784,7 @@ export default function GuestQrPortalPage() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [sessionToken, fetchGuestSessionData]);
+  }, [publicCode, sessionToken, fetchGuestSessionData]);
 
   // Auto-dismiss floating guest live status alert after 9 seconds
   useEffect(() => {
@@ -1824,25 +1828,34 @@ export default function GuestQrPortalPage() {
           )}
         </header>
 
-        {/* Floating Live Kitchen / Offer Push Alert (does NOT shift page body) */}
+        {/* Floating Live Kitchen / Offer Push Alert (does NOT shift page body; supports optional Offer Banner image) */}
         {liveStatusAlert && (
           <div className="fixed top-16 left-0 right-0 z-50 max-w-lg mx-auto px-3 pointer-events-none">
-            <div className="pointer-events-auto p-3 rounded-lg border border-[#853547] bg-[#6B2837] text-[#FFFCF7] flex items-start justify-between gap-2.5 shadow-xs">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <ChefHat className="w-4 h-4 text-[#F3E5AB] shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold leading-snug">{liveStatusAlert.title}</p>
-                  <p className="text-[11px] text-[#FFFCF7]/90 leading-snug mt-0.5">{liveStatusAlert.message}</p>
+            <div className="pointer-events-auto rounded-lg border border-[#853547] bg-[#6B2837] text-[#FFFCF7] overflow-hidden shadow-xs">
+              {liveStatusAlert.metadata?.imageUrl && (
+                <img
+                  src={liveStatusAlert.metadata.imageUrl}
+                  alt={liveStatusAlert.title}
+                  className="w-full h-28 object-cover border-b border-[#853547]"
+                />
+              )}
+              <div className="p-3 flex items-start justify-between gap-2.5">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <ChefHat className="w-4 h-4 text-[#F3E5AB] shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold leading-snug">{liveStatusAlert.title}</p>
+                    <p className="text-[11px] text-[#FFFCF7]/90 leading-snug mt-0.5">{liveStatusAlert.message}</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setLiveStatusAlert(null)}
+                  className="text-[#FFFCF7]/80 hover:text-[#FFFCF7] p-0.5 cursor-pointer shrink-0"
+                  aria-label="Dismiss order update"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setLiveStatusAlert(null)}
-                className="text-[#FFFCF7]/80 hover:text-[#FFFCF7] p-0.5 cursor-pointer shrink-0"
-                aria-label="Dismiss order update"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </div>
         )}
@@ -1888,14 +1901,21 @@ export default function GuestQrPortalPage() {
                     </p>
                   ) : (
                     guestNotifications.map((n) => (
-                      <div key={n.id} className="px-3.5 py-2.5 text-left">
+                      <div key={n.id} className="px-3.5 py-2.5 text-left space-y-1.5">
+                        {n.metadata?.imageUrl && (
+                          <img
+                            src={n.metadata.imageUrl}
+                            alt={n.title}
+                            className="w-full h-24 object-cover rounded-md border border-[#EEE7DD]"
+                          />
+                        )}
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-bold text-[#292320]">{n.title}</span>
                           <span className="text-[10px] text-[#71675E] tabular-nums shrink-0">
                             {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#71675E] mt-0.5 leading-snug">{n.message}</p>
+                        <p className="text-[11px] text-[#71675E] leading-snug">{n.message}</p>
                       </div>
                     ))
                   )}

@@ -19,6 +19,7 @@ const sendPushSchema = z.object({
   userIds: z.array(z.string()).optional().default([]),
   inactiveDays: z.number().int().min(1).max(90).optional().default(3),
   actionUrl: z.string().trim().max(200).optional(),
+  imageUrl: z.string().trim().max(500000).optional().nullable(),
 });
 
 // GET /api/v1/notifications/send — Audience counts, staff roster & sent history for Business Push Hub
@@ -116,8 +117,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { audience, title, message, priority, targetRoles, userIds, inactiveDays, actionUrl } =
+    const { audience, title, message, priority, targetRoles, userIds, inactiveDays, actionUrl, imageUrl } =
       parsed.data;
+    const cleanImageUrl = imageUrl && imageUrl.trim() ? imageUrl.trim() : null;
 
     const hourBucket = new Date().toISOString().slice(0, 13);
     const dedupeBase = `biz-push:${context.businessId}:${audience}:${title.toLowerCase().slice(0, 40)}:${hourBucket}`;
@@ -157,6 +159,7 @@ export async function POST(request: Request) {
           targetedCustomers,
           pushRecipients: guestTokens.length,
           sentBy: context.userId,
+          ...(cleanImageUrl ? { imageUrl: cleanImageUrl } : {}),
         },
         dedupeKey: `${dedupeBase}:campaign`,
       });
@@ -174,6 +177,7 @@ export async function POST(request: Request) {
                 priority,
                 title,
                 message,
+                metadata: cleanImageUrl ? { imageUrl: cleanImageUrl } : undefined,
                 dedupeKey: `${dedupeBase}:${t.guestSessionId}`,
               })
             )

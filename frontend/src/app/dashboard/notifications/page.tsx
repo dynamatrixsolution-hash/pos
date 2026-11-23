@@ -104,6 +104,21 @@ export default function BusinessPushNotificationsPage() {
   const [priority, setPriority] = useState<"NORMAL" | "HIGH" | "URGENT">("HIGH");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 350 * 1024) {
+      Notify.warning("Please choose a banner image under 350 KB (or paste an image URL).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setImageUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const loadHub = useCallback(async () => {
     setLoading(true);
@@ -171,6 +186,7 @@ export default function BusinessPushNotificationsPage() {
           inactiveDays,
           targetRoles: audience === "STAFF_ROLE" ? selectedRoles : [],
           userIds: audience === "INDIVIDUAL_STAFF" ? selectedUserIds : [],
+          imageUrl: imageUrl.trim() || undefined,
         }),
       });
       const result = await res.json().catch(() => ({}));
@@ -188,6 +204,7 @@ export default function BusinessPushNotificationsPage() {
       }
       setTitle("");
       setMessage("");
+      setImageUrl("");
       void loadHub();
     } catch {
       Notify.error("Network error while sending notification.");
@@ -507,12 +524,45 @@ export default function BusinessPushNotificationsPage() {
             </label>
             <textarea
               id="push-message"
-              rows={4}
+              rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Write your promotional offer or staff announcement..."
               className="w-full px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837] resize-none"
             />
+          </div>
+
+          {/* Optional Offer Banner Image (Upload or URL) */}
+          <div className="space-y-2">
+            <label htmlFor="push-banner-url" className="block text-xs font-semibold text-[#292320]">
+              Banner Image (Optional)
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                id="push-banner-url"
+                type="text"
+                value={imageUrl.startsWith("data:") ? "" : imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="Paste banner image URL (https://...) or upload below"
+                className="flex-1 h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+              />
+              <label className="h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] inline-flex items-center justify-center cursor-pointer shrink-0">
+                Upload Banner
+                <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+              </label>
+            </div>
+            {imageUrl && (
+              <div className="relative rounded-md overflow-hidden border border-[#D8CEC1] bg-[#F7F3EC] max-h-36">
+                <img src={imageUrl} alt="Offer banner preview" className="w-full h-32 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded bg-[#292320]/80 text-[#FFFCF7] text-[10px] font-semibold cursor-pointer"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end pt-2 border-t border-[#EEE7DD]">
