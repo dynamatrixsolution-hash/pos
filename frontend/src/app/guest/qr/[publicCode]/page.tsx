@@ -1490,22 +1490,22 @@ export default function GuestQrPortalPage() {
 
         {/* Main Mobile-First 3-Card Stack */}
         <main className="flex-1 w-full max-w-md mx-auto px-4 py-4 space-y-3">
-          {/* Card 1: Dining Space Summary */}
-          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 flex items-center justify-between gap-3">
-            <div className="space-y-1.5 min-w-0">
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#FDF7ED] border border-[#EDD7AD] text-[#946000] text-[11px] font-semibold">
+          {/* Card 1: Dining Space Hero Card (with real restaurant asset photo on right) */}
+          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden grid grid-cols-12">
+            <div className="col-span-7 p-4 space-y-1.5 flex flex-col justify-center">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F1F7F4] border border-[#C3DED0] text-[#28634B] text-[10px] font-semibold w-fit">
                 <Clock className="w-3 h-3 shrink-0" />
                 <span>Bill Settlement in Progress</span>
               </span>
-              <div>
+              <div className="pt-0.5">
                 <p className="text-[11px] font-medium text-[#71675E]">Dining Space</p>
-                <h1 className="text-xl font-bold text-[#292320] tracking-tight leading-tight">
+                <h1 className="text-2xl font-extrabold text-[#292320] tracking-tight leading-tight">
                   {locationBadgeText}
                 </h1>
               </div>
               {qrLocation.table?.floorName && (
-                <p className="text-xs text-[#71675E] flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-[#71675E] shrink-0" />
+                <p className="text-[11px] text-[#71675E] flex items-center gap-1.5 pt-0.5">
+                  <Users className="w-3.5 h-3.5 text-[#292320] shrink-0" />
                   <span className="truncate">
                     {qrLocation.table.floorName}
                     {qrLocation.table.capacity ? ` • ${qrLocation.table.capacity} Covers` : ""}
@@ -1513,11 +1513,17 @@ export default function GuestQrPortalPage() {
                 </p>
               )}
             </div>
-            <div className="w-16 h-16 rounded-lg bg-[#292320] border border-[#D8CEC1] text-[#FFFCF7] flex flex-col items-center justify-center shrink-0">
-              <span className="text-[9px] uppercase tracking-wider text-[#D8CEC1]">Table</span>
-              <span className="text-sm font-bold tabular-nums">
-                {qrLocation.table?.tableNumber || qrLocation.label}
-              </span>
+            <div className="col-span-5 relative min-h-[126px] bg-[#EEE7DD] border-l border-[#EEE7DD]">
+              <img
+                src="/assets/clean-restaurant.jpg"
+                alt={locationBadgeText}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-md bg-[#292320] border border-[#FFFCF7]/25 text-[#FFFCF7] text-center">
+                <span className="text-xs font-bold tabular-nums tracking-wide">
+                  {qrLocation.table?.tableNumber || qrLocation.label}
+                </span>
+              </div>
             </div>
           </section>
 
@@ -1546,7 +1552,7 @@ export default function GuestQrPortalPage() {
                   <Clock className="w-3.5 h-3.5" />
                 </span>
                 <span className="text-[11px] font-semibold text-[#946000] leading-tight">
-                  Cashier settling bill
+                  Cashier settling previous bill
                 </span>
               </div>
 
@@ -1555,22 +1561,26 @@ export default function GuestQrPortalPage() {
                   3
                 </span>
                 <span className="text-[11px] text-[#71675E] leading-tight">
-                  {locationBadgeText} unlocks
+                  {locationBadgeText} unlocks for your order
                 </span>
               </div>
             </div>
           </section>
 
-          {/* Card 3: Waiting Message */}
+          {/* Card 3: Waiting Message with Flat Serving Cloche Icon */}
           <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 text-center space-y-2.5">
-            <div className="w-12 h-12 rounded-full bg-[#F7F3EC] border border-[#D8CEC1] text-[#6B2837] flex items-center justify-center mx-auto">
-              <UtensilsCrossed className="w-5 h-5" />
+            <div className="w-14 h-14 rounded-full bg-[#F7F3EC] border border-[#EEE7DD] flex items-center justify-center mx-auto">
+              <svg className="w-8 h-8 text-[#6B2837]" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <circle cx="16" cy="9" r="2" fill="currentColor" />
+                <path d="M7 21C7 15.5 11 11.5 16 11.5C21 11.5 25 15.5 25 21H7Z" fill="currentColor" />
+                <rect x="4.5" y="22.5" width="23" height="2.2" rx="1.1" fill="#292320" />
+              </svg>
             </div>
-            <h2 className="text-base font-bold text-[#292320]">
+            <h2 className="text-lg font-bold text-[#292320]">
               Waiting for {locationBadgeText} to clear
             </h2>
             <p className="text-xs text-[#71675E] leading-relaxed">
-              The previous guests&apos; bill is being cleared at the cashier. Ordering unlocks automatically in a moment, or notify our staff below.
+              The previous guests&apos; bill is being cleared at the cashier. Ordering unlocks automatically in a moment, or tap below to notify our staff.
             </p>
             {tableAlertSent && (
               <div className="p-2.5 rounded-md bg-[#F1F7F4] border border-[#C3DED0] text-xs text-[#28634B] font-medium flex items-center justify-center gap-1.5">
@@ -1581,11 +1591,11 @@ export default function GuestQrPortalPage() {
           </section>
 
           {/* Clean Action Buttons */}
-          <div className="space-y-2 pt-1">
+          <div className="space-y-2.5 pt-1">
             <button
               type="button"
               onClick={handleRefreshTableStatus}
-              className="w-full h-11 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full h-11 px-4 rounded-full bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Reload &amp; Check Status</span>
@@ -1595,7 +1605,7 @@ export default function GuestQrPortalPage() {
               type="button"
               onClick={handleAlertStaffTurnover}
               disabled={sendingTurnoverAlert || tableAlertSent}
-              className="w-full h-11 px-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+              className="w-full h-11 px-4 rounded-full border border-[#6B2837] bg-[#FFFCF7] hover:bg-[#FAF2F4] text-[#292320] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
             >
               <Bell className="w-3.5 h-3.5 text-[#6B2837]" />
               <span>
@@ -1607,17 +1617,21 @@ export default function GuestQrPortalPage() {
               </span>
             </button>
 
-            <div className="pt-2 flex items-center justify-center gap-4 border-t border-[#D8CEC1]">
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <span className="h-px flex-1 bg-[#D8CEC1]" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => setDismissedUnsettledGate(true)}
-                className="py-1 text-xs font-semibold text-[#71675E] hover:text-[#292320] inline-flex items-center gap-1.5 cursor-pointer"
+                className="py-1 text-xs font-semibold text-[#71675E] hover:text-[#292320] inline-flex items-center gap-1.5 cursor-pointer shrink-0"
               >
-                <UtensilsCrossed className="w-3.5 h-3.5" />
+                <UtensilsCrossed className="w-3.5 h-3.5 text-[#6B2837]" />
                 <span>Preview Menu While Waiting</span>
               </button>
+              <span className="h-px flex-1 bg-[#D8CEC1]" aria-hidden="true" />
+            </div>
 
-              {!qrLocation.table?.isBilledLocked && (
+            {!qrLocation.table?.isBilledLocked && (
+              <div className="text-center">
                 <button
                   type="button"
                   onClick={() => {
@@ -1627,10 +1641,10 @@ export default function GuestQrPortalPage() {
                   className="py-1 text-xs font-semibold text-[#6B2837] hover:underline inline-flex items-center gap-1 cursor-pointer"
                 >
                   <Lock className="w-3 h-3" />
-                  <span>Join with PIN</span>
+                  <span>Join Table with 4-Digit PIN</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </main>
 

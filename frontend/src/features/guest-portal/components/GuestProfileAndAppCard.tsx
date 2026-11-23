@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { UserCheck, Smartphone, Bell, CheckCircle2, Download } from "lucide-react";
+import { triggerNativeInstall } from "@/components/pwa-registrar";
 
 interface GuestProfileAndAppCardProps {
   businessName: string;
@@ -117,13 +118,20 @@ export function GuestProfileAndAppCard({
   };
 
   const handleInstallApp = async () => {
+    const outcome = await triggerNativeInstall();
+    if (outcome === "accepted") {
+      setIsStandalone(true);
+      setInstallPrompt(null);
+      onNotify(`${businessName} installed on your phone!`, "success");
+      return;
+    }
     if (installPrompt) {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
       if (choice.outcome === "accepted") {
         setIsStandalone(true);
         setInstallPrompt(null);
-        onNotify(`${businessName} added to your home screen!`, "success");
+        onNotify(`${businessName} installed on your phone!`, "success");
       }
       return;
     }

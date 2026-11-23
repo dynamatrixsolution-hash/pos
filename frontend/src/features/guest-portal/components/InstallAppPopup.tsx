@@ -2,18 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Download, Smartphone, X } from "lucide-react";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import {
+  getDeferredInstallPrompt,
+  INSTALL_READY_EVENT,
+  triggerNativeInstall,
+} from "@/components/pwa-registrar";
 
 const DISMISS_KEY = "restroinn_pwa_popup_dismissed_until";
 
 export function InstallAppPopup({ businessName }: { businessName: string }) {
   const [visible, setVisible] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showManualSteps, setShowManualSteps] = useState(false);
+  const [hasNativePrompt, setHasNativePrompt] = useState(false);
+  const [showIosSteps, setShowIosSteps] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -30,17 +30,20 @@ export function InstallAppPopup({ businessName }: { businessName: string }) {
       // ignore
     }
 
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    if (getDeferredInstallPrompt()) {
+      setHasNativePrompt(true);
+    }
 
-    // Show clean floating install prompt after 3.5 seconds so guest sees the menu first
-    const timer = setTimeout(() => setVisible(true), 3500);
+    const onReady = () => {
+      setHasNativePrompt(true);
+      setVisible(true);
+    };
+    window.addEventListener(INSTALL_READY_EVENT, onReady);
+
+    const timer = setTimeout(() => setVisible(true), 3000);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener(INSTALL_READY_EVENT, onReady);
     };
   }, []);
 
@@ -49,7 +52,6 @@ export function InstallAppPopup({ businessName }: { businessName: string }) {
   const handleDismiss = () => {
     setVisible(false);
     try {
-      // Remind again after 7 days
       localStorage.setItem(DISMISS_KEY, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
     } catch {
       // ignore
@@ -57,16 +59,17 @@ export function InstallAppPopup({ businessName }: { businessName: string }) {
   };
 
   const handleInstall = async () => {
-    if (installPrompt) {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === "accepted") {
-        setVisible(false);
-      }
-      setInstallPrompt(null);
+    const outcome = await triggerNativeInstall();
+    if (outcome === "accepted") {
+      setVisible(false);
       return;
     }
-    setShowManualSteps((prev) => !prev);
+    if (outcome === "dismissed") {
+      setHasNativePrompt(false);
+      return;
+    }
+    // Native beforeinstallprompt not exposed (e.g., iOS Safari or already installed)
+    setShowIosSteps((prev) => !prev);
   };
 
   return (
@@ -75,18 +78,22 @@ export function InstallAppPopup({ businessName }: { businessName: string }) {
       role="dialog"
       aria-label={`Install ${businessName} app`}
     >
-      <div className="pointer-events-auto rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-3 space-y-2.5 shadow-xs">
+      <div className="pointer-events-auto rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-3 space-y-2.5">
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex items-start gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-md bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center shrink-0 mt-0.5">
-              <Smartphone className="w-4 h-4" />
-            </div>
+            <img
+              src="/icons/icon-192.png"
+              alt={businessName}
+              className="w-9 h-9 rounded-lg border border-[#D8CEC1] object-cover shrink-0"
+            />
             <div className="min-w-0">
               <p className="text-xs font-bold text-[#292320] leading-snug">
                 Install {businessName} App
               </p>
               <p className="text-[11px] text-[#71675E] leading-snug mt-0.5">
-                Order faster next time &amp; get instant offers (30% off, BOGO deals).
+                {hasNativePrompt
+                  ? "Install directly to your phone app drawer for instant access & offers."
+                  : "Add to your home screen for full-screen app mode & exclusive offers."}
               </p>
             </div>
           </div>
@@ -100,10 +107,13 @@ export function InstallAppPopup({ businessName }: { businessName: string }) {
           </button>
         </div>
 
-        {showManualSteps && (
-          <div className="rounded-md bg-[#F7F3EC] border border-[#EEE7DD] px-2.5 py-2 text-[11px] text-[#292320] leading-snug">
-            Tap your browser&apos;s <strong>Share</strong> (iPhone) or <strong>⋮ Menu</strong> (Android), then select{" "}
-            <strong>&ldquo;Add to Home Screen&rdquo;</strong>.
+        {showIosSteps && (
+          <div className="rounded-md bg-[#F7F3EC] border border-[#EEE7DD] px-2.5 py-2 text-[11px] text-[#292320] leading-snug flex items-start gap-2">
+            <Smartphone className="w-3.5 h-3.5 text-[#6B2837] shrink-0 mt-0.5" />
+            <span>
+              In Safari or your browser menu, tap <strong>Share</strong> or <strong>⋮ Menu</strong> and choose{" "}
+              <strong>Install App / Add to Home Screen</strong>.
+            </span>
           </div>
         )}
 
