@@ -128,16 +128,16 @@ function SubscriptionTimer({
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
       if (days > 30) {
-        setTimeLeft(`${days}d left`);
+        setTimeLeft(`${days}d`);
         setUrgency("normal");
       } else if (days > 7) {
         setTimeLeft(`${days}d left`);
         setUrgency("warning");
       } else if (days >= 1) {
-        setTimeLeft(`${days}d ${hours}h left`);
+        setTimeLeft(`${days}d ${hours}h`);
         setUrgency("danger");
       } else {
-        setTimeLeft(`${hours}h ${minutes}m left`);
+        setTimeLeft(`${hours}h ${minutes}m`);
         setUrgency("danger");
       }
     }
@@ -148,21 +148,21 @@ function SubscriptionTimer({
   }, [endDate, status]);
 
   const colorClasses = {
-    normal: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 dark:bg-blue-500/5",
-    warning: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 dark:bg-amber-500/5 animate-pulse",
-    danger: "bg-red-500/10 border-red-500/20 text-red-655 dark:text-red-400 dark:bg-red-500/5 font-extrabold animate-pulse",
+    normal: "bg-[#F7F3EC] border-[#D8CEC1] text-[#71675E]",
+    warning: "bg-[#FDF7ED] border-[#EDD7AD] text-[#946000]",
+    danger: "bg-[#FAF0F1] border-[#E9B6B7] text-[#B33432] font-bold",
   };
 
   return (
-    <div
+    <Link
+      href="/dashboard/subscriptions"
       suppressHydrationWarning
-      className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${colorClasses[urgency]} transition-all duration-300 shadow-xs`}
-      title={`Plan: ${plan}${formattedEnd ? ` (Ends: ${formattedEnd})` : ""}`}
+      className={`h-8 inline-flex items-center gap-1.5 px-2.5 rounded-lg border text-[11px] font-semibold tabular-nums whitespace-nowrap transition-colors hover:bg-[#EEE7DD]/70 ${colorClasses[urgency]}`}
+      title={`${plan} plan${formattedEnd ? ` • Renews ${formattedEnd}` : ""}`}
     >
-      <Clock className="h-3 w-3" />
-      <span className="hidden xs:inline uppercase tracking-wider text-[8px] opacity-75">{plan}:</span>
+      <Clock className="h-3.5 w-3.5 shrink-0 opacity-75" />
       <span suppressHydrationWarning>{timeLeft}</span>
-    </div>
+    </Link>
   );
 }
 
@@ -1228,50 +1228,58 @@ export default function DashboardShellClient({
             </div>
           </header>
         ) : (
-          <header className={`flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30 transition-all duration-300 bg-[#FFFCF7] border-b border-[#E5E7EB] no-print ${isPosRoute && !posNavbarOpen ? "h-0 opacity-0 overflow-hidden py-0 border-b-0" : "h-16"}`}>
-          <div className="flex items-center gap-4">
+          <header className={`flex items-center justify-between gap-3 px-4 md:px-5 flex-shrink-0 z-30 transition-all duration-200 bg-[#FFFCF7] border-b border-[#D8CEC1] no-print ${isPosRoute && !posNavbarOpen ? "h-0 opacity-0 overflow-hidden py-0 border-b-0" : "h-14"}`}>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 rounded-md text-muted-foreground hover:bg-[#EEE7DD]"
+              className="md:hidden p-1.5 rounded-lg text-[#71675E] hover:bg-[#EEE7DD] shrink-0"
+              aria-label="Open menu"
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             </button>
-            <div className="md:hidden font-bold text-base sm:text-xl text-[#6B2837] shrink-0">RestroInn</div>
-            
+            <div className="md:hidden font-bold text-sm text-[#6B2837] shrink-0">RestroInn</div>
+
             {activeBranch && user.role !== "SUPER_ADMIN" && (
-              <div className="relative">
+              <div className="relative shrink-0">
                 {/* Only show switch option for owners; non-owners see read-only badge */}
                 {["SUPER_ADMIN", "OWNER"].includes(userRole) ? (
                   <>
                     <button
                       onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-md border border-[#D8CEC1] dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 text-xs font-semibold cursor-pointer shadow-xs select-none hover:bg-[#F7F3EC] dark:hover:bg-slate-800/80 transition-colors"
+                      className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#F7F3EC] text-xs font-semibold text-[#292320] cursor-pointer select-none transition-colors"
+                      title={activeBranch.name}
                     >
-                      <div className="flex items-center justify-center p-1 bg-[#2563EB]/10 dark:bg-[#2563EB]/20 rounded-lg text-[#2563EB] dark:text-purple-400 shrink-0">
-                        <Store className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="max-w-[80px] sm:max-w-[120px] truncate text-[#292320] dark:text-slate-200 font-extrabold whitespace-nowrap inline-block">{activeBranch.name}</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-[#71675E]" />
+                      <Store className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
+                      <span className="max-w-[96px] lg:max-w-[135px] truncate">{activeBranch.name}</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-[#71675E] shrink-0" />
                     </button>
                     {branchDropdownOpen && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setBranchDropdownOpen(false)} />
-                        <div className="absolute left-0 mt-2 w-56 rounded-lg border border-slate-150 dark:border-slate-800 bg-[#FFFCF7] dark:bg-slate-900 shadow-sm z-50 p-1.5">
-                          <div className="px-3 py-2 text-[10px] font-bold text-[#71675E] dark:text-[#71675E] uppercase tracking-wider">
+                        <div className="absolute left-0 mt-1.5 w-56 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] z-50 p-1.5">
+                          <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#71675E] uppercase tracking-wider">
                             Switch Branch
                           </div>
                           {branches.map((branch) => (
                             <button
                               key={branch.id}
                               onClick={() => handleBranchSwitch(branch)}
-                              className={`flex items-center justify-between w-full text-left px-3 py-2.5 text-xs rounded-md transition-colors cursor-pointer ${
+                              className={`flex items-center justify-between w-full text-left px-2.5 py-2 text-xs rounded-md transition-colors cursor-pointer ${
                                 activeBranch.id === branch.id
-                                  ? "bg-[#2563EB] text-white font-bold"
-                                  : "hover:bg-[#F7F3EC] dark:hover:bg-slate-800/70 text-[#292320] dark:text-slate-300"
+                                  ? "bg-[#6B2837] text-[#FFFCF7] font-semibold"
+                                  : "hover:bg-[#F7F3EC] text-[#292320]"
                               }`}
                             >
-                              {branch.name}
-                              {branch.isMain && <span className="text-[8px] bg-[#EEE7DD] dark:bg-slate-800 text-[#71675E] px-1.5 py-0.5 rounded-md whitespace-nowrap">Main</span>}
+                              <span className="truncate">{branch.name}</span>
+                              {branch.isMain && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap ${
+                                  activeBranch.id === branch.id
+                                    ? "bg-[#FFFCF7]/20 text-[#FFFCF7]"
+                                    : "bg-[#EEE7DD] text-[#71675E]"
+                                }`}>
+                                  Main
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1279,38 +1287,38 @@ export default function DashboardShellClient({
                     )}
                   </>
                 ) : (
-                  /* Non-owners see only their assigned warehouse as read-only */
-                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-md border border-[#D8CEC1] dark:border-slate-855 bg-[#F7F3EC] dark:bg-slate-900/50 text-xs font-semibold cursor-default select-none">
-                    <div className="flex items-center justify-center p-1 bg-[#2563EB]/10 dark:bg-[#2563EB]/20 rounded-lg text-[#2563EB] dark:text-purple-400 shrink-0">
-                      <Store className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="max-w-[80px] sm:max-w-[120px] truncate text-[#292320] dark:text-slate-200 font-extrabold whitespace-nowrap inline-block">{activeBranch.name}</span>
+                  <div
+                    className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] text-xs font-semibold text-[#292320] cursor-default select-none"
+                    title={activeBranch.name}
+                  >
+                    <Store className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
+                    <span className="max-w-[96px] lg:max-w-[135px] truncate">{activeBranch.name}</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Search and Quick Navigate Buttons */}
+            {/* Minimalist Global Search & Quick Navigate */}
             {user.role !== "SUPER_ADMIN" && (
-              <div className="hidden md:flex items-center gap-3">
-                {/* Global Search Bar (Daraz Style) */}
-                <div className="relative w-80 lg:w-[420px] shrink-0">
-                  <div className="flex h-9 rounded-md overflow-hidden border border-[#D8CEC1] dark:border-slate-800 focus-within:border-black dark:focus-within:border-white focus-within:ring-1 focus-within:ring-black/10 dark:focus-within:ring-white/10 transition-all bg-[#F7F3EC] dark:bg-slate-900">
+              <div className="hidden md:flex items-center gap-2 min-w-0 flex-1 max-w-md">
+                <div className="relative flex-1 min-w-[150px] max-w-[300px]">
+                  <div className="flex items-center h-8 px-2.5 gap-2 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] focus-within:bg-[#FFFCF7] focus-within:border-[#6B2837] transition-colors">
+                    <Search className="h-3.5 w-3.5 text-[#71675E] shrink-0" />
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search products, pages, customers, suppliers..."
+                      placeholder="Search menu, orders, guests..."
                       value={headerSearchQuery}
                       onChange={(e) => {
                         setHeaderSearchQuery(e.target.value);
                         setShowSearchDropdown(true);
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
-                      className="flex-1 px-3 text-xs bg-transparent focus:outline-none text-foreground border-none ring-0"
+                      className="flex-1 min-w-0 text-xs bg-transparent focus:outline-none text-[#292320] placeholder:text-[#71675E] border-none ring-0"
                     />
-                    <button className="px-3.5 bg-[#241C1E] hover:bg-[#541E2A] text-white flex items-center justify-center transition-colors cursor-pointer border-none outline-none">
-                      <Search className="h-4 w-4" />
-                    </button>
+                    <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium text-[#71675E] bg-[#FFFCF7] border border-[#D8CEC1] rounded">
+                      ⌘K
+                    </kbd>
                   </div>
 
                   {/* Search Results Dropdown */}
@@ -1457,21 +1465,22 @@ export default function DashboardShellClient({
                   )}
                 </div>
 
-                {/* Quick Navigate Button */}
-                <div className="relative">
+                {/* Compact Quick Navigate Button */}
+                <div className="relative shrink-0">
                   <button
                     onClick={() => setQuickNavOpen(!quickNavOpen)}
-                    className="flex items-center gap-2 px-3.5 h-9 bg-[#FFFCF7] dark:bg-slate-900 hover:bg-[#F7F3EC] dark:hover:bg-slate-800 border border-black dark:border-white text-black dark:text-white rounded-md text-xs font-bold transition-all cursor-pointer shadow-xs select-none whitespace-nowrap"
+                    className="h-8 flex items-center gap-1.5 px-2.5 bg-[#FFFCF7] hover:bg-[#F7F3EC] border border-[#D8CEC1] text-[#292320] rounded-lg text-xs font-semibold transition-colors cursor-pointer select-none whitespace-nowrap"
+                    title="Quick Navigate"
                   >
-                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                    <span>Quick Navigate</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-[#71675E]" />
+                    <LayoutGrid className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
+                    <span className="hidden xl:inline">Quick</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-[#71675E] shrink-0" />
                   </button>
                   {quickNavOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setQuickNavOpen(false)} />
-                      <div className="absolute left-0 mt-2 w-56 rounded-lg border border-slate-150 bg-[#FFFCF7] shadow-sm z-50 p-1.5 animate-in fade-in slide-in-from-top-1 duration-150 text-left">
-                        <div className="px-3 py-1.5 text-[9px] font-bold text-[#71675E] uppercase tracking-wider border-b border-[#D8CEC1] mb-1.5">
+                      <div className="absolute left-0 mt-1.5 w-56 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] z-50 p-1.5 text-left">
+                        <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#71675E] uppercase tracking-wider border-b border-[#EEE7DD] mb-1">
                           Quick Navigation
                         </div>
                         {frequentServices.map((service) => {
@@ -1481,9 +1490,9 @@ export default function DashboardShellClient({
                               key={service.name}
                               href={service.href}
                               onClick={() => setQuickNavOpen(false)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-slate-750 hover:bg-[#F7F3EC] rounded-md font-bold transition-colors cursor-pointer"
+                              className="flex items-center gap-2.5 w-full px-2.5 py-2 text-xs text-[#292320] hover:bg-[#F7F3EC] rounded-md font-medium transition-colors cursor-pointer"
                             >
-                              <div className={`p-1 rounded-lg shrink-0 ${service.color}`}>
+                              <div className={`p-1 rounded-md shrink-0 ${service.color}`}>
                                 <Icon className="h-3.5 w-3.5" />
                               </div>
                               <span className="truncate">{service.name}</span>
@@ -1498,9 +1507,9 @@ export default function DashboardShellClient({
             )}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1.5 shrink-0">
             {subscription && user.role !== "SUPER_ADMIN" && (
-              <div className="hidden sm:block shrink-0">
+              <div className="hidden xl:block shrink-0">
                 <SubscriptionTimer
                   endDate={subscription.endDate}
                   plan={subscription.plan}
@@ -1508,47 +1517,45 @@ export default function DashboardShellClient({
                 />
               </div>
             )}
-            {/* Theme switcher removed */}
 
-            {/* Cashier Shift Status Pill in Appbar (Next to Notification Icons) */}
+            {/* Compact Cashier Shift Status Chip */}
             {user.role !== "SUPER_ADMIN" && (
               <div className="shrink-0">
                 {activeShift ? (
                   <Link
                     href="/dashboard/shifts"
-                    className="h-8 px-2.5 rounded-md border border-[#2D6A4F]/40 bg-[#2D6A4F]/10 hover:bg-[#2D6A4F]/20 text-xs font-semibold text-[#2D6A4F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs select-none"
-                    title={`Active Shift: #${activeShift.shiftNumber} (${activeShift.register?.name || "Counter"}). Click to view shift.`}
+                    className="h-8 px-2.5 rounded-lg border border-[#C3DED0] bg-[#F1F7F4] hover:bg-[#E4F0EA] text-xs font-semibold text-[#28634B] transition-colors flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap"
+                    title={`Active Shift: #${activeShift.shiftNumber} (${activeShift.register?.name || "Counter"})`}
                   >
-                    <span className="h-2 w-2 rounded-full bg-[#16A34A] animate-pulse" />
-                    <span className="font-mono font-bold text-xs">{activeShift.shiftNumber}</span>
-                    <span className="hidden xl:inline text-[11px] text-[#2D6A4F]/80">
-                      ({activeShift.register?.name || "Counter"})
+                    <span className="h-2 w-2 rounded-full bg-[#28634B] shrink-0" />
+                    <span className="max-w-[96px] truncate">
+                      {activeShift.register?.name || "Shift Open"}
                     </span>
                   </Link>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setOpenShiftModalOpen(true)}
-                    className="h-8 px-3 rounded-md border border-[#B45309]/50 bg-[#B45309]/10 hover:bg-[#B45309]/20 text-xs font-bold text-[#B45309] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs select-none"
-                    title="No active cashier shift! Click to open shift and start billing."
+                    className="h-8 px-2.5 rounded-lg border border-[#EDD7AD] bg-[#FDF7ED] hover:bg-[#F7EBD5] text-xs font-semibold text-[#946000] transition-colors flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap"
+                    title="No active cashier shift. Click to open shift."
                   >
-                    <Coins className="h-3.5 w-3.5 text-[#B45309]" />
+                    <Coins className="h-3.5 w-3.5 text-[#946000] shrink-0" />
                     <span>Open Shift</span>
                   </button>
                 )}
               </div>
             )}
 
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="p-2 rounded-md text-[#71675E] hover:text-[#292320] dark:text-[#71675E] dark:hover:text-slate-200 hover:bg-[#F7F3EC] dark:hover:bg-slate-900 transition-colors relative cursor-pointer"
+                className="h-8 w-8 rounded-lg border border-transparent hover:border-[#D8CEC1] text-[#71675E] hover:text-[#292320] hover:bg-[#F7F3EC] transition-colors relative flex items-center justify-center cursor-pointer"
                 title="Notifications & Platform Notices"
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-4 w-4" />
                 {totalNotificationsCount > 0 && (
-                  <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-[#6B2837] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#FFFCF7] dark:border-slate-900 tabular-nums">
-                    {totalNotificationsCount}
+                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-[#6B2837] text-[#FFFCF7] text-[9px] font-bold rounded-full flex items-center justify-center border border-[#FFFCF7] tabular-nums">
+                    {totalNotificationsCount > 99 ? "99+" : totalNotificationsCount}
                   </span>
                 )}
               </button>
@@ -1676,21 +1683,19 @@ export default function DashboardShellClient({
               )}
             </div>
 
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2.5 hover:bg-[#F7F3EC] dark:hover:bg-slate-900/60 p-1.5 rounded-lg border border-[#D8CEC1]/70 bg-[#FFFCF7] transition-all cursor-pointer shadow-2xs select-none"
+                className="h-8 flex items-center gap-1.5 pl-1 pr-2 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#F7F3EC] transition-colors cursor-pointer select-none"
+                title={`${user.name} (${user.role ? user.role.replace("_", " ") : "User"})`}
               >
-                <div className="h-8 w-8 rounded-full bg-[#6B2837] text-white flex items-center justify-center font-extrabold text-xs select-none shadow-2xs">
+                <div className="h-6 w-6 rounded-md bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center font-bold text-[10px] select-none shrink-0">
                   {user.name.slice(0, 2).toUpperCase()}
                 </div>
-                <div className="hidden lg:block text-left pr-1">
-                  <div className="text-xs font-bold text-[#292320] leading-tight">{user.name}</div>
-                  <div className="text-[10px] text-[#71675E] tracking-wider uppercase font-bold leading-tight">
-                    {user.role ? user.role.replace("_", " ") : "User"}
-                  </div>
-                </div>
-                <ChevronDown className="h-3.5 w-3.5 text-[#71675E] hidden lg:block" />
+                <span className="hidden xl:block max-w-[96px] truncate text-xs font-semibold text-[#292320]">
+                  {user.name}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 text-[#71675E] shrink-0" />
               </button>
               {profileDropdownOpen && (
                 <>
