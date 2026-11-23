@@ -1464,11 +1464,11 @@ export default function GuestQrPortalPage() {
   if (isTableWaitingForSettlement && !dismissedUnsettledGate) {
     return (
       <div className="min-h-screen bg-[#F7F3EC] text-[#292320] font-sans flex flex-col">
-        {/* Top Hospitality Bar */}
-        <header className="w-full bg-[#FFFCF7] border-b border-[#D8CEC1] px-4 sm:px-6 py-3">
-          <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+        {/* Clean Sticky Header */}
+        <header className="w-full bg-[#FFFCF7] border-b border-[#D8CEC1] px-4 py-2.5">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-lg bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-md bg-[#6B2837] text-[#FFFCF7] flex items-center justify-center shrink-0">
                 <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div className="min-w-0">
@@ -1476,154 +1476,167 @@ export default function GuestQrPortalPage() {
                   {qrLocation.business.name}
                 </p>
                 {qrLocation.branch?.name && (
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#946000] truncate">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#71675E] truncate">
                     {qrLocation.branch.name}
                   </p>
                 )}
               </div>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-[11px] font-medium text-[#71675E]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#946000] animate-pulse" />
-                Auto-checking
-              </span>
-              <span className="px-3 py-1 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-bold text-[#6B2837]">
-                {locationBadgeText}
-              </span>
-            </div>
+            <span className="px-2.5 py-1 rounded-md bg-[#F7F3EC] border border-[#D8CEC1] text-xs font-semibold text-[#6B2837] shrink-0">
+              {locationBadgeText}
+            </span>
           </div>
         </header>
 
-        {/* Main Responsive Container (Mobile 1-col, Tablet/Desktop 2-col) */}
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
-          <div className="w-full max-w-3xl rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden grid grid-cols-1 md:grid-cols-12">
-            {/* Left / Top Status Panel */}
-            <div className="md:col-span-5 bg-[#FAF6EE] border-b md:border-b-0 md:border-r border-[#EEE7DD] p-6 sm:p-7 flex flex-col justify-between gap-6">
-              <div className="space-y-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FEF7E6] border border-[#E6D1A3] text-[#946000] text-[11px] font-bold">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Bill Settlement in Progress</span>
-                </span>
-
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#71675E]">
-                    Dining Space
-                  </p>
-                  <p className="text-2xl font-bold text-[#292320] tracking-tight mt-0.5">
-                    {locationBadgeText}
-                  </p>
-                  {qrLocation.table?.floorName && (
-                    <p className="text-xs text-[#71675E] mt-0.5">
-                      {qrLocation.table.floorName}
-                      {qrLocation.table.capacity ? ` • ${qrLocation.table.capacity} covers` : ""}
-                    </p>
-                  )}
-                </div>
+        {/* Main Mobile-First 3-Card Stack */}
+        <main className="flex-1 w-full max-w-md mx-auto px-4 py-4 space-y-3">
+          {/* Card 1: Dining Space Summary */}
+          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 flex items-center justify-between gap-3">
+            <div className="space-y-1.5 min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#FDF7ED] border border-[#EDD7AD] text-[#946000] text-[11px] font-semibold">
+                <Clock className="w-3 h-3 shrink-0" />
+                <span>Bill Settlement in Progress</span>
+              </span>
+              <div>
+                <p className="text-[11px] font-medium text-[#71675E]">Dining Space</p>
+                <h1 className="text-xl font-bold text-[#292320] tracking-tight leading-tight">
+                  {locationBadgeText}
+                </h1>
               </div>
-
-              {/* 3-Step Turnover Progress */}
-              <div className="space-y-3 pt-4 border-t border-[#E6DEC8]">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#71675E]">
-                  Table Readiness
+              {qrLocation.table?.floorName && (
+                <p className="text-xs text-[#71675E] flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#71675E] shrink-0" />
+                  <span className="truncate">
+                    {qrLocation.table.floorName}
+                    {qrLocation.table.capacity ? ` • ${qrLocation.table.capacity} Covers` : ""}
+                  </span>
                 </p>
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-center gap-2.5 text-[#28634B] font-semibold">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>Previous order completed</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-[#946000] font-semibold">
-                    <Clock className="w-4 h-4 shrink-0" />
-                    <span>Cashier settling previous bill</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-[#71675E]">
-                    <span className="w-4 h-4 rounded-full border border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-center text-[10px] font-bold shrink-0">
-                      3
-                    </span>
-                    <span>{locationBadgeText} unlocks for your order</span>
-                  </div>
-                </div>
-              </div>
+              )}
+            </div>
+            <div className="w-16 h-16 rounded-lg bg-[#292320] border border-[#D8CEC1] text-[#FFFCF7] flex flex-col items-center justify-center shrink-0">
+              <span className="text-[9px] uppercase tracking-wider text-[#D8CEC1]">Table</span>
+              <span className="text-sm font-bold tabular-nums">
+                {qrLocation.table?.tableNumber || qrLocation.label}
+              </span>
+            </div>
+          </section>
+
+          {/* Card 2: Horizontal 3-Step Table Readiness */}
+          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#292320]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#6B2837]" />
+              <span>Table Readiness</span>
             </div>
 
-            {/* Right / Bottom Actions Panel */}
-            <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between gap-6">
-              <div className="space-y-2.5">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#292320] tracking-tight leading-snug">
-                  Waiting for {locationBadgeText} to clear
-                </h1>
-                <p className="text-sm text-[#71675E] leading-relaxed">
-                  The previous guests&apos; bill is currently being cleared at the cashier. Ordering will unlock
-                  automatically in a few moments — or tap below to notify our staff right away.
-                </p>
+            <div className="grid grid-cols-3 gap-2 items-start text-center relative">
+              <div className="absolute top-3.5 left-[18%] right-[18%] h-px bg-[#D8CEC1]" aria-hidden="true" />
+              <div className="absolute top-3.5 left-[18%] right-[50%] h-px bg-[#28634B]" aria-hidden="true" />
+
+              <div className="relative z-10 flex flex-col items-center gap-1.5">
+                <span className="w-7 h-7 rounded-full bg-[#28634B] text-[#FFFCF7] flex items-center justify-center">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-[11px] font-medium text-[#292320] leading-tight">
+                  Previous order completed
+                </span>
               </div>
 
-              {tableAlertSent && (
-                <div className="p-3.5 rounded-lg bg-[#EDF5ED] border border-[#C8DFCD] text-xs sm:text-sm text-[#28634B] font-medium flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>Service notified. A staff member is clearing {locationBadgeText} for you now.</span>
-                </div>
+              <div className="relative z-10 flex flex-col items-center gap-1.5">
+                <span className="w-7 h-7 rounded-full bg-[#FDF7ED] border border-[#946000] text-[#946000] flex items-center justify-center">
+                  <Clock className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-[11px] font-semibold text-[#946000] leading-tight">
+                  Cashier settling bill
+                </span>
+              </div>
+
+              <div className="relative z-10 flex flex-col items-center gap-1.5">
+                <span className="w-7 h-7 rounded-full bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E] text-[11px] font-bold flex items-center justify-center tabular-nums">
+                  3
+                </span>
+                <span className="text-[11px] text-[#71675E] leading-tight">
+                  {locationBadgeText} unlocks
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Card 3: Waiting Message */}
+          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 text-center space-y-2.5">
+            <div className="w-12 h-12 rounded-full bg-[#F7F3EC] border border-[#D8CEC1] text-[#6B2837] flex items-center justify-center mx-auto">
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+            <h2 className="text-base font-bold text-[#292320]">
+              Waiting for {locationBadgeText} to clear
+            </h2>
+            <p className="text-xs text-[#71675E] leading-relaxed">
+              The previous guests&apos; bill is being cleared at the cashier. Ordering unlocks automatically in a moment, or notify our staff below.
+            </p>
+            {tableAlertSent && (
+              <div className="p-2.5 rounded-md bg-[#F1F7F4] border border-[#C3DED0] text-xs text-[#28634B] font-medium flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Staff notified. Clearing {locationBadgeText} now.</span>
+              </div>
+            )}
+          </section>
+
+          {/* Clean Action Buttons */}
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={handleRefreshTableStatus}
+              className="w-full h-11 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reload &amp; Check Status</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAlertStaffTurnover}
+              disabled={sendingTurnoverAlert || tableAlertSent}
+              className="w-full h-11 px-4 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <Bell className="w-3.5 h-3.5 text-[#6B2837]" />
+              <span>
+                {sendingTurnoverAlert
+                  ? "Calling Service..."
+                  : tableAlertSent
+                  ? "Staff Notified"
+                  : "Call Service (Previous Guests Left)"}
+              </span>
+            </button>
+
+            <div className="pt-2 flex items-center justify-center gap-4 border-t border-[#D8CEC1]">
+              <button
+                type="button"
+                onClick={() => setDismissedUnsettledGate(true)}
+                className="py-1 text-xs font-semibold text-[#71675E] hover:text-[#292320] inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                <span>Preview Menu While Waiting</span>
+              </button>
+
+              {!qrLocation.table?.isBilledLocked && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDismissedUnsettledGate(true);
+                    setShowTablePinModal(true);
+                  }}
+                  className="py-1 text-xs font-semibold text-[#6B2837] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Join with PIN</span>
+                </button>
               )}
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleRefreshTableStatus}
-                  className="w-full h-11 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Reload &amp; Check Status</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAlertStaffTurnover}
-                  disabled={sendingTurnoverAlert || tableAlertSent}
-                  className="w-full h-11 px-4 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
-                >
-                  <Bell className="w-4 h-4 text-[#6B2837]" />
-                  <span>
-                    {sendingTurnoverAlert
-                      ? "Calling Service..."
-                      : tableAlertSent
-                      ? "Service Called — Staff Notified"
-                      : "Call Service (Previous Guests Left)"}
-                  </span>
-                </button>
-              </div>
-
-              {/* Secondary Utility Row */}
-              <div className="pt-4 border-t border-[#EEE7DD] grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setDismissedUnsettledGate(true)}
-                  className="h-10 px-3 rounded-lg border border-[#EEE7DD] bg-[#FFFCF7] hover:bg-[#F7F3EC] text-xs font-semibold text-[#292320] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <UtensilsCrossed className="w-3.5 h-3.5 text-[#71675E]" />
-                  <span>Preview Menu While Waiting</span>
-                </button>
-
-                {!qrLocation.table?.isBilledLocked && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDismissedUnsettledGate(true);
-                      setShowTablePinModal(true);
-                    }}
-                    className="h-10 px-3 rounded-lg border border-[#EEE7DD] bg-[#FFFCF7] hover:bg-[#F7F3EC] text-xs font-semibold text-[#6B2837] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Join Table with 4-Digit PIN</span>
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </main>
 
-        {/* Clean Guest Footer */}
-        <footer className="w-full py-4 px-4 text-center text-[11px] text-[#71675E] flex items-center justify-center gap-4">
-          <span>Refreshes automatically every 4s</span>
+        {/* Minimal Footer */}
+        <footer className="w-full py-3 px-4 text-center text-[11px] text-[#71675E] flex items-center justify-center gap-3">
+          <span>Auto-checks every 4s</span>
           <span>•</span>
           <a href="/terms" className="hover:text-[#292320] underline underline-offset-2">
             Terms
