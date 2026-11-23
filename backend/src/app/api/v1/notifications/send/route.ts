@@ -135,62 +135,39 @@ export async function POST(request: Request) {
         },
       });
 
-      const guestTokens = await db.devicePushToken.findMany({
+      const guestPushCount = await db.devicePushToken.count({
         where: {
           businessId: context.businessId,
-          guestSessionId: { not: null },
+          role: "GUEST",
           isActive: true,
         },
-        select: { guestSessionId: true },
-        distinct: ["guestSessionId"],
-        take: 250,
       });
 
       const campaign = await dispatchNotification({
         businessId: context.businessId,
-        targetRoles: ["OWNER", "MANAGER"],
+        targetRoles: ["GUEST", "OWNER", "MANAGER"],
         category: "OFFER",
         priority,
         title,
         message,
+        actionUrl: "/guest",
         metadata: {
           audience,
           inactiveDays,
           targetedCustomers,
-          pushRecipients: guestTokens.length,
+          pushRecipients: guestPushCount,
           sentBy: context.userId,
           ...(cleanImageUrl ? { imageUrl: cleanImageUrl } : {}),
         },
         dedupeKey: `${dedupeBase}:campaign`,
       });
 
-      let pushDispatched = 0;
-      if (!campaign.skipped && guestTokens.length > 0) {
-        const results = await Promise.all(
-          guestTokens
-            .filter((t) => Boolean(t.guestSessionId))
-            .map((t) =>
-              dispatchNotification({
-                businessId: context.businessId,
-                guestSessionId: t.guestSessionId!,
-                category: "OFFER",
-                priority,
-                title,
-                message,
-                metadata: cleanImageUrl ? { imageUrl: cleanImageUrl } : undefined,
-                dedupeKey: `${dedupeBase}:${t.guestSessionId}`,
-              })
-            )
-        );
-        pushDispatched = results.filter((r) => !r.skipped).length;
-      }
-
       return NextResponse.json(
         {
           success: true,
           skipped: campaign.skipped,
           recipientCount: targetedCustomers,
-          pushDispatched,
+          pushDispatched: campaign.fcmSent,
         },
         { status: 201 }
       );

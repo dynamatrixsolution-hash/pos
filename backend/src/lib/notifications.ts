@@ -161,8 +161,15 @@ async function sendFcmMulticast(
           headers: {
             Urgency: input.priority === "URGENT" || input.priority === "HIGH" ? "high" : "normal",
           },
+          notification: {
+            icon: "/icons/icon-192.png",
+            badge: "/icons/icon-192.png",
+            ...(typeof input.metadata?.imageUrl === "string" && /^https?:\/\//i.test(input.metadata.imageUrl)
+              ? { image: input.metadata.imageUrl }
+              : {}),
+          },
           fcmOptions: {
-            link: input.actionUrl || "/dashboard",
+            link: input.actionUrl || "/guest",
           },
         },
         android: {

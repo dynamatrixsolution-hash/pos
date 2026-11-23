@@ -10,6 +10,7 @@ const registerSchema = z.object({
   deviceLabel: z.string().trim().max(120).optional(),
   guestSessionId: z.string().trim().optional(),
   guestSessionToken: z.string().trim().optional(),
+  publicCode: z.string().trim().optional(),
 });
 
 // POST /api/v1/notifications/register-token
@@ -24,12 +25,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const { token, platform, deviceLabel, guestSessionId, guestSessionToken } = parsed.data;
+    const { token, platform, deviceLabel, guestSessionId, guestSessionToken, publicCode } = parsed.data;
     const headerGuestToken = request.headers.get("x-guest-session-token")?.trim() || null;
     const effectiveGuestToken = guestSessionToken || headerGuestToken;
     const context = await getSessionContext();
 
-    if (!context && !guestSessionId && !effectiveGuestToken) {
+    if (!context && !guestSessionId && !effectiveGuestToken && !publicCode) {
       return authErrorResponse();
     }
 
@@ -59,18 +60,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Guest QR session registration (prefers opaque guestSessionToken via sessionTokenHash)
+    // Guest QR registration (supports active session token OR publicCode before ordering)
     const guestSession = effectiveGuestToken
       ? await db.guestSession.findUnique({
           where: { sessionTokenHash: hashGuestSecret(effectiveGuestToken) },
           select: { id: true, businessId: true, status: true },
         })
-      : await db.guestSession.findUnique({
-          where: { id: guestSessionId! },
+      : guestSessionId
+      ? await db.guestSession.findUnique({
+          where: { id: guestSessionId },
           select: { id: true, businessId: true, status: true },
-        });
-    if (!guestSession || guestSession.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Active guest session not found" }, { status: 404 });
+        })
+      : null;
+
+    let businessId = guestSession?.status === "ACTIVE" ? guestSession.businessId : null;
+    const activeGuestSessionId = guestSession?.status === "ACTIVE" ? guestSession.id : null;
+
+    if (!businessId && publicCode) {
+      const qr = await db.qrLocation.findUnique({
+        where: { publicCode },
+        select: { businessId: true, isActive: true },
+      });
+      if (qr?.isActive) {
+        businessId = qr.businessId;
+      }
+    }
+
+    if (!businessId) {
+      return NextResponse.json({ error: "Active guest session or valid QR code required" }, { status: 404 });
     }
 
     await db.devicePushToken.upsert({
@@ -78,9 +95,9 @@ export async function POST(request: Request) {
       update: {
         platform,
         userId: null,
-        businessId: guestSession.businessId,
+        businessId,
         role: "GUEST",
-        guestSessionId: guestSession.id,
+        guestSessionId: activeGuestSessionId,
         deviceLabel: deviceLabel || "Guest QR",
         isActive: true,
         lastUsedAt: new Date(),
@@ -88,9 +105,9 @@ export async function POST(request: Request) {
       create: {
         token,
         platform,
-        businessId: guestSession.businessId,
+        businessId,
         role: "GUEST",
-        guestSessionId: guestSession.id,
+        guestSessionId: activeGuestSessionId,
         deviceLabel: deviceLabel || "Guest QR",
         isActive: true,
       },

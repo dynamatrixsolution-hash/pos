@@ -27,13 +27,15 @@ self.addEventListener("push", (event) => {
   const data = payload.data || {};
   const title = notif.title || "RestroInn Update";
   const body = notif.body || "";
-  const actionUrl = data.actionUrl || "/";
+  const image = notif.image || data.imageUrl || undefined;
+  const actionUrl = data.actionUrl || "/guest";
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
+      ...(image ? { image } : {}),
       tag: data.notificationId || "restroinn-push",
       vibrate: [120, 60, 120],
       data: { actionUrl },

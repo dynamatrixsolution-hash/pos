@@ -31,7 +31,11 @@ export function isFirebaseWebConfigured(): boolean {
  * Requests browser push permission, obtains FCM Web token, and registers it with backend.
  * Safe no-op if Firebase Web config or browser Notification API is unavailable.
  */
-export async function registerWebPushToken(options?: { guestSessionId?: string }): Promise<string | null> {
+export async function registerWebPushToken(options?: {
+  guestSessionId?: string;
+  guestSessionToken?: string | null;
+  publicCode?: string | null;
+}): Promise<string | null> {
   if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
     return null;
   }
@@ -50,7 +54,8 @@ export async function registerWebPushToken(options?: { guestSessionId?: string }
     if (permission !== "granted") return null;
 
     const app = getApps().length > 0 ? getApp() : initializeApp(config);
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey,
@@ -61,12 +66,17 @@ export async function registerWebPushToken(options?: { guestSessionId?: string }
     await fetch("/api/v1/notifications/register-token", {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.guestSessionToken ? { "x-guest-session-token": options.guestSessionToken } : {}),
+      },
       body: JSON.stringify({
         token,
         platform: "WEB",
         deviceLabel: navigator.userAgent.slice(0, 100),
         ...(options?.guestSessionId ? { guestSessionId: options.guestSessionId } : {}),
+        ...(options?.guestSessionToken ? { guestSessionToken: options.guestSessionToken } : {}),
+        ...(options?.publicCode ? { publicCode: options.publicCode } : {}),
       }),
     });
 

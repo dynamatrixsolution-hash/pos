@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UtensilsCrossed, QrCode, ArrowRight, Bell, CheckCircle2 } from "lucide-react";
+import { registerWebPushToken } from "@/lib/firebase-client";
 
 interface LastRestaurant {
   publicCode: string;
@@ -51,8 +52,10 @@ export default function GuestAppHomePage() {
 
   const handleEnableAlerts = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") setAlertsEnabled(true);
+    const token = await registerWebPushToken({ publicCode: lastVisited?.publicCode || null });
+    if (token || Notification.permission === "granted") {
+      setAlertsEnabled(true);
+    }
   };
 
   return (

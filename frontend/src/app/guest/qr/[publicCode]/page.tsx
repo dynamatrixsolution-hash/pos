@@ -6,6 +6,7 @@ import { formatNPR, toCents, fromCents } from "@/lib/currency";
 import { DeterministicQrMatrixSvg } from "@/components/qr-matrix-svg";
 import { apiClient } from "@/core/api/api-client";
 import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@/lib/notification-alert";
+import { registerWebPushToken } from "@/lib/firebase-client";
 import { GoogleReviewCard } from "@/features/guest-portal/components/GoogleReviewCard";
 import { GuestProfileAndAppCard } from "@/features/guest-portal/components/GuestProfileAndAppCard";
 import { InstallAppPopup } from "@/features/guest-portal/components/InstallAppPopup";
@@ -768,6 +769,10 @@ export default function GuestQrPortalPage() {
     };
 
     void pollGuestNotifications();
+    // Auto-register FCM Web Push token for closed-app background notifications when permission is already granted
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      void registerWebPushToken({ publicCode, guestSessionToken: sessionToken });
+    }
     const interval = setInterval(() => {
       void pollGuestNotifications();
     }, 5000);
@@ -1276,9 +1281,9 @@ export default function GuestQrPortalPage() {
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
 
-    // Request OS notification permission on user gesture so background tab/app alerts work immediately
+    // Request OS notification permission + register FCM Web Push on user gesture
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission().catch(() => {});
+      void registerWebPushToken({ publicCode, guestSessionToken: sessionToken });
     }
 
     const canOrder = await verifyTableOpenForOrdering();
@@ -1872,12 +1877,11 @@ export default function GuestQrPortalPage() {
                     {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
                       <button
                         type="button"
-                        onClick={() => {
-                          Notification.requestPermission().then((perm) => {
-                            if (perm === "granted") {
-                              showBanner("Browser alerts enabled!", "success");
-                            }
-                          });
+                        onClick={async () => {
+                          const token = await registerWebPushToken({ publicCode, guestSessionToken: sessionToken });
+                          if (token || (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted")) {
+                            showBanner("Background push alerts enabled!", "success");
+                          }
                         }}
                         className="text-[10px] font-bold text-[#6B2837] underline cursor-pointer"
                       >
