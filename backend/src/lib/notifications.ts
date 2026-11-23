@@ -10,6 +10,7 @@ export type NotificationCategory =
   | "SUPPORT"
   | "CHAT"
   | "BROADCAST"
+  | "OFFER"
   | "SYSTEM";
 
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";

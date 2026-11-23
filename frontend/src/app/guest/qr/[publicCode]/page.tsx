@@ -6,6 +6,8 @@ import { formatNPR, toCents, fromCents } from "@/lib/currency";
 import { DeterministicQrMatrixSvg } from "@/components/qr-matrix-svg";
 import { apiClient } from "@/core/api/api-client";
 import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@/lib/notification-alert";
+import { GoogleReviewCard } from "@/features/guest-portal/components/GoogleReviewCard";
+import { GuestProfileAndAppCard } from "@/features/guest-portal/components/GuestProfileAndAppCard";
 import {
   UtensilsCrossed,
   Clock,
@@ -65,13 +67,13 @@ function getItemImage(item: {
 // Pick a food icon from the dish name, used when no photo is uploaded or the photo fails to load.
 function getFoodIcon(name: string) {
   const n = (name || "").toLowerCase();
-  if (/(tea|chai|coffee|latte|espresso|lassi|juice|drink|beverage|spritz|soda|mocktail)/.test(n)) return Coffee;
   if (/(momo|dumpling|soup|thukpa|broth|jhol)/.test(n)) return Soup;
   if (/(fish|trout|prawn|shrimp|seafood)/.test(n)) return Fish;
-  if (/(chicken|mutton|wings|drumstick|sekuwa|choila|meat|lamb)/.test(n)) return Drumstick;
+  if (/(chicken|mutton|wings|drumstick|sekuwa|choila|meat|lamb|buff)/.test(n)) return Drumstick;
   if (/(pizza)/.test(n)) return Pizza;
   if (/(burger|sandwich|wrap|roll)/.test(n)) return Sandwich;
   if (/(cake|dessert|sweet|kheer|ice cream|brownie)/.test(n)) return CakeSlice;
+  if (/(tea|chai|coffee|latte|espresso|lassi|juice|drink|beverage|spritz|soda|mocktail|cocktail|beer|wine)/.test(n)) return Coffee;
   return UtensilsCrossed;
 }
 
@@ -344,6 +346,13 @@ export default function GuestQrPortalPage() {
     () => (publicCode ? `restro_guest_grant_${publicCode}` : ""),
     [publicCode]
   );
+
+  const cartStorageKey = useMemo(
+    () => (publicCode ? `restro_guest_cart_${publicCode}` : ""),
+    [publicCode]
+  );
+
+  const [selectedDietary, setSelectedDietary] = useState<string>("ALL");
 
   const [dismissedUnsettledGate, setDismissedUnsettledGate] = useState(false);
 
@@ -770,6 +779,39 @@ export default function GuestQrPortalPage() {
     return () => clearInterval(interval);
   }, [sessionToken, activeTab, fetchGuestSessionData]);
 
+  // Hydrate persisted cart & notes on reload so accidental refresh never wipes guest's tray
+  useEffect(() => {
+    if (typeof window === "undefined" || !cartStorageKey) return;
+    try {
+      const raw = sessionStorage.getItem(cartStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed?.cart)) setCart(parsed.cart);
+        if (typeof parsed?.orderNotes === "string") setOrderNotes(parsed.orderNotes);
+      }
+    } catch {
+      // ignore corrupted storage
+    }
+  }, [cartStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !cartStorageKey) return;
+    try {
+      sessionStorage.setItem(cartStorageKey, JSON.stringify({ cart, orderNotes }));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [cartStorageKey, cart, orderNotes]);
+
+  // Dynamic page <title> with restaurant & table/room name
+  useEffect(() => {
+    if (!qrLocation?.business?.name) return;
+    const loc = qrLocation.locationType === "ROOM"
+      ? `Room ${qrLocation.room?.roomNumber || ""}`
+      : `Table ${qrLocation.table?.tableNumber || ""}`;
+    document.title = `${qrLocation.business.name} — ${loc} Menu`;
+  }, [qrLocation]);
+
   // Flatten all sections across active menus
   const allSections = useMemo(() => {
     const list: MenuSection[] = [];
@@ -783,40 +825,69 @@ export default function GuestQrPortalPage() {
     return list;
   }, [menus]);
 
+  // Map each menuItem.id -> real Menu Section name (prevents leaking retail product category)
+  const itemSectionNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sec of allSections) {
+      for (const it of sec.items) {
+        if (!map.has(it.id)) map.set(it.id, sec.name);
+      }
+    }
+    return map;
+  }, [allSections]);
+
+  // Collect unique dietary tags across menu items for quick filtering
+  const availableDietaryTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const sec of allSections) {
+      for (const it of sec.items) {
+        for (const tag of it.dietaryTags || []) {
+          if (tag?.trim()) set.add(tag.trim());
+        }
+      }
+    }
+    return Array.from(set).slice(0, 6);
+  }, [allSections]);
+
   const visibleSections = useMemo(() => {
     if (selectedSectionId === "ALL") return allSections;
     return allSections.filter((s) => s.id === selectedSectionId);
   }, [allSections, selectedSectionId]);
 
-  // Filtered sections by course AND real-time search query
+  // Filtered sections by course, dietary tag, AND real-time search query
   const filteredSections = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    let base = visibleSections;
-    if (!q) return base;
-    return base
+    const diet = selectedDietary === "ALL" ? null : selectedDietary.toLowerCase();
+    return visibleSections
       .map((sec) => ({
         ...sec,
-        items: sec.items.filter(
-          (it) =>
+        items: sec.items.filter((it) => {
+          const matchesDiet =
+            !diet ||
+            (Array.isArray(it.dietaryTags) &&
+              it.dietaryTags.some((t) => t.toLowerCase() === diet));
+          const matchesQuery =
+            !q ||
             it.name.toLowerCase().includes(q) ||
             (it.description && it.description.toLowerCase().includes(q)) ||
-            (it.dietaryTags && it.dietaryTags.some((t) => t.toLowerCase().includes(q)))
-        ),
+            (it.dietaryTags && it.dietaryTags.some((t) => t.toLowerCase().includes(q)));
+          return matchesDiet && matchesQuery;
+        }),
       }))
       .filter((sec) => sec.items.length > 0);
-  }, [visibleSections, searchQuery]);
+  }, [visibleSections, searchQuery, selectedDietary]);
 
-  // Featured Popular Picks (horizontal carousel matching sample image)
+  // Featured Popular Picks (capped at 4 items so it never duplicates the entire menu)
   const popularItems = useMemo(() => {
     const all: MenuItem[] = [];
     for (const s of allSections) {
       for (const it of s.items) {
-        if (!all.some((x) => x.id === it.id)) {
+        if (it.isAvailable !== false && !all.some((x) => x.id === it.id)) {
           all.push(it);
         }
       }
     }
-    return all.slice(0, 8);
+    return all.slice(0, 4);
   }, [allSections]);
 
   // Cart totals
@@ -1033,11 +1104,10 @@ export default function GuestQrPortalPage() {
     return true;
   };
 
-  // Quick 1-tap add from card (if no required modifier options)
-  const handleQuickAddMenuItem = async (e: React.MouseEvent, item: MenuItem) => {
+  // Quick 1-tap optimistic add from card (if no required modifier options)
+  const handleQuickAddMenuItem = (e: React.MouseEvent, item: MenuItem) => {
     e.stopPropagation();
-    const canOrder = await verifyTableOpenForOrdering();
-    if (!canOrder) return;
+    if (item.isAvailable === false) return;
 
     const hasRequiredModifiers =
       Array.isArray(item.modifierGroups) &&
@@ -1051,8 +1121,26 @@ export default function GuestQrPortalPage() {
       handleSelectMenuItem(item);
     } else {
       addItemToCart(item, 1, [], "");
-      showBanner(`Added ${item.name} to tray!`, "success");
     }
+  };
+
+  const getItemCartQty = (menuItemId: string) =>
+    cart.filter((c) => c.menuItem.id === menuItemId).reduce((sum, c) => sum + c.quantity, 0);
+
+  const decrementItemFromCart = (e: React.MouseEvent, menuItemId: string) => {
+    e.stopPropagation();
+    setCart((prev) => {
+      const idx = [...prev].reverse().findIndex((c) => c.menuItem.id === menuItemId);
+      if (idx === -1) return prev;
+      const realIdx = prev.length - 1 - idx;
+      const next = [...prev];
+      if (next[realIdx].quantity <= 1) {
+        next.splice(realIdx, 1);
+      } else {
+        next[realIdx] = { ...next[realIdx], quantity: next[realIdx].quantity - 1 };
+      }
+      return next;
+    });
   };
 
   const addItemToCart = (
@@ -1097,14 +1185,35 @@ export default function GuestQrPortalPage() {
     showBanner(`Added ${quantity}× ${item.name} to your tray`, "info");
   };
 
-  const handleConfirmCustomItem = async () => {
-    if (!customizingItem) return;
-    const canOrder = await verifyTableOpenForOrdering();
-    if (!canOrder) return;
+  const handleConfirmCustomItem = () => {
+    if (!customizingItem || customizingItem.isAvailable === false) return;
+
+    // Enforce required / minSelect / maxSelect modifier group constraints
+    for (const link of customizingItem.modifierGroups || []) {
+      const group = link.modifierGroup;
+      if (!group || !group.options?.length) continue;
+      const selectedCount = group.options.filter((o) => selectedModOptionIds.includes(o.id)).length;
+      const minRequired = Math.max(group.isRequired ? 1 : 0, group.minSelect ?? 0);
+      if (selectedCount < minRequired) {
+        showBanner(
+          `Please select at least ${minRequired} option${minRequired > 1 ? "s" : ""} for ${group.displayName || group.name}.`,
+          "error"
+        );
+        return;
+      }
+      if (group.maxSelect && group.maxSelect > 0 && selectedCount > group.maxSelect) {
+        showBanner(
+          `Please select at most ${group.maxSelect} option${group.maxSelect > 1 ? "s" : ""} for ${group.displayName || group.name}.`,
+          "error"
+        );
+        return;
+      }
+    }
+
     const allOptions: ModifierOption[] = [];
     for (const link of customizingItem.modifierGroups || []) {
       for (const opt of link.modifierGroup?.options || []) {
-        if (selectedModOptionIds.includes(opt.id)) {
+        if (opt.isAvailable !== false && selectedModOptionIds.includes(opt.id)) {
           allOptions.push(opt);
         }
       }
@@ -1553,27 +1662,33 @@ export default function GuestQrPortalPage() {
                 <span>{locationBadgeText}</span>
               </span>
 
-              {/* Search Icon Trigger (Opens Recommended Food Search Modal) */}
+              {/* Search Icon Trigger */}
               <button
                 type="button"
                 onClick={() => setIsSearchModalOpen(true)}
-                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#292320] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer"
-                title="Search Food"
+                aria-label="Search menu"
+                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#292320] hover:bg-[#F7F3EC] transition cursor-pointer"
+                title="Search Menu"
               >
                 <Search className="w-4 h-4 text-[#292320]" />
               </button>
 
-              {/* Notification / Call Waiter Bell Button */}
+              {/* Live Order Updates Bell Button (works for BOTH Table & Room guests) */}
               <button
                 type="button"
-                disabled={sendingRequestType === "WAITER_CALL" || (cooldowns["WAITER_CALL"] || 0) > 0}
-                onClick={() => handleTriggerServiceRequest("WAITER_CALL")}
-                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-center text-[#6B2837] hover:bg-[#FAF6F0] transition shadow-2xs cursor-pointer disabled:opacity-50 relative"
-                title="Call Waiter"
+                onClick={() => {
+                  setGuestNotifOpen((prev) => !prev);
+                  setUnreadGuestNotifs(0);
+                }}
+                aria-label="Order updates and alerts"
+                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#6B2837] hover:bg-[#F7F3EC] transition cursor-pointer relative"
+                title="Live Order Updates"
               >
                 <Bell className="w-4 h-4" />
-                {(cooldowns["WAITER_CALL"] || 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#A77B38]" />
+                {unreadGuestNotifs > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-[#6B2837] text-[#FFFCF7] text-[9px] font-bold flex items-center justify-center tabular-nums">
+                    {unreadGuestNotifs > 9 ? "9+" : unreadGuestNotifs}
+                  </span>
                 )}
               </button>
             </div>
@@ -1779,48 +1894,78 @@ export default function GuestQrPortalPage() {
                   CLEAN MINIMALIST MENU FEED (FOOD FIRST)
                  ========================================================= */}
               <div className="space-y-4">
-                {/* Popular Dishes Carousel */}
-                {!searchQuery && popularItems.length > 0 && (
+                {/* Popular Dishes Carousel (shown only on All view when not searching) */}
+                {!searchQuery && selectedSectionId === "ALL" && selectedDietary === "ALL" && popularItems.length > 0 && (
                   <div className="space-y-2 pt-0.5">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-[#292320] uppercase tracking-wider">
-                        Popular Dishes
+                        Chef&apos;s Picks
                       </h3>
+                      <span className="text-[10px] font-medium text-[#71675E]">Top {popularItems.length}</span>
                     </div>
 
-                    <div className="flex gap-3 overflow-x-auto pb-1.5 no-scrollbar -mx-4 px-4">
+                    <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {popularItems.map((item) => {
+                        const qtyInCart = getItemCartQty(item.id);
                         return (
                           <div
                             key={item.id}
                             onClick={() => handleSelectMenuItem(item)}
-                            className="w-38 sm:w-42 shrink-0 bg-[#FFFCF7] rounded-xl p-2.5 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer space-y-1.5"
+                            className="w-40 shrink-0 bg-[#FFFCF7] rounded-lg p-2.5 border border-[#D8CEC1] hover:border-[#6B2837] transition cursor-pointer space-y-2"
                           >
-                            <div className="relative aspect-4/3 rounded-lg overflow-hidden bg-[#EEE7DD]">
-                              <FoodImage item={item} iconClassName="w-8 h-8" />
+                            <div className="relative aspect-4/3 rounded-md overflow-hidden bg-[#EEE7DD]">
+                              <FoodImage item={item} iconClassName="w-7 h-7" />
                               {item.prepTimeMinutes ? (
-                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#FFFCF7] text-[9px] text-[#292320] font-bold tabular-nums">
+                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-[#FFFCF7]/95 text-[9px] text-[#292320] font-bold tabular-nums">
                                   {item.prepTimeMinutes}m
                                 </div>
                               ) : null}
                             </div>
 
-                            <div className="space-y-0.5">
-                              <h4 className="text-xs font-bold text-[#292320] truncate">
+                            <div className="space-y-1.5">
+                              <h4 className="text-xs font-bold text-[#292320] line-clamp-1">
                                 {item.name}
                               </h4>
-                              <div className="flex items-center justify-between pt-0.5">
+                              <div className="flex items-center justify-between gap-1">
                                 <span className="text-xs font-extrabold text-[#6B2837] tabular-nums">
                                   {formatNPR(item.basePrice)}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleQuickAddMenuItem(e, item)}
-                                  className="w-5 h-5 rounded bg-[#6B2837] text-white flex items-center justify-center hover:bg-[#541E2A] transition cursor-pointer shadow-2xs"
-                                  title="Add"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </button>
+                                {qtyInCart > 0 ? (
+                                  <div
+                                    className="inline-flex items-center gap-1 rounded-md bg-[#6B2837] text-[#FFFCF7] px-1 h-7"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove one ${item.name}`}
+                                      onClick={(e) => decrementItemFromCart(e, item.id)}
+                                      className="w-5 h-5 flex items-center justify-center cursor-pointer"
+                                    >
+                                      <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-[11px] font-bold tabular-nums min-w-[14px] text-center">
+                                      {qtyInCart}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      aria-label={`Add one more ${item.name}`}
+                                      onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                      className="w-5 h-5 flex items-center justify-center cursor-pointer"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    aria-label={`Add ${item.name}`}
+                                    onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                    className="h-7 px-2.5 rounded-md bg-[#6B2837] text-[#FFFCF7] text-[11px] font-bold flex items-center gap-0.5 hover:bg-[#541E2A] transition cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Add</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1830,36 +1975,67 @@ export default function GuestQrPortalPage() {
                   </div>
                 )}
 
-                {/* Horizontal Category Nav Chips */}
-                {allSections.length > 1 && (
-                  <div id="catalog-courses-scroll" className="sticky top-[53px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7] border-b border-[#EEE7DD]">
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSectionId("ALL")}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                          selectedSectionId === "ALL"
-                            ? "bg-[#6B2837] text-white shadow-2xs"
-                            : "bg-[#FFFCF7] text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
-                        }`}
-                      >
-                        All
-                      </button>
-                      {allSections.map((sec) => (
+                {/* Horizontal Category & Dietary Nav Chips (hidden scrollbars) */}
+                {(allSections.length > 1 || availableDietaryTags.length > 0) && (
+                  <div id="catalog-courses-scroll" className="sticky top-[56px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7] border-b border-[#EEE7DD] space-y-1.5">
+                    {allSections.length > 1 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <button
-                          key={sec.id}
                           type="button"
-                          onClick={() => setSelectedSectionId(sec.id)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                            selectedSectionId === sec.id
-                              ? "bg-[#6B2837] text-white shadow-2xs"
-                              : "bg-[#FFFCF7] text-[#71675E] hover:text-[#292320] border border-[#EEE7DD]"
+                          onClick={() => setSelectedSectionId("ALL")}
+                          className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                            selectedSectionId === "ALL"
+                              ? "bg-[#6B2837] text-[#FFFCF7]"
+                              : "bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] border border-[#D8CEC1]"
                           }`}
                         >
-                          {sec.name}
+                          All
                         </button>
-                      ))}
-                    </div>
+                        {allSections.map((sec) => (
+                          <button
+                            key={sec.id}
+                            type="button"
+                            onClick={() => setSelectedSectionId(sec.id)}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                              selectedSectionId === sec.id
+                                ? "bg-[#6B2837] text-[#FFFCF7]"
+                                : "bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] border border-[#D8CEC1]"
+                            }`}
+                          >
+                            {sec.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {availableDietaryTags.length > 0 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDietary("ALL")}
+                          className={`px-2.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap cursor-pointer border ${
+                            selectedDietary === "ALL"
+                              ? "bg-[#292320] text-[#FFFCF7] border-[#292320]"
+                              : "bg-[#FFFCF7] text-[#71675E] border-[#D8CEC1]"
+                          }`}
+                        >
+                          All Diets
+                        </button>
+                        {availableDietaryTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setSelectedDietary(tag)}
+                            className={`px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase whitespace-nowrap cursor-pointer border ${
+                              selectedDietary === tag
+                                ? "bg-[#28634B] text-[#FFFCF7] border-[#28634B]"
+                                : "bg-[#FFFCF7] text-[#71675E] border-[#D8CEC1]"
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1965,17 +2141,55 @@ export default function GuestQrPortalPage() {
                                   </div>
                                 </div>
 
-                                {/* Thumbnail Image or Food Icon with Quick Add Button */}
-                                <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-lg overflow-hidden bg-[#FAF6F0] shrink-0 border border-[#EEE7DD]">
-                                  <FoodImage item={item} iconClassName="w-7 h-7" />
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleQuickAddMenuItem(e, item)}
-                                    className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-[#6B2837] text-white flex items-center justify-center hover:bg-[#541E2A] transition cursor-pointer shadow-xs"
-                                    title="Add to tray"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                  </button>
+                                {/* Thumbnail Image or Food Icon with Inline Quantity Stepper */}
+                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                  <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-[#F7F3EC] border border-[#D8CEC1]">
+                                    <FoodImage item={item} iconClassName="w-7 h-7" />
+                                    {item.isAvailable === false && (
+                                      <div className="absolute inset-0 bg-[#292320]/60 flex items-center justify-center">
+                                        <span className="text-[9px] font-bold uppercase text-[#FFFCF7] px-1.5 py-0.5 rounded bg-[#B33432]">
+                                          Sold Out
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {item.isAvailable !== false && (() => {
+                                    const qty = getItemCartQty(item.id);
+                                    return qty > 0 ? (
+                                      <div
+                                        className="inline-flex items-center justify-between w-20 h-8 px-1 rounded-md bg-[#6B2837] text-[#FFFCF7]"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          type="button"
+                                          aria-label={`Remove one ${item.name}`}
+                                          onClick={(e) => decrementItemFromCart(e, item.id)}
+                                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                                        >
+                                          <Minus className="w-3.5 h-3.5" />
+                                        </button>
+                                        <span className="text-xs font-bold tabular-nums">{qty}</span>
+                                        <button
+                                          type="button"
+                                          aria-label={`Add one more ${item.name}`}
+                                          onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                                        >
+                                          <Plus className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        aria-label={`Add ${item.name} to tray`}
+                                        onClick={(e) => handleQuickAddMenuItem(e, item)}
+                                        className="w-20 h-8 rounded-md border border-[#6B2837] bg-[#FFFCF7] hover:bg-[#6B2837] text-[#6B2837] hover:text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>Add</span>
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
@@ -2278,7 +2492,7 @@ export default function GuestQrPortalPage() {
                   type="text"
                   value={serviceNote}
                   onChange={(e) => setServiceNote(e.target.value)}
-                  placeholder="e.g., Extra ice, 2 bath towels, baby chair..."
+                  placeholder={isRoomQr ? "e.g., Extra towels, pillows, late checkout..." : "e.g., Extra plates, baby chair, spicy sauce..."}
                   className="w-full px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs text-[#1E1B18] focus:outline-none focus:border-[#6B2837]"
                 />
               </div>
@@ -2452,6 +2666,19 @@ export default function GuestQrPortalPage() {
                   </div>
                 </div>
               )}
+              {/* Optional Guest Details, Installable PWA App & Google Review Helper */}
+              <GuestProfileAndAppCard
+                businessName={qrLocation.business.name}
+                sessionToken={sessionToken}
+                onEnsureSession={ensureTableSessionToken}
+                onNotify={showBanner}
+              />
+
+              <GoogleReviewCard
+                publicCode={publicCode}
+                businessName={qrLocation.business.name}
+                initialReviewUrl={qrLocation.business.googleReviewUrl}
+              />
             </div>
           )}
 
@@ -2552,26 +2779,54 @@ export default function GuestQrPortalPage() {
                         {ord.rounds.flatMap((r) => r.lines).map((line) => (
                           <div
                             key={line.id}
-                            className="flex items-center justify-between text-xs"
+                            className="flex items-start justify-between gap-2 text-xs"
                           >
-                            <span className="text-[#292320]">
-                              {line.quantity}x {line.itemName}
-                            </span>
-                            <span className="font-bold text-[#292320] tabular-nums">
+                            <div className="min-w-0">
+                              <span className="text-[#292320] font-medium">
+                                {line.quantity}× {line.itemName}
+                              </span>
+                              {Array.isArray(line.appliedModifiers) && line.appliedModifiers.length > 0 && (
+                                <p className="text-[10px] text-[#71675E] mt-0.5">
+                                  {line.appliedModifiers.map((m) => m.optionName).join(", ")}
+                                </p>
+                              )}
+                            </div>
+                            <span className="font-bold text-[#292320] tabular-nums shrink-0">
                               {formatNPR(line.total)}
                             </span>
                           </div>
                         ))}
                       </div>
 
-                      <div className="pt-2 border-t border-[#EEE7DD] flex items-center justify-between text-xs font-bold">
-                        <span className="text-[#71675E]">Subtotal</span>
-                        <span className="text-[#6B2837] tabular-nums">
-                          {formatNPR(ord.totalAmount)}
-                        </span>
+                      <div className="pt-2 border-t border-[#EEE7DD] space-y-1 text-xs">
+                        {ord.subtotal !== undefined && (
+                          <div className="flex items-center justify-between text-[#71675E]">
+                            <span>Subtotal</span>
+                            <span className="tabular-nums">{formatNPR(ord.subtotal)}</span>
+                          </div>
+                        )}
+                        {ord.taxTotal !== undefined && toCents(ord.taxTotal) > 0 && (
+                          <div className="flex items-center justify-between text-[#71675E]">
+                            <span>Tax (VAT)</span>
+                            <span className="tabular-nums">{formatNPR(ord.taxTotal)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between font-bold pt-1 border-t border-[#EEE7DD]/70">
+                          <span className="text-[#292320]">Order Total</span>
+                          <span className="text-[#6B2837] tabular-nums">
+                            {formatNPR(ord.totalAmount)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {/* Post-Meal Google Review Helper on Table Bill */}
+                  <GoogleReviewCard
+                    publicCode={publicCode}
+                    businessName={qrLocation.business.name}
+                    initialReviewUrl={qrLocation.business.googleReviewUrl}
+                  />
 
                   {/* 1-Tap Bill Settlement Request */}
                   <div className="rounded-2xl bg-[#FFFCF7] border border-[#EEE7DD] p-4 shadow-xs space-y-2.5">
@@ -2846,21 +3101,21 @@ export default function GuestQrPortalPage() {
           </footer>
         </main>
 
-        {/* Floating Cart Bar (when items in cart on MENU tab) */}
-        {cartSummary.count > 0 && (
-          <div className="fixed bottom-16 left-0 right-0 z-30 max-w-lg mx-auto px-4">
+        {/* Floating Cart Bar (ONLY on MENU tab when cart drawer is closed) */}
+        {activeTab === "MENU" && !isCartOpen && cartSummary.count > 0 && (
+          <div className="fixed bottom-16 left-0 right-0 z-30 max-w-lg mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="w-full py-3 px-4 rounded-xl bg-[#6B2837] text-white border border-[#A77B38]/50 flex items-center justify-between cursor-pointer"
+              className="w-full py-3 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] border border-[#853547] flex items-center justify-between cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-[#FFFCF7] text-[#6B2837] font-extrabold text-xs flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-[#FFFCF7] text-[#6B2837] font-extrabold text-xs flex items-center justify-center tabular-nums">
                   {cartSummary.count}
                 </span>
                 <span className="text-xs font-bold">View Order Tray</span>
               </div>
-              <div className="flex items-center gap-1 text-xs font-extrabold">
+              <div className="flex items-center gap-1 text-xs font-extrabold tabular-nums">
                 <span>{formatNPR(cartSummary.subtotal)}</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
@@ -2868,8 +3123,8 @@ export default function GuestQrPortalPage() {
           </div>
         )}
 
-        {/* Sticky Bottom Navigation Bar (Preserved brand tabs with clean styling) */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7] border-t border-[#EEE7DD] shadow-xs px-2 py-1">
+        {/* Sticky Bottom Navigation Bar (safe-area aware) */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7] border-t border-[#D8CEC1] px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
           <div className="grid grid-cols-4 gap-1">
             <button
               type="button"
@@ -2941,20 +3196,49 @@ export default function GuestQrPortalPage() {
           }, 0);
           const curTotalCents = (curBaseCents + curModsCents) * customItemQty;
 
+          const hasHeroPhoto = Boolean(getItemImage(customizingItem));
+          const realSectionName = itemSectionNameMap.get(customizingItem.id) || "Menu";
+
           return (
-            <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden flex flex-col border border-[#D8CEC1]">
-                {/* Hero Dish Image or Food Icon */}
-                <div className="relative aspect-16/9 w-full overflow-hidden bg-[#FAF6F0] shrink-0 border-b border-[#EEE7DD]">
-                  <FoodImage item={customizingItem} iconClassName="w-12 h-12" />
-                  <button
-                    type="button"
-                    onClick={() => setCustomizingItem(null)}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#FFFCF7] flex items-center justify-center text-[#292320] hover:bg-white transition shadow-sm cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+            <div
+              className="fixed inset-0 z-50 bg-[#292320]/45 flex items-end sm:items-center justify-center p-0 sm:p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label={customizingItem.name}
+              onClick={() => setCustomizingItem(null)}
+            >
+              <div
+                className="bg-[#FFFCF7] w-full max-w-lg sm:max-w-md rounded-t-xl sm:rounded-xl max-h-[90dvh] overflow-hidden flex flex-col border-t sm:border border-[#D8CEC1]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Hero Dish Photo (compact header bar when no photo exists) */}
+                {hasHeroPhoto ? (
+                  <div className="relative aspect-16/9 w-full overflow-hidden bg-[#F7F3EC] shrink-0 border-b border-[#EEE7DD]">
+                    <FoodImage item={customizingItem} iconClassName="w-10 h-10" />
+                    <button
+                      type="button"
+                      aria-label="Close dish details"
+                      onClick={() => setCustomizingItem(null)}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#292320] hover:bg-[#F7F3EC] transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#F7F3EC] border-b border-[#EEE7DD] shrink-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B2837]">
+                      {realSectionName}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Close dish details"
+                      onClick={() => setCustomizingItem(null)}
+                      className="w-8 h-8 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#292320] hover:bg-[#EEE7DD] transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Content Body */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -2972,76 +3256,94 @@ export default function GuestQrPortalPage() {
                         {customizingItem.description}
                       </p>
                     )}
+                    {Array.isArray(customizingItem.allergens) && customizingItem.allergens.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[10px] font-bold uppercase text-[#946000]">Allergens:</span>
+                        {customizingItem.allergens.map((alg) => (
+                          <span
+                            key={alg}
+                            className="px-1.5 py-0.5 rounded bg-[#FDF7ED] border border-[#EDD7AD] text-[10px] font-semibold text-[#946000]"
+                          >
+                            {alg}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Real Culinary Metrics from Database */}
-                  <div className="grid grid-cols-3 gap-2 py-1">
-                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
+                  {/* Real Culinary Metrics from Menu */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-[#F7F3EC] rounded-lg p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
                       <Clock className="w-4 h-4 text-[#A77B38] mx-auto" />
-                      <p className="text-xs font-bold text-[#292320]">
+                      <p className="text-xs font-bold text-[#292320] tabular-nums">
                         {customizingItem.prepTimeMinutes || 15} mins
                       </p>
-                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Prep Time</p>
+                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Est. Prep Time</p>
                     </div>
 
-                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
+                    <div className="bg-[#F7F3EC] rounded-lg p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
                       <ChefHat className="w-4 h-4 text-[#6B2837] mx-auto" />
                       <p className="text-xs font-bold text-[#292320] truncate">
-                        {customizingItem.product?.category?.name || "Kitchen"}
+                        {realSectionName}
                       </p>
-                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Category</p>
-                    </div>
-
-                    <div className="bg-[#FAF6F0] rounded-xl p-2.5 text-center border border-[#EEE7DD] space-y-0.5">
-                      <UtensilsCrossed className="w-4 h-4 text-emerald-600 mx-auto" />
-                      <p className="text-xs font-bold text-[#292320] truncate">
-                        {customizingItem.product?.subcategory?.name || "Fresh"}
-                      </p>
-                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Course</p>
+                      <p className="text-[9px] uppercase font-semibold text-[#71675E]">Menu Section</p>
                     </div>
                   </div>
 
-                  {/* Modifiers & Options */}
+                  {/* Modifiers & Options (supports radio for maxSelect === 1 + required validation) */}
                   {Array.isArray(customizingItem.modifierGroups) &&
                     customizingItem.modifierGroups.map((link) => {
                       const group = link.modifierGroup;
                       if (!group || !group.options || group.options.length === 0) return null;
+                      const isSingleSelect = group.maxSelect === 1;
+                      const groupOptionIds = group.options.map((o) => o.id);
                       return (
                         <div key={group.id} className="space-y-2 pt-2 border-t border-[#EEE7DD]">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#292320]">
                               {group.displayName || group.name}
                             </span>
-                            <span className="text-[10px] text-[#71675E]">
+                            <span className={`text-[10px] font-semibold ${group.isRequired ? "text-[#6B2837]" : "text-[#71675E]"}`}>
                               {group.isRequired ? "Required" : "Optional"}
+                              {group.maxSelect && group.maxSelect > 1 ? ` (up to ${group.maxSelect})` : ""}
                             </span>
                           </div>
                           <div className="space-y-1.5">
                             {group.options.map((opt) => {
                               const checked = selectedModOptionIds.includes(opt.id);
+                              const unavailable = opt.isAvailable === false;
                               return (
                                 <label
                                   key={opt.id}
-                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
-                                    checked
-                                      ? "border-[#6B2837] bg-[#FAF6F0] font-semibold text-[#292320]"
-                                      : "border-[#EEE7DD] bg-[#FFFCF7] text-[#292320] hover:bg-[#FAF6F0]/50"
+                                  className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition ${
+                                    unavailable
+                                      ? "border-[#EEE7DD] bg-[#F7F3EC] text-[#71675E] opacity-60 cursor-not-allowed"
+                                      : checked
+                                      ? "border-[#6B2837] bg-[#F7F3EC] font-semibold text-[#292320] cursor-pointer"
+                                      : "border-[#EEE7DD] bg-[#FFFCF7] text-[#292320] hover:bg-[#F7F3EC]/50 cursor-pointer"
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
                                     <input
-                                      type="checkbox"
+                                      type={isSingleSelect ? "radio" : "checkbox"}
+                                      name={isSingleSelect ? `mod-group-${group.id}` : undefined}
+                                      disabled={unavailable}
                                       checked={checked}
                                       onChange={() => {
-                                        setSelectedModOptionIds((prev) =>
-                                          prev.includes(opt.id)
+                                        if (unavailable) return;
+                                        setSelectedModOptionIds((prev) => {
+                                          if (isSingleSelect) {
+                                            return [...prev.filter((id) => !groupOptionIds.includes(id)), opt.id];
+                                          }
+                                          return prev.includes(opt.id)
                                             ? prev.filter((id) => id !== opt.id)
-                                            : [...prev, opt.id]
-                                        );
+                                            : [...prev, opt.id];
+                                        });
                                       }}
                                       className="accent-[#6B2837] w-4 h-4 rounded"
                                     />
                                     <span>{opt.name}</span>
+                                    {unavailable && <span className="text-[10px] text-[#B33432] font-semibold">(Sold Out)</span>}
                                   </div>
                                   {toCents(opt.priceDelta) > 0 && (
                                     <span className="text-[#6B2837] font-bold tabular-nums">
@@ -3181,13 +3483,13 @@ export default function GuestQrPortalPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-[#1E1B18] mb-1">
-                      Order / Delivery Instructions
+                      Kitchen Notes (Optional)
                     </label>
                     <input
                       type="text"
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
-                      placeholder="Allergies, cutlery requests, or delivery notes..."
+                      placeholder="Allergies, spice preference, extra cutlery..."
                       className="w-full px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
                     />
                   </div>
@@ -3513,8 +3815,13 @@ export default function GuestQrPortalPage() {
             MODAL: MOBILE SEARCH & CHEF FOOD RECOMMENDATIONS
            ========================================================= */}
         {isSearchModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex flex-col justify-start p-0 sm:p-4">
-            <div className="bg-[#FFFCF7] w-full max-w-md mx-auto sm:rounded-xl min-h-screen sm:min-h-0 sm:max-h-[88vh] flex flex-col border border-[#D8CEC1]">
+          <div
+            className="fixed inset-0 z-50 bg-[#292320]/45 flex flex-col justify-start p-0 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search menu"
+          >
+            <div className="bg-[#FFFCF7] w-full max-w-lg sm:max-w-md mx-auto sm:rounded-xl h-[100dvh] sm:h-auto sm:max-h-[88dvh] flex flex-col border-0 sm:border border-[#D8CEC1]">
               {/* Search Header Bar */}
               <div className="p-3.5 border-b border-[#EEE7DD] bg-[#FFFCF7] sm:rounded-t-xl flex items-center gap-2">
                 <div className="relative flex-1 flex items-center">
@@ -3524,14 +3831,15 @@ export default function GuestQrPortalPage() {
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search dishes, momos, curries..."
-                    className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-[#FAF6F0] border border-[#EEE7DD] text-xs sm:text-sm text-[#292320] focus:outline-none focus:border-[#6B2837]"
+                    placeholder="Search dishes, momos, drinks..."
+                    className="w-full pl-9 pr-8 py-2 rounded-lg bg-[#F7F3EC] border border-[#D8CEC1] text-xs sm:text-sm text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
                   />
                   {searchQuery && (
                     <button
                       type="button"
+                      aria-label="Clear search"
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-2.5 text-[#71675E] hover:text-[#292320] p-1"
+                      className="absolute right-2.5 text-[#71675E] hover:text-[#292320] p-1 cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -3539,8 +3847,13 @@ export default function GuestQrPortalPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsSearchModalOpen(false)}
-                  className="px-3 py-2 text-xs font-bold text-[#6B2837] hover:bg-[#FAF6F0] rounded-xl transition cursor-pointer"
+                  onClick={() => {
+                    if (filteredSections.flatMap((s) => s.items).length === 0) {
+                      setSearchQuery("");
+                    }
+                    setIsSearchModalOpen(false);
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-[#6B2837] hover:bg-[#F7F3EC] rounded-lg transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -3550,14 +3863,14 @@ export default function GuestQrPortalPage() {
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {searchQuery.trim() ? (
                   <div className="space-y-3">
-                    <p className="text-xs font-bold text-[#71675E]">
+                    <p className="text-xs font-bold text-[#71675E] tabular-nums">
                       Search Results ({filteredSections.flatMap((s) => s.items).length})
                     </p>
                     {filteredSections.flatMap((s) => s.items).length === 0 ? (
                       <div className="text-center py-8 text-xs text-[#71675E] space-y-1">
                         <UtensilsCrossed className="w-6 h-6 text-[#A77B38] mx-auto mb-1" />
                         <p className="font-bold text-[#292320]">No dishes found</p>
-                        <p>Try searching with another keyword or explore chef picks.</p>
+                        <p>Try searching with another keyword or explore Chef&apos;s Picks.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -3568,10 +3881,10 @@ export default function GuestQrPortalPage() {
                               setIsSearchModalOpen(false);
                               handleSelectMenuItem(item);
                             }}
-                            className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                            className="p-3 rounded-lg bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-between gap-3 hover:border-[#6B2837] transition cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-[#EEE7DD]">
+                              <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-[#EEE7DD]">
                                 <FoodImage item={item} iconClassName="w-5 h-5" />
                               </div>
                               <div className="min-w-0">
@@ -3586,7 +3899,7 @@ export default function GuestQrPortalPage() {
                             <button
                               type="button"
                               onClick={(e) => handleQuickAddMenuItem(e, item)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#6B2837] text-white text-xs font-bold shrink-0 cursor-pointer"
+                              className="h-8 px-3 rounded-md bg-[#6B2837] text-[#FFFCF7] text-xs font-bold shrink-0 cursor-pointer"
                             >
                               + Add
                             </button>
@@ -3599,10 +3912,10 @@ export default function GuestQrPortalPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#292320] flex items-center gap-1.5">
-                        <Flame className="w-4 h-4 text-[#A77B38]" />
-                        Best Food Recommended by Chef
+                        <ChefHat className="w-4 h-4 text-[#6B2837]" />
+                        Chef&apos;s Picks
                       </span>
-                      <span className="text-[10px] text-[#A77B38] font-bold">Popular</span>
+                      <span className="text-[10px] text-[#71675E] font-semibold">Menu Favorites</span>
                     </div>
 
                     <div className="space-y-2">
@@ -3613,25 +3926,21 @@ export default function GuestQrPortalPage() {
                             setIsSearchModalOpen(false);
                             handleSelectMenuItem(item);
                           }}
-                          className="p-3 rounded-xl bg-[#FFFCF7] border border-[#EEE7DD] flex items-center justify-between gap-3 hover:border-[#A77B38] transition cursor-pointer"
+                          className="p-3 rounded-lg bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-between gap-3 hover:border-[#6B2837] transition cursor-pointer"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[#EEE7DD]">
-                              <FoodImage item={item} iconClassName="w-6 h-6" />
+                            <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-[#EEE7DD]">
+                              <FoodImage item={item} iconClassName="w-5 h-5" />
                             </div>
                             <div className="min-w-0 space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="text-xs font-bold text-[#292320] truncate">
-                                  {item.name}
-                                </h4>
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600">
-                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                                  4.9
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-[#71675E] line-clamp-1">
-                                {item.description || "Fresh handcrafted recipe"}
-                              </p>
+                              <h4 className="text-xs font-bold text-[#292320] truncate">
+                                {item.name}
+                              </h4>
+                              {item.description && (
+                                <p className="text-[11px] text-[#71675E] line-clamp-1">
+                                  {item.description}
+                                </p>
+                              )}
                               <p className="text-xs text-[#6B2837] font-extrabold tabular-nums">
                                 {formatNPR(item.basePrice)}
                               </p>
@@ -3640,7 +3949,7 @@ export default function GuestQrPortalPage() {
                           <button
                             type="button"
                             onClick={(e) => handleQuickAddMenuItem(e, item)}
-                            className="px-3 py-1.5 rounded-xl bg-[#6B2837] text-white text-xs font-bold hover:bg-[#541E2A] transition shrink-0 cursor-pointer shadow-xs"
+                            className="h-8 px-3 rounded-md bg-[#6B2837] text-[#FFFCF7] text-xs font-bold hover:bg-[#541E2A] transition shrink-0 cursor-pointer"
                           >
                             + Add
                           </button>

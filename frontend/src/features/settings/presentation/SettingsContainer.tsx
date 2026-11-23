@@ -172,6 +172,21 @@ export function SettingsContainer() {
                     className="w-full px-3 py-2 font-mono bg-[#F7F3EC] border border-[#EEE7DD] rounded-md text-[#292320] outline-none focus:border-[#6B2837]"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Google Business Profile Review Link
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.googleReviewUrl || ""}
+                    onChange={(e) => handleChange("googleReviewUrl", e.target.value)}
+                    placeholder="https://g.page/r/your-business/review"
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#EEE7DD] rounded-md text-[#292320] placeholder:text-[#71675E] outline-none focus:border-[#6B2837]"
+                  />
+                  <p className="text-[11px] text-[#71675E] mt-1">
+                    Customers scanning your table or room QR will see a 3–5★ review helper linking directly to your Google Business Profile.
+                  </p>
+                </div>
               </div>
             </div>
           )}

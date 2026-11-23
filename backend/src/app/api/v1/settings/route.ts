@@ -17,6 +17,7 @@ const settingsSchema = z.object({
   ownerName: z.string().optional().nullable(),
   registrationNumber: z.string().optional().nullable(),
   website: z.string().optional().nullable(),
+  googleReviewUrl: z.string().trim().url("Invalid Google review URL").optional().nullable().or(z.literal("")),
   invoiceLogo: z.string().optional().nullable(),
   receiptLogo: z.string().optional().nullable(),
   panNumber: z.string().optional().nullable(),
