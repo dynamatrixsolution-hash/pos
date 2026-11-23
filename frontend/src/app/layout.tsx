@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/session-provider";
 import ToastContainer from "@/components/toast";
+import { PwaRegistrar } from "@/components/pwa-registrar";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -16,9 +17,14 @@ export const metadata: Metadata = {
   description:
     "RestroInn is a modern, scalable hotel, restaurant, and POS management platform optimized for dining, hospitality, speed, accuracy, and double-entry reporting.",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "RestroInn",
+  },
   icons: {
-    icon: "/logo-icon.jpg",
-    apple: "/logo-icon.jpg",
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
   },
 };
 
@@ -40,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <SessionProvider>
           <ThemeProvider>
+            <PwaRegistrar />
             {children}
             <ToastContainer />
           </ThemeProvider>

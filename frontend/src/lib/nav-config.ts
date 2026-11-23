@@ -18,6 +18,7 @@ import {
   RefreshCcw,
   ClipboardList,
   AlertTriangle,
+  Bell,
   History,
   TrendingUp,
   Boxes,
@@ -466,6 +467,13 @@ export const navigationConfig: NavItem[] = [
     href: "/dashboard/users",
     icon: Users,
     roles: ["MANAGER"],
+    group: "Administration",
+  },
+  {
+    title: "Push Notifications",
+    href: "/dashboard/notifications",
+    icon: Bell,
+    roles: ["OWNER", "MANAGER"],
     group: "Administration",
   },
   {

@@ -9,6 +9,7 @@ import { playNotificationChime, showBrowserNotification, vibrateMobile } from "@
 import { GoogleReviewCard } from "@/features/guest-portal/components/GoogleReviewCard";
 import { GuestProfileAndAppCard } from "@/features/guest-portal/components/GuestProfileAndAppCard";
 import { InstallAppPopup } from "@/features/guest-portal/components/InstallAppPopup";
+import { GuestSplashScreen } from "@/features/guest-portal/components/GuestSplashScreen";
 import {
   UtensilsCrossed,
   Clock,
@@ -1637,6 +1638,11 @@ export default function GuestQrPortalPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614] flex justify-center">
+      <GuestSplashScreen
+        businessName={qrLocation.business.name}
+        locationLabel={locationBadgeText}
+        publicCode={publicCode}
+      />
       <div className="w-full max-w-lg min-h-screen flex flex-col border-x border-[#EEE7DD] bg-[#FFFCF7] relative pb-24 shadow-2xs">
         {/* Sticky Mobile Hospitality Header: Restaurant Name on Left, Table + Search + Waiter on Right */}
         <header className="sticky top-0 z-30 bg-[#FFFCF7] px-4 py-2.5 border-b border-[#EEE7DD] shadow-2xs">
