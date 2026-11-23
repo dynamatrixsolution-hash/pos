@@ -98,9 +98,11 @@ function SubscriptionTimer({
   endDate,
   plan,
   status,
+  billingCycle,
 }: SubscriptionMeta) {
   const [timeLeft, setTimeLeft] = React.useState("");
   const [urgency, setUrgency] = React.useState<"normal" | "warning" | "danger">("normal");
+  const [visible, setVisible] = React.useState(false);
 
   const formattedEnd = React.useMemo(() => {
     const d = new Date(endDate);
@@ -112,6 +114,9 @@ function SubscriptionTimer({
   }, [endDate]);
 
   React.useEffect(() => {
+    const isAnnual = ["ANNUAL", "YEARLY"].includes((billingCycle || "").toUpperCase());
+    const thresholdDays = isAnnual ? 30 : 7;
+
     function updateTimer() {
       const end = new Date(endDate);
       const now = new Date();
@@ -120,6 +125,7 @@ function SubscriptionTimer({
       if (diff <= 0 || status !== "ACTIVE") {
         setTimeLeft("Expired");
         setUrgency("danger");
+        setVisible(true);
         return;
       }
 
@@ -127,25 +133,31 @@ function SubscriptionTimer({
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-      if (days > 30) {
-        setTimeLeft(`${days}d`);
-        setUrgency("normal");
-      } else if (days > 7) {
+      // Only show renewal countdown when within threshold (<=30d for annual, <=7d for monthly)
+      if (days > thresholdDays) {
+        setVisible(false);
+        return;
+      }
+
+      setVisible(true);
+      if (days > 7) {
         setTimeLeft(`${days}d left`);
         setUrgency("warning");
       } else if (days >= 1) {
-        setTimeLeft(`${days}d ${hours}h`);
+        setTimeLeft(`${days}d ${hours}h left`);
         setUrgency("danger");
       } else {
-        setTimeLeft(`${hours}h ${minutes}m`);
+        setTimeLeft(`${hours}h ${minutes}m left`);
         setUrgency("danger");
       }
     }
 
     updateTimer();
-    const interval = setInterval(updateTimer, 60000); // update every minute
+    const interval = setInterval(updateTimer, 60000);
     return () => clearInterval(interval);
-  }, [endDate, status]);
+  }, [endDate, status, billingCycle]);
+
+  if (!visible) return null;
 
   const colorClasses = {
     normal: "bg-[#F7F3EC] border-[#D8CEC1] text-[#71675E]",
@@ -854,25 +866,25 @@ export default function DashboardShellClient({
       if (allowedChildren.length === 0) return null;
 
       return (
-        <div key={item.title} className="mb-1">
+        <div key={item.title} className="mb-0.5">
           <button
             type="button"
             onClick={() => toggleMenu(item.title)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-colors duration-150 group cursor-pointer ${
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-150 group cursor-pointer ${
               hasActiveChild
                 ? "bg-[#2E2125] text-[#FFFCF7] border border-[#4A343B]"
                 : "text-[#DFD6CB] hover:bg-[#2B2023] hover:text-[#FFFCF7] border border-transparent"
             }`}
           >
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
                   hasActiveChild
                     ? "bg-[#6B2837] text-[#FFFCF7]"
                     : "bg-[#2A2023] text-[#B5A89B] group-hover:bg-[#35282C] group-hover:text-[#FFFCF7]"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
               </div>
               <span className="truncate">{item.title}</span>
             </div>
@@ -894,7 +906,7 @@ export default function DashboardShellClient({
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <div className="ml-6 pl-3 pr-1 py-1 mt-1 space-y-0.5 border-l border-[#3B2D31]">
+                <div className="ml-5 pl-2.5 pr-1 py-0.5 mt-0.5 space-y-0.5 border-l border-[#3B2D31]">
                   {allowedChildren.map((child) => {
                     const isChildActive = isNavHrefActive(child.href);
                     const ChildIcon = child.icon;
@@ -910,13 +922,13 @@ export default function DashboardShellClient({
                           }
                           if (isMobile) setMobileMenuOpen(false);
                         }}
-                        className={`flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-xs transition-colors duration-150 ${
+                        className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-xs transition-colors duration-150 ${
                           isChildActive
                             ? "bg-[#6B2837] text-[#FFFCF7] font-semibold border border-[#853547]"
                             : "text-[#BFB2A4] hover:text-[#FFFCF7] hover:bg-[#2B2023] font-medium border border-transparent"
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
                           <ChildIcon
                             className={`h-3.5 w-3.5 shrink-0 ${
                               isChildActive ? "text-[#FFFCF7]" : "text-[#9A8C80]"
@@ -951,21 +963,21 @@ export default function DashboardShellClient({
           }
           if (isMobile) setMobileMenuOpen(false);
         }}
-        className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-semibold transition-colors duration-150 group mb-1 ${
+        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-150 group mb-0.5 ${
           isActive
             ? "bg-[#6B2837] text-[#FFFCF7] border border-[#853547]"
             : "text-[#DFD6CB] hover:bg-[#2B2023] hover:text-[#FFFCF7] border border-transparent"
         }`}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
-            className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+            className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-colors ${
               isActive
                 ? "bg-[#541E2A] text-[#FFFCF7]"
                 : "bg-[#2A2023] text-[#B5A89B] group-hover:bg-[#35282C] group-hover:text-[#FFFCF7]"
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5" />
           </div>
           <span className="truncate">{item.title}</span>
         </div>
@@ -985,8 +997,8 @@ export default function DashboardShellClient({
         <React.Fragment key={item.title}>
           {showGroupHeader && (
             <div
-              className={`px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#9A8C80] select-none ${
-                idx === 0 ? "pt-0.5" : "pt-3.5 mt-2 border-t border-[#322529]"
+              className={`px-2.5 pb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#9A8C80] select-none ${
+                idx === 0 ? "pt-0" : "pt-2.5 mt-1.5 border-t border-[#322529]"
               }`}
             >
               {item.group}
@@ -1068,10 +1080,10 @@ export default function DashboardShellClient({
           </div>
         </aside>
       ) : (
-        <aside className="hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#1F1719] border-r border-[#33262A] no-print w-64">
-          <div className="h-16 flex items-center justify-between px-5 border-b border-[#33262A] bg-[#1F1719]">
-            <Link href="/dashboard" className="flex items-center gap-3 min-w-0">
-              <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-8 w-8 rounded-lg object-contain shrink-0 border border-[#3B2D31]" />
+        <aside className="hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#1F1719] border-r border-[#33262A] no-print w-60">
+          <div className="h-14 flex items-center justify-between px-4 border-b border-[#33262A] bg-[#1F1719]">
+            <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
+              <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-7 w-7 rounded-lg object-contain shrink-0 border border-[#3B2D31]" />
               <div className="min-w-0">
                 <div className="font-bold text-[#FFFCF7] tracking-tight text-sm leading-tight truncate">
                   RestroInn
@@ -1086,7 +1098,7 @@ export default function DashboardShellClient({
               </div>
             </Link>
           </div>
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="flex-1 overflow-y-auto px-2.5 py-2.5">
             {renderGroupedNavigation(false)}
           </nav>
           <div className="p-3 border-t border-[#33262A] bg-[#1A1315]">
@@ -1509,11 +1521,12 @@ export default function DashboardShellClient({
 
           <div className="flex items-center gap-1.5 shrink-0">
             {subscription && user.role !== "SUPER_ADMIN" && (
-              <div className="hidden xl:block shrink-0">
+              <div className="hidden sm:block shrink-0">
                 <SubscriptionTimer
                   endDate={subscription.endDate}
                   plan={subscription.plan}
                   status={subscription.status}
+                  billingCycle={subscription.billingCycle}
                 />
               </div>
             )}
