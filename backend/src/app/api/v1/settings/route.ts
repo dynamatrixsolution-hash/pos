@@ -64,7 +64,7 @@ const settingsSchema = z.object({
   tableQrMode: z
     .enum(["STAFF_SEATED_OR_PIN", "SELF_SEAT_WITH_GEOFENCE", "OPEN_STAFF_APPROVAL"])
     .optional()
-    .default("STAFF_SEATED_OR_PIN"),
+    .default("OPEN_STAFF_APPROVAL"),
   branchLat: z.coerce.number().min(-90).max(90).optional().nullable(),
   branchLng: z.coerce.number().min(-180).max(180).optional().nullable(),
   geofenceRadiusMeters: z.coerce.number().min(30).max(5000).optional().default(150),

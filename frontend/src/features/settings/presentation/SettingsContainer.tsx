@@ -352,18 +352,18 @@ export function SettingsContainer() {
                     Table QR Dine-In Security Mode
                   </label>
                   <select
-                    value={formData.tableQrMode || "STAFF_SEATED_OR_PIN"}
+                    value={formData.tableQrMode || "OPEN_STAFF_APPROVAL"}
                     onChange={(e) => handleChange("tableQrMode", e.target.value)}
                     className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] outline-none focus:border-[#6B2837]"
                   >
-                    <option value="STAFF_SEATED_OR_PIN">
-                      Staff Seated or 4-Digit Table PIN Required (Recommended — Blocks Remote Prank Orders)
+                    <option value="OPEN_STAFF_APPROVAL">
+                      Seamless Walk-In QR (Recommended — Auto-Accepts Within Spend Limit; Holds Large Orders for Staff)
                     </option>
                     <option value="SELF_SEAT_WITH_GEOFENCE">
                       Self-Seat with GPS Geofence (Customer must be physically at restaurant)
                     </option>
-                    <option value="OPEN_STAFF_APPROVAL">
-                      Open Scan — Hold All Guest Orders for Staff Confirmation Before Kitchen
+                    <option value="STAFF_SEATED_OR_PIN">
+                      Strict Mode — Staff Must Seat Table or Provide 4-Digit PIN First
                     </option>
                   </select>
                 </div>

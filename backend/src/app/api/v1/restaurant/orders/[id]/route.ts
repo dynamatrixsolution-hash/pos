@@ -32,6 +32,16 @@ const patchOrderSchema = z.union([
   }),
 ]);
 
+async function resolveGuestSessionForOrder(tableSessionId: string | null | undefined) {
+  if (!tableSessionId) return null;
+  const gs = await db.guestSession.findFirst({
+    where: { tableSessionId, status: "ACTIVE" },
+    orderBy: { lastActiveAt: "desc" },
+    select: { id: true },
+  });
+  return gs?.id ?? null;
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -51,7 +61,8 @@ export async function PATCH(
         where: { id: orderId, businessId: session.businessId },
         include: {
           rounds: { orderBy: { roundNumber: "asc" } },
-          kitchenTickets: { select: { id: true, roundId: true } },
+          orderLines: true,
+          kitchenTickets: { include: { lines: true } },
         },
       });
       if (!existing) {
@@ -119,21 +130,83 @@ export async function PATCH(
           return updated;
         });
 
-        void dispatchNotification({
-          businessId: session.businessId,
-          targetRoles: ["KITCHEN"],
-          category: "KITCHEN",
-          priority: "URGENT",
-          title: `Confirmed ${existing.orderType} KOT — #${existing.orderNumber}`,
-          message: `Order #${existing.orderNumber} was confirmed by staff and sent to kitchen.`,
-          actionUrl: "/dashboard/restaurant/kds",
-          dedupeKey: `order-approved-kds:${existing.id}`,
-        });
+        // Notify Kitchen + Customer (table guest session or opted-in GUEST devices)
+        void (async () => {
+          const guestSessionId = await resolveGuestSessionForOrder(existing.tableSessionId);
+          await Promise.all([
+            dispatchNotification({
+              businessId: session.businessId,
+              targetRoles: ["KITCHEN"],
+              category: "KITCHEN",
+              priority: "URGENT",
+              title: `Confirmed ${existing.orderType} KOT — #${existing.orderNumber}`,
+              message: `Order #${existing.orderNumber} was confirmed by staff and sent to kitchen.`,
+              actionUrl: "/dashboard/restaurant/kds",
+              dedupeKey: `order-approved-kds:${existing.id}`,
+            }),
+            dispatchNotification({
+              businessId: session.businessId,
+              ...(guestSessionId ? { guestSessionId } : { targetRoles: ["GUEST"] }),
+              category: "ORDER",
+              priority: "HIGH",
+              title: `Order #${existing.orderNumber} Accepted`,
+              message: `Your ${existing.orderType.toLowerCase()} order has been confirmed and our kitchen is preparing your food now.`,
+              dedupeKey: `order-approved-guest:${existing.id}`,
+            }),
+          ]);
+        })();
 
         return NextResponse.json({ success: true, order: updatedOrder });
       }
 
-      // DISPATCH_DELIVERY
+      // DISPATCH_DELIVERY — strict guards: must be DELIVERY, ACCEPTED, KITCHEN READY, and not already SERVED/DISPATCHED
+      if (existing.orderType !== "DELIVERY") {
+        return NextResponse.json(
+          { error: "Only DELIVERY orders can be dispatched to a rider." },
+          { status: 400 }
+        );
+      }
+      if (
+        existing.acceptanceStatus !== "ACCEPTED" ||
+        /\[STAFF APPROVAL REQUIRED/i.test(existing.notes || "")
+      ) {
+        return NextResponse.json(
+          { error: "Please accept and send this order to the kitchen before dispatching a rider.", code: "ORDER_NOT_ACCEPTED" },
+          { status: 409 }
+        );
+      }
+      if (existing.fulfillmentStatus === "SERVED") {
+        return NextResponse.json(
+          { error: "This order has already been delivered / served.", code: "ALREADY_SERVED" },
+          { status: 409 }
+        );
+      }
+      if (/\[OUT FOR DELIVERY/i.test(existing.notes || "")) {
+        return NextResponse.json(
+          { error: "This order is already out for delivery.", code: "ALREADY_DISPATCHED" },
+          { status: 409 }
+        );
+      }
+
+      const activeTickets = existing.kitchenTickets.filter((t) => t.status !== "CANCELLED");
+      const activeLines = existing.orderLines.filter(
+        (l) => l.fulfillmentStatus !== "CANCELLED" && l.acceptanceStatus !== "REJECTED"
+      );
+      const kitchenReady =
+        existing.fulfillmentStatus === "READY" ||
+        (activeTickets.length > 0 && activeTickets.every((t) => t.status === "READY" || t.status === "SERVED")) ||
+        (activeLines.length > 0 && activeLines.every((l) => l.fulfillmentStatus === "READY" || l.fulfillmentStatus === "SERVED"));
+
+      if (!kitchenReady) {
+        return NextResponse.json(
+          {
+            error: "Cannot dispatch to rider yet — kitchen has not finished preparing this order. Mark the order Ready in Kitchen Display (KDS) first.",
+            code: "KITCHEN_NOT_READY",
+          },
+          { status: 409 }
+        );
+      }
+
       const rider = parsed.riderName?.trim() || "In-House Rider";
       const cleanedNotes = (existing.notes || "")
         .replace(/\[OUT FOR DELIVERY[^\]]*\]/gi, "")
@@ -160,6 +233,16 @@ export async function PATCH(
         entity: "RestaurantOrder",
         entityId: existing.id,
         newValue: { rider, fulfillmentStatus: "READY" },
+      });
+
+      void dispatchNotification({
+        businessId: session.businessId,
+        targetRoles: ["GUEST"],
+        category: "ORDER",
+        priority: "HIGH",
+        title: `Order #${existing.orderNumber} Out for Delivery`,
+        message: `Your food is ready and ${rider} is on the way to your delivery address.`,
+        dedupeKey: `order-dispatched-guest:${existing.id}`,
       });
 
       return NextResponse.json({ success: true, order: updatedOrder });

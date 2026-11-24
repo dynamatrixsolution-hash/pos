@@ -293,6 +293,9 @@ interface GuestOrder {
   fulfillmentStatus: string;
   settlementStatus: string;
   trackerStage: "ORDER_RECEIVED" | "COOKING" | "ON_ITS_WAY" | "SERVED" | "REJECTED";
+  isPendingApproval?: boolean;
+  isOutForDelivery?: boolean;
+  riderName?: string | null;
   subtotal: string | number;
   taxTotal: string | number;
   totalAmount: string | number;
@@ -430,11 +433,13 @@ export default function GuestQrPortalPage() {
 
   // Multi-channel ordering (Dine-In, Takeaway, Delivery), post-settlement Thank-You & Order actions
   const initialModeParam = (searchParams?.get("mode") || "").toUpperCase();
+  const initialTabParam = (searchParams?.get("tab") || "").toUpperCase();
   const [orderChannel, setOrderChannel] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">(
     initialModeParam === "DELIVERY" || initialModeParam === "TAKEAWAY"
       ? initialModeParam
       : "DINE_IN"
   );
+  const channelOrderStagesRef = useRef<Record<string, string>>({});
   const isRemoteChannelMode =
     initialModeParam === "DELIVERY" || initialModeParam === "TAKEAWAY";
   const [channelPaymentPref, setChannelPaymentPref] = useState<
@@ -749,6 +754,78 @@ export default function GuestQrPortalPage() {
     clearPrivateSessionState,
     showBanner,
   ]);
+
+  // Live poll saved Delivery / Takeaway orders every 5s + notify on status transitions (Accepted / Dispatched / Cancelled)
+  const fetchSavedChannelOrders = useCallback(
+    async (silent = true) => {
+      if (typeof window === "undefined") return;
+      try {
+        const raw = localStorage.getItem("restroinn_guest_channel_orders_v1");
+        if (!raw) return;
+        const refs = JSON.parse(raw);
+        if (!Array.isArray(refs) || refs.length === 0) return;
+
+        if (!silent) setRefreshingData(true);
+        const res = await apiClient.guest.getChannelOrders(refs);
+        const liveOrders: GuestOrder[] = Array.isArray(res?.orders) ? res.orders : [];
+        if (liveOrders.length === 0) return;
+
+        // Notify guest on every status transition (Accepted, Cooking, Out for Delivery, Delivered, Cancelled)
+        for (const ord of liveOrders) {
+          const statusKey = `${ord.trackerStage}|${ord.isPendingApproval ? "P" : "A"}|${ord.isOutForDelivery ? "D" : "N"}`;
+          const prevKey = channelOrderStagesRef.current[ord.id];
+          if (prevKey && prevKey !== statusKey) {
+            let msg = "";
+            if (ord.trackerStage === "REJECTED") {
+              msg = `Order #${ord.orderNumber} was cancelled.`;
+            } else if (ord.isOutForDelivery) {
+              msg = `Order #${ord.orderNumber} is Out for Delivery${ord.riderName ? ` with ${ord.riderName}` : ""}!`;
+            } else if (ord.trackerStage === "SERVED") {
+              msg = `Order #${ord.orderNumber} has been delivered / completed!`;
+            } else if (ord.trackerStage === "COOKING") {
+              msg = `Order #${ord.orderNumber} accepted! Kitchen is preparing your food.`;
+            } else if (ord.trackerStage === "ON_ITS_WAY") {
+              msg = `Order #${ord.orderNumber} is ready!`;
+            }
+            if (msg) {
+              showBanner(msg, ord.trackerStage === "REJECTED" ? "error" : "success");
+              playNotificationChime();
+              vibrateMobile();
+              showBrowserNotification(`Order #${ord.orderNumber}`, msg);
+            }
+          }
+          channelOrderStagesRef.current[ord.id] = statusKey;
+        }
+
+        setOrders((prev) => {
+          const dineInOrders = prev.filter((o) => o.orderType === "DINE_IN" || o.orderType === "ROOM_SERVICE");
+          const merged = [...liveOrders, ...dineInOrders];
+          const seen = new Set<string>();
+          return merged.filter((o) => {
+            if (seen.has(o.id)) return false;
+            seen.add(o.id);
+            return true;
+          });
+        });
+      } catch {
+        // silent poll
+      } finally {
+        if (!silent) setRefreshingData(false);
+      }
+    },
+    [showBanner]
+  );
+
+  useEffect(() => {
+    if (initialTabParam === "TRACKER") {
+      setActiveTab("TRACKER");
+    }
+    void fetchSavedChannelOrders(true);
+    const interval = setInterval(() => {
+      void fetchSavedChannelOrders(true);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [initialTabParam, fetchSavedChannelOrders]);
 
   // Cooldown countdown tick every 1 second
   useEffect(() => {
@@ -1441,13 +1518,37 @@ export default function GuestQrPortalPage() {
 
         const created = res?.order;
         if (created) {
+          // Persist reference in localStorage so customer can track live across reloads & in /guest app
+          if (typeof window !== "undefined") {
+            try {
+              const key = "restroinn_guest_channel_orders_v1";
+              const prevList = JSON.parse(localStorage.getItem(key) || "[]");
+              const nextList = [
+                {
+                  orderId: created.id,
+                  orderNumber: created.orderNumber,
+                  phone: cleanPhone,
+                  orderType: orderChannel,
+                  publicCode,
+                  createdAt: Date.now(),
+                },
+                ...(Array.isArray(prevList) ? prevList : []).filter(
+                  (x: any) => x?.orderNumber !== created.orderNumber
+                ),
+              ].slice(0, 10);
+              localStorage.setItem(key, JSON.stringify(nextList));
+            } catch {
+              // ignore storage errors
+            }
+          }
           setOrders((prev) => [
             {
               ...created,
               trackerStage: "ORDER_RECEIVED",
+              isPendingApproval: Boolean(res?.requiresStaffApproval),
               rounds: res?.round ? [{ ...res.round, lines: res.lines || [] }] : [],
             },
-            ...prev,
+            ...prev.filter((o) => o.id !== created.id),
           ]);
         }
 
@@ -2648,12 +2749,15 @@ export default function GuestQrPortalPage() {
                     Real-time status from waiter confirmation to your {isRoomQr ? "room" : "table"}
                   </p>
                 </div>
-                {sessionToken && (
+                {(sessionToken || orders.length > 0) && (
                   <button
                     type="button"
-                    onClick={() => fetchGuestSessionData(sessionToken, false)}
+                    onClick={() => {
+                      if (sessionToken) void fetchGuestSessionData(sessionToken, false);
+                      void fetchSavedChannelOrders(false);
+                    }}
                     disabled={refreshingData}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFFCF7] border border-[#E2D9C8] text-xs font-bold text-[#6B2837] shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FFFCF7] border border-[#D8CEC1] text-xs font-bold text-[#6B2837] cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${refreshingData ? "animate-spin" : ""}`} />
                     Refresh
@@ -2661,7 +2765,7 @@ export default function GuestQrPortalPage() {
                 )}
               </div>
 
-              {!isVerified ? (
+              {!isVerified && orders.length === 0 ? (
                 <div className="bg-[#FFFCF7] rounded-2xl p-6 text-center border border-[#E6DEC8] space-y-3">
                   <Lock className="w-8 h-8 text-[#A77B38] mx-auto" />
                   <h3 className="text-sm font-bold text-[#1E1B18]">
@@ -2723,33 +2827,54 @@ export default function GuestQrPortalPage() {
                       >
                         <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-2.5">
                           <div>
-                            <span className="text-xs font-extrabold text-[#6B2837]">
-                              Order #{order.orderNumber}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-extrabold text-[#6B2837] tabular-nums">
+                                Order #{order.orderNumber}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-[#F7F3EC] border border-[#D8CEC1] text-[10px] font-bold text-[#292320]">
+                                {order.orderType === "DELIVERY"
+                                  ? "Delivery"
+                                  : order.orderType === "TAKEAWAY"
+                                  ? "Takeaway"
+                                  : order.orderType === "ROOM_SERVICE"
+                                  ? "Room Service"
+                                  : "Dine-In"}
+                              </span>
+                            </div>
                             <p className="text-[11px] text-[#6E655F]">
                               Placed {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
                           <span
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border ${
                               stage === "REJECTED"
-                                ? "bg-red-100 text-red-800"
+                                ? "bg-[#FDF2F2] text-[#8A1F2D] border-[#E5B8B8]"
                                 : stage === "SERVED"
-                                ? "bg-emerald-100 text-emerald-800"
+                                ? "bg-[#F1F7F4] text-[#28634B] border-[#C3DED0]"
+                                : order.isOutForDelivery
+                                ? "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]"
+                                : order.isPendingApproval
+                                ? "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]"
                                 : stage === "ON_ITS_WAY"
-                                ? "bg-amber-100 text-amber-900"
-                                : "bg-[#F5EFE6] text-[#6B2837]"
+                                ? "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]"
+                                : "bg-[#F7F3EC] text-[#6B2837] border-[#D8CEC1]"
                             }`}
                           >
-                            {stage === "ORDER_RECEIVED"
+                            {stage === "REJECTED"
+                              ? "Cancelled"
+                              : stage === "SERVED"
+                              ? order.orderType === "DELIVERY"
+                                ? "Delivered"
+                                : "Served / Completed"
+                              : order.isOutForDelivery
+                              ? `Out for Delivery${order.riderName ? ` (${order.riderName})` : ""}`
+                              : order.isPendingApproval
+                              ? "Awaiting Confirmation"
+                              : stage === "ORDER_RECEIVED"
                               ? "Order Received"
                               : stage === "COOKING"
                               ? "Cooking in Kitchen"
-                              : stage === "ON_ITS_WAY"
-                              ? "Ready / On Its Way"
-                              : stage === "SERVED"
-                              ? "Served"
-                              : "Cancelled"}
+                              : "Ready"}
                           </span>
                         </div>
 

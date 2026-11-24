@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
+import { db } from "@/lib/db";
+import { dispatchNotification } from "@/lib/notifications";
 import {
   cancelRestaurantOrder,
   RestaurantOrderError,
@@ -30,6 +32,33 @@ export async function POST(
       reason: parsed.reason,
       actorId: session.userId,
     });
+
+    // Notify guest when staff cancels/rejects their order
+    void (async () => {
+      try {
+        const gs = cancelledOrder.tableSessionId
+          ? await db.guestSession.findFirst({
+              where: { tableSessionId: cancelledOrder.tableSessionId, status: "ACTIVE" },
+              orderBy: { lastActiveAt: "desc" },
+              select: { id: true },
+            })
+          : null;
+
+        await dispatchNotification({
+          businessId: session.businessId,
+          ...(gs ? { guestSessionId: gs.id } : { targetRoles: ["GUEST"] }),
+          category: "ORDER",
+          priority: "HIGH",
+          title: `Order #${cancelledOrder.orderNumber} Cancelled`,
+          message: parsed.reason
+            ? `Your order was cancelled: ${parsed.reason}`
+            : `Your order #${cancelledOrder.orderNumber} has been cancelled by staff.`,
+          dedupeKey: `order-cancelled-guest:${cancelledOrder.id}`,
+        });
+      } catch (err) {
+        console.error("[Notifications] Staff cancel guest notification error:", err);
+      }
+    })();
 
     return NextResponse.json({
       success: true,

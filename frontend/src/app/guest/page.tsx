@@ -26,10 +26,21 @@ interface LastRestaurant {
 }
 
 const LAST_RESTAURANT_KEY = "restroinn_last_guest_restaurant_v1";
+const SAVED_CHANNEL_ORDERS_KEY = "restroinn_guest_channel_orders_v1";
+
+interface SavedOrderRef {
+  orderId: string;
+  orderNumber: string;
+  phone: string;
+  orderType: "DELIVERY" | "TAKEAWAY";
+  publicCode: string;
+  createdAt: number;
+}
 
 export default function GuestAppHomePage() {
   const router = useRouter();
   const [lastVisited, setLastVisited] = useState<LastRestaurant | null>(null);
+  const [recentOrders, setRecentOrders] = useState<SavedOrderRef[]>([]);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -41,6 +52,13 @@ export default function GuestAppHomePage() {
         const parsed = JSON.parse(raw) as LastRestaurant;
         if (parsed?.publicCode) {
           setLastVisited(parsed);
+        }
+      }
+      const rawOrders = localStorage.getItem(SAVED_CHANNEL_ORDERS_KEY);
+      if (rawOrders) {
+        const parsedOrders = JSON.parse(rawOrders);
+        if (Array.isArray(parsedOrders)) {
+          setRecentOrders(parsedOrders.slice(0, 3));
         }
       }
     } catch {
@@ -171,6 +189,37 @@ export default function GuestAppHomePage() {
             )}
           </div>
         </section>
+
+        {/* My Recent Delivery / Takeaway Orders */}
+        {recentOrders.length > 0 && (
+          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-[#292320]">My Recent Orders</h3>
+              <span className="text-[10px] font-semibold text-[#71675E] tabular-nums">
+                {recentOrders.length} tracked
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {recentOrders.map((ord) => (
+                <Link
+                  key={ord.orderNumber}
+                  href={`/guest/qr/${encodeURIComponent(ord.publicCode)}?mode=${ord.orderType}&tab=TRACKER`}
+                  className="w-full px-3 py-2 rounded-md border border-[#EEE7DD] bg-[#F7F3EC] hover:bg-[#EEE7DD] flex items-center justify-between gap-2 text-xs transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-[#6B2837] tabular-nums truncate">
+                      #{ord.orderNumber}
+                    </div>
+                    <div className="text-[10px] text-[#71675E]">
+                      {ord.orderType === "DELIVERY" ? "Delivery" : "Takeaway"} • Tap to track live status
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#71675E] shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Dine-In Camera QR Scanner Card */}
         <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-3 mt-auto">

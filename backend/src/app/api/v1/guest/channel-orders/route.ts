@@ -31,9 +31,117 @@ const channelOrderSchema = z.object({
     .min(1, "At least one item is required"),
 });
 
+function formatChannelOrderForTracker(order: any) {
+  const notes = order.notes || "";
+  const isPendingApproval =
+    order.acceptanceStatus === "PENDING" || /\[STAFF APPROVAL REQUIRED/i.test(notes);
+  const riderMatch = notes.match(/\[OUT FOR DELIVERY\s*\|\s*Rider:\s*([^\]]+)\]/i);
+  const isOutForDelivery = Boolean(riderMatch) || /\[OUT FOR DELIVERY/i.test(notes);
+
+  let trackerStage:
+    | "ORDER_RECEIVED"
+    | "COOKING"
+    | "ON_ITS_WAY"
+    | "SERVED"
+    | "REJECTED" = "ORDER_RECEIVED";
+
+  if (order.acceptanceStatus === "REJECTED" || order.fulfillmentStatus === "CANCELLED") {
+    trackerStage = "REJECTED";
+  } else if (order.fulfillmentStatus === "SERVED" || order.settlementStatus === "PAID") {
+    trackerStage = "SERVED";
+  } else if (isOutForDelivery || order.fulfillmentStatus === "READY") {
+    trackerStage = "ON_ITS_WAY";
+  } else if (!isPendingApproval && (order.acceptanceStatus === "ACCEPTED" || order.fulfillmentStatus === "PREPARING")) {
+    trackerStage = "COOKING";
+  }
+
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    orderType: order.orderType,
+    acceptanceStatus: order.acceptanceStatus,
+    fulfillmentStatus: order.fulfillmentStatus,
+    settlementStatus: order.settlementStatus,
+    trackerStage,
+    isPendingApproval,
+    isOutForDelivery,
+    riderName: riderMatch ? riderMatch[1].trim() : null,
+    subtotal: order.subtotal,
+    taxTotal: order.taxTotal,
+    totalAmount: order.totalAmount,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    rounds: (order.rounds || []).map((r: any) => ({
+      id: r.id,
+      roundNumber: r.roundNumber,
+      status: r.status,
+      submittedAt: r.submittedAt,
+      lines: (r.lines || []).map((l: any) => ({
+        id: l.id,
+        itemName: l.itemName,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        total: l.total,
+        appliedModifiers: l.appliedModifiers,
+        notes: l.notes,
+        acceptanceStatus: l.acceptanceStatus,
+        fulfillmentStatus: l.fulfillmentStatus,
+      })),
+    })),
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const batchParam = (searchParams.get("orders") || "").trim();
+
+    if (batchParam) {
+      const pairs = batchParam
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .slice(0, 15)
+        .map((pair) => {
+          const [orderNumber, phone] = pair.split(":");
+          return {
+            orderNumber: (orderNumber || "").trim(),
+            phoneDigits: (phone || "").replace(/\D/g, ""),
+          };
+        })
+        .filter((p) => p.orderNumber && p.phoneDigits.length >= 7);
+
+      if (pairs.length === 0) {
+        return NextResponse.json({ orders: [] });
+      }
+
+      const rawOrders = await db.restaurantOrder.findMany({
+        where: {
+          orderNumber: { in: pairs.map((p) => p.orderNumber) },
+          orderType: { in: ["TAKEAWAY", "DELIVERY"] },
+        },
+        include: {
+          rounds: {
+            include: { lines: true },
+            orderBy: { roundNumber: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const phoneByOrderNo = new Map(pairs.map((p) => [p.orderNumber, p.phoneDigits]));
+      const authorized = rawOrders.filter((o) => {
+        const expectedDigits = phoneByOrderNo.get(o.orderNumber);
+        if (!expectedDigits) return false;
+        const noteDigits = (o.notes || "").replace(/\D/g, "");
+        return noteDigits.includes(expectedDigits);
+      });
+
+      return NextResponse.json({
+        orders: authorized.map(formatChannelOrderForTracker),
+      });
+    }
+
     const orderNumber = (searchParams.get("orderNumber") || "").trim();
     const phoneDigits = (searchParams.get("phone") || "").replace(/\D/g, "");
 
@@ -66,7 +174,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Phone does not match this order" }, { status: 403 });
     }
 
-    return NextResponse.json({ order });
+    return NextResponse.json({ order: formatChannelOrderForTracker(order) });
   } catch (error: any) {
     return NextResponse.json(
       { error: safeErrorMessage(error, "Failed to load order") },

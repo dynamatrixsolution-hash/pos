@@ -21,7 +21,7 @@ export interface GuestQrPolicy {
 }
 
 export const DEFAULT_GUEST_QR_POLICY: GuestQrPolicy = {
-  tableQrMode: "STAFF_SEATED_OR_PIN",
+  tableQrMode: "OPEN_STAFF_APPROVAL",
   branchLat: null,
   branchLng: null,
   geofenceRadiusMeters: 150,

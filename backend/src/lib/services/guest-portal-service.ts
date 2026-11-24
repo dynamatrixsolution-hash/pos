@@ -1696,17 +1696,14 @@ export async function submitGuestOrder(
     const exceedsAmountLimit =
       guestPolicy.maxAutoAcceptAmount === 0 ||
       estimatedSubtotal > guestPolicy.maxAutoAcceptAmount;
-    const requiresStaffApproval =
-      guestPolicy.tableQrMode === "OPEN_STAFF_APPROVAL" ||
-      exceedsQtyLimit ||
-      exceedsAmountLimit;
+    const requiresStaffApproval = exceedsQtyLimit || exceedsAmountLimit;
 
     const approvalReason = exceedsAmountLimit
-      ? `Exceeds auto-accept limit (${guestPolicy.maxAutoAcceptAmount})`
+      ? guestPolicy.maxAutoAcceptAmount === 0
+        ? "Staff confirmation required"
+        : `Exceeds auto-accept limit (${guestPolicy.maxAutoAcceptAmount})`
       : exceedsQtyLimit
       ? `Exceeds max items (${guestPolicy.maxGuestOrderItems})`
-      : guestPolicy.tableQrMode === "OPEN_STAFF_APPROVAL"
-      ? "Staff approval required"
       : null;
 
     const orderNotes = [

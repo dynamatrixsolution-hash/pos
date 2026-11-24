@@ -2016,6 +2016,16 @@ export class GuestEndpoints extends BaseApiClient {
     });
   }
 
+  async getChannelOrders(refs: Array<{ orderNumber: string; phone: string }>) {
+    if (!refs.length) return { orders: [] };
+    const encoded = refs
+      .map((r) => `${encodeURIComponent(r.orderNumber)}:${encodeURIComponent(r.phone)}`)
+      .join(",");
+    return this.request<{ orders: any[] }>(`/api/v1/guest/channel-orders?orders=${encoded}`, {
+      cache: "no-store",
+    });
+  }
+
   async cancelOrder(orderId: string, payload: { reason: string; phone?: string | null }, token?: string | null) {
     return this.request<any>(`/api/v1/guest/orders/${encodeURIComponent(orderId)}/cancel`, {
       method: "POST",
