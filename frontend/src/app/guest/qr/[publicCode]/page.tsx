@@ -2229,7 +2229,7 @@ export default function GuestQrPortalPage() {
                 className="min-h-[36px] inline-flex items-center gap-1.5 px-3 rounded-[8px] text-sm font-semibold"
                 style={{
                   backgroundColor: "var(--guest-accent-soft)",
-                  color: "var(--guest-accent)",
+                  color: "var(--guest-accent-text)",
                   border: "1px solid var(--guest-border)",
                 }}
               >
@@ -2285,7 +2285,7 @@ export default function GuestQrPortalPage() {
                 style={{
                   backgroundColor: "var(--guest-surface-subtle)",
                   border: "1px solid var(--guest-border)",
-                  color: "var(--guest-accent)",
+                  color: "var(--guest-accent-text)",
                 }}
                 title="Live Order Updates"
               >
@@ -2660,7 +2660,7 @@ export default function GuestQrPortalPage() {
                             selectedDietary === "ALL"
                               ? {
                                   backgroundColor: "var(--guest-accent-soft)",
-                                  color: "var(--guest-accent)",
+                                  color: "var(--guest-accent-text)",
                                   border: "1px solid var(--guest-accent)",
                                 }
                               : {
@@ -2682,7 +2682,7 @@ export default function GuestQrPortalPage() {
                               selectedDietary === tag
                                 ? {
                                     backgroundColor: "var(--guest-accent-soft)",
-                                    color: "var(--guest-accent)",
+                                    color: "var(--guest-accent-text)",
                                     border: "1px solid var(--guest-accent)",
                                   }
                                 : {
@@ -2711,7 +2711,7 @@ export default function GuestQrPortalPage() {
                   >
                     <span>
                       Showing results for{" "}
-                      <span className="font-semibold" style={{ color: "var(--guest-accent)" }}>
+                      <span className="font-semibold" style={{ color: "var(--guest-accent-text)" }}>
                         &quot;{searchQuery}&quot;
                       </span>
                     </span>
@@ -2719,7 +2719,7 @@ export default function GuestQrPortalPage() {
                       type="button"
                       onClick={() => setSearchQuery("")}
                       className="min-h-[36px] px-2 font-semibold underline cursor-pointer"
-                      style={{ color: "var(--guest-accent)" }}
+                      style={{ color: "var(--guest-accent-text)" }}
                     >
                       Clear
                     </button>
@@ -2730,7 +2730,7 @@ export default function GuestQrPortalPage() {
                   <div className="guest-card p-8 text-center space-y-3">
                     <UtensilsCrossed
                       className="w-8 h-8 mx-auto"
-                      style={{ color: "var(--guest-accent)" }}
+                      style={{ color: "var(--guest-accent-text)" }}
                     />
                     <p className="text-lg font-semibold">No matching dishes</p>
                     <p
@@ -2761,7 +2761,7 @@ export default function GuestQrPortalPage() {
                           className="flex items-center justify-between pb-2"
                           style={{ borderBottom: "1px solid var(--guest-border)" }}
                         >
-                          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--guest-accent)" }}>
+                          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--guest-accent-text)" }}>
                             {section.name}
                           </h2>
                           <span className="text-sm font-normal tabular-nums" style={{ color: "var(--guest-muted)" }}>
@@ -2818,7 +2818,7 @@ export default function GuestQrPortalPage() {
                                   <div className="flex items-center gap-3 pt-1">
                                     <span
                                       className="text-base font-semibold tabular-nums"
-                                      style={{ color: "var(--guest-accent)" }}
+                                      style={{ color: "var(--guest-accent-text)" }}
                                     >
                                       {formatNPR(item.basePrice)}
                                     </span>
@@ -2899,7 +2899,7 @@ export default function GuestQrPortalPage() {
                                         className="w-24 min-h-[44px] rounded-[8px] text-sm font-semibold inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
                                         style={{
                                           backgroundColor: "var(--guest-surface-subtle)",
-                                          color: "var(--guest-accent)",
+                                          color: "var(--guest-accent-text)",
                                           border: "1px solid var(--guest-border-strong)",
                                         }}
                                       >
@@ -3920,7 +3920,7 @@ export default function GuestQrPortalPage() {
                   className="w-7 h-7 rounded-[6px] font-semibold text-sm flex items-center justify-center tabular-nums"
                   style={{
                     backgroundColor: "var(--guest-accent-fg)",
-                    color: "var(--guest-accent)",
+                    color: "var(--guest-accent-text)",
                   }}
                 >
                   {cartSummary.count}
@@ -3956,7 +3956,7 @@ export default function GuestQrPortalPage() {
                 activeTab === "MENU"
                   ? {
                       backgroundColor: "var(--guest-accent-soft)",
-                      color: "var(--guest-accent)",
+                      color: "var(--guest-accent-text)",
                       fontWeight: 600,
                     }
                   : { color: "var(--guest-muted)" }
@@ -3974,7 +3974,7 @@ export default function GuestQrPortalPage() {
                 activeTab === "TRACKER"
                   ? {
                       backgroundColor: "var(--guest-accent-soft)",
-                      color: "var(--guest-accent)",
+                      color: "var(--guest-accent-text)",
                       fontWeight: 600,
                     }
                   : { color: "var(--guest-muted)" }
@@ -4000,7 +4000,7 @@ export default function GuestQrPortalPage() {
                     activeTab === "SERVICES"
                       ? {
                           backgroundColor: "var(--guest-accent-soft)",
-                          color: "var(--guest-accent)",
+                          color: "var(--guest-accent-text)",
                           fontWeight: 600,
                         }
                       : { color: "var(--guest-muted)" }
@@ -4018,7 +4018,7 @@ export default function GuestQrPortalPage() {
                     activeTab === "BILL"
                       ? {
                           backgroundColor: "var(--guest-accent-soft)",
-                          color: "var(--guest-accent)",
+                          color: "var(--guest-accent-text)",
                           fontWeight: 600,
                         }
                       : { color: "var(--guest-muted)" }
@@ -4283,7 +4283,7 @@ export default function GuestQrPortalPage() {
                 <div className="flex items-center gap-2 min-w-0">
                   <ShoppingBag
                     className="w-5 h-5 shrink-0"
-                    style={{ color: "var(--guest-accent)" }}
+                    style={{ color: "var(--guest-accent-text)" }}
                   />
                   <h3 className="text-lg font-semibold leading-snug truncate">
                     Your {locationBadgeText} Tray
@@ -4346,7 +4346,7 @@ export default function GuestQrPortalPage() {
                           )}
                           <p
                             className="text-sm font-semibold tabular-nums pt-1"
-                            style={{ color: "var(--guest-accent)" }}
+                            style={{ color: "var(--guest-accent-text)" }}
                           >
                             {formatNPR(fromCents(line.unitPriceCents * line.quantity))}
                           </p>
@@ -4408,7 +4408,7 @@ export default function GuestQrPortalPage() {
                                 orderChannel === "DINE_IN"
                                   ? {
                                       backgroundColor: "var(--guest-accent-soft)",
-                                      color: "var(--guest-accent)",
+                                      color: "var(--guest-accent-text)",
                                       border: "2px solid var(--guest-accent)",
                                     }
                                   : {
@@ -4435,7 +4435,7 @@ export default function GuestQrPortalPage() {
                                 orderChannel === "TAKEAWAY"
                                   ? {
                                       backgroundColor: "var(--guest-accent-soft)",
-                                      color: "var(--guest-accent)",
+                                      color: "var(--guest-accent-text)",
                                       border: "2px solid var(--guest-accent)",
                                     }
                                   : {
@@ -4462,7 +4462,7 @@ export default function GuestQrPortalPage() {
                                 orderChannel === "DELIVERY"
                                   ? {
                                       backgroundColor: "var(--guest-accent-soft)",
-                                      color: "var(--guest-accent)",
+                                      color: "var(--guest-accent-text)",
                                       border: "2px solid var(--guest-accent)",
                                     }
                                   : {
@@ -4602,7 +4602,7 @@ export default function GuestQrPortalPage() {
                                   onClick={handleCaptureChannelGps}
                                   disabled={locatingGps}
                                   className="min-h-[36px] px-2 text-sm font-semibold inline-flex items-center gap-1 cursor-pointer"
-                                  style={{ color: "var(--guest-accent)" }}
+                                  style={{ color: "var(--guest-accent-text)" }}
                                 >
                                   <MapPin className="w-4 h-4 shrink-0" />
                                   <span>
@@ -4651,7 +4651,7 @@ export default function GuestQrPortalPage() {
                                   channelPaymentPref !== "ONLINE_QR"
                                     ? {
                                         backgroundColor: "var(--guest-accent-soft)",
-                                        color: "var(--guest-accent)",
+                                        color: "var(--guest-accent-text)",
                                         border: "2px solid var(--guest-accent)",
                                       }
                                     : {
@@ -4671,7 +4671,7 @@ export default function GuestQrPortalPage() {
                                   channelPaymentPref === "ONLINE_QR"
                                     ? {
                                         backgroundColor: "var(--guest-accent-soft)",
-                                        color: "var(--guest-accent)",
+                                        color: "var(--guest-accent-text)",
                                         border: "2px solid var(--guest-accent)",
                                       }
                                     : {
@@ -4728,7 +4728,7 @@ export default function GuestQrPortalPage() {
                       <span style={{ color: "var(--guest-muted)" }}>Estimated Subtotal</span>
                       <span
                         className="text-lg font-semibold tabular-nums"
-                        style={{ color: "var(--guest-accent)" }}
+                        style={{ color: "var(--guest-accent-text)" }}
                       >
                         {formatNPR(cartSummary.subtotal)}
                       </span>

@@ -516,6 +516,7 @@
 
   /* Single Accent Color per Screen */
   --guest-accent: #6B2837;
+  --guest-accent-text: #6B2837;
   --guest-accent-hover: #541E2A;
   --guest-accent-active: #421721;
   --guest-accent-fg: #FFFCF7;
@@ -551,27 +552,28 @@
   line-height: 1.5;
 }
 
-/* Dark Mode: Lift surfaces gently from warm dark espresso — never harsh invert */
+/* Dark Mode: Refined warm charcoal-espresso elevation — never harsh invert */
 .dark .guest-shell,
 .guest-shell[data-theme="dark"] {
-  --guest-bg: #181412;
-  --guest-surface: #221D1A;
-  --guest-surface-raised: #2B2521;
-  --guest-surface-subtle: #1D1816;
+  --guest-bg: #141210;
+  --guest-surface: #1E1A17;
+  --guest-surface-raised: #27221E;
+  --guest-surface-subtle: #241F1B;
 
-  --guest-fg: #F5EFE8;
-  --guest-muted: #BDB3A8;
+  --guest-fg: #F5F0E9;
+  --guest-muted: #B8AEA3;
 
-  --guest-accent: #C75B72;
-  --guest-accent-hover: #D66E84;
-  --guest-accent-active: #B0495F;
-  --guest-accent-fg: #181412;
-  --guest-accent-soft: rgba(199, 91, 114, 0.16);
+  --guest-accent: #B8425B;
+  --guest-accent-text: #E88297;
+  --guest-accent-hover: #C84F68;
+  --guest-accent-active: #A3374E;
+  --guest-accent-fg: #FFFCF7;
+  --guest-accent-soft: rgba(232, 130, 151, 0.14);
 
-  --guest-border: rgba(245, 239, 232, 0.10);
-  --guest-border-strong: rgba(245, 239, 232, 0.22);
-  --guest-shadow-soft: 0 12px 32px -12px rgba(0, 0, 0, 0.42);
-  --guest-ring: #D66E84;
+  --guest-border: rgba(245, 240, 233, 0.10);
+  --guest-border-strong: rgba(245, 240, 233, 0.20);
+  --guest-shadow-soft: 0 12px 32px -12px rgba(0, 0, 0, 0.48);
+  --guest-ring: #E88297;
 
   --guest-success: #6EE0AC;
   --guest-success-bg: rgba(110, 224, 172, 0.12);
@@ -585,6 +587,103 @@
   --guest-info: #8EC5F0;
   --guest-info-bg: rgba(142, 197, 240, 0.12);
   --guest-info-border: rgba(142, 197, 240, 0.28);
+}
+
+/* Dark-mode safe remapping for any nested legacy guest portal utility classes so 100% of text, cards, modals & popovers stay crisp and legible */
+.guest-shell[data-theme="dark"] .bg-\[\#FFFCF7\] {
+  background-color: var(--guest-surface) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#F7F3EC\],
+.guest-shell[data-theme="dark"] .bg-\[\#FAF6F0\],
+.guest-shell[data-theme="dark"] .bg-\[\#F5EFE6\],
+.guest-shell[data-theme="dark"] .bg-\[\#F0EAE0\],
+.guest-shell[data-theme="dark"] .bg-\[\#EEE7DD\],
+.guest-shell[data-theme="dark"] .bg-\[\#EFE9DF\],
+.guest-shell[data-theme="dark"] .bg-\[\#FAF2F4\] {
+  background-color: var(--guest-surface-subtle) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#6B2837\],
+.guest-shell[data-theme="dark"] .bg-\[\#541E2A\],
+.guest-shell[data-theme="dark"] .bg-\[\#561F2B\] {
+  background-color: var(--guest-accent) !important;
+  color: var(--guest-accent-fg) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#F1F7F4\] {
+  background-color: var(--guest-success-bg) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#FDF5E7\],
+.guest-shell[data-theme="dark"] .bg-\[\#FDF7ED\] {
+  background-color: var(--guest-warning-bg) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#FDF2F2\],
+.guest-shell[data-theme="dark"] .bg-\[\#FCE6E6\] {
+  background-color: var(--guest-danger-bg) !important;
+}
+.guest-shell[data-theme="dark"] .bg-\[\#EDF4F9\] {
+  background-color: var(--guest-info-bg) !important;
+}
+
+.guest-shell[data-theme="dark"] .text-\[\#1A1614\],
+.guest-shell[data-theme="dark"] .text-\[\#1E1B18\],
+.guest-shell[data-theme="dark"] .text-\[\#292320\] {
+  color: var(--guest-fg) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#57504A\],
+.guest-shell[data-theme="dark"] .text-\[\#6E655F\],
+.guest-shell[data-theme="dark"] .text-\[\#71675E\],
+.guest-shell[data-theme="dark"] .text-\[\#857B72\],
+.guest-shell[data-theme="dark"] .text-\[\#8C827A\] {
+  color: var(--guest-muted) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#6B2837\] {
+  color: var(--guest-accent-text) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#A77B38\] {
+  color: #E2B86B !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#28634B\] {
+  color: var(--guest-success) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#946000\] {
+  color: var(--guest-warning) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#8A1F2D\],
+.guest-shell[data-theme="dark"] .text-\[\#9E2A2B\],
+.guest-shell[data-theme="dark"] .text-\[\#B33432\],
+.guest-shell[data-theme="dark"] .text-\[\#B42318\] {
+  color: var(--guest-danger) !important;
+}
+.guest-shell[data-theme="dark"] .text-\[\#315F85\] {
+  color: var(--guest-info) !important;
+}
+
+.guest-shell[data-theme="dark"] .border-\[\#D8CEC1\],
+.guest-shell[data-theme="dark"] .border-\[\#E2D9C8\],
+.guest-shell[data-theme="dark"] .border-\[\#E6DEC8\],
+.guest-shell[data-theme="dark"] .border-\[\#EEE7DD\],
+.guest-shell[data-theme="dark"] .border-\[\#F0EAE0\] {
+  border-color: var(--guest-border) !important;
+}
+.guest-shell[data-theme="dark"] .border-\[\#C3DED0\] {
+  border-color: var(--guest-success-border) !important;
+}
+.guest-shell[data-theme="dark"] .border-\[\#EDD7AD\] {
+  border-color: var(--guest-warning-border) !important;
+}
+.guest-shell[data-theme="dark"] .border-\[\#E5B8B8\] {
+  border-color: var(--guest-danger-border) !important;
+}
+.guest-shell[data-theme="dark"] .border-\[\#B8D2E6\] {
+  border-color: var(--guest-info-border) !important;
+}
+.guest-shell[data-theme="dark"] .divide-\[\#EEE7DD\] > :not(:last-child),
+.guest-shell[data-theme="dark"] .divide-\[\#F0EAE0\] > :not(:last-child) {
+  border-color: var(--guest-border) !important;
+}
+
+/* Ensure accent text in dark mode uses the high-contrast luminous rose token */
+.guest-shell[data-theme="dark"] .guest-accent-text {
+  color: var(--guest-accent-text);
 }
 
 /* Always show a crisp, unmistakable focus ring on interactive elements */

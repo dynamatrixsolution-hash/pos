@@ -163,7 +163,7 @@ export default function GuestAppHomePage() {
               {alertsEnabled ? (
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
               ) : (
-                <Bell className="w-4 h-4 shrink-0" style={{ color: "var(--guest-accent)" }} />
+                <Bell className="w-4 h-4 shrink-0" style={{ color: "var(--guest-accent-text)" }} />
               )}
               <span>{alertsEnabled ? "Alerts On" : "Alerts"}</span>
             </button>
@@ -232,7 +232,7 @@ export default function GuestAppHomePage() {
                   <span className="inline-flex items-center gap-3 min-w-0">
                     <ShoppingBag
                       className="w-5 h-5 shrink-0"
-                      style={{ color: "var(--guest-accent)" }}
+                      style={{ color: "var(--guest-accent-text)" }}
                     />
                     <span className="text-left min-w-0">
                       <span className="block text-base font-semibold leading-snug">
@@ -299,7 +299,7 @@ export default function GuestAppHomePage() {
                   <div className="min-w-0">
                     <div
                       className="text-base font-semibold tabular-nums truncate"
-                      style={{ color: "var(--guest-accent)" }}
+                      style={{ color: "var(--guest-accent-text)" }}
                     >
                       #{ord.orderNumber}
                     </div>
@@ -328,7 +328,7 @@ export default function GuestAppHomePage() {
                 className="w-11 h-11 rounded-[8px] flex items-center justify-center shrink-0"
                 style={{
                   backgroundColor: "var(--guest-accent-soft)",
-                  color: "var(--guest-accent)",
+                  color: "var(--guest-accent-text)",
                 }}
               >
                 <QrCode className="w-5 h-5" />
@@ -351,7 +351,7 @@ export default function GuestAppHomePage() {
               onClick={() => setScannerOpen(true)}
               className="guest-btn-secondary w-full px-4 inline-flex items-center justify-center gap-2 font-semibold cursor-pointer"
             >
-              <Camera className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent)" }} />
+              <Camera className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent-text)" }} />
               <span>Scan Table QR Code</span>
             </button>
           </section>
