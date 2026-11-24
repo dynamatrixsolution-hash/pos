@@ -18,6 +18,7 @@ export function QrCameraScannerModal({ onClose, onDetected }: QrCameraScannerMod
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [detectorSupported, setDetectorSupported] = useState(true);
 
   useEffect(() => {
@@ -27,7 +28,9 @@ export function QrCameraScannerModal({ onClose, onDetected }: QrCameraScannerMod
 
     async function startCamera() {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setCameraError("Camera access is not available in this browser. Enter the table code below.");
+        setCameraError(
+          "Camera access is unavailable in this browser. Type the table code printed under the QR below."
+        );
         return;
       }
 
@@ -74,7 +77,9 @@ export function QrCameraScannerModal({ onClose, onDetected }: QrCameraScannerMod
         };
         rafId = requestAnimationFrame(scanFrame);
       } catch {
-        setCameraError("Camera permission denied or unavailable. You can enter the table QR code below.");
+        setCameraError(
+          "Camera permission was denied. Allow camera access in browser settings or enter the table code below."
+        );
       }
     }
 
@@ -89,74 +94,112 @@ export function QrCameraScannerModal({ onClose, onDetected }: QrCameraScannerMod
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = extractQrPublicCode(manualCode);
-    if (!code) return;
+    if (code.length < 3) {
+      setCodeError("Enter the code shown under your table QR (for example: restro-t02).");
+      return;
+    }
+    setCodeError(null);
     onDetected(code);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#292320]/60 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="w-full sm:max-w-md rounded-t-lg sm:rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#EEE7DD] flex items-center justify-between">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ backgroundColor: "rgba(24, 20, 18, 0.56)" }}
+    >
+      <div
+        className="w-full sm:max-w-md rounded-t-[16px] sm:rounded-[16px] overflow-hidden"
+        style={{
+          backgroundColor: "var(--guest-surface-raised)",
+          border: "1px solid var(--guest-border)",
+          boxShadow: "var(--guest-shadow-soft)",
+        }}
+      >
+        <div
+          className="px-4 py-3 flex items-center justify-between gap-3"
+          style={{ borderBottom: "1px solid var(--guest-border)" }}
+        >
           <div className="flex items-center gap-2">
-            <Camera className="w-4 h-4 text-[#6B2837]" />
-            <h3 className="text-sm font-bold text-[#292320]">Scan Table / Room QR</h3>
+            <Camera className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent)" }} />
+            <h3 className="text-base font-semibold">Scan Table or Room QR</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-center text-[#71675E] hover:text-[#292320] cursor-pointer"
+            aria-label="Close scanner"
+            className="w-11 h-11 rounded-[8px] inline-flex items-center justify-center cursor-pointer"
+            style={{
+              backgroundColor: "var(--guest-surface-subtle)",
+              border: "1px solid var(--guest-border)",
+              color: "var(--guest-fg)",
+            }}
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-4">
           {cameraError ? (
-            <div className="p-3 rounded-md border border-[#E5C9A8] bg-[#FFF8ED] text-xs text-[#7A4E0B] flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div
+              className="p-3 rounded-[8px] text-sm flex items-start gap-2 max-w-[65ch]"
+              style={{
+                backgroundColor: "var(--guest-warning-bg)",
+                color: "var(--guest-warning)",
+                border: "1px solid var(--guest-warning-border)",
+              }}
+            >
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{cameraError}</span>
             </div>
           ) : (
-            <div className="relative w-full aspect-square max-h-72 rounded-lg overflow-hidden bg-[#292320] border border-[#D8CEC1]">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
+            <div
+              className="relative w-full aspect-square max-h-72 rounded-[8px] overflow-hidden bg-[#181412]"
+              style={{ border: "1px solid var(--guest-border)" }}
+            >
+              <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-48 h-48 rounded-lg border-2 border-[#FFFCF7]/90" />
+                <div className="w-48 h-48 rounded-[12px] border-2 border-[#FFFCF7]/90" />
               </div>
               {!detectorSupported && (
-                <div className="absolute bottom-2 inset-x-2 p-2 rounded-md bg-[#292320]/85 text-[#FFFCF7] text-[11px] text-center">
-                  Use your phone&apos;s camera app to scan the QR, or type the code below.
+                <div className="absolute bottom-2 inset-x-2 p-2 rounded-[8px] bg-[#181412]/85 text-[#FFFCF7] text-sm text-center">
+                  Point your phone&apos;s camera app at the QR, or type the table code below.
                 </div>
               )}
             </div>
           )}
 
-          <form onSubmit={handleManualSubmit} className="space-y-1.5">
-            <label className="block text-[11px] font-semibold text-[#71675E]">
-              Or enter Table / Room QR code manually
+          <form onSubmit={handleManualSubmit} noValidate className="space-y-2">
+            <label htmlFor="manual-qr-code" className="block text-sm font-semibold">
+              Table or Room QR Code
             </label>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <QrCode className="w-3.5 h-3.5 text-[#71675E] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <QrCode
+                  className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--guest-muted)" }}
+                />
                 <input
+                  id="manual-qr-code"
                   type="text"
                   value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
+                  aria-invalid={Boolean(codeError)}
+                  onChange={(e) => {
+                    setManualCode(e.target.value);
+                    if (codeError) setCodeError(null);
+                  }}
                   placeholder="e.g. restro-t02"
-                  className="w-full h-9 pl-8 pr-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                  className="guest-input pl-10"
                 />
               </div>
-              <button
-                type="submit"
-                className="h-9 px-4 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold cursor-pointer"
-              >
+              <button type="submit" className="guest-btn-primary px-5 cursor-pointer shrink-0">
                 Open
               </button>
             </div>
+            {codeError && (
+              <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                {codeError}
+              </p>
+            )}
           </form>
         </div>
       </div>

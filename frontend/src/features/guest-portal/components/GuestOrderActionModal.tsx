@@ -57,6 +57,7 @@ export function GuestOrderActionModal({
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const isPaid = settlementStatus === "PAID" || settlementStatus === "PARTIAL";
   const activeLines = lines.filter((l) => l.fulfillmentStatus !== "CANCELLED");
@@ -82,11 +83,29 @@ export function GuestOrderActionModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors: Record<string, string> = {};
+
     if (mode === "CANCEL") {
+      if (reason.trim().length < 3) {
+        nextErrors.reason = "Enter at least 3 characters explaining why you want to cancel.";
+      }
+      setFieldErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) return;
       onSubmitCancel(reason.trim());
     } else if (mode === "PACK_TAKEAWAY") {
       onSubmitPackTakeaway(selectedIds, notes.trim());
     } else {
+      if (customerName.trim().length < 2) {
+        nextErrors.customerName = "Enter the recipient's full name (at least 2 characters).";
+      }
+      if (phone.replace(/\D/g, "").length < 7) {
+        nextErrors.phone = "Enter a valid mobile number (e.g. 98XXXXXXXX) so the rider can call.";
+      }
+      if (deliveryAddress.trim().length < 5) {
+        nextErrors.deliveryAddress = "Enter street, tole, and a nearby landmark so we can locate you.";
+      }
+      setFieldErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) return;
       onSubmitDelivery({
         itemIds: selectedIds,
         customerName: customerName.trim(),
@@ -100,96 +119,163 @@ export function GuestOrderActionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#292320]/45 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="w-full sm:max-w-md rounded-t-lg sm:rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] max-h-[90vh] flex flex-col">
-        <div className="px-4 py-3.5 border-b border-[#EEE7DD] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {mode === "CANCEL" && <Ban className="w-4 h-4 text-[#6B2837]" />}
-            {mode === "PACK_TAKEAWAY" && <ShoppingBag className="w-4 h-4 text-[#6B2837]" />}
-            {mode === "REQUEST_DELIVERY" && <Truck className="w-4 h-4 text-[#6B2837]" />}
-            <div>
-              <h3 className="text-sm font-bold text-[#292320]">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ backgroundColor: "rgba(24, 20, 18, 0.52)" }}
+    >
+      <div
+        className="w-full sm:max-w-md rounded-t-[16px] sm:rounded-[16px] max-h-[90dvh] flex flex-col overflow-hidden"
+        style={{
+          backgroundColor: "var(--guest-surface-raised)",
+          border: "1px solid var(--guest-border)",
+          boxShadow: "var(--guest-shadow-soft)",
+        }}
+      >
+        <div
+          className="px-4 py-3 flex items-center justify-between gap-3"
+          style={{ borderBottom: "1px solid var(--guest-border)" }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {mode === "CANCEL" && (
+              <Ban className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent)" }} />
+            )}
+            {mode === "PACK_TAKEAWAY" && (
+              <ShoppingBag className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent)" }} />
+            )}
+            {mode === "REQUEST_DELIVERY" && (
+              <Truck className="w-5 h-5 shrink-0" style={{ color: "var(--guest-accent)" }} />
+            )}
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold leading-snug truncate">
                 {mode === "CANCEL"
                   ? isPaid
                     ? "Request Refund"
                     : "Cancel Order"
                   : mode === "PACK_TAKEAWAY"
                   ? "Pack Items for Takeaway"
-                  : "Deliver Remaining Food Elsewhere"}
+                  : "Deliver Food Elsewhere"}
               </h3>
-              <p className="text-[11px] text-[#71675E] tabular-nums">Order #{orderNumber}</p>
+              <p
+                className="text-sm font-normal tabular-nums"
+                style={{ color: "var(--guest-muted)" }}
+              >
+                Order #{orderNumber}
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-center text-[#71675E] hover:text-[#292320] cursor-pointer"
+            aria-label="Close modal"
+            className="w-11 h-11 rounded-[8px] inline-flex items-center justify-center cursor-pointer shrink-0"
+            style={{
+              backgroundColor: "var(--guest-surface-subtle)",
+              border: "1px solid var(--guest-border)",
+              color: "var(--guest-fg)",
+            }}
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto text-xs">
+        <form onSubmit={handleSubmit} noValidate className="p-4 space-y-4 overflow-y-auto">
           {error && (
-            <div className="p-2.5 rounded-md border border-[#E5B8B8] bg-[#FDF2F2] text-[#8A1F2D] flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div
+              role="alert"
+              className="p-3 rounded-[8px] text-sm flex items-start gap-2"
+              style={{
+                backgroundColor: "var(--guest-danger-bg)",
+                color: "var(--guest-danger)",
+                border: "1px solid var(--guest-danger-border)",
+              }}
+            >
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {mode === "CANCEL" && (
             <>
-              <div className="p-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[11px] text-[#71675E] leading-relaxed">
-                <span className="font-semibold text-[#292320] block mb-0.5">
+              <div
+                className="p-3 rounded-[8px] text-sm leading-relaxed max-w-[65ch]"
+                style={{
+                  backgroundColor: "var(--guest-surface-subtle)",
+                  border: "1px solid var(--guest-border)",
+                  color: "var(--guest-muted)",
+                }}
+              >
+                <span className="font-semibold block mb-1" style={{ color: "var(--guest-fg)" }}>
                   {isPaid ? "Refund Policy" : "Cancellation Policy"}
                 </span>
                 {isPaid ? refundPolicyText : cancellationPolicyText}
               </div>
-              <div>
-                <label className="block font-semibold text-[#292320] mb-1">
-                  Reason *
+
+              <div className="space-y-1">
+                <label htmlFor="guest-cancel-reason" className="block text-sm font-semibold">
+                  Reason for {isPaid ? "refund" : "cancellation"} *
                 </label>
                 <textarea
-                  required
-                  minLength={3}
+                  id="guest-cancel-reason"
                   rows={3}
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
+                  aria-invalid={Boolean(fieldErrors.reason)}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    if (fieldErrors.reason) setFieldErrors((p) => ({ ...p, reason: "" }));
+                  }}
                   placeholder={
                     isPaid
-                      ? "Explain the issue for our cashier/manager..."
-                      : "e.g. Ordered by mistake, changed my mind..."
+                      ? "Explain the issue so our manager can review..."
+                      : "e.g. Ordered by mistake or changed my mind"
                   }
-                  className="w-full px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                  className="guest-input"
                 />
+                {fieldErrors.reason && (
+                  <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                    {fieldErrors.reason}
+                  </p>
+                )}
               </div>
             </>
           )}
 
           {(mode === "PACK_TAKEAWAY" || mode === "REQUEST_DELIVERY") && (
             <>
-              <div>
-                <label className="block font-semibold text-[#292320] mb-1">
-                  Select Items (leave unchecked for all remaining items)
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold">
+                  Select items (leave unchecked for all remaining)
                 </label>
-                <div className="max-h-36 overflow-y-auto space-y-1.5 border border-[#EEE7DD] rounded-md p-2 bg-[#F7F3EC]">
+                <div
+                  className="max-h-40 overflow-y-auto space-y-2 rounded-[8px] p-2"
+                  style={{
+                    backgroundColor: "var(--guest-surface-subtle)",
+                    border: "1px solid var(--guest-border)",
+                  }}
+                >
                   {activeLines.map((line) => (
                     <label
                       key={line.id}
-                      className="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-[#FFFCF7] border border-[#EEE7DD] cursor-pointer"
+                      className="min-h-[44px] flex items-center justify-between gap-2 px-3 py-2 rounded-[8px] cursor-pointer"
+                      style={{
+                        backgroundColor: "var(--guest-surface)",
+                        border: "1px solid var(--guest-border)",
+                      }}
                     >
-                      <span className="flex items-center gap-2 text-[#292320]">
+                      <span className="flex items-center gap-2 text-base">
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(line.id)}
                           onChange={() => toggleLine(line.id)}
-                          className="accent-[#6B2837]"
+                          className="w-4 h-4 accent-[#6B2837]"
                         />
-                        <span className="font-medium">
-                          {line.quantity}x {line.itemName}
+                        <span>
+                          {line.quantity}× {line.itemName}
                         </span>
                       </span>
-                      <span className="text-[10px] font-semibold text-[#71675E] uppercase">
+                      <span
+                        className="text-xs font-semibold uppercase"
+                        style={{ color: "var(--guest-muted)" }}
+                      >
                         {line.fulfillmentStatus}
                       </span>
                     </label>
@@ -198,96 +284,129 @@ export function GuestOrderActionModal({
               </div>
 
               {mode === "REQUEST_DELIVERY" && (
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="block font-semibold text-[#292320] mb-1">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label htmlFor="del-recipient-name" className="block text-sm font-semibold">
                       Recipient Name *
                     </label>
                     <input
+                      id="del-recipient-name"
                       type="text"
-                      required
-                      minLength={2}
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
+                      aria-invalid={Boolean(fieldErrors.customerName)}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        if (fieldErrors.customerName)
+                          setFieldErrors((p) => ({ ...p, customerName: "" }));
+                      }}
                       placeholder="Full name"
-                      className="w-full h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                      className="guest-input"
                     />
+                    {fieldErrors.customerName && (
+                      <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                        {fieldErrors.customerName}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <label className="block font-semibold text-[#292320] mb-1">
+
+                  <div className="space-y-1">
+                    <label htmlFor="del-recipient-phone" className="block text-sm font-semibold">
                       Recipient Mobile Number *
                     </label>
                     <input
+                      id="del-recipient-phone"
                       type="tel"
-                      required
-                      minLength={7}
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      aria-invalid={Boolean(fieldErrors.phone)}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                      }}
                       placeholder="98XXXXXXXX"
-                      className="w-full h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                      className="guest-input tabular-nums"
                     />
+                    {fieldErrors.phone && (
+                      <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-[#292320]">
-                        Delivery Address / Location *
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="del-recipient-addr" className="text-sm font-semibold">
+                        Delivery Address *
                       </label>
                       <button
                         type="button"
                         onClick={handleCaptureGps}
                         disabled={locating}
-                        className="text-[11px] font-semibold text-[#6B2837] inline-flex items-center gap-1 cursor-pointer"
+                        className="min-h-[36px] px-2 text-sm font-semibold inline-flex items-center gap-1 cursor-pointer"
+                        style={{ color: "var(--guest-accent)" }}
                       >
                         {locating ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <MapPin className="w-3 h-3" />
+                          <MapPin className="w-4 h-4" />
                         )}
-                        <span>{coords ? "GPS Attached" : "Attach GPS Pin"}</span>
+                        <span>{coords ? "GPS Attached" : "Attach GPS"}</span>
                       </button>
                     </div>
                     <textarea
-                      required
-                      minLength={5}
+                      id="del-recipient-addr"
                       rows={2}
                       value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      placeholder="Street, Tole, House/Flat No., Landmark"
-                      className="w-full px-3 py-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                      aria-invalid={Boolean(fieldErrors.deliveryAddress)}
+                      onChange={(e) => {
+                        setDeliveryAddress(e.target.value);
+                        if (fieldErrors.deliveryAddress)
+                          setFieldErrors((p) => ({ ...p, deliveryAddress: "" }));
+                      }}
+                      placeholder="Street, Tole, House/Flat No., Nearby Landmark"
+                      className="guest-input"
                     />
+                    {fieldErrors.deliveryAddress && (
+                      <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                        {fieldErrors.deliveryAddress}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              <div>
-                <label className="block font-semibold text-[#292320] mb-1">
-                  Packaging / Delivery Note (Optional)
+              <div className="space-y-1">
+                <label htmlFor="fulfill-notes" className="block text-sm font-semibold">
+                  Packaging or Delivery Note (Optional)
                 </label>
                 <input
+                  id="fulfill-notes"
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Separate containers, call on arrival"
-                  className="w-full h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
+                  placeholder="e.g. Separate boxes, call on arrival"
+                  className="guest-input"
                 />
               </div>
             </>
           )}
 
-          <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#EEE7DD]">
+          <div
+            className="pt-4 flex items-center justify-end gap-3"
+            style={{ borderTop: "1px solid var(--guest-border)" }}
+          >
             <button
               type="button"
               onClick={onClose}
-              className="h-9 px-3.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-[#292320] font-semibold cursor-pointer"
+              className="guest-btn-secondary px-4 cursor-pointer"
             >
               Close
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="h-9 px-4 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              className="guest-btn-primary px-5 inline-flex items-center justify-center gap-2 cursor-pointer"
             >
-              {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {submitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
               <span>
                 {mode === "CANCEL"
                   ? isPaid

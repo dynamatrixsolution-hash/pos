@@ -31,11 +31,23 @@ export function GuestSettledThankYouCard({
   onScanNewTable,
 }: GuestSettledThankYouCardProps) {
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
+    <div className="min-h-[85dvh] flex items-center justify-center px-4 py-8">
+      <div className="guest-card w-full max-w-md overflow-hidden">
         {/* Restaurant Identity Header */}
-        <div className="p-6 text-center border-b border-[#EEE7DD] bg-[#F7F3EC]">
-          <div className="w-16 h-16 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] mx-auto flex items-center justify-center overflow-hidden mb-3">
+        <div
+          className="p-6 text-center space-y-3"
+          style={{
+            backgroundColor: "var(--guest-surface-subtle)",
+            borderBottom: "1px solid var(--guest-border)",
+          }}
+        >
+          <div
+            className="w-16 h-16 rounded-[12px] mx-auto flex items-center justify-center overflow-hidden"
+            style={{
+              backgroundColor: "var(--guest-surface)",
+              border: "1px solid var(--guest-border)",
+            }}
+          >
             {businessLogo ? (
               <img
                 src={businessLogo}
@@ -43,76 +55,102 @@ export function GuestSettledThankYouCard({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <UtensilsCrossed className="w-7 h-7 text-[#6B2837]" />
+              <UtensilsCrossed className="w-7 h-7" style={{ color: "var(--guest-accent)" }} />
             )}
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-[#C3DED0] bg-[#F1F7F4] text-[#28634B] text-[11px] font-semibold">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Bill Settled &amp; Session Completed</span>
+
+          <span
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-[8px] text-sm font-semibold"
+            style={{
+              backgroundColor: "var(--guest-success-bg)",
+              color: "var(--guest-success)",
+              border: "1px solid var(--guest-success-border)",
+            }}
+          >
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>Bill Settled</span>
           </span>
-          <h1 className="text-xl font-bold text-[#292320] mt-3 leading-tight">
-            Thank You for Dining with {businessName}
-          </h1>
-          {branchName && (
-            <p className="text-xs font-medium text-[#71675E] mt-0.5">
-              {branchName}
-              {tableLabel ? ` • ${tableLabel}` : ""}
-            </p>
-          )}
-          <p className="text-xs text-[#71675E] leading-relaxed mt-3 max-w-sm mx-auto">
-            It was a pleasure serving you today. We hope every dish brought warmth to your table, and we look forward to welcoming you back again soon.
+
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold leading-snug">
+              Thank you for dining with {businessName}
+            </h1>
+            {branchName && (
+              <p className="text-sm font-normal" style={{ color: "var(--guest-muted)" }}>
+                {branchName}
+                {tableLabel ? ` • ${tableLabel}` : ""}
+              </p>
+            )}
+          </div>
+
+          <p
+            className="text-base font-normal max-w-[60ch] mx-auto"
+            style={{ color: "var(--guest-muted)" }}
+          >
+            It was a pleasure serving you today. We hope every dish brought warmth to your table and look forward to welcoming you back soon.
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="p-5 space-y-2.5">
+        {/* Actions: One filled primary CTA + clean secondary actions */}
+        <div className="p-4 space-y-4">
           {hasGoogleReview && onRateGoogle && (
             <button
               type="button"
               onClick={onRateGoogle}
-              className="w-full h-11 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="guest-btn-primary w-full px-4 inline-flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Star className="w-4 h-4" />
+              <Star className="w-5 h-5 shrink-0" />
               <span>Share Your Experience on Google</span>
             </button>
           )}
 
-          <div className="pt-1">
-            <p className="text-[11px] font-semibold text-[#71675E] mb-2 text-center">
-              Craving something later? Order directly for pickup or delivery:
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-center" style={{ color: "var(--guest-muted)" }}>
+              Order again anytime for delivery or pickup
             </p>
             <div className="grid grid-cols-2 gap-2">
               {deliveryEnabled && (
                 <button
                   type="button"
                   onClick={onStartDelivery}
-                  className="h-10 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className={
+                    !hasGoogleReview
+                      ? "guest-btn-primary px-3 inline-flex items-center justify-center gap-2 cursor-pointer"
+                      : "guest-btn-secondary px-3 inline-flex items-center justify-center gap-2 cursor-pointer"
+                  }
                 >
-                  <Truck className="w-3.5 h-3.5 text-[#6B2837]" />
-                  <span>Order Delivery</span>
+                  <Truck className="w-4 h-4 shrink-0" />
+                  <span>Delivery</span>
                 </button>
               )}
               {takeawayEnabled && (
                 <button
                   type="button"
                   onClick={onStartTakeaway}
-                  className="h-10 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="guest-btn-secondary px-3 inline-flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <ShoppingBag className="w-3.5 h-3.5 text-[#6B2837]" />
-                  <span>Order Takeaway</span>
+                  <ShoppingBag
+                    className="w-4 h-4 shrink-0"
+                    style={{ color: "var(--guest-accent)" }}
+                  />
+                  <span>Takeaway</span>
                 </button>
               )}
             </div>
           </div>
 
-          <div className="pt-2 border-t border-[#EEE7DD] text-center">
+          <div
+            className="pt-3 text-center"
+            style={{ borderTop: "1px solid var(--guest-border)" }}
+          >
             <button
               type="button"
               onClick={onScanNewTable}
-              className="text-[11px] font-medium text-[#71675E] hover:text-[#292320] inline-flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-3 text-sm font-medium inline-flex items-center justify-center gap-2 cursor-pointer"
+              style={{ color: "var(--guest-muted)" }}
             >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>Dining again? Sit at an available table and scan its QR code</span>
+              <QrCode className="w-4 h-4 shrink-0" />
+              <span>Dining again? Scan an available table QR</span>
             </button>
           </div>
         </div>

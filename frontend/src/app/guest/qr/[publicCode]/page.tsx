@@ -60,6 +60,8 @@ import {
   Truck,
   MapPin,
   Ban,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 // Resolve a real uploaded image (menu item first, then linked product). Returns null when none.
@@ -451,7 +453,29 @@ export default function GuestQrPortalPage() {
   const [channelAddress, setChannelAddress] = useState<string>("");
   const [channelCoords, setChannelCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingGps, setLocatingGps] = useState<boolean>(false);
+  const [channelFieldErrors, setChannelFieldErrors] = useState<Record<string, string>>({});
+  const [guestTheme, setGuestTheme] = useState<"light" | "dark">("light");
   const [sessionEndedThankYou, setSessionEndedThankYou] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("restroinn_guest_theme_v1");
+      if (saved === "dark" || saved === "light") {
+        setGuestTheme(saved);
+      } else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+        setGuestTheme("dark");
+      }
+    } catch {}
+  }, []);
+
+  const toggleGuestTheme = () => {
+    const next = guestTheme === "dark" ? "light" : "dark";
+    setGuestTheme(next);
+    try {
+      localStorage.setItem("restroinn_guest_theme_v1", next);
+    } catch {}
+  };
   const [tableUnlockPrompt, setTableUnlockPrompt] = useState<string | null>(null);
   const [orderActionModal, setOrderActionModal] = useState<{
     mode: GuestOrderModalMode;
@@ -1474,17 +1498,26 @@ export default function GuestQrPortalPage() {
     if (!isRoomQr && (orderChannel === "TAKEAWAY" || orderChannel === "DELIVERY")) {
       const cleanName = channelName.trim();
       const cleanPhone = channelPhone.trim();
+      const cleanEmail = channelEmail.trim();
       const cleanAddress = channelAddress.trim();
+      const nextErrors: Record<string, string> = {};
+
       if (cleanName.length < 2) {
-        showBanner("Please enter your full name.", "error");
-        return;
+        nextErrors.name = "Enter your full name (at least 2 characters) so staff can identify your order.";
       }
       if (cleanPhone.replace(/\D/g, "").length < 7) {
-        showBanner("Please enter a valid mobile number.", "error");
-        return;
+        nextErrors.phone = "Enter a valid mobile number (e.g. 98XXXXXXXX) so we can call you on updates.";
+      }
+      if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        nextErrors.email = "Enter a valid email like name@example.com, or leave it blank.";
       }
       if (orderChannel === "DELIVERY" && cleanAddress.length < 5) {
-        showBanner("Full delivery address / location is mandatory for delivery.", "error");
+        nextErrors.address = "Enter your street, tole, and a nearby landmark so our rider can find you.";
+      }
+
+      setChannelFieldErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) {
+        showBanner("Please fix the highlighted fields before placing your order.", "error");
         return;
       }
 
@@ -1918,7 +1951,7 @@ export default function GuestQrPortalPage() {
 
   if (sessionEndedThankYou) {
     return (
-      <div className="min-h-screen bg-[#F7F3EC] text-[#292320] font-sans">
+      <div data-theme={guestTheme} className="guest-shell min-h-[100dvh] font-sans">
         <GuestSettledThankYouCard
           businessName={qrLocation.business.name}
           businessLogo={qrLocation.business.logo}
@@ -2152,51 +2185,95 @@ export default function GuestQrPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F3EC] text-[#1A1614] flex justify-center">
+    <div data-theme={guestTheme} className="guest-shell min-h-[100dvh] flex justify-center">
       <GuestSplashScreen
         businessName={qrLocation.business.name}
         locationLabel={locationBadgeText}
         publicCode={publicCode}
       />
-      <div className="w-full max-w-lg min-h-screen flex flex-col border-x border-[#EEE7DD] bg-[#FFFCF7] relative pb-24 shadow-2xs">
-        {/* Sticky Mobile Hospitality Header: Restaurant Name on Left, Table + Search + Waiter on Right */}
-        <header className="sticky top-0 z-30 bg-[#FFFCF7] px-4 py-2.5 border-b border-[#EEE7DD] shadow-2xs">
+      <div
+        className="w-full max-w-lg min-h-[100dvh] flex flex-col relative pb-28"
+        style={{
+          backgroundColor: "var(--guest-bg)",
+          borderLeft: "1px solid var(--guest-border)",
+          borderRight: "1px solid var(--guest-border)",
+        }}
+      >
+        {/* Sticky Mobile Hospitality Header — 44px tap targets, hairline border, single accent */}
+        <header
+          className="sticky top-0 z-30 px-4 py-3"
+          style={{
+            backgroundColor: "var(--guest-surface)",
+            borderBottom: "1px solid var(--guest-border)",
+          }}
+        >
           <div className="flex items-center justify-between gap-2">
             {/* Top Left: Restaurant Name */}
             <div className="min-w-0 pr-1">
-              <h1 className="text-sm font-extrabold tracking-tight text-[#292320] truncate">
+              <h1 className="text-base font-semibold leading-snug truncate">
                 {qrLocation.business.name}
               </h1>
               {qrLocation.branch?.name && (
-                <p className="text-[10px] uppercase font-bold tracking-wider text-[#A77B38] truncate">
+                <p
+                  className="text-sm font-normal leading-snug truncate"
+                  style={{ color: "var(--guest-muted)" }}
+                >
                   {qrLocation.branch.name}
                 </p>
               )}
             </div>
 
-            {/* Top Right: Table Name + Search Icon + Notification/Waiter Bell */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD] shadow-2xs">
-                {isRoomQr ? (
-                  <BedDouble className="w-3.5 h-3.5 text-[#6B2837]" />
+            {/* Top Right: Channel Badge + Theme + Search + Bell (all 44px tap targets) */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className="min-h-[36px] inline-flex items-center gap-1.5 px-3 rounded-[8px] text-sm font-semibold"
+                style={{
+                  backgroundColor: "var(--guest-accent-soft)",
+                  color: "var(--guest-accent)",
+                  border: "1px solid var(--guest-border)",
+                }}
+              >
+                {orderChannel === "DELIVERY" ? (
+                  <Truck className="w-4 h-4 shrink-0" />
+                ) : orderChannel === "TAKEAWAY" ? (
+                  <ShoppingBag className="w-4 h-4 shrink-0" />
+                ) : isRoomQr ? (
+                  <BedDouble className="w-4 h-4 shrink-0" />
                 ) : (
-                  <Store className="w-3.5 h-3.5 text-[#6B2837]" />
+                  <Store className="w-4 h-4 shrink-0" />
                 )}
                 <span>{locationBadgeText}</span>
               </span>
 
-              {/* Search Icon Trigger */}
+              <button
+                type="button"
+                onClick={toggleGuestTheme}
+                aria-label={guestTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                className="w-11 h-11 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer"
+                style={{
+                  backgroundColor: "var(--guest-surface-subtle)",
+                  border: "1px solid var(--guest-border)",
+                  color: "var(--guest-fg)",
+                }}
+              >
+                {guestTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsSearchModalOpen(true)}
                 aria-label="Search menu"
-                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#292320] hover:bg-[#F7F3EC] transition cursor-pointer"
+                className="w-11 h-11 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer"
+                style={{
+                  backgroundColor: "var(--guest-surface-subtle)",
+                  border: "1px solid var(--guest-border)",
+                  color: "var(--guest-fg)",
+                }}
                 title="Search Menu"
               >
-                <Search className="w-4 h-4 text-[#292320]" />
+                <Search className="w-5 h-5" />
               </button>
 
-              {/* Live Order Updates Bell Button (works for BOTH Table & Room guests) */}
               <button
                 type="button"
                 onClick={() => {
@@ -2204,12 +2281,23 @@ export default function GuestQrPortalPage() {
                   setUnreadGuestNotifs(0);
                 }}
                 aria-label="Order updates and alerts"
-                className="w-9 h-9 rounded-full bg-[#FFFCF7] border border-[#D8CEC1] flex items-center justify-center text-[#6B2837] hover:bg-[#F7F3EC] transition cursor-pointer relative"
+                className="w-11 h-11 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer relative"
+                style={{
+                  backgroundColor: "var(--guest-surface-subtle)",
+                  border: "1px solid var(--guest-border)",
+                  color: "var(--guest-accent)",
+                }}
                 title="Live Order Updates"
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-5 h-5" />
                 {unreadGuestNotifs > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-[#6B2837] text-[#FFFCF7] text-[9px] font-bold flex items-center justify-center tabular-nums">
+                  <span
+                    className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full text-xs font-semibold flex items-center justify-center tabular-nums"
+                    style={{
+                      backgroundColor: "var(--guest-accent)",
+                      color: "var(--guest-accent-fg)",
+                    }}
+                  >
                     {unreadGuestNotifs > 9 ? "9+" : unreadGuestNotifs}
                   </span>
                 )}
@@ -2507,19 +2595,34 @@ export default function GuestQrPortalPage() {
                   </div>
                 )}
 
-                {/* Horizontal Category & Dietary Nav Chips (hidden scrollbars) */}
+                {/* Horizontal Category & Dietary Nav Chips — 44px tap targets, hairline border, single accent */}
                 {(allSections.length > 1 || availableDietaryTags.length > 0) && (
-                  <div id="catalog-courses-scroll" className="sticky top-[56px] z-20 -mx-4 px-4 py-2 bg-[#FFFCF7] border-b border-[#EEE7DD] space-y-1.5">
+                  <div
+                    id="catalog-courses-scroll"
+                    className="sticky top-[68px] z-20 -mx-4 px-4 py-3 space-y-2"
+                    style={{
+                      backgroundColor: "var(--guest-surface)",
+                      borderBottom: "1px solid var(--guest-border)",
+                    }}
+                  >
                     {allSections.length > 1 && (
-                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <button
                           type="button"
                           onClick={() => setSelectedSectionId("ALL")}
-                          className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                          className="min-h-[44px] px-4 rounded-[8px] text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer"
+                          style={
                             selectedSectionId === "ALL"
-                              ? "bg-[#6B2837] text-[#FFFCF7]"
-                              : "bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] border border-[#D8CEC1]"
-                          }`}
+                              ? {
+                                  backgroundColor: "var(--guest-accent)",
+                                  color: "var(--guest-accent-fg)",
+                                }
+                              : {
+                                  backgroundColor: "var(--guest-surface-subtle)",
+                                  color: "var(--guest-fg)",
+                                  border: "1px solid var(--guest-border)",
+                                }
+                          }
                         >
                           All
                         </button>
@@ -2528,11 +2631,19 @@ export default function GuestQrPortalPage() {
                             key={sec.id}
                             type="button"
                             onClick={() => setSelectedSectionId(sec.id)}
-                            className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                            className="min-h-[44px] px-4 rounded-[8px] text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer"
+                            style={
                               selectedSectionId === sec.id
-                                ? "bg-[#6B2837] text-[#FFFCF7]"
-                                : "bg-[#F7F3EC] text-[#71675E] hover:text-[#292320] border border-[#D8CEC1]"
-                            }`}
+                                ? {
+                                    backgroundColor: "var(--guest-accent)",
+                                    color: "var(--guest-accent-fg)",
+                                  }
+                                : {
+                                    backgroundColor: "var(--guest-surface-subtle)",
+                                    color: "var(--guest-fg)",
+                                    border: "1px solid var(--guest-border)",
+                                  }
+                            }
                           >
                             {sec.name}
                           </button>
@@ -2540,15 +2651,24 @@ export default function GuestQrPortalPage() {
                       </div>
                     )}
                     {availableDietaryTags.length > 0 && (
-                      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <button
                           type="button"
                           onClick={() => setSelectedDietary("ALL")}
-                          className={`px-2.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap cursor-pointer border ${
+                          className="min-h-[36px] px-3 rounded-[8px] text-sm font-medium whitespace-nowrap cursor-pointer"
+                          style={
                             selectedDietary === "ALL"
-                              ? "bg-[#292320] text-[#FFFCF7] border-[#292320]"
-                              : "bg-[#FFFCF7] text-[#71675E] border-[#D8CEC1]"
-                          }`}
+                              ? {
+                                  backgroundColor: "var(--guest-accent-soft)",
+                                  color: "var(--guest-accent)",
+                                  border: "1px solid var(--guest-accent)",
+                                }
+                              : {
+                                  backgroundColor: "var(--guest-surface)",
+                                  color: "var(--guest-muted)",
+                                  border: "1px solid var(--guest-border)",
+                                }
+                          }
                         >
                           All Diets
                         </button>
@@ -2557,11 +2677,20 @@ export default function GuestQrPortalPage() {
                             key={tag}
                             type="button"
                             onClick={() => setSelectedDietary(tag)}
-                            className={`px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase whitespace-nowrap cursor-pointer border ${
+                            className="min-h-[36px] px-3 rounded-[8px] text-sm font-medium whitespace-nowrap cursor-pointer"
+                            style={
                               selectedDietary === tag
-                                ? "bg-[#28634B] text-[#FFFCF7] border-[#28634B]"
-                                : "bg-[#FFFCF7] text-[#71675E] border-[#D8CEC1]"
-                            }`}
+                                ? {
+                                    backgroundColor: "var(--guest-accent-soft)",
+                                    color: "var(--guest-accent)",
+                                    border: "1px solid var(--guest-accent)",
+                                  }
+                                : {
+                                    backgroundColor: "var(--guest-surface)",
+                                    color: "var(--guest-muted)",
+                                    border: "1px solid var(--guest-border)",
+                                  }
+                            }
                           >
                             {tag}
                           </button>
@@ -2573,14 +2702,24 @@ export default function GuestQrPortalPage() {
 
                 {/* Search indicator pill if active search from top header */}
                 {searchQuery && (
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF6F0] border border-[#EEE7DD] text-xs">
-                    <span className="text-[#292320]">
-                      Showing results for: <span className="font-bold text-[#6B2837]">&quot;{searchQuery}&quot;</span>
+                  <div
+                    className="flex items-center justify-between px-4 py-3 rounded-[12px] text-sm"
+                    style={{
+                      backgroundColor: "var(--guest-surface)",
+                      border: "1px solid var(--guest-border)",
+                    }}
+                  >
+                    <span>
+                      Showing results for{" "}
+                      <span className="font-semibold" style={{ color: "var(--guest-accent)" }}>
+                        &quot;{searchQuery}&quot;
+                      </span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
-                      className="text-[#71675E] hover:text-[#292320] font-semibold text-[11px] underline cursor-pointer"
+                      className="min-h-[36px] px-2 font-semibold underline cursor-pointer"
+                      style={{ color: "var(--guest-accent)" }}
                     >
                       Clear
                     </button>
@@ -2588,36 +2727,49 @@ export default function GuestQrPortalPage() {
                 )}
 
                 {filteredSections.length === 0 ? (
-                  <div className="bg-[#FFFCF7] rounded-xl p-8 text-center border border-[#EEE7DD] space-y-2">
-                    <UtensilsCrossed className="w-8 h-8 text-[#A77B38] mx-auto" />
-                    <p className="text-sm font-bold text-[#292320]">No dishes found</p>
-                    <p className="text-xs text-[#71675E]">
-                      Try picking another category or clear your search.
+                  <div className="guest-card p-8 text-center space-y-3">
+                    <UtensilsCrossed
+                      className="w-8 h-8 mx-auto"
+                      style={{ color: "var(--guest-accent)" }}
+                    />
+                    <p className="text-lg font-semibold">No matching dishes</p>
+                    <p
+                      className="text-base font-normal max-w-[44ch] mx-auto"
+                      style={{ color: "var(--guest-muted)" }}
+                    >
+                      Try choosing another category above or clear your search filter to see the full menu.
                     </p>
-                    {searchQuery && (
+                    {(searchQuery || selectedSectionId !== "ALL" || selectedDietary !== "ALL") && (
                       <button
                         type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="px-3.5 py-1.5 rounded-lg bg-[#6B2837] text-white text-xs font-bold cursor-pointer"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSelectedSectionId("ALL");
+                          setSelectedDietary("ALL");
+                        }}
+                        className="guest-btn-primary px-6 cursor-pointer"
                       >
-                        Clear Search
+                        Reset Filters
                       </button>
                     )}
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {filteredSections.map((section) => (
-                      <section key={section.id} className="space-y-2.5">
-                        <div className="flex items-center justify-between pb-1 border-b border-[#EEE7DD]">
-                          <h2 className="text-xs font-bold uppercase tracking-wider text-[#6B2837]">
+                      <section key={section.id} className="space-y-3">
+                        <div
+                          className="flex items-center justify-between pb-2"
+                          style={{ borderBottom: "1px solid var(--guest-border)" }}
+                        >
+                          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--guest-accent)" }}>
                             {section.name}
                           </h2>
-                          <span className="text-[10px] font-semibold text-[#71675E]">
+                          <span className="text-sm font-normal tabular-nums" style={{ color: "var(--guest-muted)" }}>
                             {section.items.length} {section.items.length === 1 ? "item" : "items"}
                           </span>
                         </div>
 
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           {section.items.map((item) => {
                             const tags = Array.isArray(item.dietaryTags) ? item.dietaryTags : [];
                             const hasMods =
@@ -2632,17 +2784,22 @@ export default function GuestQrPortalPage() {
                               <div
                                 key={item.id}
                                 onClick={() => handleSelectMenuItem(item)}
-                                className="bg-[#FFFCF7] rounded-xl p-3 border border-[#EEE7DD] hover:border-[#A77B38] transition cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
+                                className="guest-card p-4 transition-colors cursor-pointer flex items-center justify-between gap-4"
                               >
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h3 className="text-xs sm:text-sm font-bold text-[#292320] leading-snug group-hover:text-[#6B2837] transition">
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-base font-semibold leading-snug">
                                       {item.name}
                                     </h3>
                                     {tags.map((tag) => (
                                       <span
                                         key={tag}
-                                        className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-[#FAF6F0] text-[#6B2837] border border-[#EEE7DD]"
+                                        className="text-xs font-medium px-2 py-0.5 rounded-[6px]"
+                                        style={{
+                                          backgroundColor: "var(--guest-surface-subtle)",
+                                          color: "var(--guest-muted)",
+                                          border: "1px solid var(--guest-border)",
+                                        }}
                                       >
                                         {tag}
                                       </span>
@@ -2650,36 +2807,54 @@ export default function GuestQrPortalPage() {
                                   </div>
 
                                   {item.description && (
-                                    <p className="text-[11px] text-[#71675E] line-clamp-2 leading-relaxed">
+                                    <p
+                                      className="text-sm font-normal line-clamp-2 leading-relaxed max-w-[65ch]"
+                                      style={{ color: "var(--guest-muted)" }}
+                                    >
                                       {item.description}
                                     </p>
                                   )}
 
-                                  <div className="flex items-center gap-2 pt-0.5">
-                                    <span className="text-xs sm:text-sm font-extrabold text-[#6B2837] tabular-nums">
+                                  <div className="flex items-center gap-3 pt-1">
+                                    <span
+                                      className="text-base font-semibold tabular-nums"
+                                      style={{ color: "var(--guest-accent)" }}
+                                    >
                                       {formatNPR(item.basePrice)}
                                     </span>
                                     {item.prepTimeMinutes ? (
-                                      <span className="inline-flex items-center gap-0.5 text-[10px] text-[#71675E] font-medium">
-                                        <Clock className="w-3 h-3 text-[#A77B38]" />
-                                        <span>{item.prepTimeMinutes}m</span>
+                                      <span
+                                        className="inline-flex items-center gap-1 text-sm font-normal"
+                                        style={{ color: "var(--guest-muted)" }}
+                                      >
+                                        <Clock className="w-4 h-4 shrink-0" />
+                                        <span>{item.prepTimeMinutes} min</span>
                                       </span>
                                     ) : null}
                                     {hasMods && (
-                                      <span className="text-[10px] font-medium text-[#A77B38]">
-                                        • Customizable
+                                      <span
+                                        className="text-sm font-normal"
+                                        style={{ color: "var(--guest-muted)" }}
+                                      >
+                                        Customizable
                                       </span>
                                     )}
                                   </div>
                                 </div>
 
-                                {/* Thumbnail Image or Food Icon with Inline Quantity Stepper */}
-                                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                  <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-[#F7F3EC] border border-[#D8CEC1]">
-                                    <FoodImage item={item} iconClassName="w-7 h-7" />
+                                {/* Concentric Inner Radius (16px outer -> 8px inner) + 44px Tap Target */}
+                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                  <div
+                                    className="relative w-24 h-24 rounded-[8px] overflow-hidden"
+                                    style={{
+                                      backgroundColor: "var(--guest-surface-subtle)",
+                                      border: "1px solid var(--guest-border)",
+                                    }}
+                                  >
+                                    <FoodImage item={item} iconClassName="w-8 h-8" />
                                     {item.isAvailable === false && (
-                                      <div className="absolute inset-0 bg-[#292320]/60 flex items-center justify-center">
-                                        <span className="text-[9px] font-bold uppercase text-[#FFFCF7] px-1.5 py-0.5 rounded bg-[#B33432]">
+                                      <div className="absolute inset-0 bg-[#181412]/70 flex items-center justify-center">
+                                        <span className="text-xs font-semibold uppercase text-[#FFFCF7] px-2 py-1 rounded-[6px] bg-[#9E2625]">
                                           Sold Out
                                         </span>
                                       </div>
@@ -2689,25 +2864,31 @@ export default function GuestQrPortalPage() {
                                     const qty = getItemCartQty(item.id);
                                     return qty > 0 ? (
                                       <div
-                                        className="inline-flex items-center justify-between w-20 h-8 px-1 rounded-md bg-[#6B2837] text-[#FFFCF7]"
+                                        className="inline-flex items-center justify-between w-24 min-h-[44px] px-1 rounded-[8px]"
+                                        style={{
+                                          backgroundColor: "var(--guest-accent)",
+                                          color: "var(--guest-accent-fg)",
+                                        }}
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <button
                                           type="button"
                                           aria-label={`Remove one ${item.name}`}
                                           onClick={(e) => decrementItemFromCart(e, item.id)}
-                                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                                          className="w-8 h-10 flex items-center justify-center cursor-pointer"
                                         >
-                                          <Minus className="w-3.5 h-3.5" />
+                                          <Minus className="w-4 h-4" />
                                         </button>
-                                        <span className="text-xs font-bold tabular-nums">{qty}</span>
+                                        <span className="text-base font-semibold tabular-nums">
+                                          {qty}
+                                        </span>
                                         <button
                                           type="button"
                                           aria-label={`Add one more ${item.name}`}
                                           onClick={(e) => handleQuickAddMenuItem(e, item)}
-                                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                                          className="w-8 h-10 flex items-center justify-center cursor-pointer"
                                         >
-                                          <Plus className="w-3.5 h-3.5" />
+                                          <Plus className="w-4 h-4" />
                                         </button>
                                       </div>
                                     ) : (
@@ -2715,9 +2896,14 @@ export default function GuestQrPortalPage() {
                                         type="button"
                                         aria-label={`Add ${item.name} to tray`}
                                         onClick={(e) => handleQuickAddMenuItem(e, item)}
-                                        className="w-20 h-8 rounded-md border border-[#6B2837] bg-[#FFFCF7] hover:bg-[#6B2837] text-[#6B2837] hover:text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                        className="w-24 min-h-[44px] rounded-[8px] text-sm font-semibold inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                        style={{
+                                          backgroundColor: "var(--guest-surface-subtle)",
+                                          color: "var(--guest-accent)",
+                                          border: "1px solid var(--guest-border-strong)",
+                                        }}
                                       >
-                                        <Plus className="w-3.5 h-3.5" />
+                                        <Plus className="w-4 h-4 shrink-0" />
                                         <span>Add</span>
                                       </button>
                                     );
@@ -3722,28 +3908,41 @@ export default function GuestQrPortalPage() {
 
         {/* Floating Cart Bar (ONLY on MENU tab when cart drawer is closed) */}
         {activeTab === "MENU" && !isCartOpen && cartSummary.count > 0 && (
-          <div className="fixed bottom-16 left-0 right-0 z-30 max-w-lg mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
+          <div className="fixed bottom-20 left-0 right-0 z-30 max-w-lg mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="w-full py-3 px-4 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] border border-[#853547] flex items-center justify-between cursor-pointer transition-colors"
+              className="guest-btn-primary w-full min-h-[52px] px-4 rounded-[12px] flex items-center justify-between cursor-pointer"
+              style={{ boxShadow: "var(--guest-shadow-soft)" }}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-[#FFFCF7] text-[#6B2837] font-extrabold text-xs flex items-center justify-center tabular-nums">
+              <div className="flex items-center gap-3">
+                <span
+                  className="w-7 h-7 rounded-[6px] font-semibold text-sm flex items-center justify-center tabular-nums"
+                  style={{
+                    backgroundColor: "var(--guest-accent-fg)",
+                    color: "var(--guest-accent)",
+                  }}
+                >
                   {cartSummary.count}
                 </span>
-                <span className="text-xs font-bold">View Order Tray</span>
+                <span className="text-base font-semibold">View Order Tray</span>
               </div>
-              <div className="flex items-center gap-1 text-xs font-extrabold tabular-nums">
+              <div className="flex items-center gap-1.5 text-base font-semibold tabular-nums">
                 <span>{formatNPR(cartSummary.subtotal)}</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5 shrink-0" />
               </div>
             </button>
           </div>
         )}
 
-        {/* Sticky Bottom Navigation Bar (safe-area aware) */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7] border-t border-[#D8CEC1] px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
+        {/* Sticky Bottom Navigation Bar — 44px+ tap targets, hairline top border, lifted dark surface */}
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+          style={{
+            backgroundColor: "var(--guest-surface)",
+            borderTop: "1px solid var(--guest-border)",
+          }}
+        >
           <div
             className={`grid ${
               orderChannel === "DINE_IN" || isRoomQr ? "grid-cols-4" : "grid-cols-2"
@@ -3752,29 +3951,42 @@ export default function GuestQrPortalPage() {
             <button
               type="button"
               onClick={() => setActiveTab("MENU")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+              className="min-h-[48px] flex flex-col items-center justify-center py-1 rounded-[8px] text-sm font-medium transition-colors cursor-pointer"
+              style={
                 activeTab === "MENU"
-                  ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
+                  ? {
+                      backgroundColor: "var(--guest-accent-soft)",
+                      color: "var(--guest-accent)",
+                      fontWeight: 600,
+                    }
+                  : { color: "var(--guest-muted)" }
+              }
             >
-              <UtensilsCrossed className="w-4 h-4 mb-0.5" />
+              <UtensilsCrossed className="w-5 h-5 mb-0.5 shrink-0" />
               <span>Menu</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("TRACKER")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition relative cursor-pointer ${
+              className="min-h-[48px] flex flex-col items-center justify-center py-1 rounded-[8px] text-sm font-medium transition-colors relative cursor-pointer"
+              style={
                 activeTab === "TRACKER"
-                  ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
+                  ? {
+                      backgroundColor: "var(--guest-accent-soft)",
+                      color: "var(--guest-accent)",
+                      fontWeight: 600,
+                    }
+                  : { color: "var(--guest-muted)" }
+              }
             >
-              <ChefHat className="w-4 h-4 mb-0.5" />
+              <ChefHat className="w-5 h-5 mb-0.5 shrink-0" />
               <span>{orderChannel === "DINE_IN" || isRoomQr ? "Tracker" : "My Orders"}</span>
               {orders.length > 0 && (
-                <span className="absolute top-1 right-3.5 w-2 h-2 rounded-full bg-[#A77B38]" />
+                <span
+                  className="absolute top-1.5 right-4 w-2 h-2 rounded-full"
+                  style={{ backgroundColor: "var(--guest-accent)" }}
+                />
               )}
             </button>
 
@@ -3783,26 +3995,36 @@ export default function GuestQrPortalPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("SERVICES")}
-                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                  className="min-h-[48px] flex flex-col items-center justify-center py-1 rounded-[8px] text-sm font-medium transition-colors cursor-pointer"
+                  style={
                     activeTab === "SERVICES"
-                      ? "text-[#6B2837] bg-[#FAF6F0]"
-                      : "text-[#71675E] hover:text-[#292320]"
-                  }`}
+                      ? {
+                          backgroundColor: "var(--guest-accent-soft)",
+                          color: "var(--guest-accent)",
+                          fontWeight: 600,
+                        }
+                      : { color: "var(--guest-muted)" }
+                  }
                 >
-                  <Bell className="w-4 h-4 mb-0.5" />
+                  <Bell className="w-5 h-5 mb-0.5 shrink-0" />
                   <span>Services</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab("BILL")}
-                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                  className="min-h-[48px] flex flex-col items-center justify-center py-1 rounded-[8px] text-sm font-medium transition-colors cursor-pointer"
+                  style={
                     activeTab === "BILL"
-                      ? "text-[#6B2837] bg-[#FAF6F0]"
-                      : "text-[#71675E] hover:text-[#292320]"
-                  }`}
+                      ? {
+                          backgroundColor: "var(--guest-accent-soft)",
+                          color: "var(--guest-accent)",
+                          fontWeight: 600,
+                        }
+                      : { color: "var(--guest-muted)" }
+                  }
                 >
-                  <Receipt className="w-4 h-4 mb-0.5" />
+                  <Receipt className="w-5 h-5 mb-0.5 shrink-0" />
                   <span>{isRoomQr ? "Room Bill" : "Table Bill"}</span>
                 </button>
               </>
@@ -4042,144 +4264,238 @@ export default function GuestQrPortalPage() {
             MODAL: CART DRAWER & SUBMIT ORDER
            ========================================================= */}
         {isCartOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center p-0 sm:p-4">
-            <div className="bg-[#FFFCF7] w-full max-w-md rounded-t-xl sm:rounded-xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
-              <div className="flex items-center justify-between border-b border-[#F0EAE0] pb-3">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-[#6B2837]" />
-                  <h3 className="text-base font-extrabold text-[#1E1B18]">
-                    Your Order Tray ({locationBadgeText})
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:p-4"
+            style={{ backgroundColor: "rgba(24, 20, 18, 0.56)" }}
+          >
+            <div
+              className="w-full max-w-md rounded-t-[16px] sm:rounded-[16px] p-4 max-h-[88dvh] overflow-y-auto space-y-6"
+              style={{
+                backgroundColor: "var(--guest-surface-raised)",
+                border: "1px solid var(--guest-border)",
+                boxShadow: "var(--guest-shadow-soft)",
+              }}
+            >
+              <div
+                className="flex items-center justify-between gap-3 pb-3"
+                style={{ borderBottom: "1px solid var(--guest-border)" }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ShoppingBag
+                    className="w-5 h-5 shrink-0"
+                    style={{ color: "var(--guest-accent)" }}
+                  />
+                  <h3 className="text-lg font-semibold leading-snug truncate">
+                    Your {locationBadgeText} Tray
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsCartOpen(false)}
-                  className="p-1 rounded-lg text-[#6E655F] hover:text-[#1E1B18]"
+                  aria-label="Close order tray"
+                  className="w-11 h-11 rounded-[8px] flex items-center justify-center cursor-pointer shrink-0"
+                  style={{
+                    backgroundColor: "var(--guest-surface-subtle)",
+                    border: "1px solid var(--guest-border)",
+                    color: "var(--guest-fg)",
+                  }}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {cart.length === 0 ? (
-                <p className="text-xs text-[#6E655F] text-center py-6">Your tray is empty.</p>
+                <div className="py-8 text-center space-y-4">
+                  <p
+                    className="text-base font-normal max-w-[40ch] mx-auto"
+                    style={{ color: "var(--guest-muted)" }}
+                  >
+                    Your tray is empty. Browse the menu and tap + Add on any dish to begin your order.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsCartOpen(false)}
+                    className="guest-btn-primary px-6 cursor-pointer"
+                  >
+                    Browse Menu
+                  </button>
+                </div>
               ) : (
                 <>
                   <div className="space-y-3">
                     {cart.map((line) => (
                       <div
                         key={line.cartKey}
-                        className="p-3 rounded-xl bg-[#FAF6F0] border border-[#E6DEC8] flex items-center justify-between gap-3"
+                        className="p-3 rounded-[8px] flex items-center justify-between gap-3"
+                        style={{
+                          backgroundColor: "var(--guest-surface-subtle)",
+                          border: "1px solid var(--guest-border)",
+                        }}
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#1E1B18]">{line.menuItem.name}</p>
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-base font-semibold leading-snug">{line.menuItem.name}</p>
                           {line.selectedOptions.length > 0 && (
-                            <p className="text-[11px] text-[#6E655F]">
+                            <p className="text-sm font-normal" style={{ color: "var(--guest-muted)" }}>
                               + {line.selectedOptions.map((o) => o.name).join(", ")}
                             </p>
                           )}
                           {line.notes && (
-                            <p className="text-[10px] italic text-[#8C827A]">
+                            <p className="text-sm italic" style={{ color: "var(--guest-muted)" }}>
                               Note: {line.notes}
                             </p>
                           )}
-                          <p className="text-xs font-extrabold text-[#6B2837] mt-1">
+                          <p
+                            className="text-sm font-semibold tabular-nums pt-1"
+                            style={{ color: "var(--guest-accent)" }}
+                          >
                             {formatNPR(fromCents(line.unitPriceCents * line.quantity))}
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
+                            aria-label={`Decrease quantity of ${line.menuItem.name}`}
                             onClick={() => updateCartQty(line.cartKey, -1)}
-                            className="w-7 h-7 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] flex items-center justify-center"
+                            className="w-11 h-11 rounded-[8px] flex items-center justify-center cursor-pointer"
+                            style={{
+                              backgroundColor: "var(--guest-surface)",
+                              border: "1px solid var(--guest-border)",
+                            }}
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="text-xs font-bold w-5 text-center">{line.quantity}</span>
+                          <span className="text-base font-semibold w-7 text-center tabular-nums">
+                            {line.quantity}
+                          </span>
                           <button
                             type="button"
+                            aria-label={`Increase quantity of ${line.menuItem.name}`}
                             onClick={() => updateCartQty(line.cartKey, 1)}
-                            className="w-7 h-7 rounded-lg bg-[#FFFCF7] border border-[#E2D9C8] flex items-center justify-center"
+                            className="w-11 h-11 rounded-[8px] flex items-center justify-center cursor-pointer"
+                            style={{
+                              backgroundColor: "var(--guest-surface)",
+                              border: "1px solid var(--guest-border)",
+                            }}
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Fulfillment Channel Selector (Dine-In / Takeaway / Delivery) */}
+                  {/* Fulfillment Channel Selector — 44px tap targets, single accent */}
                   {!isRoomQr && (
-                    <div className="space-y-2.5 pt-1">
-                      <label className="block text-xs font-bold text-[#292320]">
-                        How would you like to receive your order?
-                      </label>
-                      <div
-                        className={`grid ${isRemoteChannelMode ? "grid-cols-2" : "grid-cols-3"} gap-1.5`}
-                      >
-                        {!isRemoteChannelMode && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrderChannel("DINE_IN");
-                              setTableUnlockPrompt(null);
-                            }}
-                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
-                              orderChannel === "DINE_IN"
-                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
-                            }`}
-                          >
-                            <UtensilsCrossed className="w-3.5 h-3.5" />
-                            <span>Dine-In</span>
-                          </button>
-                        )}
-                        {qrLocation?.guestPolicy?.takeawayEnabled !== false && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrderChannel("TAKEAWAY");
-                              setTableUnlockPrompt(null);
-                            }}
-                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
-                              orderChannel === "TAKEAWAY"
-                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
-                            }`}
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Takeaway</span>
-                          </button>
-                        )}
-                        {qrLocation?.guestPolicy?.deliveryEnabled !== false && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrderChannel("DELIVERY");
-                              setTableUnlockPrompt(null);
-                            }}
-                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
-                              orderChannel === "DELIVERY"
-                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
-                            }`}
-                          >
-                            <Truck className="w-3.5 h-3.5" />
-                            <span>Delivery</span>
-                          </button>
-                        )}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold">
+                          How would you like to receive your order?
+                        </label>
+                        <div
+                          className={`grid ${isRemoteChannelMode ? "grid-cols-2" : "grid-cols-3"} gap-2`}
+                        >
+                          {!isRemoteChannelMode && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderChannel("DINE_IN");
+                                setTableUnlockPrompt(null);
+                                setChannelFieldErrors({});
+                              }}
+                              className="min-h-[44px] px-2 rounded-[8px] text-sm font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                              style={
+                                orderChannel === "DINE_IN"
+                                  ? {
+                                      backgroundColor: "var(--guest-accent-soft)",
+                                      color: "var(--guest-accent)",
+                                      border: "2px solid var(--guest-accent)",
+                                    }
+                                  : {
+                                      backgroundColor: "var(--guest-surface-subtle)",
+                                      color: "var(--guest-fg)",
+                                      border: "1px solid var(--guest-border)",
+                                    }
+                              }
+                            >
+                              <UtensilsCrossed className="w-4 h-4 shrink-0" />
+                              <span>Dine-In</span>
+                            </button>
+                          )}
+                          {qrLocation?.guestPolicy?.takeawayEnabled !== false && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderChannel("TAKEAWAY");
+                                setTableUnlockPrompt(null);
+                                setChannelFieldErrors({});
+                              }}
+                              className="min-h-[44px] px-2 rounded-[8px] text-sm font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                              style={
+                                orderChannel === "TAKEAWAY"
+                                  ? {
+                                      backgroundColor: "var(--guest-accent-soft)",
+                                      color: "var(--guest-accent)",
+                                      border: "2px solid var(--guest-accent)",
+                                    }
+                                  : {
+                                      backgroundColor: "var(--guest-surface-subtle)",
+                                      color: "var(--guest-fg)",
+                                      border: "1px solid var(--guest-border)",
+                                    }
+                              }
+                            >
+                              <ShoppingBag className="w-4 h-4 shrink-0" />
+                              <span>Takeaway</span>
+                            </button>
+                          )}
+                          {qrLocation?.guestPolicy?.deliveryEnabled !== false && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderChannel("DELIVERY");
+                                setTableUnlockPrompt(null);
+                                setChannelFieldErrors({});
+                              }}
+                              className="min-h-[44px] px-2 rounded-[8px] text-sm font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                              style={
+                                orderChannel === "DELIVERY"
+                                  ? {
+                                      backgroundColor: "var(--guest-accent-soft)",
+                                      color: "var(--guest-accent)",
+                                      border: "2px solid var(--guest-accent)",
+                                    }
+                                  : {
+                                      backgroundColor: "var(--guest-surface-subtle)",
+                                      color: "var(--guest-fg)",
+                                      border: "1px solid var(--guest-border)",
+                                    }
+                              }
+                            >
+                              <Truck className="w-4 h-4 shrink-0" />
+                              <span>Delivery</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {tableUnlockPrompt && orderChannel === "DINE_IN" && (
-                        <div className="p-3 rounded-md border border-[#E5C9A8] bg-[#FFF8ED] text-[11px] text-[#7A4E0B] space-y-2">
-                          <p className="font-semibold text-[#292320]">{tableUnlockPrompt}</p>
+                        <div
+                          className="p-3 rounded-[8px] text-sm space-y-3"
+                          style={{
+                            backgroundColor: "var(--guest-warning-bg)",
+                            color: "var(--guest-warning)",
+                            border: "1px solid var(--guest-warning-border)",
+                          }}
+                        >
+                          <p className="font-medium max-w-[60ch]">{tableUnlockPrompt}</p>
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={handleRequestTableUnlock}
-                              className="h-8 px-3 rounded-md bg-[#6B2837] text-[#FFFCF7] text-[11px] font-bold cursor-pointer"
+                              className="guest-btn-primary px-4 cursor-pointer"
                             >
-                              Request Waiter to Unlock Table
+                              Notify Waiter
                             </button>
                             <button
                               type="button"
@@ -4187,7 +4503,7 @@ export default function GuestQrPortalPage() {
                                 setOrderChannel("DELIVERY");
                                 setTableUnlockPrompt(null);
                               }}
-                              className="h-8 px-3 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] text-[11px] font-semibold cursor-pointer"
+                              className="guest-btn-secondary px-4 cursor-pointer"
                             >
                               Switch to Delivery
                             </button>
@@ -4196,77 +4512,133 @@ export default function GuestQrPortalPage() {
                       )}
 
                       {(orderChannel === "TAKEAWAY" || orderChannel === "DELIVERY") && (
-                        <div className="p-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] space-y-2 text-xs">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
-                                Your Name *
-                              </label>
-                              <input
-                                type="text"
-                                value={channelName}
-                                onChange={(e) => setChannelName(e.target.value)}
-                                placeholder="Full name"
-                                className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
-                                Mobile Number *
-                              </label>
-                              <input
-                                type="tel"
-                                value={channelPhone}
-                                onChange={(e) => setChannelPhone(e.target.value)}
-                                placeholder="98XXXXXXXX"
-                                className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] tabular-nums"
-                              />
-                            </div>
+                        <div
+                          className="p-4 rounded-[12px] space-y-4"
+                          style={{
+                            backgroundColor: "var(--guest-surface-subtle)",
+                            border: "1px solid var(--guest-border)",
+                          }}
+                        >
+                          <div className="space-y-1">
+                            <label htmlFor="guest-channel-name" className="block text-sm font-semibold">
+                              Your Name *
+                            </label>
+                            <input
+                              id="guest-channel-name"
+                              type="text"
+                              value={channelName}
+                              aria-invalid={Boolean(channelFieldErrors.name)}
+                              onChange={(e) => {
+                                setChannelName(e.target.value);
+                                if (channelFieldErrors.name)
+                                  setChannelFieldErrors((p) => ({ ...p, name: "" }));
+                              }}
+                              placeholder="Full name"
+                              className="guest-input"
+                            />
+                            {channelFieldErrors.name && (
+                              <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                                {channelFieldErrors.name}
+                              </p>
+                            )}
                           </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
+
+                          <div className="space-y-1">
+                            <label htmlFor="guest-channel-phone" className="block text-sm font-semibold">
+                              Mobile Number *
+                            </label>
+                            <input
+                              id="guest-channel-phone"
+                              type="tel"
+                              value={channelPhone}
+                              aria-invalid={Boolean(channelFieldErrors.phone)}
+                              onChange={(e) => {
+                                setChannelPhone(e.target.value);
+                                if (channelFieldErrors.phone)
+                                  setChannelFieldErrors((p) => ({ ...p, phone: "" }));
+                              }}
+                              placeholder="98XXXXXXXX"
+                              className="guest-input tabular-nums"
+                            />
+                            {channelFieldErrors.phone && (
+                              <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                                {channelFieldErrors.phone}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <label htmlFor="guest-channel-email" className="block text-sm font-semibold">
                               Email (Optional)
                             </label>
                             <input
+                              id="guest-channel-email"
                               type="email"
                               value={channelEmail}
-                              onChange={(e) => setChannelEmail(e.target.value)}
+                              aria-invalid={Boolean(channelFieldErrors.email)}
+                              onChange={(e) => {
+                                setChannelEmail(e.target.value);
+                                if (channelFieldErrors.email)
+                                  setChannelFieldErrors((p) => ({ ...p, email: "" }));
+                              }}
                               placeholder="name@example.com"
-                              className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
+                              className="guest-input"
                             />
+                            {channelFieldErrors.email && (
+                              <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                                {channelFieldErrors.email}
+                              </p>
+                            )}
                           </div>
+
                           {orderChannel === "DELIVERY" && (
-                            <div>
-                              <div className="flex items-center justify-between mb-0.5">
-                                <label className="text-[11px] font-semibold text-[#292320]">
-                                  Delivery Address / Location *
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <label htmlFor="guest-channel-addr" className="text-sm font-semibold">
+                                  Delivery Address *
                                 </label>
                                 <button
                                   type="button"
                                   onClick={handleCaptureChannelGps}
                                   disabled={locatingGps}
-                                  className="text-[11px] font-semibold text-[#6B2837] inline-flex items-center gap-1 cursor-pointer"
+                                  className="min-h-[36px] px-2 text-sm font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                  style={{ color: "var(--guest-accent)" }}
                                 >
-                                  <MapPin className="w-3 h-3" />
-                                  <span>{channelCoords ? "GPS Attached" : locatingGps ? "Locating..." : "Use My GPS"}</span>
+                                  <MapPin className="w-4 h-4 shrink-0" />
+                                  <span>
+                                    {channelCoords
+                                      ? "GPS Attached"
+                                      : locatingGps
+                                      ? "Locating..."
+                                      : "Use My GPS"}
+                                  </span>
                                 </button>
                               </div>
                               <textarea
+                                id="guest-channel-addr"
                                 rows={2}
                                 value={channelAddress}
-                                onChange={(e) => setChannelAddress(e.target.value)}
+                                aria-invalid={Boolean(channelFieldErrors.address)}
+                                onChange={(e) => {
+                                  setChannelAddress(e.target.value);
+                                  if (channelFieldErrors.address)
+                                    setChannelFieldErrors((p) => ({ ...p, address: "" }));
+                                }}
                                 placeholder="Street, Tole, House/Flat No., Nearby Landmark"
-                                className="w-full px-2.5 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
+                                className="guest-input"
                               />
+                              {channelFieldErrors.address && (
+                                <p className="text-sm font-medium" style={{ color: "var(--guest-danger)" }}>
+                                  {channelFieldErrors.address}
+                                </p>
+                              )}
                             </div>
                           )}
 
-                          {/* Payment Preference (Cash on Delivery / Pay at Pickup / Online QR) */}
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#292320] mb-1">
-                              Payment Method
-                            </label>
-                            <div className="grid grid-cols-2 gap-1.5">
+                          {/* Payment Method */}
+                          <div className="space-y-1.5">
+                            <label className="block text-sm font-semibold">Payment Method</label>
+                            <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -4274,24 +4646,42 @@ export default function GuestQrPortalPage() {
                                     orderChannel === "DELIVERY" ? "COD" : "PAY_AT_PICKUP"
                                   )
                                 }
-                                className={`h-8 rounded-md border text-[11px] font-semibold cursor-pointer ${
+                                className="min-h-[44px] px-3 rounded-[8px] text-sm font-semibold cursor-pointer transition-colors"
+                                style={
                                   channelPaymentPref !== "ONLINE_QR"
-                                    ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                                    : "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
-                                }`}
+                                    ? {
+                                        backgroundColor: "var(--guest-accent-soft)",
+                                        color: "var(--guest-accent)",
+                                        border: "2px solid var(--guest-accent)",
+                                      }
+                                    : {
+                                        backgroundColor: "var(--guest-surface)",
+                                        color: "var(--guest-fg)",
+                                        border: "1px solid var(--guest-border)",
+                                      }
+                                }
                               >
                                 {orderChannel === "DELIVERY" ? "Cash on Delivery" : "Pay at Pickup"}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setChannelPaymentPref("ONLINE_QR")}
-                                className={`h-8 rounded-md border text-[11px] font-semibold cursor-pointer ${
+                                className="min-h-[44px] px-3 rounded-[8px] text-sm font-semibold cursor-pointer transition-colors"
+                                style={
                                   channelPaymentPref === "ONLINE_QR"
-                                    ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                                    : "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
-                                }`}
+                                    ? {
+                                        backgroundColor: "var(--guest-accent-soft)",
+                                        color: "var(--guest-accent)",
+                                        border: "2px solid var(--guest-accent)",
+                                      }
+                                    : {
+                                        backgroundColor: "var(--guest-surface)",
+                                        color: "var(--guest-fg)",
+                                        border: "1px solid var(--guest-border)",
+                                      }
+                                }
                               >
-                                Online QR (Fonepay)
+                                Online QR
                               </button>
                             </div>
                           </div>
@@ -4300,52 +4690,74 @@ export default function GuestQrPortalPage() {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#1E1B18] mb-1">
+                  <div className="space-y-1">
+                    <label htmlFor="guest-kitchen-notes" className="block text-sm font-semibold">
                       Kitchen Notes (Optional)
                     </label>
                     <input
+                      id="guest-kitchen-notes"
                       type="text"
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
-                      placeholder="Allergies, spice preference, extra cutlery..."
-                      className="w-full px-3 py-2 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
+                      placeholder="Allergies, spice level, extra cutlery..."
+                      className="guest-input"
                     />
                   </div>
 
                   {qrLocation?.guestPolicy?.cancellationPolicyText && (
-                    <div className="p-2.5 rounded-md border border-[#EEE7DD] bg-[#F7F3EC] text-[11px] text-[#71675E] leading-relaxed">
-                      <span className="font-semibold text-[#292320]">Policy: </span>
+                    <div
+                      className="p-3 rounded-[8px] text-sm leading-relaxed max-w-[65ch]"
+                      style={{
+                        backgroundColor: "var(--guest-surface-subtle)",
+                        border: "1px solid var(--guest-border)",
+                        color: "var(--guest-muted)",
+                      }}
+                    >
+                      <span className="font-semibold" style={{ color: "var(--guest-fg)" }}>
+                        Cancellation policy:{" "}
+                      </span>
                       {qrLocation.guestPolicy.cancellationPolicyText}
                     </div>
                   )}
 
-                  <div className="pt-3 border-t border-[#F0EAE0] space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-bold text-[#6E655F]">Estimated Subtotal</span>
-                      <span className="text-base font-extrabold text-[#6B2837] tabular-nums">
+                  <div
+                    className="pt-4 space-y-4"
+                    style={{ borderTop: "1px solid var(--guest-border)" }}
+                  >
+                    <div className="flex items-center justify-between text-base">
+                      <span style={{ color: "var(--guest-muted)" }}>Estimated Subtotal</span>
+                      <span
+                        className="text-lg font-semibold tabular-nums"
+                        style={{ color: "var(--guest-accent)" }}
+                      >
                         {formatNPR(cartSummary.subtotal)}
                       </span>
                     </div>
 
+                    {/* Single filled primary CTA in the Cart Drawer */}
                     <button
                       type="button"
                       disabled={submittingOrder}
                       onClick={handleSubmitOrder}
-                      className="w-full py-3 rounded-md bg-[#6B2837] text-white font-bold text-xs hover:bg-[#561F2B] disabled:opacity-50 flex items-center justify-center gap-2 transition cursor-pointer"
+                      className="guest-btn-primary w-full px-4 inline-flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Send className="w-4 h-4" />
-                      {submittingOrder
-                        ? "Submitting Order..."
-                        : orderChannel === "DELIVERY"
-                        ? "Place Delivery Order"
-                        : orderChannel === "TAKEAWAY"
-                        ? "Place Takeaway Order"
-                        : isRoomQr && !isVerified
-                        ? "Verify Room & Submit Order"
-                        : !isVerified && (qrLocation?.table?.pinRequired || qrLocation?.table?.status === "OCCUPIED" || !qrLocation?.table?.isSettled)
-                        ? "Enter PIN & Place Order"
-                        : "Submit Dine-In Order"}
+                      <Send className="w-5 h-5 shrink-0" />
+                      <span>
+                        {submittingOrder
+                          ? "Submitting Order..."
+                          : orderChannel === "DELIVERY"
+                          ? "Place Delivery Order"
+                          : orderChannel === "TAKEAWAY"
+                          ? "Place Takeaway Order"
+                          : isRoomQr && !isVerified
+                          ? "Verify Room & Submit Order"
+                          : !isVerified &&
+                            (qrLocation?.table?.pinRequired ||
+                              qrLocation?.table?.status === "OCCUPIED" ||
+                              !qrLocation?.table?.isSettled)
+                          ? "Enter PIN & Place Order"
+                          : "Submit Dine-In Order"}
+                      </span>
                     </button>
                   </div>
                 </>
