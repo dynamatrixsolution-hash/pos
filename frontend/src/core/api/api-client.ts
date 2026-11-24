@@ -1989,6 +1989,29 @@ export class GuestEndpoints extends BaseApiClient {
     });
   }
 
+  async createChannelOrder(payload: any) {
+    return this.request<any>("/api/v1/guest/channel-orders", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async cancelOrder(orderId: string, payload: { reason: string; phone?: string | null }, token?: string | null) {
+    return this.request<any>(`/api/v1/guest/orders/${encodeURIComponent(orderId)}/cancel`, {
+      method: "POST",
+      headers: token ? { "x-guest-session-token": token } : undefined,
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async requestOrderFulfillment(orderId: string, payload: any, token: string) {
+    return this.request<any>(`/api/v1/guest/orders/${encodeURIComponent(orderId)}/fulfillment`, {
+      method: "POST",
+      headers: { "x-guest-session-token": token },
+      body: JSON.stringify(payload),
+    });
+  }
+
   async createServiceRequest(payload: any, token?: string, idempotencyKey?: string) {
     const headers: Record<string, string> = {};
     if (token) headers["x-guest-session-token"] = token;

@@ -10,9 +10,11 @@ import {
 } from "@/lib/services/room-availability-service";
 import {
   AppliedModifierInput,
+  cancelRestaurantOrder,
   createOrAppendOrder,
   OrderItemInput,
 } from "@/lib/services/restaurant-order-service";
+import { computeDistanceMeters, parseGuestQrPolicy } from "@/lib/guest-policy";
 import { routeOrderRoundToStations } from "@/lib/services/kitchen-routing-service";
 import { openTableSession } from "@/lib/services/table-session-service";
 import {
@@ -357,6 +359,7 @@ export async function resolvePublicQrLocation(
         select: {
           id: true,
           name: true,
+          logo: true,
           currency: true,
           taxConfig: true,
           settings: true,
@@ -454,6 +457,17 @@ export async function resolvePublicQrLocation(
     qrLocation.metadata && typeof qrLocation.metadata === "object"
       ? (qrLocation.metadata as Record<string, unknown>)
       : null;
+
+  const guestPolicy = parseGuestQrPolicy(businessSettings);
+  const businessLogo =
+    qrLocation.business.logo ||
+    (typeof businessSettings?.receiptLogo === "string" && businessSettings.receiptLogo.trim()
+      ? businessSettings.receiptLogo.trim()
+      : null) ||
+    (typeof businessSettings?.invoiceLogo === "string" && businessSettings.invoiceLogo.trim()
+      ? businessSettings.invoiceLogo.trim()
+      : null) ||
+    null;
 
   const googleReviewUrl =
     (typeof businessSettings?.googleReviewUrl === "string"
@@ -559,8 +573,26 @@ export async function resolvePublicQrLocation(
       business: {
         id: qrLocation.business.id,
         name: qrLocation.business.name,
+        logo: businessLogo,
         currency: qrLocation.business.currency,
         googleReviewUrl,
+      },
+      guestPolicy: {
+        tableQrMode: guestPolicy.tableQrMode,
+        geofenceEnabled:
+          guestPolicy.tableQrMode === "SELF_SEAT_WITH_GEOFENCE" &&
+          guestPolicy.branchLat !== null &&
+          guestPolicy.branchLng !== null,
+        geofenceRadiusMeters: guestPolicy.geofenceRadiusMeters,
+        maxGuestOrderItems: guestPolicy.maxGuestOrderItems,
+        maxAutoAcceptAmount: guestPolicy.maxAutoAcceptAmount,
+        selfCancelGraceMinutes: guestPolicy.selfCancelGraceMinutes,
+        takeawayEnabled: guestPolicy.takeawayEnabled,
+        deliveryEnabled: guestPolicy.deliveryEnabled,
+        deliveryFee: guestPolicy.deliveryFee,
+        requireStaffApprovalForDelivery: guestPolicy.requireStaffApprovalForDelivery,
+        cancellationPolicyText: guestPolicy.cancellationPolicyText,
+        refundPolicyText: guestPolicy.refundPolicyText,
       },
       branch: qrLocation.branch,
       room: qrLocation.room
@@ -595,7 +627,17 @@ export async function resolvePublicQrLocation(
             activeOrder: activeOrderSummary,
           }
         : null,
-      requiresVerification: qrLocation.locationType === "ROOM" || pinRequired || isBilledLocked,
+      requiresVerification:
+        qrLocation.locationType === "ROOM" ||
+        pinRequired ||
+        isBilledLocked ||
+        Boolean(
+          qrLocation.table &&
+            !activeTableSession &&
+            !unsettledTableOrder &&
+            qrLocation.table.status === "AVAILABLE" &&
+            guestPolicy.tableQrMode === "STAFF_SEATED_OR_PIN"
+        ),
     },
     menus,
   };
@@ -612,6 +654,8 @@ export interface VerifyAndCreateGuestSessionInput {
   verificationCode?: string | null;
   joinToken?: string | null;
   deviceFingerprint?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   now?: Date;
 }
 
@@ -629,6 +673,7 @@ export async function verifyAndCreateGuestSession(
     const qrLocation = await tx.qrLocation.findUnique({
       where: { publicCode: code },
       include: {
+        business: { select: { id: true, settings: true } },
         room: true,
         table: true,
       },
@@ -810,6 +855,48 @@ export async function verifyAndCreateGuestSession(
 
       if (!tableSession) {
         if (qrLocation.table.status === "AVAILABLE") {
+          const guestPolicy = parseGuestQrPolicy(qrLocation.business?.settings);
+
+          if (guestPolicy.tableQrMode === "STAFF_SEATED_OR_PIN") {
+            throw new HotelError(
+              `Table ${qrLocation.table.tableNumber} must be unlocked by our staff before dine-in ordering. Tap "Request Table Unlock" to notify a waiter, or switch to Takeaway / Delivery.`,
+              403,
+              "TABLE_UNLOCK_REQUIRED"
+            );
+          }
+
+          if (
+            guestPolicy.tableQrMode === "SELF_SEAT_WITH_GEOFENCE" &&
+            guestPolicy.branchLat !== null &&
+            guestPolicy.branchLng !== null
+          ) {
+            if (
+              typeof input.lat !== "number" ||
+              typeof input.lng !== "number" ||
+              !Number.isFinite(input.lat) ||
+              !Number.isFinite(input.lng)
+            ) {
+              throw new HotelError(
+                `Location verification is required to start dining at Table ${qrLocation.table.tableNumber}. Please allow location access or ask staff to seat your table.`,
+                403,
+                "GEOFENCE_REQUIRED"
+              );
+            }
+            const distanceM = computeDistanceMeters(
+              input.lat,
+              input.lng,
+              guestPolicy.branchLat,
+              guestPolicy.branchLng
+            );
+            if (distanceM > guestPolicy.geofenceRadiusMeters) {
+              throw new HotelError(
+                `You appear to be outside the restaurant (${Math.round(distanceM)}m away). Dine-in ordering is only available while seated at the restaurant — you can order Takeaway or Delivery instead.`,
+                403,
+                "OUTSIDE_GEOFENCE"
+              );
+            }
+          }
+
           const generatedPin = generateTablePin();
           returnedPin = generatedPin;
           const opened = await openTableSession(
@@ -1589,9 +1676,46 @@ export async function submitGuestOrder(
       originPrefix = `[QR Order • ${tableFloor}${spaceType}: ${tNum}]`;
     }
 
-    const orderNotes = input.notes?.trim()
-      ? `${originPrefix} ${input.notes.trim()}`
-      : originPrefix;
+    // Load owner-configured auto-accept & anti-prank thresholds
+    const businessRecord = await tx.business.findUnique({
+      where: { id: session.businessId },
+      select: { settings: true },
+    });
+    const guestPolicy = parseGuestQrPolicy(businessRecord?.settings);
+
+    const totalItemCount = canonicalItems.reduce((sum, i) => sum + i.quantity, 0);
+    const estimatedSubtotal = canonicalItems.reduce((sum, i) => {
+      const modSum = (i.appliedModifiers || []).reduce(
+        (m, opt) => m + Number(opt.priceDelta || 0),
+        0
+      );
+      return sum + (Number(i.basePrice || 0) + modSum) * i.quantity;
+    }, 0);
+
+    const exceedsQtyLimit = totalItemCount > guestPolicy.maxGuestOrderItems;
+    const exceedsAmountLimit =
+      guestPolicy.maxAutoAcceptAmount === 0 ||
+      estimatedSubtotal > guestPolicy.maxAutoAcceptAmount;
+    const requiresStaffApproval =
+      guestPolicy.tableQrMode === "OPEN_STAFF_APPROVAL" ||
+      exceedsQtyLimit ||
+      exceedsAmountLimit;
+
+    const approvalReason = exceedsAmountLimit
+      ? `Exceeds auto-accept limit (${guestPolicy.maxAutoAcceptAmount})`
+      : exceedsQtyLimit
+      ? `Exceeds max items (${guestPolicy.maxGuestOrderItems})`
+      : guestPolicy.tableQrMode === "OPEN_STAFF_APPROVAL"
+      ? "Staff approval required"
+      : null;
+
+    const orderNotes = [
+      originPrefix,
+      requiresStaffApproval ? `[STAFF APPROVAL REQUIRED: ${approvalReason}]` : "",
+      input.notes?.trim() || "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     const result = await createOrAppendOrder(
       {
@@ -1606,18 +1730,21 @@ export async function submitGuestOrder(
       tx
     );
 
-    // Auto-route round to Kitchen Stations so KDS receives the ticket immediately
-    try {
-      await routeOrderRoundToStations(
-        {
-          businessId: session.businessId,
-          roundId: result.round.id,
-          actorId: undefined,
-        },
-        tx
-      );
-    } catch (routeErr) {
-      console.error("Auto-routing guest QR round to kitchen stations failed:", routeErr);
+    // Auto-route round to Kitchen Stations ONLY when within owner auto-accept limits.
+    // Otherwise keep in PENDING for staff verification before kitchen begins preparing.
+    if (!requiresStaffApproval) {
+      try {
+        await routeOrderRoundToStations(
+          {
+            businessId: session.businessId,
+            roundId: result.round.id,
+            actorId: undefined,
+          },
+          tx
+        );
+      } catch (routeErr) {
+        console.error("Auto-routing guest QR round to kitchen stations failed:", routeErr);
+      }
     }
 
     await createAuditEvent(
@@ -1633,12 +1760,18 @@ export async function submitGuestOrder(
           tableSessionId: session.tableSessionId,
           qrLocationId: session.qrLocationId,
           roundId: result.round.id,
+          requiresStaffApproval,
+          approvalReason,
         },
       },
       tx
     );
 
-    return result;
+    return {
+      ...result,
+      requiresStaffApproval,
+      approvalReason,
+    };
   });
 }
 
@@ -1870,6 +2003,11 @@ export type GuestServiceRequestType =
   | "HOUSEKEEPING"
   | "ROOM_AMENITIES"
   | "CHECKOUT_REQUEST"
+  | "TABLE_UNLOCK_REQUEST"
+  | "CANCEL_REQUEST"
+  | "REFUND_REQUEST"
+  | "TAKEAWAY_PACK_REQUEST"
+  | "DELIVERY_REQUEST"
   | "OTHER";
 
 export interface CreateGuestServiceRequestInput {
@@ -2242,5 +2380,661 @@ export async function updateServiceRequestStatus(
     );
 
     return updated;
+  });
+}
+
+
+// -----------------------------------------------------------------------------
+// Multi-Channel Guest Orders (Takeaway & Delivery — No Table Required)
+// -----------------------------------------------------------------------------
+
+export interface SubmitGuestChannelOrderInput {
+  publicCode: string;
+  orderType: "TAKEAWAY" | "DELIVERY";
+  customerName: string;
+  phone: string;
+  email?: string | null;
+  deliveryAddress?: string | null;
+  deliveryLandmark?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  notes?: string | null;
+  items: {
+    menuItemId: string;
+    quantity: number;
+    selectedOptionIds?: string[];
+    notes?: string;
+  }[];
+}
+
+export async function submitGuestChannelOrder(
+  input: SubmitGuestChannelOrderInput,
+  prismaClient: PrismaClientLike = db
+) {
+  const code = (input.publicCode || "").trim();
+  if (!code) {
+    throw new HotelError("Restaurant QR code is required", 400, "QR_CODE_REQUIRED");
+  }
+  if (!input.items || input.items.length === 0) {
+    throw new HotelError("At least one item is required", 400, "EMPTY_ORDER_ITEMS");
+  }
+
+  const cleanName = (input.customerName || "").trim();
+  const cleanPhone = (input.phone || "").trim();
+  const phoneDigits = cleanPhone.replace(/\D/g, "");
+  const cleanEmail = (input.email || "").trim() || null;
+  const cleanAddress = (input.deliveryAddress || "").trim();
+
+  if (cleanName.length < 2) {
+    throw new HotelError("Customer name is required (at least 2 characters)", 400, "NAME_REQUIRED");
+  }
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    throw new HotelError("A valid mobile number is required", 400, "PHONE_REQUIRED");
+  }
+  if (input.orderType === "DELIVERY" && cleanAddress.length < 5) {
+    throw new HotelError(
+      "Full delivery address / location is mandatory for delivery orders",
+      400,
+      "ADDRESS_REQUIRED"
+    );
+  }
+
+  return await withHotelTransaction(prismaClient, async (tx) => {
+    const qrLocation = await tx.qrLocation.findUnique({
+      where: { publicCode: code },
+      include: {
+        business: { select: { id: true, name: true, settings: true } },
+      },
+    });
+    if (!qrLocation || !qrLocation.isActive) {
+      throw new HotelError("Restaurant code not found or inactive", 404, "QR_NOT_FOUND");
+    }
+
+    await assertFeatureEnabled(tx, {
+      businessId: qrLocation.businessId,
+      branchId: qrLocation.branchId,
+      feature: "guestQrEnabled",
+    });
+
+    const guestPolicy = parseGuestQrPolicy(qrLocation.business?.settings);
+    if (input.orderType === "TAKEAWAY" && !guestPolicy.takeawayEnabled) {
+      throw new HotelError("Takeaway ordering is currently disabled", 403, "TAKEAWAY_DISABLED");
+    }
+    if (input.orderType === "DELIVERY" && !guestPolicy.deliveryEnabled) {
+      throw new HotelError("Delivery ordering is currently disabled", 403, "DELIVERY_DISABLED");
+    }
+
+    const uniqueMenuItemIds = Array.from(new Set(input.items.map((i) => i.menuItemId)));
+    const menuItems = await tx.menuItem.findMany({
+      where: {
+        businessId: qrLocation.businessId,
+        id: { in: uniqueMenuItemIds },
+        isAvailable: true,
+      },
+      include: {
+        modifierGroups: {
+          include: {
+            modifierGroup: {
+              include: { options: { where: { isAvailable: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const menuItemMap = new Map(menuItems.map((m) => [m.id, m]));
+    const canonicalItems: OrderItemInput[] = [];
+    const lineTag = input.orderType === "DELIVERY" ? "[DELIVERY]" : "[TAKEAWAY]";
+
+    for (const reqItem of input.items) {
+      const menuItem = menuItemMap.get(reqItem.menuItemId);
+      if (!menuItem) {
+        throw new HotelError("Menu item is unavailable or does not exist", 400, "MENU_ITEM_UNAVAILABLE");
+      }
+      const qty = Math.max(1, Math.floor(reqItem.quantity || 1));
+      const selectedIds = new Set(reqItem.selectedOptionIds || []);
+      const appliedModifiers: AppliedModifierInput[] = [];
+      for (const link of menuItem.modifierGroups) {
+        const group = link.modifierGroup;
+        if (!group.isActive) continue;
+        for (const opt of group.options) {
+          if (selectedIds.has(opt.id)) {
+            appliedModifiers.push({
+              modifierGroupId: group.id,
+              groupName: group.displayName || group.name,
+              optionId: opt.id,
+              optionName: opt.name,
+              priceDelta: opt.priceDelta,
+            });
+          }
+        }
+      }
+      canonicalItems.push({
+        menuItemId: menuItem.id,
+        itemName: menuItem.name,
+        basePrice: menuItem.basePrice,
+        quantity: qty,
+        appliedModifiers,
+        notes: reqItem.notes?.trim() ? `${lineTag} ${reqItem.notes.trim()}` : lineTag,
+      });
+    }
+
+    // Upsert Customer for reporting & CRM
+    const existingCustomer = await tx.customer.findFirst({
+      where: { businessId: qrLocation.businessId, phone: cleanPhone },
+      select: { id: true, email: true, address: true },
+    });
+    if (existingCustomer) {
+      await tx.customer.update({
+        where: { id: existingCustomer.id },
+        data: {
+          name: cleanName,
+          email: cleanEmail ?? existingCustomer.email,
+          address: cleanAddress || existingCustomer.address,
+        },
+      });
+    } else {
+      await tx.customer.create({
+        data: {
+          businessId: qrLocation.businessId,
+          branchId: qrLocation.branchId,
+          name: cleanName,
+          phone: cleanPhone,
+          email: cleanEmail,
+          address: cleanAddress || null,
+        },
+      });
+    }
+
+    const totalItemCount = canonicalItems.reduce((sum, i) => sum + i.quantity, 0);
+    const estimatedSubtotal = canonicalItems.reduce((sum, i) => {
+      const modSum = (i.appliedModifiers || []).reduce((m, opt) => m + Number(opt.priceDelta || 0), 0);
+      return sum + (Number(i.basePrice || 0) + modSum) * i.quantity;
+    }, 0);
+
+    const exceedsQtyLimit = totalItemCount > guestPolicy.maxGuestOrderItems;
+    const exceedsAmountLimit =
+      guestPolicy.maxAutoAcceptAmount === 0 ||
+      estimatedSubtotal > guestPolicy.maxAutoAcceptAmount;
+    const requiresStaffApproval =
+      (input.orderType === "DELIVERY" && guestPolicy.requireStaffApprovalForDelivery) ||
+      exceedsQtyLimit ||
+      exceedsAmountLimit;
+
+    const approvalReason =
+      input.orderType === "DELIVERY" && guestPolicy.requireStaffApprovalForDelivery
+        ? "Delivery confirmation required"
+        : exceedsAmountLimit
+        ? `Exceeds auto-accept limit (${guestPolicy.maxAutoAcceptAmount})`
+        : exceedsQtyLimit
+        ? `Exceeds max items (${guestPolicy.maxGuestOrderItems})`
+        : null;
+
+    const mapsPin =
+      typeof input.lat === "number" &&
+      typeof input.lng === "number" &&
+      Number.isFinite(input.lat) &&
+      Number.isFinite(input.lng)
+        ? ` | GPS: https://maps.google.com/?q=${input.lat.toFixed(6)},${input.lng.toFixed(6)}`
+        : "";
+
+    const headerTag =
+      input.orderType === "DELIVERY"
+        ? `[DELIVERY to ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""}) - ${cleanAddress}${input.deliveryLandmark?.trim() ? ` (${input.deliveryLandmark.trim()})` : ""}${mapsPin}]`
+        : `[TAKEAWAY for ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""})]`;
+
+    const orderNotes = [
+      headerTag,
+      requiresStaffApproval ? `[STAFF APPROVAL REQUIRED: ${approvalReason}]` : "",
+      input.notes?.trim() || "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const result = await createOrAppendOrder(
+      {
+        businessId: qrLocation.businessId,
+        branchId: qrLocation.branchId,
+        tableSessionId: null,
+        tableId: null,
+        orderType: input.orderType,
+        items: canonicalItems,
+        notes: orderNotes,
+      },
+      tx
+    );
+
+    if (!requiresStaffApproval) {
+      try {
+        await routeOrderRoundToStations(
+          {
+            businessId: qrLocation.businessId,
+            roundId: result.round.id,
+            actorId: undefined,
+          },
+          tx
+        );
+      } catch (routeErr) {
+        console.error("Auto-routing guest channel order to kitchen failed:", routeErr);
+      }
+    }
+
+    await createAuditEvent(
+      {
+        businessId: qrLocation.businessId,
+        branchId: qrLocation.branchId,
+        action: "GUEST_CHANNEL_ORDER_CREATED",
+        entity: "RestaurantOrder",
+        entityId: result.order.id,
+        metadata: {
+          orderType: input.orderType,
+          customerName: cleanName,
+          phone: cleanPhone,
+          email: cleanEmail,
+          deliveryAddress: cleanAddress || null,
+          requiresStaffApproval,
+          approvalReason,
+        },
+      },
+      tx
+    );
+
+    return {
+      ...result,
+      businessId: qrLocation.businessId,
+      requiresStaffApproval,
+      approvalReason,
+      deliveryFee: input.orderType === "DELIVERY" ? guestPolicy.deliveryFee : 0,
+    };
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Guest Order Cancellation, Void & Refund Policy Engine
+// -----------------------------------------------------------------------------
+
+export interface CancelOrRequestGuestOrderInput {
+  sessionToken?: string | null;
+  orderId: string;
+  phone?: string | null;
+  reason: string;
+  now?: Date;
+}
+
+export async function cancelOrRequestGuestOrder(
+  input: CancelOrRequestGuestOrderInput,
+  prismaClient: PrismaClientLike = db
+) {
+  const now = input.now ?? new Date();
+  const reason = (input.reason || "").trim();
+  if (reason.length < 3) {
+    throw new HotelError("Please provide a short reason (at least 3 characters)", 400, "REASON_REQUIRED");
+  }
+
+  let businessId: string;
+  let qrLocationId: string | null = null;
+  let guestSessionId: string | null = null;
+  let tableSessionId: string | null = null;
+  let stayId: string | null = null;
+  let roomId: string | null = null;
+  let tableId: string | null = null;
+  let locLabel = "Guest Order";
+
+  if (input.sessionToken && input.sessionToken.trim()) {
+    const validated = await validateGuestSessionToken(
+      input.sessionToken,
+      "MENU_BROWSE",
+      prismaClient,
+      now
+    );
+    businessId = validated.session.businessId;
+    qrLocationId = validated.qrLocation.id;
+    guestSessionId = validated.session.id;
+    tableSessionId = validated.session.tableSessionId ?? null;
+    stayId = validated.session.stayId ?? null;
+    roomId = validated.qrLocation.roomId ?? null;
+    tableId = validated.qrLocation.tableId ?? null;
+    locLabel = validated.qrLocation.table?.tableNumber
+      ? `Table ${validated.qrLocation.table.tableNumber}`
+      : validated.qrLocation.room?.roomNumber
+      ? `Room ${validated.qrLocation.room.roomNumber}`
+      : validated.qrLocation.label;
+  } else {
+    // Allow Takeaway/Delivery guest lookup by orderId + phone match in order notes
+    const phoneDigits = (input.phone || "").replace(/\D/g, "");
+    if (phoneDigits.length < 7) {
+      throw new HotelError("Guest session or order phone number is required", 401, "GUEST_UNAUTHORIZED");
+    }
+    const found = await prismaClient.restaurantOrder.findUnique({
+      where: { id: input.orderId },
+      select: { id: true, businessId: true, notes: true, orderType: true },
+    });
+    if (!found || !["TAKEAWAY", "DELIVERY"].includes(found.orderType)) {
+      throw new HotelError("Order not found", 404, "ORDER_NOT_FOUND");
+    }
+    const noteDigits = (found.notes || "").replace(/\D/g, "");
+    if (!noteDigits.includes(phoneDigits)) {
+      throw new HotelError("Phone number does not match this order", 403, "PHONE_MISMATCH");
+    }
+    businessId = found.businessId;
+    locLabel = `${found.orderType} Order`;
+  }
+
+  const order = await prismaClient.restaurantOrder.findFirst({
+    where: { id: input.orderId, businessId },
+    include: {
+      orderLines: true,
+      kitchenTickets: { include: { lines: true } },
+      business: { select: { settings: true } },
+    },
+  });
+
+  if (!order) {
+    throw new HotelError("Order not found", 404, "ORDER_NOT_FOUND");
+  }
+
+  // Ensure table session ownership when authenticated via table guest session
+  if (tableSessionId && order.tableSessionId && order.tableSessionId !== tableSessionId) {
+    throw new HotelError("Order does not belong to your table session", 403, "ORDER_FORBIDDEN");
+  }
+
+  if (order.fulfillmentStatus === "CANCELLED") {
+    throw new HotelError("This order is already cancelled", 409, "ALREADY_CANCELLED");
+  }
+
+  const policy = parseGuestQrPolicy(order.business?.settings);
+
+  // Case 1: Already Paid / Partial -> Refund Request only (staff processes via PaymentLedger)
+  if (order.settlementStatus === "PAID" || order.settlementStatus === "PARTIAL") {
+    let serviceRequestId: string | null = null;
+    if (qrLocationId) {
+      const sr = await prismaClient.serviceRequest.create({
+        data: {
+          businessId,
+          branchId: order.branchId,
+          qrLocationId,
+          guestSessionId,
+          stayId,
+          tableSessionId,
+          roomId,
+          tableId,
+          requestNumber: generateServiceRequestNumber(now),
+          requestType: "REFUND_REQUEST",
+          category: "RESTAURANT",
+          priority: "HIGH",
+          status: "OPEN",
+          notes: `Refund requested for Order #${order.orderNumber} (${order.settlementStatus}): ${reason}`,
+          requestedAt: now,
+        },
+      });
+      serviceRequestId = sr.id;
+    }
+
+    await createAuditEvent({
+      businessId,
+      branchId: order.branchId,
+      action: "GUEST_REFUND_REQUESTED",
+      entity: "RestaurantOrder",
+      entityId: order.id,
+      reason,
+      metadata: { orderNumber: order.orderNumber, serviceRequestId, locLabel },
+    });
+
+    return {
+      action: "REFUND_REQUESTED" as const,
+      businessId,
+      orderNumber: order.orderNumber,
+      locLabel,
+      message:
+        "This order is already paid. Your refund request has been sent to our cashier/manager for verification.",
+      refundPolicyText: policy.refundPolicyText,
+    };
+  }
+
+  // Case 2: Check whether kitchen has started preparing or grace period has elapsed
+  const activeLines = order.orderLines.filter(
+    (l) => l.fulfillmentStatus !== "CANCELLED" && l.acceptanceStatus !== "REJECTED"
+  );
+  const kitchenStarted =
+    ["PREPARING", "READY", "SERVED"].includes(order.fulfillmentStatus) ||
+    activeLines.some((l) => ["PREPARING", "READY", "SERVED"].includes(l.fulfillmentStatus)) ||
+    order.kitchenTickets.some(
+      (t) =>
+        ["PREPARING", "READY", "SERVED"].includes(t.status) ||
+        t.lines.some((tl) => ["PREPARING", "READY", "SERVED"].includes(tl.status))
+    );
+
+  const ageMinutes = (now.getTime() - order.createdAt.getTime()) / 60000;
+  const pastGraceWindow =
+    policy.selfCancelGraceMinutes === 0 || ageMinutes > policy.selfCancelGraceMinutes;
+
+  if (kitchenStarted || pastGraceWindow) {
+    let serviceRequestId: string | null = null;
+    if (qrLocationId) {
+      const sr = await prismaClient.serviceRequest.create({
+        data: {
+          businessId,
+          branchId: order.branchId,
+          qrLocationId,
+          guestSessionId,
+          stayId,
+          tableSessionId,
+          roomId,
+          tableId,
+          requestNumber: generateServiceRequestNumber(now),
+          requestType: "CANCEL_REQUEST",
+          category: "RESTAURANT",
+          priority: "HIGH",
+          status: "OPEN",
+          notes: `Cancel requested for Order #${order.orderNumber} (${kitchenStarted ? "kitchen started" : "past grace window"}): ${reason}`,
+          requestedAt: now,
+        },
+      });
+      serviceRequestId = sr.id;
+    }
+
+    await createAuditEvent({
+      businessId,
+      branchId: order.branchId,
+      action: "GUEST_CANCEL_REQUESTED",
+      entity: "RestaurantOrder",
+      entityId: order.id,
+      reason,
+      metadata: { orderNumber: order.orderNumber, kitchenStarted, serviceRequestId, locLabel },
+    });
+
+    return {
+      action: "CANCEL_REQUESTED" as const,
+      businessId,
+      orderNumber: order.orderNumber,
+      locLabel,
+      message: kitchenStarted
+        ? "The kitchen has already started preparing this order. We have alerted staff to assist with your cancellation request."
+        : `Self-cancellation is only available within ${policy.selfCancelGraceMinutes} min of ordering. Staff have been notified to assist you.`,
+      cancellationPolicyText: policy.cancellationPolicyText,
+    };
+  }
+
+  // Case 3: Safe self-cancel (unpaid + not preparing + within grace window)
+  const cancelledOrder = await cancelRestaurantOrder({
+    businessId,
+    orderId: order.id,
+    reason: `Guest self-cancelled: ${reason}`,
+  });
+
+  return {
+    action: "CANCELLED" as const,
+    businessId,
+    orderNumber: order.orderNumber,
+    locLabel,
+    order: cancelledOrder,
+    message: `Order #${order.orderNumber} has been cancelled and removed from the kitchen queue.`,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Mid-Order Fulfillment Change (Pack Remaining as Takeaway / Deliver Elsewhere)
+// -----------------------------------------------------------------------------
+
+export interface RequestGuestFulfillmentChangeInput {
+  sessionToken: string;
+  orderId: string;
+  mode: "PACK_TAKEAWAY" | "REQUEST_DELIVERY";
+  itemIds?: string[];
+  customerName?: string | null;
+  phone?: string | null;
+  deliveryAddress?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  notes?: string | null;
+  now?: Date;
+}
+
+export async function requestGuestOrderFulfillmentChange(
+  input: RequestGuestFulfillmentChangeInput,
+  prismaClient: PrismaClientLike = db
+) {
+  const now = input.now ?? new Date();
+  const validated = await validateGuestSessionToken(
+    input.sessionToken,
+    "SERVICE_REQUEST",
+    prismaClient,
+    now
+  );
+
+  const { session, qrLocation } = validated;
+  const order = await prismaClient.restaurantOrder.findFirst({
+    where: { id: input.orderId, businessId: session.businessId },
+    include: { orderLines: true },
+  });
+
+  if (!order) {
+    throw new HotelError("Order not found", 404, "ORDER_NOT_FOUND");
+  }
+  if (session.tableSessionId && order.tableSessionId && order.tableSessionId !== session.tableSessionId) {
+    throw new HotelError("Order does not belong to your table session", 403, "ORDER_FORBIDDEN");
+  }
+  if (order.fulfillmentStatus === "CANCELLED") {
+    throw new HotelError("Cannot modify a cancelled order", 400, "ORDER_CANCELLED");
+  }
+
+  const locLabel = qrLocation.table?.tableNumber
+    ? `Table ${qrLocation.table.tableNumber}`
+    : qrLocation.room?.roomNumber
+    ? `Room ${qrLocation.room.roomNumber}`
+    : qrLocation.label;
+
+  const selectedSet = new Set(input.itemIds || []);
+  const targetLines = order.orderLines.filter(
+    (l) =>
+      l.fulfillmentStatus !== "CANCELLED" &&
+      l.acceptanceStatus !== "REJECTED" &&
+      (selectedSet.size === 0 || selectedSet.has(l.id))
+  );
+  const itemSummary =
+    selectedSet.size > 0 && targetLines.length > 0
+      ? targetLines.map((l) => `${l.quantity}x ${l.itemName}`).join(", ")
+      : "All remaining / leftover items";
+
+  if (input.mode === "REQUEST_DELIVERY") {
+    const cleanName = (input.customerName || "").trim();
+    const cleanPhone = (input.phone || "").trim();
+    const cleanAddress = (input.deliveryAddress || "").trim();
+    if (cleanName.length < 2) {
+      throw new HotelError("Recipient name is required for delivery", 400, "NAME_REQUIRED");
+    }
+    if (cleanPhone.replace(/\D/g, "").length < 7) {
+      throw new HotelError("Valid recipient mobile number is required", 400, "PHONE_REQUIRED");
+    }
+    if (cleanAddress.length < 5) {
+      throw new HotelError("Full delivery address is required", 400, "ADDRESS_REQUIRED");
+    }
+
+    const mapsPin =
+      typeof input.lat === "number" && typeof input.lng === "number"
+        ? ` | GPS: https://maps.google.com/?q=${input.lat.toFixed(6)},${input.lng.toFixed(6)}`
+        : "";
+
+    const sr = await prismaClient.serviceRequest.create({
+      data: {
+        businessId: session.businessId,
+        branchId: order.branchId,
+        qrLocationId: qrLocation.id,
+        guestSessionId: session.id,
+        stayId: session.stayId ?? null,
+        tableSessionId: session.tableSessionId ?? null,
+        roomId: qrLocation.roomId ?? null,
+        tableId: qrLocation.tableId ?? null,
+        requestNumber: generateServiceRequestNumber(now),
+        requestType: "DELIVERY_REQUEST",
+        category: "RESTAURANT",
+        priority: "HIGH",
+        status: "OPEN",
+        notes: `Deliver Order #${order.orderNumber} (${itemSummary}) to ${cleanName} (${cleanPhone}) at ${cleanAddress}${mapsPin}${input.notes?.trim() ? ` | Note: ${input.notes.trim()}` : ""}`,
+        requestedAt: now,
+      },
+    });
+
+    return {
+      mode: "REQUEST_DELIVERY" as const,
+      businessId: session.businessId,
+      orderNumber: order.orderNumber,
+      locLabel,
+      itemSummary,
+      serviceRequest: sr,
+      message:
+        "Delivery request sent to our staff. We will confirm delivery details and any delivery fee with you shortly.",
+    };
+  }
+
+  // PACK_TAKEAWAY: Tag any unserved lines directly in KDS + alert waiter for boxes
+  return await withHotelTransaction(prismaClient, async (tx) => {
+    const unservedLines = targetLines.filter((l) => l.fulfillmentStatus !== "SERVED");
+    for (const line of unservedLines) {
+      const cleaned = (line.notes || "").replace(/\[PACK FOR TAKEAWAY\]/gi, "").trim();
+      const nextNotes = cleaned ? `[PACK FOR TAKEAWAY] ${cleaned}` : "[PACK FOR TAKEAWAY]";
+      await tx.orderLine.update({
+        where: { id: line.id },
+        data: { notes: nextNotes, version: { increment: 1 } },
+      });
+      await tx.kitchenTicketLine.updateMany({
+        where: { orderLineId: line.id, status: { notIn: ["CANCELLED", "SERVED"] } },
+        data: { notes: nextNotes },
+      });
+    }
+
+    const sr = await tx.serviceRequest.create({
+      data: {
+        businessId: session.businessId,
+        branchId: order.branchId,
+        qrLocationId: qrLocation.id,
+        guestSessionId: session.id,
+        stayId: session.stayId ?? null,
+        tableSessionId: session.tableSessionId ?? null,
+        roomId: qrLocation.roomId ?? null,
+        tableId: qrLocation.tableId ?? null,
+        requestNumber: generateServiceRequestNumber(now),
+        requestType: "TAKEAWAY_PACK_REQUEST",
+        category: "RESTAURANT",
+        priority: "HIGH",
+        status: "OPEN",
+        notes: `Pack as Takeaway for Order #${order.orderNumber}: ${itemSummary}${input.notes?.trim() ? ` | Note: ${input.notes.trim()}` : ""}`,
+        requestedAt: now,
+      },
+    });
+
+    return {
+      mode: "PACK_TAKEAWAY" as const,
+      businessId: session.businessId,
+      orderNumber: order.orderNumber,
+      locLabel,
+      itemSummary,
+      updatedKitchenLines: unservedLines.length,
+      serviceRequest: sr,
+      message:
+        unservedLines.length > 0
+          ? "Kitchen and waiter have been notified to pack your selected items for takeaway."
+          : "Waiter has been notified to bring takeaway boxes for your items.",
+    };
   });
 }

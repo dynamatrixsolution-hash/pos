@@ -114,39 +114,54 @@ export async function POST(req: Request) {
             })
           : null;
 
-        // Dispatch all 3 audiences in parallel so rush-hour concurrent orders stay fast
+        const requiresApproval = Boolean((result as any)?.requiresStaffApproval);
+        const approvalReason = (result as any)?.approvalReason || null;
+
+        // Dispatch audiences in parallel; hold KDS notification when staff approval is required
         await Promise.all([
-          // 1. Notify Cashier, Waiter, Accountant, Manager, Owner
+          // 1. Notify Cashier, Waiter, Accountant, Front Desk, Manager, Owner
           dispatchNotification({
             businessId: order.businessId,
-            targetRoles: ["CASHIER", "WAITER", "ACCOUNTANT", "MANAGER", "OWNER"],
+            targetRoles: ["CASHIER", "WAITER", "ACCOUNTANT", "FRONT_DESK", "MANAGER", "OWNER"],
             category: "ORDER",
-            priority: "HIGH",
-            title: `New Guest Order — ${locLabel}`,
-            message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) received from ${locLabel} and routed to kitchen.`,
+            priority: requiresApproval ? "URGENT" : "HIGH",
+            title: requiresApproval
+              ? `Approval Needed — ${locLabel}`
+              : `New Guest Order — ${locLabel}`,
+            message: requiresApproval
+              ? `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) from ${locLabel} is awaiting staff confirmation (${approvalReason || "limit exceeded"}).`
+              : `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) received from ${locLabel} and routed to kitchen.`,
             actionUrl: "/dashboard/restaurant/pos",
             dedupeKey: `guest-order-staff:${order.id}:${roundId}`,
           }),
-          // 2. Notify Kitchen Display staff
-          dispatchNotification({
-            businessId: order.businessId,
-            targetRoles: ["KITCHEN"],
-            category: "KITCHEN",
-            priority: "URGENT",
-            title: `New KOT — ${locLabel}`,
-            message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) queued for preparation.`,
-            actionUrl: "/dashboard/restaurant/kds",
-            dedupeKey: `guest-order-kds:${order.id}:${roundId}`,
-          }),
-          // 3. Notify Guest session that order is confirmed
+          // 2. Notify Kitchen Display staff ONLY when auto-routed
+          ...(!requiresApproval
+            ? [
+                dispatchNotification({
+                  businessId: order.businessId,
+                  targetRoles: ["KITCHEN"],
+                  category: "KITCHEN",
+                  priority: "URGENT",
+                  title: `New KOT — ${locLabel}`,
+                  message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) queued for preparation.`,
+                  actionUrl: "/dashboard/restaurant/kds",
+                  dedupeKey: `guest-order-kds:${order.id}:${roundId}`,
+                }),
+              ]
+            : []),
+          // 3. Notify Guest session
           ...(guestSession
             ? [
                 dispatchNotification({
                   businessId: order.businessId,
                   guestSessionId: guestSession.id,
                   category: "ORDER",
-                  title: `Order #${order.orderNumber} Confirmed`,
-                  message: `Your order for ${locLabel} has been accepted and sent to the kitchen.`,
+                  title: requiresApproval
+                    ? `Order #${order.orderNumber} Received — Awaiting Confirmation`
+                    : `Order #${order.orderNumber} Confirmed`,
+                  message: requiresApproval
+                    ? `Your order for ${locLabel} has been received and will be confirmed by our staff shortly.`
+                    : `Your order for ${locLabel} has been accepted and sent to the kitchen.`,
                   dedupeKey: `guest-order-ack:${order.id}:${roundId}`,
                 }),
               ]

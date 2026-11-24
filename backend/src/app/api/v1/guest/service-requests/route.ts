@@ -25,6 +25,11 @@ const createServiceRequestSchema = z.object({
     "HOUSEKEEPING",
     "ROOM_AMENITIES",
     "CHECKOUT_REQUEST",
+    "TABLE_UNLOCK_REQUEST",
+    "CANCEL_REQUEST",
+    "REFUND_REQUEST",
+    "TAKEAWAY_PACK_REQUEST",
+    "DELIVERY_REQUEST",
     "OTHER",
   ]),
   notes: z.string().max(500).optional().nullable(),
@@ -63,17 +68,28 @@ export async function POST(req: Request) {
         HOUSEKEEPING: "Housekeeping Requested",
         ROOM_AMENITIES: "Room Amenities Requested",
         CHECKOUT_REQUEST: "Checkout Requested",
+        TABLE_UNLOCK_REQUEST: "Table Unlock Requested",
+        CANCEL_REQUEST: "Order Cancel Requested",
+        REFUND_REQUEST: "Refund Requested",
+        TAKEAWAY_PACK_REQUEST: "Takeaway Pack Requested",
+        DELIVERY_REQUEST: "Delivery Conversion Requested",
         OTHER: "Guest Service Request",
       };
 
       const targetRoles =
-        parsed.requestType === "BILL_REQUEST" || parsed.requestType === "CHECKOUT_REQUEST"
+        parsed.requestType === "BILL_REQUEST" ||
+        parsed.requestType === "CHECKOUT_REQUEST" ||
+        parsed.requestType === "REFUND_REQUEST" ||
+        parsed.requestType === "DELIVERY_REQUEST"
           ? ["CASHIER", "ACCOUNTANT", "WAITER", "FRONT_DESK", "MANAGER", "OWNER"]
+          : parsed.requestType === "CANCEL_REQUEST" ||
+            parsed.requestType === "TAKEAWAY_PACK_REQUEST"
+          ? ["WAITER", "CASHIER", "KITCHEN", "MANAGER", "OWNER"]
           : parsed.requestType === "HOUSEKEEPING" ||
             parsed.requestType === "EXTRA_TOWELS" ||
             parsed.requestType === "ROOM_AMENITIES"
           ? ["HOUSEKEEPING", "FRONT_DESK", "MANAGER", "OWNER"]
-          : ["WAITER", "CASHIER", "MANAGER", "OWNER"];
+          : ["WAITER", "CASHIER", "FRONT_DESK", "MANAGER", "OWNER"];
 
       const locationText = reqObj.room?.roomNumber
         ? `Room ${reqObj.room.roomNumber}`

@@ -60,6 +60,23 @@ const settingsSchema = z.object({
   receiptTitle: z.string().optional().default("POS GST INVOICE"),
   showTaxBreakup: z.boolean().optional().default(true),
   showQrCode: z.boolean().optional().default(true),
+  // Guest QR Security, Multi-Channel & Cancel/Refund Policies
+  tableQrMode: z
+    .enum(["STAFF_SEATED_OR_PIN", "SELF_SEAT_WITH_GEOFENCE", "OPEN_STAFF_APPROVAL"])
+    .optional()
+    .default("STAFF_SEATED_OR_PIN"),
+  branchLat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  branchLng: z.coerce.number().min(-180).max(180).optional().nullable(),
+  geofenceRadiusMeters: z.coerce.number().min(30).max(5000).optional().default(150),
+  maxGuestOrderItems: z.coerce.number().int().min(1).max(200).optional().default(15),
+  maxAutoAcceptAmount: z.coerce.number().min(0).optional().default(1500),
+  selfCancelGraceMinutes: z.coerce.number().int().min(0).max(30).optional().default(2),
+  takeawayEnabled: z.boolean().optional().default(true),
+  deliveryEnabled: z.boolean().optional().default(true),
+  deliveryFee: z.coerce.number().min(0).optional().default(0),
+  requireStaffApprovalForDelivery: z.boolean().optional().default(true),
+  cancellationPolicyText: z.string().max(600).optional().nullable(),
+  refundPolicyText: z.string().max(600).optional().nullable(),
 });
 
 export async function GET() {

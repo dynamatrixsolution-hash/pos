@@ -12,6 +12,8 @@ const verifyGuestSchema = z.object({
   verificationCode: z.string().optional().nullable(),
   joinToken: z.string().optional().nullable(),
   deviceFingerprint: z.string().optional().nullable(),
+  lat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  lng: z.coerce.number().min(-180).max(180).optional().nullable(),
 });
 
 export async function POST(req: Request) {

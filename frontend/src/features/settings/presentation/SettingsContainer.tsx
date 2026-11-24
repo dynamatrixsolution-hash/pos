@@ -21,7 +21,9 @@ import { Notify } from "@/lib/notify";
 export function SettingsContainer() {
   const { settings, loading, saving, loadSettings, updateSettings } = useSettingsStore();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "tax" | "pos" | "branding">("profile");
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "tax" | "pos" | "branding" | "guestPolicy"
+  >("profile");
 
   // Form states
   const [formData, setFormData] = useState<any>({});
@@ -80,12 +82,13 @@ export function SettingsContainer() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#EEE7DD] pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#EEE7DD] pb-2">
         {[
           ["profile", "Store Profile", Store],
           ["tax", "Taxes & Compliance", ShieldCheck],
           ["pos", "POS & Receipt Printer", Printer],
           ["branding", "Logos & QR Payments", CreditCard],
+          ["guestPolicy", "Guest QR & Order Policies", MapPin],
         ].map(([key, label, Icon]: any) => (
           <button
             key={key}
@@ -325,6 +328,231 @@ export function SettingsContainer() {
                     onChange={(e) => handleChange("qrCodeUrl", e.target.value)}
                     placeholder="https://..."
                     className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#EEE7DD] rounded-md text-[#292320] outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 5: Guest QR Security, Multi-Channel & Cancel/Refund Policies */}
+          {activeTab === "guestPolicy" && (
+            <div className="bg-[#FFFCF7] border border-[#EEE7DD] rounded-lg p-5 space-y-5 text-xs">
+              <div className="border-b border-[#EEE7DD] pb-3">
+                <h3 className="text-sm font-bold text-[#292320]">
+                  Guest QR Anti-Prank Security, Delivery &amp; Cancellation Policies
+                </h3>
+                <p className="text-[11px] text-[#71675E] mt-0.5">
+                  Control how customers unlock dining tables, set your restaurant&apos;s auto-accept spend limit, and configure Takeaway, Delivery, and Cancellation rules.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Table QR Dine-In Security Mode
+                  </label>
+                  <select
+                    value={formData.tableQrMode || "STAFF_SEATED_OR_PIN"}
+                    onChange={(e) => handleChange("tableQrMode", e.target.value)}
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] outline-none focus:border-[#6B2837]"
+                  >
+                    <option value="STAFF_SEATED_OR_PIN">
+                      Staff Seated or 4-Digit Table PIN Required (Recommended — Blocks Remote Prank Orders)
+                    </option>
+                    <option value="SELF_SEAT_WITH_GEOFENCE">
+                      Self-Seat with GPS Geofence (Customer must be physically at restaurant)
+                    </option>
+                    <option value="OPEN_STAFF_APPROVAL">
+                      Open Scan — Hold All Guest Orders for Staff Confirmation Before Kitchen
+                    </option>
+                  </select>
+                </div>
+
+                {formData.tableQrMode === "SELF_SEAT_WITH_GEOFENCE" && (
+                  <>
+                    <div>
+                      <label className="block font-semibold text-[#292320] mb-1">
+                        Restaurant Latitude
+                      </label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={formData.branchLat ?? ""}
+                        onChange={(e) =>
+                          handleChange("branchLat", e.target.value === "" ? null : Number(e.target.value))
+                        }
+                        placeholder="e.g. 27.7172"
+                        className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-semibold text-[#292320]">Restaurant Longitude</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!navigator.geolocation) return;
+                            navigator.geolocation.getCurrentPosition((pos) => {
+                              handleChange("branchLat", Number(pos.coords.latitude.toFixed(6)));
+                              handleChange("branchLng", Number(pos.coords.longitude.toFixed(6)));
+                            });
+                          }}
+                          className="text-[11px] font-semibold text-[#6B2837] hover:underline cursor-pointer"
+                        >
+                          Use Current GPS
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={formData.branchLng ?? ""}
+                        onChange={(e) =>
+                          handleChange("branchLng", e.target.value === "" ? null : Number(e.target.value))
+                        }
+                        placeholder="e.g. 85.3240"
+                        className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#292320] mb-1">
+                        Allowed Radius (meters)
+                      </label>
+                      <input
+                        type="number"
+                        min={30}
+                        max={5000}
+                        value={formData.geofenceRadiusMeters ?? 150}
+                        onChange={(e) => handleChange("geofenceRadiusMeters", Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Auto-Accept Order Limit ({formData.currency || "NPR"})
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={50}
+                    value={formData.maxAutoAcceptAmount ?? 1500}
+                    onChange={(e) => handleChange("maxAutoAcceptAmount", Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none focus:border-[#6B2837]"
+                  />
+                  <p className="text-[11px] text-[#71675E] mt-1">
+                    Orders above this amount require staff approval before kitchen starts. Set to <strong>0</strong> to confirm every guest order manually.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Max Items per Guest Order
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={formData.maxGuestOrderItems ?? 15}
+                    onChange={(e) => handleChange("maxGuestOrderItems", Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Self-Cancel Grace Window (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={formData.selfCancelGraceMinutes ?? 2}
+                    onChange={(e) => handleChange("selfCancelGraceMinutes", Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none focus:border-[#6B2837]"
+                  />
+                  <p className="text-[11px] text-[#71675E] mt-1">
+                    Allowed only while unpaid and before kitchen starts preparing. Set to <strong>0</strong> to disable self-cancel.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Default Delivery Fee ({formData.currency || "NPR"})
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={formData.deliveryFee ?? 0}
+                    onChange={(e) => handleChange("deliveryFee", Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] tabular-nums outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div className="p-3.5 bg-[#F7F3EC] rounded-md border border-[#EEE7DD] flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-[#292320]">Enable Takeaway Ordering</div>
+                    <div className="text-[11px] text-[#71675E]">Allow customers to order pickup without a table</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.takeawayEnabled !== false}
+                    onChange={(e) => handleChange("takeawayEnabled", e.target.checked)}
+                    className="h-4 w-4 accent-[#6B2837]"
+                  />
+                </div>
+
+                <div className="p-3.5 bg-[#F7F3EC] rounded-md border border-[#EEE7DD] flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-[#292320]">Enable Delivery Ordering</div>
+                    <div className="text-[11px] text-[#71675E]">Requires mandatory Name, Phone &amp; Address</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.deliveryEnabled !== false}
+                    onChange={(e) => handleChange("deliveryEnabled", e.target.checked)}
+                    className="h-4 w-4 accent-[#6B2837]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 p-3.5 bg-[#F7F3EC] rounded-md border border-[#EEE7DD] flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-[#292320]">Require Staff Approval for Delivery Orders</div>
+                    <div className="text-[11px] text-[#71675E]">Staff verifies customer phone &amp; location before kitchen starts cooking</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.requireStaffApprovalForDelivery !== false}
+                    onChange={(e) => handleChange("requireStaffApprovalForDelivery", e.target.checked)}
+                    className="h-4 w-4 accent-[#6B2837]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Cancellation Policy Notice (Shown to Customers)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.cancellationPolicyText || ""}
+                    onChange={(e) => handleChange("cancellationPolicyText", e.target.value)}
+                    placeholder="Unpaid orders can be cancelled within 2 minutes before the kitchen starts preparing..."
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] outline-none focus:border-[#6B2837]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-[#292320] mb-1">
+                    Refund Policy Notice (Shown for Paid Orders)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.refundPolicyText || ""}
+                    onChange={(e) => handleChange("refundPolicyText", e.target.value)}
+                    placeholder="Paid orders cannot be self-cancelled. Submit a refund request for cashier/manager review..."
+                    className="w-full px-3 py-2 bg-[#F7F3EC] border border-[#D8CEC1] rounded-md text-[#292320] outline-none focus:border-[#6B2837]"
                   />
                 </div>
               </div>

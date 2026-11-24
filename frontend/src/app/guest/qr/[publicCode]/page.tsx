@@ -11,6 +11,11 @@ import { GoogleReviewCard } from "@/features/guest-portal/components/GoogleRevie
 import { GuestProfileAndAppCard } from "@/features/guest-portal/components/GuestProfileAndAppCard";
 import { InstallAppPopup } from "@/features/guest-portal/components/InstallAppPopup";
 import { GuestSplashScreen } from "@/features/guest-portal/components/GuestSplashScreen";
+import { GuestSettledThankYouCard } from "@/features/guest-portal/components/GuestSettledThankYouCard";
+import {
+  GuestOrderActionModal,
+  type GuestOrderModalMode,
+} from "@/features/guest-portal/components/GuestOrderActionModal";
 import {
   UtensilsCrossed,
   Clock,
@@ -52,6 +57,9 @@ import {
   Pizza,
   Sandwich,
   CakeSlice,
+  Truck,
+  MapPin,
+  Ban,
 } from "lucide-react";
 
 // Resolve a real uploaded image (menu item first, then linked product). Returns null when none.
@@ -195,8 +203,23 @@ interface QrLocationPublicData {
   business: {
     id: string;
     name: string;
+    logo?: string | null;
     currency?: string;
     googleReviewUrl?: string | null;
+  };
+  guestPolicy?: {
+    tableQrMode: "STAFF_SEATED_OR_PIN" | "SELF_SEAT_WITH_GEOFENCE" | "OPEN_STAFF_APPROVAL";
+    geofenceEnabled: boolean;
+    geofenceRadiusMeters: number;
+    maxGuestOrderItems: number;
+    maxAutoAcceptAmount: number;
+    selfCancelGraceMinutes: number;
+    takeawayEnabled: boolean;
+    deliveryEnabled: boolean;
+    deliveryFee: number;
+    requireStaffApprovalForDelivery: boolean;
+    cancellationPolicyText: string;
+    refundPolicyText: string;
   };
   branch?: {
     id: string;
@@ -405,6 +428,28 @@ export default function GuestQrPortalPage() {
   const [customItemNotes, setCustomItemNotes] = useState<string>("");
   const [submittingOrder, setSubmittingOrder] = useState<boolean>(false);
 
+  // Multi-channel ordering (Dine-In, Takeaway, Delivery), post-settlement Thank-You & Order actions
+  const initialModeParam = (searchParams?.get("mode") || "").toUpperCase();
+  const [orderChannel, setOrderChannel] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">(
+    initialModeParam === "DELIVERY" || initialModeParam === "TAKEAWAY"
+      ? initialModeParam
+      : "DINE_IN"
+  );
+  const [channelName, setChannelName] = useState<string>("");
+  const [channelPhone, setChannelPhone] = useState<string>("");
+  const [channelEmail, setChannelEmail] = useState<string>("");
+  const [channelAddress, setChannelAddress] = useState<string>("");
+  const [channelCoords, setChannelCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingGps, setLocatingGps] = useState<boolean>(false);
+  const [sessionEndedThankYou, setSessionEndedThankYou] = useState<boolean>(false);
+  const [tableUnlockPrompt, setTableUnlockPrompt] = useState<string | null>(null);
+  const [orderActionModal, setOrderActionModal] = useState<{
+    mode: GuestOrderModalMode;
+    order: GuestOrder;
+  } | null>(null);
+  const [actionSubmitting, setActionSubmitting] = useState<boolean>(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
   // Modern UI Search, Favorites & Dish Detail Modal Tabs (from sample UI)
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState<boolean>(false);
@@ -519,7 +564,18 @@ export default function GuestQrPortalPage() {
         }
 
         return true;
-      } catch {
+      } catch (err: any) {
+        const status = err?.status || err?.statusCode;
+        const code = err?.data?.code;
+        if (
+          status === 401 ||
+          code === "GUEST_SESSION_REVOKED" ||
+          code === "GUEST_TABLE_SESSION_ENDED" ||
+          code === "GUEST_GRANT_REVOKED"
+        ) {
+          clearPrivateSessionState();
+          setSessionEndedThankYou(true);
+        }
         return false;
       } finally {
         if (!silent) setRefreshingData(false);
@@ -666,8 +722,10 @@ export default function GuestQrPortalPage() {
           if (data.qrLocation.table?.isSettled) {
             if (isVerified) {
               clearPrivateSessionState();
+              setSessionEndedThankYou(true);
+            } else {
+              showBanner("Previous bill settled! Table is now ready for your order.", "success");
             }
-            showBanner("Previous bill settled! Table is now ready for your order.", "success");
           }
         }
       } catch {
@@ -850,6 +908,7 @@ export default function GuestQrPortalPage() {
         JSON.stringify({
           publicCode,
           businessName: qrLocation.business.name,
+          businessLogo: qrLocation.business.logo || null,
           branchName: qrLocation.branch?.name || null,
           locationLabel: loc,
           visitedAt: Date.now(),
@@ -1082,7 +1141,7 @@ export default function GuestQrPortalPage() {
     }
   };
 
-  // Automatically enroll Table QR session if not yet enrolled
+  // Automatically enroll Table QR session if not yet enrolled (respects anti-prank & GPS geofence rules)
   const ensureTableSessionToken = useCallback(
     async (pin?: string): Promise<string | null> => {
       if (sessionToken) return sessionToken;
@@ -1090,9 +1149,34 @@ export default function GuestQrPortalPage() {
 
       try {
         setVerifying(true);
+        setTableUnlockPrompt(null);
+
+        let lat: number | undefined;
+        let lng: number | undefined;
+        if (
+          qrLocation?.guestPolicy?.geofenceEnabled &&
+          typeof navigator !== "undefined" &&
+          navigator.geolocation
+        ) {
+          try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 7000,
+              })
+            );
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+          } catch {
+            // Backend will return clear GEOFENCE_REQUIRED error
+          }
+        }
+
         const data = await apiClient.guest.verify({
           publicCode,
           verificationCode: pin?.trim() || undefined,
+          lat,
+          lng,
         });
 
         const token = data.sessionToken;
@@ -1111,13 +1195,31 @@ export default function GuestQrPortalPage() {
         await fetchGuestSessionData(token, true);
         return token;
       } catch (err: any) {
-        showBanner(err.message || "Could not start table session", "error");
+        const code = err?.data?.code;
+        if (
+          code === "TABLE_UNLOCK_REQUIRED" ||
+          code === "GEOFENCE_REQUIRED" ||
+          code === "OUTSIDE_GEOFENCE"
+        ) {
+          setTableUnlockPrompt(err.message);
+        } else {
+          showBanner(err.message || "Could not start table session", "error");
+        }
         return null;
       } finally {
         setVerifying(false);
       }
     },
-    [sessionToken, publicCode, isRoomQr, storageKey, grantStorageKey, fetchGuestSessionData, showBanner]
+    [
+      sessionToken,
+      publicCode,
+      isRoomQr,
+      qrLocation?.guestPolicy?.geofenceEnabled,
+      storageKey,
+      grantStorageKey,
+      fetchGuestSessionData,
+      showBanner,
+    ]
   );
 
   // Open item detail / customization screen (matching sample Screen 2 & 3)
@@ -1277,13 +1379,81 @@ export default function GuestQrPortalPage() {
     );
   };
 
-  // Submit Guest Order
+  // Submit Guest Order (Dine-In, Takeaway, or Delivery)
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
 
     // Request OS notification permission + register FCM Web Push on user gesture
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
       void registerWebPushToken({ publicCode, guestSessionToken: sessionToken });
+    }
+
+    // Channel orders (Takeaway / Delivery) never lock a dining table
+    if (!isRoomQr && (orderChannel === "TAKEAWAY" || orderChannel === "DELIVERY")) {
+      const cleanName = channelName.trim();
+      const cleanPhone = channelPhone.trim();
+      const cleanAddress = channelAddress.trim();
+      if (cleanName.length < 2) {
+        showBanner("Please enter your full name.", "error");
+        return;
+      }
+      if (cleanPhone.replace(/\D/g, "").length < 7) {
+        showBanner("Please enter a valid mobile number.", "error");
+        return;
+      }
+      if (orderChannel === "DELIVERY" && cleanAddress.length < 5) {
+        showBanner("Full delivery address / location is mandatory for delivery.", "error");
+        return;
+      }
+
+      try {
+        setSubmittingOrder(true);
+        const res = await apiClient.guest.createChannelOrder({
+          publicCode,
+          orderType: orderChannel,
+          customerName: cleanName,
+          phone: cleanPhone,
+          email: channelEmail.trim() || null,
+          deliveryAddress: orderChannel === "DELIVERY" ? cleanAddress : null,
+          lat: channelCoords?.lat ?? null,
+          lng: channelCoords?.lng ?? null,
+          notes: orderNotes.trim() || undefined,
+          items: cart.map((c) => ({
+            menuItemId: c.menuItem.id,
+            quantity: c.quantity,
+            selectedOptionIds: c.selectedOptions.map((o) => o.id),
+            notes: c.notes || undefined,
+          })),
+        });
+
+        const created = res?.order;
+        if (created) {
+          setOrders((prev) => [
+            {
+              ...created,
+              trackerStage: "ORDER_RECEIVED",
+              rounds: res?.round ? [{ ...res.round, lines: res.lines || [] }] : [],
+            },
+            ...prev,
+          ]);
+        }
+
+        setCart([]);
+        setOrderNotes("");
+        setIsCartOpen(false);
+        setActiveTab("TRACKER");
+        showBanner(
+          res?.requiresStaffApproval
+            ? `${orderChannel === "DELIVERY" ? "Delivery" : "Takeaway"} order #${created?.orderNumber || ""} received — our staff will confirm shortly!`
+            : `${orderChannel === "DELIVERY" ? "Delivery" : "Takeaway"} order #${created?.orderNumber || ""} sent to kitchen!`,
+          "success"
+        );
+      } catch (err: any) {
+        showBanner(err.message || "Unable to place order", "error");
+      } finally {
+        setSubmittingOrder(false);
+      }
+      return;
     }
 
     const canOrder = await verifyTableOpenForOrdering();
@@ -1331,7 +1501,7 @@ export default function GuestQrPortalPage() {
         })),
       };
 
-      await apiClient.guest.createOrder(payload, activeToken);
+      const res = await apiClient.guest.createOrder(payload, activeToken);
 
       setCart([]);
       setOrderNotes("");
@@ -1339,9 +1509,11 @@ export default function GuestQrPortalPage() {
       await fetchGuestSessionData(activeToken, true);
       setActiveTab("TRACKER");
       showBanner(
-        isRoomQr
+        res?.requiresStaffApproval
+          ? "Order received and sent to staff for quick confirmation before kitchen starts."
+          : isRoomQr
           ? "Room service order received! Track live kitchen preparation below."
-          : "Order sent to your waiter/cashier terminal for instant confirmation!",
+          : "Order sent to kitchen! Track live preparation below.",
         "success"
       );
     } catch (err: any) {
@@ -1349,6 +1521,7 @@ export default function GuestQrPortalPage() {
       if (errCode === "TABLE_BILLED_LOCKED" || errCode === "SESSION_CLOSED") {
         if (errCode === "SESSION_CLOSED") {
           clearPrivateSessionState();
+          setSessionEndedThankYou(true);
         }
         setIsCartOpen(false);
         setDismissedUnsettledGate(false);
@@ -1357,6 +1530,118 @@ export default function GuestQrPortalPage() {
       showBanner(err.message || "Unable to place order", "error");
     } finally {
       setSubmittingOrder(false);
+    }
+  };
+
+  // Ask waiter to unlock an AVAILABLE table when STAFF_SEATED_OR_PIN mode is active
+  const handleRequestTableUnlock = async () => {
+    if (!publicCode) return;
+    try {
+      setVerifying(true);
+      await apiClient.guest.createServiceRequest({
+        publicCode,
+        requestType: "TABLE_UNLOCK_REQUEST",
+        notes: `Guest seated at Table ${qrLocation?.table?.tableNumber || ""} requested staff to seat & unlock the table for QR ordering.`,
+        priority: "HIGH",
+      });
+      setTableUnlockPrompt(null);
+      showBanner("Waiter notified! Once they seat your table, enter the 4-digit PIN or submit your order.", "success");
+    } catch (err: any) {
+      showBanner(err.message || "Could not notify staff right now.", "error");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleCaptureChannelGps = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocatingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setChannelCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocatingGps(false);
+      },
+      () => {
+        setLocatingGps(false);
+        showBanner("Could not read GPS location. Please type your full address.", "info");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleCancelOrRefundOrder = async (reason: string) => {
+    if (!orderActionModal) return;
+    try {
+      setActionSubmitting(true);
+      setActionError(null);
+      const res = await apiClient.guest.cancelOrder(
+        orderActionModal.order.id,
+        { reason, phone: channelPhone.trim() || null },
+        sessionToken
+      );
+      setOrderActionModal(null);
+      showBanner(res?.message || "Request submitted.", "success");
+      if (sessionToken) {
+        await fetchGuestSessionData(sessionToken, true);
+      } else if (res?.action === "CANCELLED") {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderActionModal.order.id
+              ? { ...o, fulfillmentStatus: "CANCELLED", trackerStage: "REJECTED" }
+              : o
+          )
+        );
+      }
+    } catch (err: any) {
+      setActionError(err.message || "Unable to process request.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handlePackTakeawayOrder = async (itemIds: string[], notes: string) => {
+    if (!orderActionModal || !sessionToken) return;
+    try {
+      setActionSubmitting(true);
+      setActionError(null);
+      const res = await apiClient.guest.requestOrderFulfillment(
+        orderActionModal.order.id,
+        { mode: "PACK_TAKEAWAY", itemIds, notes },
+        sessionToken
+      );
+      setOrderActionModal(null);
+      showBanner(res?.message || "Takeaway packing requested.", "success");
+    } catch (err: any) {
+      setActionError(err.message || "Unable to submit packing request.");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handleDeliverElsewhereOrder = async (payload: {
+    itemIds: string[];
+    customerName: string;
+    phone: string;
+    deliveryAddress: string;
+    lat?: number | null;
+    lng?: number | null;
+    notes: string;
+  }) => {
+    if (!orderActionModal || !sessionToken) return;
+    try {
+      setActionSubmitting(true);
+      setActionError(null);
+      const res = await apiClient.guest.requestOrderFulfillment(
+        orderActionModal.order.id,
+        { mode: "REQUEST_DELIVERY", ...payload },
+        sessionToken
+      );
+      setOrderActionModal(null);
+      showBanner(res?.message || "Delivery request sent to staff.", "success");
+    } catch (err: any) {
+      setActionError(err.message || "Unable to submit delivery request.");
+    } finally {
+      setActionSubmitting(false);
     }
   };
 
@@ -1509,7 +1794,41 @@ export default function GuestQrPortalPage() {
   const isTableWaitingForSettlement =
     !isRoomQr &&
     Boolean(qrLocation.table) &&
+    orderChannel === "DINE_IN" &&
     ((!isVerified && qrLocation.table?.isSettled === false) || isBilledLockedNow);
+
+  if (sessionEndedThankYou) {
+    return (
+      <div className="min-h-screen bg-[#F7F3EC] text-[#292320] font-sans">
+        <GuestSettledThankYouCard
+          businessName={qrLocation.business.name}
+          businessLogo={qrLocation.business.logo}
+          branchName={qrLocation.branch?.name}
+          tableLabel={locationBadgeText}
+          hasGoogleReview={Boolean(qrLocation.business.googleReviewUrl)}
+          takeawayEnabled={qrLocation.guestPolicy?.takeawayEnabled !== false}
+          deliveryEnabled={qrLocation.guestPolicy?.deliveryEnabled !== false}
+          onRateGoogle={() => {
+            setSessionEndedThankYou(false);
+            setShowRateUsModal(true);
+          }}
+          onStartTakeaway={() => {
+            setOrderChannel("TAKEAWAY");
+            setSessionEndedThankYou(false);
+            setActiveTab("MENU");
+          }}
+          onStartDelivery={() => {
+            setOrderChannel("DELIVERY");
+            setSessionEndedThankYou(false);
+            setActiveTab("MENU");
+          }}
+          onScanNewTable={() => {
+            window.location.href = "/guest";
+          }}
+        />
+      </div>
+    );
+  }
 
   if (isTableWaitingForSettlement && !dismissedUnsettledGate) {
     return (
@@ -2530,10 +2849,57 @@ export default function GuestQrPortalPage() {
 
                         <div className="flex items-center justify-between pt-2 border-t border-[#F0EAE0] text-xs">
                           <span className="font-semibold text-[#6E655F]">Order Total (incl. tax)</span>
-                          <span className="text-sm font-extrabold text-[#6B2837]">
+                          <span className="text-sm font-extrabold text-[#6B2837] tabular-nums">
                             {formatNPR(order.totalAmount)}
                           </span>
                         </div>
+
+                        {/* Customer Lifecycle Actions: Pack Takeaway, Deliver Elsewhere, Cancel / Refund */}
+                        {stage !== "REJECTED" && (
+                          <div className="pt-2 border-t border-[#F0EAE0] flex flex-wrap items-center gap-1.5">
+                            {sessionToken && order.orderType === "DINE_IN" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionError(null);
+                                    setOrderActionModal({ mode: "PACK_TAKEAWAY", order });
+                                  }}
+                                  className="h-8 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[11px] font-semibold text-[#292320] inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ShoppingBag className="w-3 h-3 text-[#6B2837]" />
+                                  <span>Pack Takeaway</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionError(null);
+                                    setOrderActionModal({ mode: "REQUEST_DELIVERY", order });
+                                  }}
+                                  className="h-8 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[11px] font-semibold text-[#292320] inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Truck className="w-3 h-3 text-[#6B2837]" />
+                                  <span>Deliver Elsewhere</span>
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActionError(null);
+                                setOrderActionModal({ mode: "CANCEL", order });
+                              }}
+                              className="h-8 px-2.5 rounded-md border border-[#E5B8B8] bg-[#FDF2F2] hover:bg-[#FCE6E6] text-[11px] font-semibold text-[#8A1F2D] inline-flex items-center gap-1 cursor-pointer ml-auto"
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>
+                                {order.settlementStatus === "PAID" || order.settlementStatus === "PARTIAL"
+                                  ? "Request Refund"
+                                  : "Cancel Order"}
+                              </span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -3591,6 +3957,159 @@ export default function GuestQrPortalPage() {
                     ))}
                   </div>
 
+                  {/* Fulfillment Channel Selector (Dine-In / Takeaway / Delivery) */}
+                  {!isRoomQr && (
+                    <div className="space-y-2.5 pt-1">
+                      <label className="block text-xs font-bold text-[#292320]">
+                        How would you like to receive your order?
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderChannel("DINE_IN");
+                            setTableUnlockPrompt(null);
+                          }}
+                          className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
+                            orderChannel === "DINE_IN"
+                              ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                              : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
+                          }`}
+                        >
+                          <UtensilsCrossed className="w-3.5 h-3.5" />
+                          <span>Dine-In</span>
+                        </button>
+                        {qrLocation?.guestPolicy?.takeawayEnabled !== false && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderChannel("TAKEAWAY");
+                              setTableUnlockPrompt(null);
+                            }}
+                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
+                              orderChannel === "TAKEAWAY"
+                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
+                            }`}
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Takeaway</span>
+                          </button>
+                        )}
+                        {qrLocation?.guestPolicy?.deliveryEnabled !== false && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderChannel("DELIVERY");
+                              setTableUnlockPrompt(null);
+                            }}
+                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
+                              orderChannel === "DELIVERY"
+                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
+                            }`}
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>Delivery</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {tableUnlockPrompt && orderChannel === "DINE_IN" && (
+                        <div className="p-3 rounded-md border border-[#E5C9A8] bg-[#FFF8ED] text-[11px] text-[#7A4E0B] space-y-2">
+                          <p className="font-semibold text-[#292320]">{tableUnlockPrompt}</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={handleRequestTableUnlock}
+                              className="h-8 px-3 rounded-md bg-[#6B2837] text-[#FFFCF7] text-[11px] font-bold cursor-pointer"
+                            >
+                              Request Waiter to Unlock Table
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderChannel("DELIVERY");
+                                setTableUnlockPrompt(null);
+                              }}
+                              className="h-8 px-3 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] text-[11px] font-semibold cursor-pointer"
+                            >
+                              Switch to Delivery
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {(orderChannel === "TAKEAWAY" || orderChannel === "DELIVERY") && (
+                        <div className="p-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] space-y-2 text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
+                                Your Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={channelName}
+                                onChange={(e) => setChannelName(e.target.value)}
+                                placeholder="Full name"
+                                className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
+                                Mobile Number *
+                              </label>
+                              <input
+                                type="tel"
+                                value={channelPhone}
+                                onChange={(e) => setChannelPhone(e.target.value)}
+                                placeholder="98XXXXXXXX"
+                                className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] tabular-nums"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#292320] mb-0.5">
+                              Email (Optional)
+                            </label>
+                            <input
+                              type="email"
+                              value={channelEmail}
+                              onChange={(e) => setChannelEmail(e.target.value)}
+                              placeholder="name@example.com"
+                              className="w-full h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
+                            />
+                          </div>
+                          {orderChannel === "DELIVERY" && (
+                            <div>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <label className="text-[11px] font-semibold text-[#292320]">
+                                  Delivery Address / Location *
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleCaptureChannelGps}
+                                  disabled={locatingGps}
+                                  className="text-[11px] font-semibold text-[#6B2837] inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <MapPin className="w-3 h-3" />
+                                  <span>{channelCoords ? "GPS Attached" : locatingGps ? "Locating..." : "Use My GPS"}</span>
+                                </button>
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={channelAddress}
+                                onChange={(e) => setChannelAddress(e.target.value)}
+                                placeholder="Street, Tole, House/Flat No., Nearby Landmark"
+                                className="w-full px-2.5 py-1.5 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320]"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold text-[#1E1B18] mb-1">
                       Kitchen Notes (Optional)
@@ -3600,14 +4119,21 @@ export default function GuestQrPortalPage() {
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
                       placeholder="Allergies, spice preference, extra cutlery..."
-                      className="w-full px-3 py-2 rounded-xl bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
+                      className="w-full px-3 py-2 rounded-md bg-[#FAF6F0] border border-[#E2D9C8] text-xs"
                     />
                   </div>
+
+                  {qrLocation?.guestPolicy?.cancellationPolicyText && (
+                    <div className="p-2.5 rounded-md border border-[#EEE7DD] bg-[#F7F3EC] text-[11px] text-[#71675E] leading-relaxed">
+                      <span className="font-semibold text-[#292320]">Policy: </span>
+                      {qrLocation.guestPolicy.cancellationPolicyText}
+                    </div>
+                  )}
 
                   <div className="pt-3 border-t border-[#F0EAE0] space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-bold text-[#6E655F]">Estimated Subtotal</span>
-                      <span className="text-base font-extrabold text-[#6B2837]">
+                      <span className="text-base font-extrabold text-[#6B2837] tabular-nums">
                         {formatNPR(cartSummary.subtotal)}
                       </span>
                     </div>
@@ -3616,16 +4142,20 @@ export default function GuestQrPortalPage() {
                       type="button"
                       disabled={submittingOrder}
                       onClick={handleSubmitOrder}
-                      className="w-full py-3 rounded-xl bg-[#6B2837] text-white font-bold text-xs hover:bg-[#561F2B] disabled:opacity-50 flex items-center justify-center gap-2 transition"
+                      className="w-full py-3 rounded-md bg-[#6B2837] text-white font-bold text-xs hover:bg-[#561F2B] disabled:opacity-50 flex items-center justify-center gap-2 transition cursor-pointer"
                     >
                       <Send className="w-4 h-4" />
                       {submittingOrder
                         ? "Submitting Order..."
+                        : orderChannel === "DELIVERY"
+                        ? "Place Delivery Order"
+                        : orderChannel === "TAKEAWAY"
+                        ? "Place Takeaway Order"
                         : isRoomQr && !isVerified
                         ? "Verify Room & Submit Order"
                         : !isVerified && (qrLocation?.table?.pinRequired || qrLocation?.table?.status === "OCCUPIED" || !qrLocation?.table?.isSettled)
                         ? "Enter PIN & Place Order"
-                        : "Submit Order"}
+                        : "Submit Dine-In Order"}
                     </button>
                   </div>
                 </>
@@ -4110,6 +4640,26 @@ export default function GuestQrPortalPage() {
               />
             </div>
           </div>
+        )}
+
+        {orderActionModal && (
+          <GuestOrderActionModal
+            mode={orderActionModal.mode}
+            orderNumber={orderActionModal.order.orderNumber}
+            settlementStatus={orderActionModal.order.settlementStatus}
+            lines={(orderActionModal.order.rounds || []).flatMap((r) => r.lines || [])}
+            cancellationPolicyText={qrLocation.guestPolicy?.cancellationPolicyText}
+            refundPolicyText={qrLocation.guestPolicy?.refundPolicyText}
+            submitting={actionSubmitting}
+            error={actionError}
+            onClose={() => {
+              setOrderActionModal(null);
+              setActionError(null);
+            }}
+            onSubmitCancel={handleCancelOrRefundOrder}
+            onSubmitPackTakeaway={handlePackTakeawayOrder}
+            onSubmitDelivery={handleDeliverElsewhereOrder}
+          />
         )}
       </div>
     </div>
