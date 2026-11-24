@@ -435,6 +435,11 @@ export default function GuestQrPortalPage() {
       ? initialModeParam
       : "DINE_IN"
   );
+  const isRemoteChannelMode =
+    initialModeParam === "DELIVERY" || initialModeParam === "TAKEAWAY";
+  const [channelPaymentPref, setChannelPaymentPref] = useState<
+    "COD" | "PAY_AT_PICKUP" | "ONLINE_QR"
+  >(initialModeParam === "TAKEAWAY" ? "PAY_AT_PICKUP" : "COD");
   const [channelName, setChannelName] = useState<string>("");
   const [channelPhone, setChannelPhone] = useState<string>("");
   const [channelEmail, setChannelEmail] = useState<string>("");
@@ -1415,6 +1420,14 @@ export default function GuestQrPortalPage() {
           phone: cleanPhone,
           email: channelEmail.trim() || null,
           deliveryAddress: orderChannel === "DELIVERY" ? cleanAddress : null,
+          paymentPreference:
+            orderChannel === "DELIVERY"
+              ? channelPaymentPref === "ONLINE_QR"
+                ? "ONLINE_QR"
+                : "COD"
+              : channelPaymentPref === "ONLINE_QR"
+              ? "ONLINE_QR"
+              : "PAY_AT_PICKUP",
           lat: channelCoords?.lat ?? null,
           lng: channelCoords?.lng ?? null,
           notes: orderNotes.trim() || undefined,
@@ -1783,9 +1796,14 @@ export default function GuestQrPortalPage() {
     );
   }
 
-  const locationBadgeText = isRoomQr
-    ? `Room ${qrLocation.room?.roomNumber || qrLocation.label}`
-    : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
+  const locationBadgeText =
+    orderChannel === "DELIVERY"
+      ? "Delivery"
+      : orderChannel === "TAKEAWAY"
+      ? "Takeaway"
+      : isRoomQr
+      ? `Room ${qrLocation.room?.roomNumber || qrLocation.label}`
+      : `Table ${qrLocation.table?.tableNumber || qrLocation.label}`;
 
   const isBilledLockedNow =
     !isRoomQr &&
@@ -3601,7 +3619,11 @@ export default function GuestQrPortalPage() {
 
         {/* Sticky Bottom Navigation Bar (safe-area aware) */}
         <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-[#FFFCF7] border-t border-[#D8CEC1] px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
-          <div className="grid grid-cols-4 gap-1">
+          <div
+            className={`grid ${
+              orderChannel === "DINE_IN" || isRoomQr ? "grid-cols-4" : "grid-cols-2"
+            } gap-1`}
+          >
             <button
               type="button"
               onClick={() => setActiveTab("MENU")}
@@ -3625,37 +3647,41 @@ export default function GuestQrPortalPage() {
               }`}
             >
               <ChefHat className="w-4 h-4 mb-0.5" />
-              <span>Tracker</span>
+              <span>{orderChannel === "DINE_IN" || isRoomQr ? "Tracker" : "My Orders"}</span>
               {orders.length > 0 && (
-                <span className="absolute top-1 right-3.5 w-2 h-2 rounded-full bg-[#A77B38] animate-pulse" />
+                <span className="absolute top-1 right-3.5 w-2 h-2 rounded-full bg-[#A77B38]" />
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("SERVICES")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-                activeTab === "SERVICES"
-                  ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              <Bell className="w-4 h-4 mb-0.5" />
-              <span>Services</span>
-            </button>
+            {(orderChannel === "DINE_IN" || isRoomQr) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("SERVICES")}
+                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                    activeTab === "SERVICES"
+                      ? "text-[#6B2837] bg-[#FAF6F0]"
+                      : "text-[#71675E] hover:text-[#292320]"
+                  }`}
+                >
+                  <Bell className="w-4 h-4 mb-0.5" />
+                  <span>Services</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("BILL")}
-              className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-                activeTab === "BILL"
-                  ? "text-[#6B2837] bg-[#FAF6F0]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              <Receipt className="w-4 h-4 mb-0.5" />
-              <span>{isRoomQr ? "Room Bill" : "Table Bill"}</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("BILL")}
+                  className={`flex flex-col items-center justify-center py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                    activeTab === "BILL"
+                      ? "text-[#6B2837] bg-[#FAF6F0]"
+                      : "text-[#71675E] hover:text-[#292320]"
+                  }`}
+                >
+                  <Receipt className="w-4 h-4 mb-0.5" />
+                  <span>{isRoomQr ? "Room Bill" : "Table Bill"}</span>
+                </button>
+              </>
+            )}
           </div>
         </nav>
 
@@ -3963,22 +3989,26 @@ export default function GuestQrPortalPage() {
                       <label className="block text-xs font-bold text-[#292320]">
                         How would you like to receive your order?
                       </label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOrderChannel("DINE_IN");
-                            setTableUnlockPrompt(null);
-                          }}
-                          className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
-                            orderChannel === "DINE_IN"
-                              ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
-                              : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
-                          }`}
-                        >
-                          <UtensilsCrossed className="w-3.5 h-3.5" />
-                          <span>Dine-In</span>
-                        </button>
+                      <div
+                        className={`grid ${isRemoteChannelMode ? "grid-cols-2" : "grid-cols-3"} gap-1.5`}
+                      >
+                        {!isRemoteChannelMode && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderChannel("DINE_IN");
+                              setTableUnlockPrompt(null);
+                            }}
+                            className={`h-9 rounded-md border text-[11px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer ${
+                              orderChannel === "DINE_IN"
+                                ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                                : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
+                            }`}
+                          >
+                            <UtensilsCrossed className="w-3.5 h-3.5" />
+                            <span>Dine-In</span>
+                          </button>
+                        )}
                         {qrLocation?.guestPolicy?.takeawayEnabled !== false && (
                           <button
                             type="button"
@@ -4105,6 +4135,41 @@ export default function GuestQrPortalPage() {
                               />
                             </div>
                           )}
+
+                          {/* Payment Preference (Cash on Delivery / Pay at Pickup / Online QR) */}
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#292320] mb-1">
+                              Payment Method
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setChannelPaymentPref(
+                                    orderChannel === "DELIVERY" ? "COD" : "PAY_AT_PICKUP"
+                                  )
+                                }
+                                className={`h-8 rounded-md border text-[11px] font-semibold cursor-pointer ${
+                                  channelPaymentPref !== "ONLINE_QR"
+                                    ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                                    : "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
+                                }`}
+                              >
+                                {orderChannel === "DELIVERY" ? "Cash on Delivery" : "Pay at Pickup"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setChannelPaymentPref("ONLINE_QR")}
+                                className={`h-8 rounded-md border text-[11px] font-semibold cursor-pointer ${
+                                  channelPaymentPref === "ONLINE_QR"
+                                    ? "border-[#6B2837] bg-[#6B2837] text-[#FFFCF7]"
+                                    : "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320]"
+                                }`}
+                              >
+                                Online QR (Fonepay)
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

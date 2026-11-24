@@ -343,6 +343,26 @@ export class RestaurantEndpoints extends BaseApiClient {
     );
   }
 
+  async approveOrder(orderId: string) {
+    return this.request<{ success: boolean; order: any }>(
+      `/api/v1/restaurant/orders/${orderId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ action: "APPROVE_AND_ROUTE" }),
+      }
+    );
+  }
+
+  async dispatchDelivery(orderId: string, riderName?: string) {
+    return this.request<{ success: boolean; order: any }>(
+      `/api/v1/restaurant/orders/${orderId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ action: "DISPATCH_DELIVERY", riderName }),
+      }
+    );
+  }
+
   async updateOrderLineStatus(
     orderId: string,
     lineId: string,

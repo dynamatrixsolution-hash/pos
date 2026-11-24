@@ -2396,6 +2396,7 @@ export interface SubmitGuestChannelOrderInput {
   email?: string | null;
   deliveryAddress?: string | null;
   deliveryLandmark?: string | null;
+  paymentPreference?: "COD" | "PAY_AT_PICKUP" | "ONLINE_QR" | null;
   lat?: number | null;
   lng?: number | null;
   notes?: string | null;
@@ -2578,10 +2579,20 @@ export async function submitGuestChannelOrder(
         ? ` | GPS: https://maps.google.com/?q=${input.lat.toFixed(6)},${input.lng.toFixed(6)}`
         : "";
 
+    const payPref =
+      input.paymentPreference ||
+      (input.orderType === "DELIVERY" ? "COD" : "PAY_AT_PICKUP");
+    const payTag =
+      payPref === "ONLINE_QR"
+        ? "[PAY: ONLINE QR]"
+        : payPref === "PAY_AT_PICKUP"
+        ? "[PAY: AT PICKUP]"
+        : "[PAY: CASH ON DELIVERY]";
+
     const headerTag =
       input.orderType === "DELIVERY"
-        ? `[DELIVERY to ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""}) - ${cleanAddress}${input.deliveryLandmark?.trim() ? ` (${input.deliveryLandmark.trim()})` : ""}${mapsPin}]`
-        : `[TAKEAWAY for ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""})]`;
+        ? `[DELIVERY to ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""}) - ${cleanAddress}${input.deliveryLandmark?.trim() ? ` (${input.deliveryLandmark.trim()})` : ""}${mapsPin}] ${payTag}`
+        : `[TAKEAWAY for ${cleanName} (${cleanPhone}${cleanEmail ? `, ${cleanEmail}` : ""})] ${payTag}`;
 
     const orderNotes = [
       headerTag,

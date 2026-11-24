@@ -282,6 +282,20 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
                       </span>
                     )}
 
+                    {tkt.order &&
+                      (tkt.order.acceptanceStatus === "PENDING" ||
+                        /\[STAFF APPROVAL REQUIRED/i.test(tkt.order.notes || "")) && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]">
+                          Pending Confirmation
+                        </span>
+                      )}
+
+                    {tkt.order && /\[OUT FOR DELIVERY/i.test(tkt.order.notes || "") && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF4F9] text-[#315F85] border border-[#B8D2E6]">
+                        Out for Delivery
+                      </span>
+                    )}
+
                     <span
                       className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                         tkt.status === "Billed"

@@ -10,8 +10,11 @@ import {
   Truck,
   ShoppingBag,
   UtensilsCrossed,
+  Camera,
+  ChevronRight,
 } from "lucide-react";
 import { registerWebPushToken } from "@/lib/firebase-client";
+import { QrCameraScannerModal } from "@/features/guest-portal/components/QrCameraScannerModal";
 
 interface LastRestaurant {
   publicCode: string;
@@ -27,8 +30,8 @@ const LAST_RESTAURANT_KEY = "restroinn_last_guest_restaurant_v1";
 export default function GuestAppHomePage() {
   const router = useRouter();
   const [lastVisited, setLastVisited] = useState<LastRestaurant | null>(null);
-  const [manualCode, setManualCode] = useState("");
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -49,15 +52,6 @@ export default function GuestAppHomePage() {
     }
   }, []);
 
-  const handleOpenManualCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleaned = manualCode.trim();
-    if (!cleaned) return;
-    const match = cleaned.match(/\/guest\/qr\/([^/?#]+)/i);
-    const code = match ? match[1] : cleaned;
-    router.push(`/guest/qr/${encodeURIComponent(code)}`);
-  };
-
   const handleEnableAlerts = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     const token = await registerWebPushToken({ publicCode: lastVisited?.publicCode || null });
@@ -67,22 +61,22 @@ export default function GuestAppHomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F3EC] text-[#292320] flex flex-col">
-      {/* Header */}
-      <header className="w-full bg-[#FFFCF7] border-b border-[#D8CEC1] px-4 py-3">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+    <div className="min-h-[100dvh] bg-[#F7F3EC] text-[#292320] flex flex-col">
+      {/* Top App Bar */}
+      <header className="w-full bg-[#FFFCF7] border-b border-[#D8CEC1] px-4 py-3 shrink-0">
+        <div className="max-w-md mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <img
               src={lastVisited?.businessLogo || "/icons/icon-192.png"}
               alt={lastVisited?.businessName || "RestroInn"}
-              className="w-8 h-8 rounded-lg border border-[#D8CEC1] object-cover"
+              className="w-9 h-9 rounded-lg border border-[#D8CEC1] object-cover shrink-0"
             />
-            <div>
-              <h1 className="text-sm font-bold text-[#292320] leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold text-[#292320] leading-tight truncate">
                 {lastVisited?.businessName || "RestroInn Dining"}
               </h1>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#71675E]">
-                Customer Self-Service
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#71675E] truncate">
+                {lastVisited?.branchName || "Customer Ordering App"}
               </p>
             </div>
           </div>
@@ -90,7 +84,7 @@ export default function GuestAppHomePage() {
             type="button"
             onClick={handleEnableAlerts}
             disabled={alertsEnabled}
-            className={`h-8 px-2.5 rounded-md border text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer ${
+            className={`h-8 px-2.5 rounded-md border text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
               alertsEnabled
                 ? "border-[#C3DED0] bg-[#F1F7F4] text-[#28634B]"
                 : "border-[#D8CEC1] bg-[#F7F3EC] text-[#292320]"
@@ -106,108 +100,124 @@ export default function GuestAppHomePage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-md mx-auto px-4 py-5 space-y-4">
-        {lastVisited ? (
-          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
-            <div className="h-28 relative bg-[#EEE7DD]">
-              <img
-                src="/assets/clean-restaurant.jpg"
-                alt={lastVisited.businessName}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-center overflow-hidden shrink-0">
-                  {lastVisited.businessLogo ? (
-                    <img
-                      src={lastVisited.businessLogo}
-                      alt={lastVisited.businessName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <UtensilsCrossed className="w-5 h-5 text-[#6B2837]" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B2837]">
-                    Welcome Back
-                  </span>
-                  <h2 className="text-base font-bold text-[#292320] leading-tight truncate">
-                    {lastVisited.businessName}
-                  </h2>
-                  {lastVisited.branchName && (
-                    <p className="text-xs text-[#71675E] truncate">{lastVisited.branchName}</p>
-                  )}
-                </div>
+      {/* Full-Height Structured App Body */}
+      <main className="flex-1 w-full max-w-md mx-auto px-4 py-4 flex flex-col gap-3.5">
+        {/* Hero Banner Card */}
+        <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] overflow-hidden">
+          <div className="h-40 relative bg-[#EEE7DD]">
+            <img
+              src="/assets/clean-restaurant.jpg"
+              alt={lastVisited?.businessName || "Dining"}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-[#292320]/75 px-4 py-2.5 flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#EEE7DD]">
+                  {lastVisited ? "Welcome Back" : "Digital Dining & Delivery"}
+                </p>
+                <h2 className="text-sm font-bold text-[#FFFCF7] truncate">
+                  {lastVisited?.businessName || "Scan a Table QR to Begin"}
+                </h2>
               </div>
+              <div className="w-8 h-8 rounded-md bg-[#FFFCF7] flex items-center justify-center shrink-0">
+                <UtensilsCrossed className="w-4 h-4 text-[#6B2837]" />
+              </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-2">
+          <div className="p-3.5 space-y-2.5">
+            {lastVisited ? (
+              <>
                 <Link
                   href={`/guest/qr/${encodeURIComponent(lastVisited.publicCode)}?mode=DELIVERY`}
-                  className="h-11 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full p-3 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] flex items-center justify-between gap-3 transition-colors"
                 >
-                  <Truck className="w-4 h-4" />
-                  <span>Order Delivery</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-md bg-[#FFFCF7]/15 flex items-center justify-center shrink-0">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold">Order Delivery</div>
+                      <div className="text-[11px] text-[#F7F3EC]/85 truncate">
+                        Delivered to your address • Cash on Delivery or QR
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 shrink-0" />
                 </Link>
+
                 <Link
                   href={`/guest/qr/${encodeURIComponent(lastVisited.publicCode)}?mode=TAKEAWAY`}
-                  className="h-11 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full p-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] hover:bg-[#EEE7DD] text-[#292320] flex items-center justify-between gap-3 transition-colors"
                 >
-                  <ShoppingBag className="w-4 h-4 text-[#6B2837]" />
-                  <span>Order Takeaway</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] flex items-center justify-center shrink-0">
+                      <ShoppingBag className="w-5 h-5 text-[#6B2837]" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold">Order Takeaway</div>
+                      <div className="text-[11px] text-[#71675E] truncate">
+                        Order ahead &amp; pick up fresh at the counter
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#71675E] shrink-0" />
                 </Link>
-              </div>
-              <p className="text-[11px] text-[#71675E] leading-relaxed">
-                Want to dine in? Please sit at an available table and scan the QR code on that table.
+              </>
+            ) : (
+              <p className="text-xs text-[#71675E] leading-relaxed">
+                Scan a restaurant table or hotel room QR code to browse the digital menu, order food, and unlock delivery &amp; takeaway.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Dine-In Camera QR Scanner Card */}
+        <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-3 mt-auto">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-center text-[#6B2837] shrink-0">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-[#292320]">
+                Seated at a Dining Table?
+              </h3>
+              <p className="text-[11px] text-[#71675E] leading-relaxed mt-0.5">
+                To dine in, sit at an available table and scan the table&apos;s QR code with your camera.
               </p>
             </div>
-          </section>
-        ) : (
-          <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-5 text-center space-y-2.5">
-            <div className="w-12 h-12 rounded-full bg-[#F7F3EC] border border-[#D8CEC1] text-[#6B2837] flex items-center justify-center mx-auto">
-              <QrCode className="w-6 h-6" />
-            </div>
-            <h2 className="text-base font-bold text-[#292320]">Ready to Order?</h2>
-            <p className="text-xs text-[#71675E] leading-relaxed">
-              Scan the QR code on your dining table or hotel room to browse the menu, order takeaway or delivery, and receive offers.
-            </p>
-          </section>
-        )}
+          </div>
 
-        {/* Dine-In Table QR Entry */}
-        <section className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] p-4 space-y-2.5">
-          <h3 className="text-xs font-bold text-[#292320]">
-            Seated at a Table? Enter Table / Room QR Code
-          </h3>
-          <form onSubmit={handleOpenManualCode} className="flex items-center gap-2">
-            <input
-              type="text"
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              placeholder="e.g. restro-t01"
-              className="flex-1 h-9 px-3 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320] placeholder:text-[#71675E] focus:outline-none focus:bg-[#FFFCF7] focus:border-[#6B2837]"
-            />
-            <button
-              type="submit"
-              className="h-9 px-4 rounded-md bg-[#292320] hover:bg-[#6B2837] text-[#FFFCF7] text-xs font-bold cursor-pointer transition-colors"
-            >
-              Open
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="w-full h-11 rounded-md bg-[#292320] hover:bg-[#6B2837] text-[#FFFCF7] text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Scan Table QR Code</span>
+          </button>
         </section>
       </main>
 
-      <footer className="w-full py-4 px-4 text-center text-[11px] text-[#71675E] flex items-center justify-center gap-3">
+      <footer className="w-full py-3.5 px-4 border-t border-[#EEE7DD] bg-[#FFFCF7] text-center text-[11px] text-[#71675E] flex items-center justify-center gap-3 shrink-0">
         <Link href="/terms" className="hover:text-[#292320] underline underline-offset-2">
-          Terms
+          Terms of Service
         </Link>
         <span>•</span>
         <Link href="/privacy" className="hover:text-[#292320] underline underline-offset-2">
-          Privacy
+          Privacy Policy
         </Link>
       </footer>
+
+      {scannerOpen && (
+        <QrCameraScannerModal
+          onClose={() => setScannerOpen(false)}
+          onDetected={(code) => {
+            setScannerOpen(false);
+            router.push(`/guest/qr/${encodeURIComponent(code)}`);
+          }}
+        />
+      )}
     </div>
   );
 }

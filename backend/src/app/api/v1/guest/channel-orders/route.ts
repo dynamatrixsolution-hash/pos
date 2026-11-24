@@ -15,6 +15,7 @@ const channelOrderSchema = z.object({
   email: z.string().trim().email("Invalid email address").optional().nullable().or(z.literal("")),
   deliveryAddress: z.string().trim().max(300).optional().nullable(),
   deliveryLandmark: z.string().trim().max(150).optional().nullable(),
+  paymentPreference: z.enum(["COD", "PAY_AT_PICKUP", "ONLINE_QR"]).optional().nullable(),
   lat: z.coerce.number().min(-90).max(90).optional().nullable(),
   lng: z.coerce.number().min(-180).max(180).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),

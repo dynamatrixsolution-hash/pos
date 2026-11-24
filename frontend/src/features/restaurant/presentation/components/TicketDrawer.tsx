@@ -16,7 +16,14 @@ import {
   MoreVertical,
   ArrowRightLeft,
   AlertTriangle,
+  Phone,
+  MapPin,
+  CheckCircle2,
+  Bike,
+  Banknote,
 } from "lucide-react";
+import { apiClient } from "@/core/api/api-client";
+import { Notify } from "@/lib/notify";
 import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
 import { usePosTicketsStore } from "../../state/pos-tickets.store";
@@ -44,6 +51,8 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
   const tables = usePosCatalogStore((s) => s.tables);
 
   const activeOrderId = usePosTicketsStore((s) => s.activeOrderId);
+  const activeAllOrders = usePosTicketsStore((s) => s.activeAllOrders);
+  const fetchActiveOrders = usePosTicketsStore((s) => s.fetchActiveOrders);
   const orderNumber = usePosTicketsStore((s) => s.orderNumber);
   const existingRounds = usePosTicketsStore((s) => s.existingRounds);
   const existingOrderTotal = usePosTicketsStore((s) => s.existingOrderTotal);
@@ -51,6 +60,84 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
   const setAdjustingLine = usePosTicketsStore((s) => s.setAdjustingLine);
   const setCancellingTable = usePosTicketsStore((s) => s.setCancellingTable);
   const convertActiveOrderType = usePosTicketsStore((s) => s.convertActiveOrderType);
+
+  const [processingWorkflow, setProcessingWorkflow] = useState(false);
+  const [riderInput, setRiderInput] = useState("");
+  const [showRiderDispatch, setShowRiderDispatch] = useState(false);
+
+  const activeOrderRecord = useMemo(
+    () => activeAllOrders.find((o) => o.id === activeOrderId) || null,
+    [activeAllOrders, activeOrderId]
+  );
+
+  const parsedChannelMeta = useMemo(() => {
+    const notes = activeOrderRecord?.notes || "";
+    const isPendingApproval =
+      activeOrderRecord?.acceptanceStatus === "PENDING" ||
+      /\[STAFF APPROVAL REQUIRED/i.test(notes);
+    const isOutForDelivery = /\[OUT FOR DELIVERY/i.test(notes);
+    const riderMatch = notes.match(/\[OUT FOR DELIVERY\s*\|\s*Rider:\s*([^\]]+)\]/i);
+    const payMatch = notes.match(/\[PAY:\s*([^\]]+)\]/i);
+    const gpsMatch = notes.match(/https:\/\/maps\.google\.com\/\?q=[^\s\]|]+/i);
+
+    let customerName = "";
+    let phone = "";
+    let address = "";
+
+    const delMatch = notes.match(/\[DELIVERY to ([^(]+)\(([^)]+)\)\s*-\s*([^\]|]+)/i);
+    if (delMatch) {
+      customerName = delMatch[1].trim();
+      phone = delMatch[2].split(",")[0].trim();
+      address = delMatch[3].trim();
+    } else {
+      const takeMatch = notes.match(/\[TAKEAWAY for ([^(]+)\(([^)]+)\)\]/i);
+      if (takeMatch) {
+        customerName = takeMatch[1].trim();
+        phone = takeMatch[2].split(",")[0].trim();
+      }
+    }
+
+    return {
+      isPendingApproval,
+      isOutForDelivery,
+      riderName: riderMatch ? riderMatch[1].trim() : null,
+      paymentPref: payMatch ? payMatch[1].trim() : orderType === "DELIVERY" ? "CASH ON DELIVERY" : null,
+      gpsUrl: gpsMatch ? gpsMatch[0] : null,
+      customerName,
+      phone,
+      address,
+    };
+  }, [activeOrderRecord, orderType]);
+
+  const handleApproveAndRoute = async () => {
+    if (!activeOrderId) return;
+    try {
+      setProcessingWorkflow(true);
+      await apiClient.restaurant.approveOrder(activeOrderId);
+      Notify.success("Order confirmed and routed to Kitchen!");
+      await fetchActiveOrders();
+    } catch (err: any) {
+      Notify.error(err?.message || "Failed to confirm order");
+    } finally {
+      setProcessingWorkflow(false);
+    }
+  };
+
+  const handleDispatchDelivery = async () => {
+    if (!activeOrderId) return;
+    try {
+      setProcessingWorkflow(true);
+      await apiClient.restaurant.dispatchDelivery(activeOrderId, riderInput.trim() || "In-House Rider");
+      Notify.success("Delivery dispatched! Rider is on the way.");
+      setShowRiderDispatch(false);
+      setRiderInput("");
+      await fetchActiveOrders();
+    } catch (err: any) {
+      Notify.error(err?.message || "Failed to dispatch delivery");
+    } finally {
+      setProcessingWorkflow(false);
+    }
+  };
 
   const draftLines = usePosCartStore((s) => s.draftLines);
   const updateDraftQty = usePosCartStore((s) => s.updateDraftQty);
@@ -351,6 +438,59 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
 
       {/* Scrollable Order Items List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        {/* Customer & Delivery Details Card (for Takeaway / Delivery orders) */}
+        {activeOrderRecord && (orderType === "DELIVERY" || orderType === "TAKEAWAY") && (
+          <div className="rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] p-3 space-y-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-[#292320] truncate">
+                {parsedChannelMeta.customerName || (orderType === "DELIVERY" ? "Delivery Customer" : "Takeaway Customer")}
+              </span>
+              {parsedChannelMeta.paymentPref && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#EDD7AD] bg-[#FDF5E7] text-[#946000] text-[10px] font-bold shrink-0">
+                  <Banknote className="w-3 h-3" />
+                  <span>{parsedChannelMeta.paymentPref}</span>
+                </span>
+              )}
+            </div>
+
+            {parsedChannelMeta.phone && (
+              <a
+                href={`tel:${parsedChannelMeta.phone}`}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#6B2837] hover:underline tabular-nums"
+              >
+                <Phone className="w-3 h-3" />
+                <span>{parsedChannelMeta.phone}</span>
+              </a>
+            )}
+
+            {parsedChannelMeta.address && (
+              <div className="flex items-start gap-1.5 text-[11px] text-[#292320]">
+                <MapPin className="w-3.5 h-3.5 text-[#6B2837] shrink-0 mt-0.5" />
+                <span className="leading-snug">{parsedChannelMeta.address}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {parsedChannelMeta.gpsUrl && (
+                <a
+                  href={parsedChannelMeta.gpsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-bold text-[#315F85] hover:underline"
+                >
+                  Open GPS in Maps
+                </a>
+              )}
+              {parsedChannelMeta.isOutForDelivery && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#EDF4F9] text-[#315F85] border border-[#B8D2E6]">
+                  <Bike className="w-3 h-3" />
+                  <span>Out for Delivery ({parsedChannelMeta.riderName || "Rider"})</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Draft Round lines */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-[#6B2837] uppercase tracking-wider pb-1 border-b border-[#D8CEC1]/70">
@@ -483,9 +623,19 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
               >
                 <div className="flex items-center justify-between font-bold text-[#292320]">
                   <span>Round #{round.roundNumber}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD]">
-                    In Kitchen
-                  </span>
+                  {parsedChannelMeta.isPendingApproval ? (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]">
+                      Pending Confirmation
+                    </span>
+                  ) : parsedChannelMeta.isOutForDelivery ? (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF4F9] text-[#315F85] border border-[#B8D2E6]">
+                      Out for Delivery
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD]">
+                      In Kitchen
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -556,14 +706,46 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
           </span>
         </div>
 
-        {/* Dynamic Action Controls: Confirm Order (Left) & Pay (Right) */}
-        {isFirstTimeOrder ? (
+        {/* Dynamic Action Controls: Pending Confirmation -> Dispatch Rider -> Pay & Settle */}
+        {parsedChannelMeta.isPendingApproval && activeOrderId ? (
+          <div className="space-y-2">
+            <div className="p-2 rounded-md border border-[#EDD7AD] bg-[#FDF5E7] text-[11px] text-[#946000] font-semibold">
+              Remote order awaiting staff confirmation before sending to kitchen.
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleApproveAndRoute}
+                disabled={processingWorkflow}
+                className="flex-1 py-2.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{processingWorkflow ? "Confirming..." : "Accept & Send to Kitchen"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCancellingTable({
+                    title: orderType === "DELIVERY" ? "Delivery Order" : "Takeaway Order",
+                    orderId: activeOrderId,
+                    itemCount: activeItemCount,
+                    totalAmount: existingOrderTotal || "0.00",
+                  })
+                }
+                disabled={processingWorkflow}
+                className="px-3 py-2.5 rounded-lg border border-[#E5B8B8] bg-[#FDF2F2] hover:bg-[#FCE6E6] text-[#8A1F2D] font-bold text-xs cursor-pointer"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ) : isFirstTimeOrder ? (
           /* First time order: ONLY Show Order Confirm Button */
           <button
             type="button"
             onClick={handleConfirmOrder}
             disabled={isSubmitting || draftLines.length === 0}
-            className="w-full py-2.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
+            className="w-full py-2.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
           >
             <Send className="h-4 w-4" />
             <span>{isSubmitting ? "Sending to Kitchen..." : "Confirm Order"}</span>
@@ -575,7 +757,7 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
               type="button"
               onClick={handleConfirmOrder}
               disabled={isSubmitting}
-              className="flex-1 py-2.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
             >
               <Send className="h-3.5 w-3.5" />
               <span className="truncate">
@@ -587,23 +769,59 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
               type="button"
               onClick={() => setShowSettlementModal(true)}
               disabled={grandRunningTotal <= 0}
-              className="flex-1 py-2.5 rounded-lg bg-[#16A34A] hover:bg-[#15803D] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              className="flex-1 py-2.5 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
             >
               <CreditCard className="h-3.5 w-3.5" />
               <span>Pay &amp; Settle</span>
             </button>
           </div>
         ) : (
-          /* No new items in draft, existing rounds ready to settle: Pay takes full width */
-          <button
-            type="button"
-            onClick={() => setShowSettlementModal(true)}
-            disabled={grandRunningTotal <= 0}
-            className="w-full py-2.5 rounded-lg bg-[#16A34A] hover:bg-[#15803D] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
-          >
-            <CreditCard className="h-4 w-4" />
-            <span>Pay &amp; Settle ({formatNPR(grandRunningTotal)})</span>
-          </button>
+          <div className="space-y-2">
+            {orderType === "DELIVERY" && activeOrderId && !parsedChannelMeta.isOutForDelivery && (
+              showRiderDispatch ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={riderInput}
+                    onChange={(e) => setRiderInput(e.target.value)}
+                    placeholder="Rider name (optional)"
+                    className="flex-1 h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleDispatchDelivery}
+                    disabled={processingWorkflow}
+                    className="h-9 px-3 rounded-md bg-[#315F85] hover:bg-[#264B6A] text-white text-xs font-bold cursor-pointer"
+                  >
+                    {processingWorkflow ? "..." : "Dispatch"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowRiderDispatch(true)}
+                  className="w-full py-2 rounded-lg border border-[#B8D2E6] bg-[#EDF4F9] hover:bg-[#DFECF6] text-[#315F85] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Bike className="h-4 w-4" />
+                  <span>Dispatch Rider (Out for Delivery)</span>
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowSettlementModal(true)}
+              disabled={grandRunningTotal <= 0}
+              className="w-full py-2.5 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <CreditCard className="h-4 w-4" />
+              <span>
+                {orderType === "DELIVERY" && parsedChannelMeta.paymentPref === "CASH ON DELIVERY"
+                  ? `Collect Cash (COD) & Settle (${formatNPR(grandRunningTotal)})`
+                  : `Pay & Settle (${formatNPR(grandRunningTotal)})`}
+              </span>
+            </button>
+          </div>
         )}
       </div>
     </aside>
