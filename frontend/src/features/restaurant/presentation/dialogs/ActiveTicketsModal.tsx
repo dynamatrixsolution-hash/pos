@@ -338,27 +338,49 @@ export const ActiveTicketsModal = React.memo(function ActiveTicketsModal() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenTicket(tkt)}
-                    className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-bold text-[#292320] flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                    title="Open ticket to add dishes or edit order"
-                  >
-                    <UtensilsCrossed className="h-3 w-3 text-[#6B2837]" />
-                    <span>Open</span>
-                  </button>
+                {(() => {
+                  const notesStr = tkt.order?.notes || "";
+                  const isPending =
+                    tkt.order?.acceptanceStatus === "PENDING" ||
+                    /\[STAFF APPROVAL REQUIRED/i.test(notesStr);
+                  const isOutForDelivery = /\[OUT FOR DELIVERY/i.test(notesStr);
+                  const isOnlinePrepaid = /\[PAY:\s*(ONLINE|PREPAID|PAID|ESEWA|FONE_PAY|KHALTI)/i.test(notesStr);
+                  const isCodPendingDispatch =
+                    tkt.ticketType === "DELIVERY" && !isOnlinePrepaid && !isOutForDelivery;
+                  const canPayDirectly = !isPending && !isCodPendingDispatch && tkt.totalAmount > 0;
 
-                  <button
-                    type="button"
-                    onClick={() => handlePay(tkt)}
-                    className="h-8 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-xs font-bold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    title="Proceed to payment & settlement"
-                  >
-                    <CreditCard className="h-3.5 w-3.5" />
-                    <span>Pay</span>
-                  </button>
-                </div>
+                  return (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenTicket(tkt)}
+                        className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-xs font-semibold text-[#292320] flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Open ticket to review, assign rider, or edit order"
+                      >
+                        <UtensilsCrossed className="h-3 w-3 text-[#6B2837]" />
+                        <span>
+                          {isPending ? "Review" : isCodPendingDispatch ? "Assign Rider" : "Open"}
+                        </span>
+                      </button>
+
+                      {canPayDirectly && (
+                        <button
+                          type="button"
+                          onClick={() => handlePay(tkt)}
+                          className="h-8 px-3 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] text-xs font-semibold text-[#FFFCF7] flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title={
+                            tkt.ticketType === "DELIVERY" && !isOnlinePrepaid
+                              ? "Collect COD cash submitted by rider & settle"
+                              : "Proceed to payment & settlement"
+                          }
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          <span>{tkt.ticketType === "DELIVERY" && !isOnlinePrepaid ? "Settle COD" : "Pay"}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ))
           )}

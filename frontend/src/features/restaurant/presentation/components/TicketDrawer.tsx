@@ -811,58 +811,88 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
           </div>
         ) : (
           <div className="space-y-2">
-            {orderType === "DELIVERY" &&
-              activeOrderId &&
-              !parsedChannelMeta.isOutForDelivery &&
-              !parsedChannelMeta.isServedOrCompleted && (
-                !parsedChannelMeta.isKitchenReady ? (
-                  <div className="w-full py-2 px-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] text-[#71675E] font-semibold text-[11px] flex items-center justify-center gap-1.5">
-                    <Bike className="h-3.5 w-3.5 shrink-0" />
-                    <span>Preparing in Kitchen — Mark Ready in KDS to Dispatch Rider</span>
-                  </div>
-                ) : showRiderDispatch ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={riderInput}
-                      onChange={(e) => setRiderInput(e.target.value)}
-                      placeholder="Rider name (optional)"
-                      className="flex-1 h-9 px-2.5 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs text-[#292320]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleDispatchDelivery}
-                      disabled={processingWorkflow}
-                      className="h-9 px-3 rounded-md bg-[#315F85] hover:bg-[#264B6A] text-white text-xs font-bold cursor-pointer"
-                    >
-                      {processingWorkflow ? "..." : "Dispatch"}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowRiderDispatch(true)}
-                    className="w-full py-2 rounded-lg border border-[#B8D2E6] bg-[#EDF4F9] hover:bg-[#DFECF6] text-[#315F85] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <Bike className="h-4 w-4" />
-                    <span>Dispatch Rider (Out for Delivery)</span>
-                  </button>
-                )
-              )}
+            {(() => {
+              const isCodDelivery =
+                orderType === "DELIVERY" &&
+                !/ONLINE|PREPAID|PAID/i.test(parsedChannelMeta.paymentPref || "CASH ON DELIVERY");
+              const needsRiderDispatch =
+                orderType === "DELIVERY" &&
+                Boolean(activeOrderId) &&
+                !parsedChannelMeta.isOutForDelivery &&
+                !parsedChannelMeta.isServedOrCompleted;
 
-            <button
-              type="button"
-              onClick={() => setShowSettlementModal(true)}
-              disabled={grandRunningTotal <= 0}
-              className="w-full py-2.5 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-            >
-              <CreditCard className="h-4 w-4" />
-              <span>
-                {orderType === "DELIVERY" && parsedChannelMeta.paymentPref === "CASH ON DELIVERY"
-                  ? `Collect Cash (COD) & Settle (${formatNPR(grandRunningTotal)})`
-                  : `Pay & Settle (${formatNPR(grandRunningTotal)})`}
-              </span>
-            </button>
+              return (
+                <>
+                  {needsRiderDispatch &&
+                    (!parsedChannelMeta.isKitchenReady ? (
+                      <div className="w-full py-2.5 px-3 rounded-lg border border-[#EDD7AD] bg-[#FDF5E7] text-[#946000] font-semibold text-[11px] flex items-center justify-center gap-1.5 text-center">
+                        <Bike className="h-3.5 w-3.5 shrink-0" />
+                        <span>Preparing in Kitchen — Mark Ready in KDS to Assign Delivery Partner</span>
+                      </div>
+                    ) : showRiderDispatch ? (
+                      <div className="space-y-1.5 p-2.5 rounded-lg border border-[#B8D2E6] bg-[#EDF4F9]">
+                        <label htmlFor="pos-rider-name" className="block text-[11px] font-semibold text-[#315F85]">
+                          Assign Delivery Partner
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            id="pos-rider-name"
+                            type="text"
+                            value={riderInput}
+                            onChange={(e) => setRiderInput(e.target.value)}
+                            placeholder="Rider name / phone"
+                            className="flex-1 h-8 px-2.5 rounded-md border border-[#B8D2E6] bg-[#FFFCF7] text-xs text-[#292320] focus:border-[#315F85] focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleDispatchDelivery}
+                            disabled={processingWorkflow || !riderInput.trim()}
+                            className="h-8 px-3 rounded-md bg-[#315F85] hover:bg-[#264B6A] disabled:opacity-50 text-[#FFFCF7] text-xs font-semibold cursor-pointer"
+                          >
+                            {processingWorkflow ? "..." : "Dispatch"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowRiderDispatch(true)}
+                        className="w-full py-2.5 rounded-lg bg-[#315F85] hover:bg-[#264B6A] text-[#FFFCF7] font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Bike className="h-4 w-4" />
+                        <span>Assign Delivery Partner &amp; Dispatch</span>
+                      </button>
+                    ))}
+
+                  {isCodDelivery && needsRiderDispatch ? (
+                    <p className="text-[11px] text-[#71675E] text-center leading-snug">
+                      COD order: assign a delivery partner first. Settle once rider submits collected cash to front desk.
+                    </p>
+                  ) : (
+                    <>
+                      {isCodDelivery && parsedChannelMeta.isOutForDelivery && (
+                        <div className="px-2.5 py-1.5 rounded-md border border-[#B8D2E6] bg-[#EDF4F9] text-[11px] text-[#315F85] font-medium">
+                          Rider <span className="font-bold">{parsedChannelMeta.riderName || "Assigned"}</span> is out with COD. Settle once cash is handed to front desk.
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowSettlementModal(true)}
+                        disabled={grandRunningTotal <= 0}
+                        className="w-full py-2.5 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-[#FFFCF7] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>
+                          {isCodDelivery
+                            ? `Rider Submitted Cash — Settle COD (${formatNPR(grandRunningTotal)})`
+                            : `Pay & Settle (${formatNPR(grandRunningTotal)})`}
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

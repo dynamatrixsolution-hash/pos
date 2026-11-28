@@ -126,6 +126,26 @@ export async function POST(
       if (order.settlementStatus === "PAID") {
         throw new RestaurantOrderError("Order is already paid and settled.", 409);
       }
+      if (order.acceptanceStatus === "PENDING") {
+        throw new RestaurantOrderError(
+          "Please accept and route this order to the kitchen before settling.",
+          409
+        );
+      }
+
+      // Real-life COD guard: Delivery COD orders must be assigned & dispatched to a delivery partner
+      // before front desk collects COD cash and settles the ticket.
+      if (order.orderType === "DELIVERY") {
+        const orderNotesStr = order.notes || "";
+        const isOnlinePrepaid = /\[PAY:\s*(ONLINE|PREPAID|PAID|ESEWA|FONE_PAY|KHALTI)/i.test(orderNotesStr);
+        const isOutForDelivery = /\[OUT FOR DELIVERY/i.test(orderNotesStr);
+        if (!isOnlinePrepaid && !isOutForDelivery && order.fulfillmentStatus !== "SERVED") {
+          throw new RestaurantOrderError(
+            "Assign and dispatch a delivery partner first. Settle COD only after the rider collects and submits cash to the front desk.",
+            409
+          );
+        }
+      }
 
       // Gather all active lines across this order (and any merged sibling orders in the same tableSession)
       const siblingOrders = order.tableSessionId
