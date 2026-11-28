@@ -428,13 +428,14 @@ export async function createOrAppendOrder(
       }
     }
 
-    // 5. Update Order totals & OCC version
+    // 5. Update Order totals & OCC version (if an appended round requires staff approval, surface PENDING on order)
     const updatedOrder = await tx.restaurantOrder.update({
       where: { id: order.id },
       data: {
         subtotal: addMoney(order.subtotal, roundSubtotal),
         taxTotal: addMoney(order.taxTotal, roundTaxTotal),
         totalAmount: addMoney(order.totalAmount, addMoney(roundSubtotal, roundTaxTotal)),
+        ...(initialAcceptanceStatus === "PENDING" ? { acceptanceStatus: "PENDING" } : {}),
         version: { increment: 1 },
       },
       include: {

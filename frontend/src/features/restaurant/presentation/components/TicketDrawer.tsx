@@ -72,7 +72,13 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
 
   const parsedChannelMeta = useMemo(() => {
     const notes = activeOrderRecord?.notes || "";
+    const hasPendingRoundLine = existingRounds.some((r) =>
+      r.lines.some(
+        (l) => l.acceptanceStatus === "PENDING" && l.fulfillmentStatus !== "CANCELLED"
+      )
+    );
     const isPendingApproval =
+      hasPendingRoundLine ||
       activeOrderRecord?.acceptanceStatus === "PENDING" ||
       /\[STAFF APPROVAL REQUIRED/i.test(notes);
     const isOutForDelivery = /\[OUT FOR DELIVERY/i.test(notes);
@@ -128,9 +134,15 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
     if (!activeOrderId) return;
     try {
       setProcessingWorkflow(true);
-      await apiClient.restaurant.approveOrder(activeOrderId);
+      const res = await apiClient.restaurant.approveOrder(activeOrderId);
+      if (res?.order) {
+        usePosTicketsStore.getState().setActiveOrder(res.order);
+      }
       Notify.success("Order confirmed and routed to Kitchen!");
       await fetchActiveOrders();
+      if (selectedTableId) {
+        await usePosTicketsStore.getState().fetchTableOrders(selectedTableId);
+      }
     } catch (err: any) {
       Notify.error(err?.message || "Failed to confirm order");
     } finally {
@@ -631,23 +643,27 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
               <span>Submitted Kitchen Rounds</span>
             </div>
 
-            {existingRounds.map((round) => (
+            {existingRounds.map((round) => {
+              const isRoundPending = round.lines.some(
+                (l) => l.acceptanceStatus === "PENDING" && l.fulfillmentStatus !== "CANCELLED"
+              );
+              return (
               <div
                 key={round.id}
                 className="rounded-md border border-[#D8CEC1] bg-[#FFFCF7] p-2.5 space-y-1.5 text-xs"
               >
                 <div className="flex items-center justify-between font-bold text-[#292320]">
                   <span>Round #{round.roundNumber}</span>
-                  {parsedChannelMeta.isPendingApproval ? (
+                  {isRoundPending ? (
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]">
-                      Pending Confirmation
+                      Pending Approval
                     </span>
                   ) : parsedChannelMeta.isOutForDelivery ? (
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF4F9] text-[#315F85] border border-[#B8D2E6]">
                       Out for Delivery
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EDF5ED] text-[#2D6A4F] border border-[#C8DFCD]">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#EAF3EE] text-[#28634B] border border-[#C3DED0]">
                       In Kitchen
                     </span>
                   )}
@@ -704,7 +720,8 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

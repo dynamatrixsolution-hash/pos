@@ -172,14 +172,14 @@ export const KdsTicketGrid: React.FC = () => {
 
   if (groupedRounds.length === 0) {
     return (
-      <div className="py-20 text-center rounded-lg border border-dashed border-[#D8CEC1] bg-[#FFFCF7] space-y-2.5">
-        <UtensilsCrossed className="h-9 w-9 text-[#71675E]/40 mx-auto" />
-        <h3 className="text-sm font-bold text-[#292320]">
+      <div className="py-10 px-4 text-center rounded-md border border-dashed border-[#D8CEC1] bg-[#FFFCF7] space-y-1.5">
+        <UtensilsCrossed className="h-7 w-7 text-[#71675E]/40 mx-auto" />
+        <h3 className="text-xs font-bold text-[#292320]">
           {activeTab === "ACTIVE" ? "No Active Kitchen Orders" : "No Served Orders"}
         </h3>
-        <p className="text-xs text-[#71675E]">
+        <p className="text-[11px] text-[#71675E]">
           {activeTab === "ACTIVE"
-            ? "New dining, takeaway, and delivery orders will appear here automatically."
+            ? "New dine-in, takeaway, and delivery orders will appear here automatically."
             : "Completed order rounds will appear here."}
         </p>
       </div>
@@ -187,7 +187,7 @@ export const KdsTicketGrid: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 pb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 pb-4">
       {groupedRounds.map((group) => {
         const ticket = group.primaryTicket;
         const timeInfo = formatElapsedTime(group.createdAt, now);
@@ -235,7 +235,7 @@ export const KdsTicketGrid: React.FC = () => {
         return (
           <div
             key={group.key}
-            className={`rounded-lg border bg-[#FFFCF7] flex flex-col justify-between overflow-hidden ${
+            className={`rounded-md border bg-[#FFFCF7] flex flex-col justify-between overflow-hidden ${
               isDelayed
                 ? "border-[#E9B6B7]"
                 : isReady
@@ -244,7 +244,7 @@ export const KdsTicketGrid: React.FC = () => {
             }`}
           >
             {/* Ticket Header */}
-            <div className={`px-3.5 py-2.5 border-b flex items-center justify-between gap-2 ${headerBg}`}>
+            <div className={`px-2.5 py-2 border-b flex items-center justify-between gap-2 ${headerBg}`}>
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-mono font-bold text-[#292320] text-sm tabular-nums truncate">
                   {shortTicketDisplay}
@@ -287,7 +287,7 @@ export const KdsTicketGrid: React.FC = () => {
             </div>
 
             {/* Station Sub-Bar */}
-            <div className="px-3.5 py-1.5 bg-[#F7F3EC]/60 border-b border-[#D8CEC1]/60 flex items-center justify-between text-[11px] text-[#71675E]">
+            <div className="px-2.5 py-1 bg-[#F7F3EC]/60 border-b border-[#D8CEC1]/60 flex items-center justify-between text-[11px] text-[#71675E]">
               <span className="font-medium truncate">
                 {group.isConsolidated && group.tickets.length > 1
                   ? `${group.tickets.length} Stations`
@@ -315,7 +315,7 @@ export const KdsTicketGrid: React.FC = () => {
                 return (
                   <div
                     key={`${line.ticketId}_${line.id}`}
-                    className={`px-3.5 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${
+                    className={`px-2.5 py-2 flex items-center justify-between gap-2 transition-colors ${
                       isLineCancelled ? "opacity-50 bg-[#F7F3EC]/40" : "hover:bg-[#F7F3EC]/40"
                     }`}
                   >
@@ -448,7 +448,7 @@ export const KdsTicketGrid: React.FC = () => {
             </div>
 
             {/* Bottom Bulk Footer */}
-            <div className="px-3.5 py-2.5 border-t border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between gap-2 shrink-0">
+            <div className="px-2.5 py-2 border-t border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between gap-2 shrink-0">
               {activeTab === "ACTIVE" && ticket.order?.id && (
                 <button
                   type="button"

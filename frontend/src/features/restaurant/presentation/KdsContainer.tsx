@@ -18,7 +18,7 @@ export const KdsContainer: React.FC = () => {
   useVisibilityPolling(() => loadKitchenData(false), 3000);
 
   return (
-    <div className="space-y-4 p-4 md:p-6 bg-[#F7F3EC] min-h-screen text-[#292320]">
+    <div className="space-y-2.5 p-2.5 sm:p-3 bg-[#F7F3EC] min-h-[calc(100vh-3.5rem)] text-[#292320]">
       <KdsHeader />
       <KdsTicketGrid />
       <KdsCancelModal />

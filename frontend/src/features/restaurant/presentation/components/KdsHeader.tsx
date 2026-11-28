@@ -2,17 +2,11 @@
 
 import React, { useState } from "react";
 import {
-  UtensilsCrossed,
   Volume2,
   VolumeX,
   Maximize2,
   Minimize2,
   RefreshCw,
-  Clock,
-  CheckCircle2,
-  Store,
-  ShoppingBag,
-  Truck,
 } from "lucide-react";
 import { useRestaurantKdsStore } from "../../state/restaurant-kds.store";
 
@@ -73,154 +67,127 @@ export const KdsHeader: React.FC = () => {
   };
 
   return (
-    <div className="rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] divide-y divide-[#D8CEC1] select-none">
-      {/* Row 1: Title, Active/Served Tabs & Controls */}
-      <div className="px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 pr-3 border-r border-[#D8CEC1]">
-            <div className="p-1.5 rounded-md bg-[#6B2837] text-[#FFFCF7]">
-              <UtensilsCrossed className="h-4 w-4" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-[#292320] leading-tight">Kitchen Display</h1>
-              <span className="text-[11px] text-[#71675E]">Live Orders</span>
-            </div>
-          </div>
-
-          <div className="inline-flex items-center p-0.5 rounded-lg border border-[#D8CEC1] bg-[#EEE7DD] text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab("ACTIVE")}
-              className={`h-7 px-3 rounded-md transition-colors cursor-pointer inline-flex items-center gap-1.5 tabular-nums ${
-                activeTab === "ACTIVE"
-                  ? "bg-[#FFFCF7] text-[#6B2837] border border-[#D8CEC1]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              <span>Active Orders ({activeCount})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("SERVED")}
-              className={`h-7 px-3 rounded-md transition-colors cursor-pointer inline-flex items-center gap-1.5 tabular-nums ${
-                activeTab === "SERVED"
-                  ? "bg-[#FFFCF7] text-[#6B2837] border border-[#D8CEC1]"
-                  : "text-[#71675E] hover:text-[#292320]"
-              }`}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5 text-[#28634B]" />
-              <span>Served ({servedCount})</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
+    <div className="rounded-md border border-[#D8CEC1] bg-[#FFFCF7] px-2.5 py-2 flex flex-wrap items-center justify-between gap-2 select-none text-xs">
+      {/* Left: Active / Served Switcher + Compact Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="inline-flex items-center p-0.5 rounded-md border border-[#D8CEC1] bg-[#EEE7DD]">
           <button
             type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`h-8 px-2.5 rounded-lg border transition-colors inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer ${
-              soundEnabled
-                ? "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#EEE7DD]"
-                : "border-[#E9B6B7] bg-[#FAEAEC] text-[#B33432]"
+            onClick={() => setActiveTab("ACTIVE")}
+            className={`h-6 px-2.5 rounded text-xs font-semibold transition-colors cursor-pointer tabular-nums ${
+              activeTab === "ACTIVE"
+                ? "bg-[#6B2837] text-[#FFFCF7]"
+                : "text-[#71675E] hover:text-[#292320]"
             }`}
-            title={soundEnabled ? "Mute audio chimes" : "Enable audio chimes"}
           >
-            {soundEnabled ? (
-              <Volume2 className="h-3.5 w-3.5 text-[#28634B]" />
-            ) : (
-              <VolumeX className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">{soundEnabled ? "Sound On" : "Muted"}</span>
+            Active ({activeCount})
           </button>
-
           <button
             type="button"
-            onClick={toggleFullscreen}
-            className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Toggle fullscreen"
+            onClick={() => setActiveTab("SERVED")}
+            className={`h-6 px-2.5 rounded text-xs font-semibold transition-colors cursor-pointer tabular-nums ${
+              activeTab === "SERVED"
+                ? "bg-[#6B2837] text-[#FFFCF7]"
+                : "text-[#71675E] hover:text-[#292320]"
+            }`}
           >
-            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{isFullscreen ? "Exit Full" : "Expand"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => loadKitchenData()}
-            className="h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] hover:text-[#292320] inline-flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer"
-            title="Refresh kitchen orders"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            <span className="hidden md:inline">Sync</span>
+            Served ({servedCount})
           </button>
         </div>
-      </div>
 
-      {/* Row 2: Filters */}
-      <div className="px-3.5 py-2 bg-[#F7F3EC]/60 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="kds-station-filter" className="text-[11px] font-semibold text-[#71675E]">
-              Station:
-            </label>
-            <select
-              id="kds-station-filter"
-              value={selectedStationId}
-              onChange={(e) => setSelectedStationId(e.target.value)}
-              className="h-7 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs font-semibold text-[#292320] focus:border-[#6B2837] focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">All Stations ({stations.length})</option>
-              {stations.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.code})
-                </option>
-              ))}
-            </select>
-          </div>
+        <select
+          id="kds-station-filter"
+          aria-label="Filter by station"
+          value={selectedStationId}
+          onChange={(e) => setSelectedStationId(e.target.value)}
+          className="h-7 px-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs font-medium text-[#292320] focus:border-[#6B2837] focus:outline-none cursor-pointer"
+        >
+          <option value="ALL">All Stations ({stations.length})</option>
+          {stations.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
 
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="kds-floor-filter" className="text-[11px] font-semibold text-[#71675E]">
-              Floor:
-            </label>
-            <select
-              id="kds-floor-filter"
-              value={selectedFloorId}
-              onChange={(e) => setSelectedFloorId(e.target.value)}
-              className="h-7 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] text-xs font-semibold text-[#292320] focus:border-[#6B2837] focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">All Floors ({floors.length})</option>
-              {floors.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <select
+          id="kds-floor-filter"
+          aria-label="Filter by floor"
+          value={selectedFloorId}
+          onChange={(e) => setSelectedFloorId(e.target.value)}
+          className="h-7 px-2 rounded-md border border-[#D8CEC1] bg-[#F7F3EC] text-xs font-medium text-[#292320] focus:border-[#6B2837] focus:outline-none cursor-pointer"
+        >
+          <option value="ALL">All Floors ({floors.length})</option>
+          {floors.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
 
-        <div className="inline-flex items-center p-0.5 rounded-lg border border-[#D8CEC1] bg-[#EEE7DD] text-[11px]">
+        <div className="inline-flex items-center p-0.5 rounded-md border border-[#D8CEC1] bg-[#EEE7DD] text-[11px]">
           {[
             { id: "ALL", label: "All" },
-            { id: "DINE_IN", label: "Dine-In", icon: Store },
-            { id: "TAKEAWAY", label: "Takeaway", icon: ShoppingBag },
-            { id: "DELIVERY", label: "Delivery", icon: Truck },
+            { id: "DINE_IN", label: "Dine-In" },
+            { id: "TAKEAWAY", label: "Takeaway" },
+            { id: "DELIVERY", label: "Delivery" },
           ].map((ot) => (
             <button
               key={ot.id}
               type="button"
               onClick={() => setSelectedOrderType(ot.id)}
-              className={`h-6 px-2.5 rounded-md font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer ${
+              className={`h-6 px-2 rounded font-semibold transition-colors cursor-pointer ${
                 selectedOrderType === ot.id
-                  ? "bg-[#FFFCF7] text-[#6B2837] border border-[#D8CEC1]"
+                  ? "bg-[#FFFCF7] text-[#292320]"
                   : "text-[#71675E] hover:text-[#292320]"
               }`}
             >
-              {ot.icon && <ot.icon className="h-3 w-3" />}
-              <span>{ot.label}</span>
+              {ot.label}
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Right: Compact Utility Controls */}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          aria-label={soundEnabled ? "Mute audio chimes" : "Enable audio chimes"}
+          title={soundEnabled ? "Sound On" : "Muted"}
+          className={`h-7 px-2 rounded-md border transition-colors inline-flex items-center gap-1 text-[11px] font-semibold cursor-pointer ${
+            soundEnabled
+              ? "border-[#D8CEC1] bg-[#FFFCF7] text-[#292320] hover:bg-[#EEE7DD]"
+              : "border-[#E9B6B7] bg-[#FAEAEC] text-[#B33432]"
+          }`}
+        >
+          {soundEnabled ? (
+            <Volume2 className="h-3.5 w-3.5 text-[#28634B]" />
+          ) : (
+            <VolumeX className="h-3.5 w-3.5" />
+          )}
+          <span className="hidden sm:inline">{soundEnabled ? "Sound" : "Muted"}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-label="Toggle fullscreen"
+          title="Toggle fullscreen"
+          className="h-7 w-7 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] flex items-center justify-center transition-colors cursor-pointer"
+        >
+          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => loadKitchenData()}
+          aria-label="Refresh kitchen orders"
+          title="Sync"
+          className="h-7 w-7 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] hover:text-[#292320] flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+        </button>
       </div>
     </div>
   );
