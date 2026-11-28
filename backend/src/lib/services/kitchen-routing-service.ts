@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { Prisma } from "@dynapos/db";
 import { enqueueOutboxEvent } from "@/lib/services/outbox-service";
 import { deductRecipeIngredientsForTicketLine } from "@/lib/services/recipe-consumption-service";
+import { updateLineStatus } from "@/lib/services/restaurant-order-service";
 import { createAuditEvent } from "@/lib/audit-event";
 
 export class KitchenRoutingError extends Error {
@@ -47,7 +48,7 @@ export interface AdvanceTicketStatusInput {
 export interface AdvanceLineStatusInput {
   businessId: string;
   ticketLineId: string;
-  newStatus: "QUEUED" | "PREPARING" | "READY" | "CANCELLED";
+  newStatus: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
   actorId?: string;
   wasteReason?: string;
 }
@@ -363,11 +364,15 @@ export async function advanceTicketStatus(
       data: { status: input.newStatus },
     });
 
-    // Update all lines
+    // Update all non-cancelled lines
     for (const line of ticket.lines) {
+      if (line.status === "CANCELLED" && input.newStatus !== "CANCELLED") continue;
+      // Don't regress already-served items when bulk-advancing remaining items to PREPARING/READY
+      if (line.status === "SERVED" && (input.newStatus === "PREPARING" || input.newStatus === "READY")) continue;
+
       await tx.kitchenTicketLine.update({
         where: { id: line.id },
-        data: { status: input.newStatus === "SERVED" ? "READY" : input.newStatus },
+        data: { status: input.newStatus },
       });
 
       // Update corresponding OrderLine fulfillment status
@@ -422,7 +427,10 @@ export async function advanceTicketLineStatus(
 ) {
   const runner = async (tx: Prisma.TransactionClient) => {
     const line = await tx.kitchenTicketLine.findFirst({
-      where: { id: input.ticketLineId, businessId: input.businessId },
+      where: {
+        businessId: input.businessId,
+        OR: [{ id: input.ticketLineId }, { orderLineId: input.ticketLineId }],
+      },
       include: { ticket: true },
     });
 
@@ -443,14 +451,30 @@ export async function advanceTicketLineStatus(
       },
     });
 
-    // Update order line fulfillment
-    await tx.orderLine.update({
-      where: { id: line.orderLineId },
-      data: { fulfillmentStatus: input.newStatus },
-    });
+    // Keep OrderLine (and order totals on cancellation) in sync
+    if (isCancellation) {
+      await updateLineStatus(
+        {
+          businessId: input.businessId,
+          orderId: line.ticket.orderId,
+          lineId: line.orderLineId,
+          acceptanceStatus: "REJECTED",
+          fulfillmentStatus: "CANCELLED",
+          rejectionReason: input.wasteReason || "Cancelled by kitchen",
+          voidReason: input.wasteReason || "Cancelled by kitchen",
+          actorId: input.actorId,
+        },
+        tx
+      );
+    } else {
+      await tx.orderLine.update({
+        where: { id: line.orderLineId },
+        data: { fulfillmentStatus: input.newStatus },
+      });
+    }
 
-    // Trigger ingredient deduction on READY or on Waste
-    if (input.newStatus === "READY" || isWaste) {
+    // Trigger ingredient deduction on READY, SERVED, or Waste (idempotent)
+    if (input.newStatus === "READY" || input.newStatus === "SERVED" || isWaste) {
       await deductRecipeIngredientsForTicketLine(
         {
           businessId: input.businessId,
@@ -464,7 +488,40 @@ export async function advanceTicketLineStatus(
       );
     }
 
-    return updatedLine;
+    // Roll up parent KitchenTicket status from sibling line statuses
+    const siblingLines = await tx.kitchenTicketLine.findMany({
+      where: { ticketId: line.ticketId },
+      select: { status: true },
+    });
+    const activeStatuses = siblingLines
+      .map((s) => s.status)
+      .filter((s) => s !== "CANCELLED");
+
+    let derivedTicketStatus: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
+    if (activeStatuses.length === 0) {
+      derivedTicketStatus = "CANCELLED";
+    } else if (activeStatuses.every((s) => s === "SERVED")) {
+      derivedTicketStatus = "SERVED";
+    } else if (activeStatuses.every((s) => s === "READY" || s === "SERVED")) {
+      derivedTicketStatus = "READY";
+    } else if (activeStatuses.some((s) => s === "PREPARING" || s === "READY" || s === "SERVED")) {
+      derivedTicketStatus = "PREPARING";
+    } else {
+      derivedTicketStatus = "QUEUED";
+    }
+
+    if (derivedTicketStatus !== line.ticket.status) {
+      await tx.kitchenTicket.update({
+        where: { id: line.ticketId },
+        data: { status: derivedTicketStatus },
+      });
+    }
+
+    return {
+      ...updatedLine,
+      orderId: line.ticket.orderId,
+      ticketStatus: derivedTicketStatus,
+    };
   };
 
   if (externalTx) return await runner(externalTx);

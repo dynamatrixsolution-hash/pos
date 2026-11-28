@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionContext, authErrorResponse, safeErrorMessage, requireRoles, ROLE_GROUPS } from "@/lib/api-helper";
 import { dispatchNotification } from "@/lib/notifications";
-import { updateLineStatus, RestaurantOrderError } from "@/lib/services/restaurant-order-service";
+import { advanceTicketLineStatus, KitchenRoutingError } from "@/lib/services/kitchen-routing-service";
+import { RestaurantOrderError } from "@/lib/services/restaurant-order-service";
 import { z } from "zod";
 
 const updateLineStatusSchema = z.object({
@@ -25,23 +26,21 @@ export async function PATCH(
     const parsed = updateLineStatusSchema.parse(body);
 
     const statusUpper = parsed.status.toUpperCase();
-    const fulfillmentStatuses = ["QUEUED", "PREPARING", "READY", "SERVED", "CANCELLED"];
-    const acceptanceStatuses = ["PENDING", "ACCEPTED", "REJECTED"];
+    const normalizedStatus = statusUpper === "REJECTED" ? "CANCELLED" : statusUpper;
+    const allowedStatuses = ["QUEUED", "PREPARING", "READY", "SERVED", "CANCELLED"] as const;
+    if (!allowedStatuses.includes(normalizedStatus as any)) {
+      return NextResponse.json({ error: `Invalid line status: ${parsed.status}` }, { status: 400 });
+    }
 
-    const isFulfillment = fulfillmentStatuses.includes(statusUpper);
-    const isAcceptance = acceptanceStatuses.includes(statusUpper);
-
-    const updatedLine = await updateLineStatus({
+    const updatedLine = await advanceTicketLineStatus({
       businessId: session.businessId,
-      lineId,
-      fulfillmentStatus: isFulfillment ? (statusUpper as any) : undefined,
-      acceptanceStatus: isAcceptance ? (statusUpper as any) : undefined,
-      rejectionReason: parsed.reason,
+      ticketLineId: lineId,
+      newStatus: normalizedStatus as (typeof allowedStatuses)[number],
       actorId: session.userId,
+      wasteReason: parsed.reason,
     });
 
-    if (["PREPARING", "READY", "SERVED", "CANCELLED", "REJECTED"].includes(statusUpper)) {
-      const normalizedStatus = statusUpper === "REJECTED" ? "CANCELLED" : statusUpper;
+    if (["PREPARING", "READY", "SERVED", "CANCELLED"].includes(normalizedStatus)) {
       void (async () => {
         try {
           const order = await db.restaurantOrder.findUnique({
@@ -134,7 +133,7 @@ export async function PATCH(
       line: updatedLine,
     });
   } catch (error: any) {
-    if (error instanceof RestaurantOrderError) {
+    if (error instanceof KitchenRoutingError || error instanceof RestaurantOrderError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
     }
     if (error instanceof z.ZodError) {

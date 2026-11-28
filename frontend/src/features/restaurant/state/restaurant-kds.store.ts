@@ -56,6 +56,9 @@ interface RestaurantKdsState {
   soundEnabled: boolean;
   activeTab: "ACTIVE" | "SERVED";
 
+  // In-flight per-line updates
+  updatingLineIds: Record<string, boolean>;
+
   // Modal
   cancellingOrder: { ticketId: string; orderId: string; tableNumber: string } | null;
 
@@ -70,7 +73,12 @@ interface RestaurantKdsState {
   // Actions
   loadKitchenData: (includeMeta?: boolean) => Promise<void>;
   updateTicketStatus: (ticketId: string, status: "PREPARING" | "READY" | "SERVED") => Promise<boolean>;
-  updateLineStatus: (ticketId: string, lineId: string, status: "PREPARING" | "READY" | "CANCELLED", reason?: string) => Promise<boolean>;
+  updateLineStatus: (
+    ticketId: string,
+    lineId: string,
+    status: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED",
+    reason?: string
+  ) => Promise<boolean>;
   submitCancelOrder: (reason: string) => Promise<boolean>;
 }
 
@@ -87,6 +95,7 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   selectedOrderType: "ALL",
   soundEnabled: true,
   activeTab: "ACTIVE",
+  updatingLineIds: {},
 
   cancellingOrder: null,
 
@@ -134,6 +143,7 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   },
 
   updateLineStatus: async (ticketId, lineId, status, reason) => {
+    set((s) => ({ updatingLineIds: { ...s.updatingLineIds, [lineId]: true } }));
     try {
       await restaurantPosRepository.updateKitchenTicketLineStatus(ticketId, lineId, status, reason);
       await get().loadKitchenData(false);
@@ -141,6 +151,12 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
     } catch (err: any) {
       toast.error(err?.message || "Failed to update dish status");
       return false;
+    } finally {
+      set((s) => {
+        const next = { ...s.updatingLineIds };
+        delete next[lineId];
+        return { updatingLineIds: next };
+      });
     }
   },
 

@@ -69,6 +69,7 @@ export const KdsTicketGrid: React.FC = () => {
 
   const updateTicketStatus = useRestaurantKdsStore((s) => s.updateTicketStatus);
   const updateLineStatus = useRestaurantKdsStore((s) => s.updateLineStatus);
+  const updatingLineIds = useRestaurantKdsStore((s) => s.updatingLineIds);
   const setCancellingOrder = useRestaurantKdsStore((s) => s.setCancellingOrder);
 
   const currentList = activeTab === "ACTIVE" ? tickets : servedTickets;
@@ -329,79 +330,130 @@ export const KdsTicketGrid: React.FC = () => {
               </span>
             </div>
 
-            {/* Dish Lines List */}
-            <div className="p-3 flex-1 overflow-y-auto space-y-2 text-xs divide-y divide-[#D8CEC1]/40">
+            {/* Dish Lines List — Per-Item Status & 1-Tap Progression */}
+            <div className="p-3 flex-1 overflow-y-auto space-y-2.5 text-xs divide-y divide-[#D8CEC1]/50">
               {group.allLines.map((line) => {
-                const isLineReady = line.status === "READY" || line.status === "SERVED";
-                const isLineCancelled = line.status === "CANCELLED";
+                const lineStatus = line.status || "QUEUED";
+                const isLineQueued = lineStatus === "QUEUED";
+                const isLinePreparing = lineStatus === "PREPARING";
+                const isLineReady = lineStatus === "READY";
+                const isLineServed = lineStatus === "SERVED";
+                const isLineCancelled = lineStatus === "CANCELLED";
+                const isLineBusy = Boolean(updatingLineIds[line.id]);
+
+                const statusBadge = isLineCancelled
+                  ? { label: "Cancelled", cls: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" }
+                  : isLineServed
+                  ? { label: "Served", cls: "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]" }
+                  : isLineReady
+                  ? { label: "Ready", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" }
+                  : isLinePreparing
+                  ? { label: "Preparing", cls: "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]" }
+                  : { label: "Queued", cls: "bg-[#EEE7DD] text-[#71675E] border-[#D8CEC1]" };
 
                 return (
                   <div
                     key={`${line.ticketId}_${line.id}`}
-                    className={`pt-2 first:pt-0 flex items-start justify-between gap-2 ${
+                    className={`pt-2.5 first:pt-0 space-y-1.5 ${
                       isLineCancelled ? "opacity-50 line-through" : ""
                     }`}
                   >
-                    <div className="flex items-start gap-2 min-w-0">
-                      <span className="font-black text-[#292320] text-sm tabular-nums shrink-0">
-                        {line.quantity}x
-                      </span>
-                      <div className="min-w-0">
-                        <div
-                          className={`font-semibold text-[#292320] leading-tight flex items-center flex-wrap gap-1 ${
-                            isLineReady ? "line-through text-[#71675E]" : ""
-                          }`}
-                        >
-                          <span>{line.itemName}</span>
-                          {group.isConsolidated && group.tickets.length > 1 && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E]">
-                              {line.stationName}
-                            </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="font-bold text-[#292320] text-sm tabular-nums shrink-0">
+                          {line.quantity}x
+                        </span>
+                        <div className="min-w-0">
+                          <div
+                            className={`font-semibold leading-tight flex items-center flex-wrap gap-1 ${
+                              isLineServed ? "line-through text-[#71675E]" : "text-[#292320]"
+                            }`}
+                          >
+                            <span>{line.itemName}</span>
+                            {group.isConsolidated && group.tickets.length > 1 && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E]">
+                                {line.stationName}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Modifiers tags */}
+                          {line.modifiersSnapshot && line.modifiersSnapshot.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {line.modifiersSnapshot.map((mod: any, mIdx: number) => (
+                                <span
+                                  key={mIdx}
+                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]"
+                                >
+                                  {mod.optionName || mod.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {line.notes && (
+                            <div className="text-[10px] text-[#946000] font-medium mt-0.5">
+                              Note: {line.notes}
+                            </div>
                           )}
                         </div>
-
-                        {/* Modifiers tags */}
-                        {line.modifiersSnapshot && line.modifiersSnapshot.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {line.modifiersSnapshot.map((mod: any, mIdx: number) => (
-                              <span
-                                key={mIdx}
-                                className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]"
-                              >
-                                {mod.optionName || mod.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {line.notes && (
-                          <div className="text-[10px] text-[#B45309] font-medium mt-0.5">
-                            Note: {line.notes}
-                          </div>
-                        )}
                       </div>
+
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${statusBadge.cls}`}
+                      >
+                        {statusBadge.label}
+                      </span>
                     </div>
 
-                    {/* Line Toggle Button */}
+                    {/* Per-Item Workflow Action Controls */}
                     {!isLineCancelled && !isServed && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateLineStatus(
-                            line.ticketId,
-                            line.id,
-                            isLineReady ? "PREPARING" : "READY"
-                          )
-                        }
-                        className={`h-6 w-6 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          isLineReady
-                            ? "bg-[#16A34A] border-[#16A34A] text-white"
-                            : "border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E]"
-                        }`}
-                        title={isLineReady ? "Mark Unready" : "Mark Ready"}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5 pl-6">
+                        {isLineQueued && (
+                          <button
+                            type="button"
+                            disabled={isLineBusy}
+                            onClick={() => updateLineStatus(line.ticketId, line.id, "PREPARING")}
+                            className="h-7 px-2.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold cursor-pointer transition-colors"
+                          >
+                            {isLineBusy ? "..." : "Start Prep"}
+                          </button>
+                        )}
+                        {isLinePreparing && (
+                          <button
+                            type="button"
+                            disabled={isLineBusy}
+                            onClick={() => updateLineStatus(line.ticketId, line.id, "READY")}
+                            className="h-7 px-2.5 rounded-md bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>{isLineBusy ? "..." : "Mark Ready"}</span>
+                          </button>
+                        )}
+                        {isLineReady && (
+                          <button
+                            type="button"
+                            disabled={isLineBusy}
+                            onClick={() => updateLineStatus(line.ticketId, line.id, "SERVED")}
+                            className="h-7 px-2.5 rounded-md bg-[#315F85] hover:bg-[#264B6A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Check className="h-3 w-3" />
+                            <span>{isLineBusy ? "..." : "Serve Item"}</span>
+                          </button>
+                        )}
+                        {isLineServed && (
+                          <button
+                            type="button"
+                            disabled={isLineBusy}
+                            onClick={() => updateLineStatus(line.ticketId, line.id, "READY")}
+                            className="h-6 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] disabled:opacity-50 text-[#71675E] text-[10px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Recall item back to Ready"
+                          >
+                            <RotateCcw className="h-2.5 w-2.5" />
+                            <span>Undo</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
