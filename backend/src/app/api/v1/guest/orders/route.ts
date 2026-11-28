@@ -117,21 +117,23 @@ export async function POST(req: Request) {
         const requiresApproval = Boolean((result as any)?.requiresStaffApproval);
         const approvalReason = (result as any)?.approvalReason || null;
 
-        // Dispatch audiences in parallel; hold KDS notification when staff approval is required
+        // Dispatch role-scoped audiences in parallel; hold KDS notification when staff approval is required
         await Promise.all([
-          // 1. Notify Cashier, Waiter, Accountant, Front Desk, Manager, Owner
+          // 1. Notify Desk/Managers for high-value approval, or Waiter/Cashier for normal auto-accepted orders
           dispatchNotification({
             businessId: order.businessId,
-            targetRoles: ["CASHIER", "WAITER", "ACCOUNTANT", "FRONT_DESK", "MANAGER", "OWNER"],
+            targetRoles: requiresApproval
+              ? ["CASHIER", "FRONT_DESK", "MANAGER", "OWNER"]
+              : ["WAITER", "CASHIER"],
             category: "ORDER",
-            priority: requiresApproval ? "URGENT" : "HIGH",
+            priority: requiresApproval ? "URGENT" : "NORMAL",
             title: requiresApproval
-              ? `Approval Needed — ${locLabel}`
-              : `New Guest Order — ${locLabel}`,
+              ? `Approval Needed: ${locLabel}`
+              : `New Guest Order: ${locLabel}`,
             message: requiresApproval
               ? `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) from ${locLabel} is awaiting staff confirmation (${approvalReason || "limit exceeded"}).`
-              : `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) received from ${locLabel} and routed to kitchen.`,
-            actionUrl: "/dashboard/restaurant/pos",
+              : `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) received from ${locLabel} and sent to kitchen.`,
+            actionUrl: "/dashboard/restaurant/pos?view=tables",
             dedupeKey: `guest-order-staff:${order.id}:${roundId}`,
           }),
           // 2. Notify Kitchen Display staff ONLY when auto-routed
@@ -139,17 +141,17 @@ export async function POST(req: Request) {
             ? [
                 dispatchNotification({
                   businessId: order.businessId,
-                  targetRoles: ["KITCHEN"],
+                  targetRoles: ["KITCHEN", "CHEF", "KITCHEN_STAFF"],
                   category: "KITCHEN",
-                  priority: "URGENT",
-                  title: `New KOT — ${locLabel}`,
-                  message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) queued for preparation.`,
+                  priority: "HIGH",
+                  title: `New KOT: ${locLabel}`,
+                  message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) ready for preparation.`,
                   actionUrl: "/dashboard/restaurant/kds",
                   dedupeKey: `guest-order-kds:${order.id}:${roundId}`,
                 }),
               ]
             : []),
-          // 3. Notify Guest session
+          // 3. Notify Guest session (actionUrl always /guest so old notifications never re-open a settled table)
           ...(guestSession
             ? [
                 dispatchNotification({
@@ -157,11 +159,12 @@ export async function POST(req: Request) {
                   guestSessionId: guestSession.id,
                   category: "ORDER",
                   title: requiresApproval
-                    ? `Order #${order.orderNumber} Received — Awaiting Confirmation`
+                    ? `Order #${order.orderNumber} Awaiting Confirmation`
                     : `Order #${order.orderNumber} Confirmed`,
                   message: requiresApproval
                     ? `Your order for ${locLabel} has been received and will be confirmed by our staff shortly.`
                     : `Your order for ${locLabel} has been accepted and sent to the kitchen.`,
+                  actionUrl: "/guest",
                   dedupeKey: `guest-order-ack:${order.id}:${roundId}`,
                 }),
               ]

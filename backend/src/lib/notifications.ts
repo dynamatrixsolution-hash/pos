@@ -138,11 +138,15 @@ async function sendFcmMulticast(
   let successCount = 0;
   const deadTokens: string[] = [];
 
+  const defaultActionUrl = input.guestSessionId ? "/guest" : "/dashboard";
+  const resolvedActionUrl = input.actionUrl || defaultActionUrl;
+  const resolvedTag = input.dedupeKey || notificationId;
+
   const dataPayload: Record<string, string> = {
     notificationId,
     category: input.category,
     priority: input.priority || "NORMAL",
-    actionUrl: input.actionUrl || "/dashboard",
+    actionUrl: resolvedActionUrl,
     businessId: input.businessId,
   };
   if (input.dedupeKey) dataPayload.dedupeKey = input.dedupeKey;
@@ -164,12 +168,13 @@ async function sendFcmMulticast(
           notification: {
             icon: "/icons/icon-192.png",
             badge: "/icons/icon-192.png",
+            tag: resolvedTag,
             ...(typeof input.metadata?.imageUrl === "string" && /^https?:\/\//i.test(input.metadata.imageUrl)
               ? { image: input.metadata.imageUrl }
               : {}),
           },
           fcmOptions: {
-            link: input.actionUrl || "/guest",
+            link: resolvedActionUrl,
           },
         },
         android: {

@@ -130,13 +130,13 @@ export async function PATCH(
           return updated;
         });
 
-        // Notify Kitchen + Customer (table guest session or opted-in GUEST devices)
+        // Notify Kitchen + active table guest session (never broadcast personal order updates to all GUEST tokens)
         void (async () => {
           const guestSessionId = await resolveGuestSessionForOrder(existing.tableSessionId);
-          await Promise.all([
+          const tasks: Promise<unknown>[] = [
             dispatchNotification({
               businessId: session.businessId,
-              targetRoles: ["KITCHEN"],
+              targetRoles: ["KITCHEN", "CHEF", "KITCHEN_STAFF"],
               category: "KITCHEN",
               priority: "URGENT",
               title: `Confirmed ${existing.orderType} KOT — #${existing.orderNumber}`,
@@ -144,16 +144,22 @@ export async function PATCH(
               actionUrl: "/dashboard/restaurant/kds",
               dedupeKey: `order-approved-kds:${existing.id}`,
             }),
-            dispatchNotification({
-              businessId: session.businessId,
-              ...(guestSessionId ? { guestSessionId } : { targetRoles: ["GUEST"] }),
-              category: "ORDER",
-              priority: "HIGH",
-              title: `Order #${existing.orderNumber} Accepted`,
-              message: `Your ${existing.orderType.toLowerCase()} order has been confirmed and our kitchen is preparing your food now.`,
-              dedupeKey: `order-approved-guest:${existing.id}`,
-            }),
-          ]);
+          ];
+          if (guestSessionId) {
+            tasks.push(
+              dispatchNotification({
+                businessId: session.businessId,
+                guestSessionId,
+                category: "ORDER",
+                priority: "HIGH",
+                title: `Order #${existing.orderNumber} Accepted`,
+                message: `Your ${existing.orderType.toLowerCase()} order has been confirmed and our kitchen is preparing your food now.`,
+                actionUrl: "/guest",
+                dedupeKey: `order-approved-guest:${existing.id}`,
+              })
+            );
+          }
+          await Promise.all(tasks);
         })();
 
         return NextResponse.json({ success: true, order: updatedOrder });
@@ -235,15 +241,21 @@ export async function PATCH(
         newValue: { rider, fulfillmentStatus: "READY" },
       });
 
-      void dispatchNotification({
-        businessId: session.businessId,
-        targetRoles: ["GUEST"],
-        category: "ORDER",
-        priority: "HIGH",
-        title: `Order #${existing.orderNumber} Out for Delivery`,
-        message: `Your food is ready and ${rider} is on the way to your delivery address.`,
-        dedupeKey: `order-dispatched-guest:${existing.id}`,
-      });
+      // Notify active guest session if linked (delivery tracker polls order status securely by orderNumber + phone)
+      void (async () => {
+        const guestSessionId = await resolveGuestSessionForOrder(existing.tableSessionId);
+        if (!guestSessionId) return;
+        await dispatchNotification({
+          businessId: session.businessId,
+          guestSessionId,
+          category: "ORDER",
+          priority: "HIGH",
+          title: `Order #${existing.orderNumber} Out for Delivery`,
+          message: `Your food is ready and ${rider} is on the way to your delivery address.`,
+          actionUrl: "/guest",
+          dedupeKey: `order-dispatched-guest:${existing.id}`,
+        });
+      })();
 
       return NextResponse.json({ success: true, order: updatedOrder });
     }

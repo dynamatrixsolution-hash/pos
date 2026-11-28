@@ -830,6 +830,14 @@ export async function POST(
             },
           });
 
+          const revokedSessions = await tx.guestSession.findMany({
+            where: {
+              tableSessionId: order.tableSessionId,
+              businessId: session.businessId,
+            },
+            select: { id: true },
+          });
+
           await tx.guestSession.updateMany({
             where: {
               tableSessionId: order.tableSessionId,
@@ -837,6 +845,13 @@ export async function POST(
             },
             data: { status: "REVOKED", revokedAt: new Date() },
           });
+
+          if (revokedSessions.length > 0) {
+            await tx.devicePushToken.updateMany({
+              where: { guestSessionId: { in: revokedSessions.map((s) => s.id) } },
+              data: { isActive: false },
+            });
+          }
         }
 
         const tableIdToRelease = order.tableId || order.tableSession?.tableId;

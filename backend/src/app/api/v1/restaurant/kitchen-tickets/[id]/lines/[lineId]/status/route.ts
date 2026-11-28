@@ -97,7 +97,7 @@ export async function PATCH(
             tasks.push(
               dispatchNotification({
                 businessId: session.businessId,
-                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                targetRoles: ["WAITER", "CASHIER"],
                 category: "KITCHEN",
                 priority: "HIGH",
                 title: `Dish Ready: ${locLabel}`,
@@ -110,7 +110,7 @@ export async function PATCH(
             tasks.push(
               dispatchNotification({
                 businessId: session.businessId,
-                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                targetRoles: ["WAITER", "CASHIER", "MANAGER"],
                 category: "KITCHEN",
                 priority: "URGENT",
                 title: `Kitchen Cancelled: ${itemLabel} (${locLabel})`,

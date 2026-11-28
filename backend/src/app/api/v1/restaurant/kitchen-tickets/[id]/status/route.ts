@@ -99,12 +99,12 @@ export async function PATCH(
                 : []),
               dispatchNotification({
                 businessId: session.businessId,
-                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                targetRoles: ["WAITER", "CASHIER"],
                 category: "KITCHEN",
                 priority: "HIGH",
-                title: `Pickup Ready — ${locLabel}`,
+                title: `Pickup Ready: ${locLabel}`,
                 message: `KOT #${fullTicket.ticketNumber} is ready at the kitchen pass for ${locLabel}.`,
-                actionUrl: "/dashboard/restaurant/tables",
+                actionUrl: "/dashboard/restaurant/pos?view=tables",
                 dedupeKey: `kds-ready-staff:${fullTicket.id}`,
               }),
             ]);
@@ -138,12 +138,12 @@ export async function PATCH(
                 : []),
               dispatchNotification({
                 businessId: session.businessId,
-                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                targetRoles: ["WAITER", "CASHIER", "MANAGER"],
                 category: "KITCHEN",
                 priority: "HIGH",
-                title: `KOT Cancelled — ${locLabel}`,
-                message: `KOT #${fullTicket.ticketNumber} for ${locLabel} was marked cancelled.`,
-                actionUrl: "/dashboard/restaurant/kds",
+                title: `KOT Cancelled: ${locLabel}`,
+                message: `KOT #${fullTicket.ticketNumber} for ${locLabel} was cancelled by the kitchen.`,
+                actionUrl: "/dashboard/restaurant/pos?view=tables",
                 dedupeKey: `kds-cancelled-staff:${fullTicket.id}`,
               }),
             ]);

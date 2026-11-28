@@ -44,15 +44,18 @@ export async function POST(
             })
           : null;
 
+        if (!gs) return;
+
         await dispatchNotification({
           businessId: session.businessId,
-          ...(gs ? { guestSessionId: gs.id } : { targetRoles: ["GUEST"] }),
+          guestSessionId: gs.id,
           category: "ORDER",
           priority: "HIGH",
           title: `Order #${cancelledOrder.orderNumber} Cancelled`,
           message: parsed.reason
             ? `Your order was cancelled: ${parsed.reason}`
             : `Your order #${cancelledOrder.orderNumber} has been cancelled by staff.`,
+          actionUrl: "/guest",
           dedupeKey: `order-cancelled-guest:${cancelledOrder.id}`,
         });
       } catch (err) {

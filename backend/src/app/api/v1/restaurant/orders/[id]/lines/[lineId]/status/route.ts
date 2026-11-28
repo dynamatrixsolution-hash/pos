@@ -84,11 +84,11 @@ export async function PATCH(
           const itemLabel = `${prevLine?.quantity ?? updatedLine.quantity}x ${updatedLine.itemName}`;
           const tasks: Promise<unknown>[] = [];
 
-          // 1. Immediately alert Kitchen staff (URGENT if already PREPARING)
+          // 1. Immediately alert Kitchen staff only (URGENT if already PREPARING)
           tasks.push(
             dispatchNotification({
               businessId: session.businessId,
-              targetRoles: ["CHEF", "KITCHEN_STAFF", "MANAGER", "OWNER"],
+              targetRoles: ["KITCHEN", "CHEF", "KITCHEN_STAFF"],
               category: "KITCHEN",
               priority: wasPreparing ? "URGENT" : "HIGH",
               title: isCancelled

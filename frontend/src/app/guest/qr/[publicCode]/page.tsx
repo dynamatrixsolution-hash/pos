@@ -860,7 +860,12 @@ export default function GuestQrPortalPage() {
               showBanner(msg, ord.trackerStage === "REJECTED" ? "error" : "success");
               playNotificationChime();
               vibrateMobile();
-              showBrowserNotification(`Order #${ord.orderNumber}`, msg);
+            if (document.visibilityState !== "visible") {
+              showBrowserNotification(`Order #${ord.orderNumber}`, msg, {
+                tag: `channel-${ord.id}-${statusKey}`,
+                actionUrl: "/guest",
+              });
+            }
             }
           }
           channelOrderStagesRef.current[ord.id] = statusKey;
@@ -941,8 +946,15 @@ export default function GuestQrPortalPage() {
             vibrateMobile(isReadyOrServed ? [140, 60, 140] : [90]);
 
             const bannerImg = latest.metadata?.imageUrl;
-            // Show OS notification via ServiceWorker (works cleanly in background tabs & mobile notification shade)
-            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            // Only show OS notification when tab is in background (in-app alert handles visible tab),
+            // deduplicated by tag, and always navigating to /guest so old notifications never re-open a settled table.
+            if (
+              typeof window !== "undefined" &&
+              document.visibilityState !== "visible" &&
+              "Notification" in window &&
+              Notification.permission === "granted"
+            ) {
+              const notifTag = (latest as any).dedupeKey || latest.id;
               if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.ready
                   .then((reg) =>
@@ -951,15 +963,21 @@ export default function GuestQrPortalPage() {
                       icon: "/icons/icon-192.png",
                       badge: "/icons/icon-192.png",
                       ...(bannerImg && /^https?:\/\//i.test(bannerImg) ? { image: bannerImg } : {}),
-                      tag: latest.id,
-                      data: { actionUrl: window.location.pathname },
+                      tag: notifTag,
+                      data: { actionUrl: "/guest" },
                     } as NotificationOptions)
                   )
                   .catch(() => {
-                    showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+                    showBrowserNotification(latest.title, latest.message, {
+                      tag: notifTag,
+                      actionUrl: "/guest",
+                    });
                   });
               } else {
-                showBrowserNotification(latest.title, latest.message, { tag: latest.id });
+                showBrowserNotification(latest.title, latest.message, {
+                  tag: notifTag,
+                  actionUrl: "/guest",
+                });
               }
             }
 

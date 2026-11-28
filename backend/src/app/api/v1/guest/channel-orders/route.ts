@@ -210,14 +210,16 @@ export async function POST(req: Request) {
         const tasks: Promise<unknown>[] = [
           dispatchNotification({
             businessId: result.businessId,
-            targetRoles: ["ACCOUNTANT", "FRONT_DESK", "CASHIER", "WAITER", "MANAGER", "OWNER"],
+            targetRoles: result.requiresStaffApproval
+              ? ["CASHIER", "FRONT_DESK", "MANAGER", "OWNER"]
+              : ["CASHIER", "FRONT_DESK"],
             category: "ORDER",
             priority: result.requiresStaffApproval ? "URGENT" : "HIGH",
             title: result.requiresStaffApproval
-              ? `Approval Needed: ${typeLabel} Order — ${parsed.customerName}`
-              : `New ${typeLabel} Order — ${parsed.customerName}`,
+              ? `Approval Needed: ${typeLabel} (${parsed.customerName})`
+              : `New ${typeLabel} Order (${parsed.customerName})`,
             message: `Order #${order.orderNumber} (${itemCount} item${itemCount > 1 ? "s" : ""}) from ${parsed.customerName} (${parsed.phone})${addrSnippet}.${result.requiresStaffApproval ? " Review & accept before kitchen starts." : ""}`,
-            actionUrl: "/dashboard/restaurant/pos",
+            actionUrl: "/dashboard/restaurant/pos?view=menu",
             dedupeKey: `guest-channel-staff:${order.id}:${roundId}`,
           }),
         ];

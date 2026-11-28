@@ -88,7 +88,13 @@ export async function registerWebPushToken(options?: {
 }
 
 export async function subscribeForegroundPush(
-  callback: (payload: { title: string; body: string; actionUrl?: string }) => void
+  callback: (payload: {
+    title: string;
+    body: string;
+    actionUrl?: string;
+    notificationId?: string;
+    dedupeKey?: string;
+  }) => void
 ): Promise<() => void> {
   if (typeof window === "undefined") return () => {};
   const config = getFirebaseConfig();
@@ -105,6 +111,8 @@ export async function subscribeForegroundPush(
         title: payload.notification?.title || "RestroInn",
         body: payload.notification?.body || "",
         actionUrl: payload.data?.actionUrl,
+        notificationId: payload.data?.notificationId,
+        dedupeKey: payload.data?.dedupeKey,
       });
     });
   } catch {

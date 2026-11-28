@@ -245,10 +245,12 @@ export default function DashboardShellClient({
               } else {
                 toast.info(text, 5500);
               }
-              showBrowserNotification(n.title, n.message, {
-                tag: n.id,
-                actionUrl: n.actionUrl,
-              });
+              if (document.visibilityState !== "visible") {
+                showBrowserNotification(n.title, n.message, {
+                  tag: (n as any).dedupeKey || n.id,
+                  actionUrl: n.actionUrl,
+                });
+              }
             });
             if (newlyArrived.length > 2) {
               toast.info(
@@ -297,6 +299,11 @@ export default function DashboardShellClient({
 
     let unsubscribe: (() => void) | undefined;
     subscribeForegroundPush((payload) => {
+      const notifId = payload.notificationId;
+      if (notifId) {
+        if (seenNotificationIdsRef.current.has(notifId)) return;
+        seenNotificationIdsRef.current.add(notifId);
+      }
       toast.info(`${payload.title}: ${payload.body}`);
       fetchLiveNotifications();
     }).then((unsub) => {
