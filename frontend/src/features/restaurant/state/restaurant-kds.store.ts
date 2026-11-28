@@ -41,6 +41,22 @@ export interface KitchenTicketItem {
   lines: TicketLineItem[];
 }
 
+export type KdsCancelTarget =
+  | {
+      kind: "ORDER";
+      ticketId: string;
+      orderId: string;
+      tableNumber: string;
+    }
+  | {
+      kind: "LINE";
+      ticketId: string;
+      lineId: string;
+      itemName: string;
+      quantity: number;
+      tableNumber: string;
+    };
+
 interface RestaurantKdsState {
   tickets: KitchenTicketItem[];
   servedTickets: KitchenTicketItem[];
@@ -59,8 +75,8 @@ interface RestaurantKdsState {
   // In-flight per-line updates
   updatingLineIds: Record<string, boolean>;
 
-  // Modal
-  cancellingOrder: { ticketId: string; orderId: string; tableNumber: string } | null;
+  // Modal (supports cancelling either a single dish or the whole order)
+  cancellingTarget: KdsCancelTarget | null;
 
   // Setters
   setSelectedStationId: (id: string) => void;
@@ -68,7 +84,7 @@ interface RestaurantKdsState {
   setSelectedOrderType: (type: string) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setActiveTab: (tab: "ACTIVE" | "SERVED") => void;
-  setCancellingOrder: (target: { ticketId: string; orderId: string; tableNumber: string } | null) => void;
+  setCancellingTarget: (target: KdsCancelTarget | null) => void;
 
   // Actions
   loadKitchenData: (includeMeta?: boolean) => Promise<void>;
@@ -79,7 +95,7 @@ interface RestaurantKdsState {
     status: "QUEUED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED",
     reason?: string
   ) => Promise<boolean>;
-  submitCancelOrder: (reason: string) => Promise<boolean>;
+  submitCancelTarget: (reason: string) => Promise<boolean>;
 }
 
 export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
@@ -97,14 +113,14 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
   activeTab: "ACTIVE",
   updatingLineIds: {},
 
-  cancellingOrder: null,
+  cancellingTarget: null,
 
   setSelectedStationId: (selectedStationId) => set({ selectedStationId }),
   setSelectedFloorId: (selectedFloorId) => set({ selectedFloorId }),
   setSelectedOrderType: (selectedOrderType) => set({ selectedOrderType }),
   setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
   setActiveTab: (activeTab) => set({ activeTab }),
-  setCancellingOrder: (cancellingOrder) => set({ cancellingOrder }),
+  setCancellingTarget: (cancellingTarget) => set({ cancellingTarget }),
 
   loadKitchenData: async (includeMeta = false) => {
     try {
@@ -160,17 +176,29 @@ export const useRestaurantKdsStore = create<RestaurantKdsState>((set, get) => ({
     }
   },
 
-  submitCancelOrder: async (reason) => {
-    const target = get().cancellingOrder;
+  submitCancelTarget: async (reason) => {
+    const target = get().cancellingTarget;
     if (!target) return false;
     try {
-      await restaurantPosRepository.cancelOrder(target.orderId, reason);
-      await get().loadKitchenData(false);
-      set({ cancellingOrder: null });
-      toast.success("Kitchen order cancelled");
+      if (target.kind === "LINE") {
+        await restaurantPosRepository.updateKitchenTicketLineStatus(
+          target.ticketId,
+          target.lineId,
+          "CANCELLED",
+          reason
+        );
+        await get().loadKitchenData(false);
+        set({ cancellingTarget: null });
+        toast.success(`${target.itemName} cancelled. Waiter & guest notified.`);
+      } else {
+        await restaurantPosRepository.cancelOrder(target.orderId, reason);
+        await get().loadKitchenData(false);
+        set({ cancellingTarget: null });
+        toast.success("Order cancelled. Waiter & guest notified.");
+      }
       return true;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to cancel kitchen order");
+      toast.error(err?.message || "Failed to cancel");
       return false;
     }
   },

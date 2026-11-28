@@ -1,55 +1,118 @@
 "use client";
 
-import React, { useState } from "react";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertTriangle, X } from "lucide-react";
 import { useRestaurantKdsStore } from "../../state/restaurant-kds.store";
 
-export const KdsCancelModal: React.FC = () => {
-  const cancellingOrder = useRestaurantKdsStore((s) => s.cancellingOrder);
-  const setCancellingOrder = useRestaurantKdsStore((s) => s.setCancellingOrder);
-  const submitCancelOrder = useRestaurantKdsStore((s) => s.submitCancelOrder);
+const QUICK_REASONS = [
+  "Out of stock",
+  "Ingredient unavailable",
+  "Kitchen unable to prepare",
+  "Duplicate order",
+];
 
-  const [reason, setReason] = useState("Customer requested cancellation");
+export const KdsCancelModal: React.FC = () => {
+  const cancellingTarget = useRestaurantKdsStore((s) => s.cancellingTarget);
+  const setCancellingTarget = useRestaurantKdsStore((s) => s.setCancellingTarget);
+  const submitCancelTarget = useRestaurantKdsStore((s) => s.submitCancelTarget);
+
+  const [reason, setReason] = useState("Out of stock");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!cancellingOrder) return null;
+  useEffect(() => {
+    if (cancellingTarget) {
+      setReason("Out of stock");
+    }
+  }, [cancellingTarget]);
+
+  useEffect(() => {
+    if (!cancellingTarget) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isSubmitting) setCancellingTarget(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [cancellingTarget, isSubmitting, setCancellingTarget]);
+
+  if (!cancellingTarget) return null;
+
+  const isLine = cancellingTarget.kind === "LINE";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await submitCancelOrder(reason);
+    await submitCancelTarget(reason);
     setIsSubmitting(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/60 p-4 select-none">
-      <div className="w-full max-w-sm rounded-xl border border-red-200 bg-[#FFFCF7] p-5 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-red-100 text-[#DC2626] shrink-0">
-            <AlertTriangle className="h-5 w-5" />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kds-cancel-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) setCancellingTarget(null);
+      }}
+    >
+      <div className="w-full max-w-sm rounded-xl border border-[#E9B6B7] bg-[#FFFCF7] p-5 space-y-4">
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="p-2 rounded-lg bg-[#FAEAEC] text-[#B33432] border border-[#E9B6B7] shrink-0">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <h4 id="kds-cancel-title" className="text-sm font-bold text-[#292320]">
+                {isLine
+                  ? `Cancel ${cancellingTarget.quantity}x ${cancellingTarget.itemName}?`
+                  : `Cancel Order (${cancellingTarget.tableNumber})?`}
+              </h4>
+              <p className="text-[11px] text-[#71675E] mt-1 leading-relaxed">
+                {isLine
+                  ? `This item will be removed from ${cancellingTarget.tableNumber}. The waiter and guest will be notified immediately.`
+                  : "All items in this order will be cancelled. The waiter and guest will be notified immediately."}
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-black text-[#292320]">
-              Void Order from Kitchen?
-            </h4>
-            <p className="text-xs text-[#DC2626] font-bold mt-1">
-              Notice: Table {cancellingOrder.tableNumber}
-            </p>
-            <p className="text-[11px] text-[#71675E] mt-1 leading-relaxed">
-              Cancelling this order will void the kitchen round and remove the items from preparation.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCancellingTarget(null)}
+            disabled={isSubmitting}
+            aria-label="Close modal"
+            className="text-[#71675E] hover:text-[#292320] cursor-pointer shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-[#292320]">Void Reason</label>
+          <div className="space-y-1.5">
+            <label htmlFor="kds-cancel-reason" className="text-[11px] font-semibold text-[#292320]">
+              Cancellation Reason
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_REASONS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setReason(preset)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium border cursor-pointer transition-colors ${
+                    reason === preset
+                      ? "bg-[#6B2837] text-[#FFFCF7] border-[#6B2837]"
+                      : "bg-[#F7F3EC] text-[#292320] border-[#D8CEC1] hover:bg-[#EEE7DD]"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
             <input
+              id="kds-cancel-reason"
               type="text"
               required
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Out of ingredients, duplicate order..."
+              placeholder="Enter reason for waiter & guest..."
               className="w-full h-8 px-2.5 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] text-xs text-[#292320] focus:border-[#6B2837] focus:outline-none"
             />
           </div>
@@ -57,20 +120,19 @@ export const KdsCancelModal: React.FC = () => {
           <div className="pt-2 border-t border-[#D8CEC1] flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setCancellingOrder(null)}
+              onClick={() => setCancellingTarget(null)}
               disabled={isSubmitting}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] cursor-pointer"
+              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] cursor-pointer transition-colors"
             >
-              No, Keep Order
+              Keep
             </button>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] text-white flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#B33432] hover:bg-[#992826] text-[#FFFCF7] cursor-pointer transition-colors disabled:opacity-50"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>{isSubmitting ? "Voiding..." : "Yes, Void Order"}</span>
+              {isSubmitting ? "Cancelling..." : isLine ? "Cancel Item" : "Cancel Order"}
             </button>
           </div>
         </form>
@@ -78,4 +140,3 @@ export const KdsCancelModal: React.FC = () => {
     </div>
   );
 };
-

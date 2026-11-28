@@ -4,56 +4,68 @@ import React, { useMemo } from "react";
 import {
   Clock,
   CheckCircle2,
-  AlertTriangle,
   UtensilsCrossed,
   Store,
   ShoppingBag,
   Truck,
   RotateCcw,
   Check,
-  Trash2,
+  X,
 } from "lucide-react";
-import { useRestaurantKdsStore, KitchenTicketItem, TicketLineItem } from "../../state/restaurant-kds.store";
+import {
+  useRestaurantKdsStore,
+  KitchenTicketItem,
+  TicketLineItem,
+} from "../../state/restaurant-kds.store";
 
-function formatElapsedTime(isoDate: string, now: number): {
-  display: string;
-  totalMins: number;
-  isDelayed: boolean;
-  isWarning: boolean;
-} {
-  if (!isoDate) {
-    return { display: "0s", totalMins: 0, isDelayed: false, isWarning: false };
-  }
-  const diffMs = Math.max(0, now - new Date(isoDate).getTime());
-  const totalSecs = Math.floor(diffMs / 1000);
+function formatElapsedTime(isoDate: string, now: number) {
+  if (!isoDate) return { display: "0s", isDelayed: false, isWarning: false };
+  const totalSecs = Math.max(0, Math.floor((now - new Date(isoDate).getTime()) / 1000));
   const totalMins = Math.floor(totalSecs / 60);
   const totalHours = Math.floor(totalMins / 60);
   const totalDays = Math.floor(totalHours / 24);
 
   let display: string;
   if (totalDays > 0) {
-    const remHours = totalHours % 24;
-    display = remHours > 0 ? `${totalDays}d ${remHours}h` : `${totalDays}d`;
+    const remH = totalHours % 24;
+    display = remH > 0 ? `${totalDays}d ${remH}h` : `${totalDays}d`;
   } else if (totalHours > 0) {
-    const remMins = totalMins % 60;
-    display = remMins > 0 ? `${totalHours}h ${remMins}m` : `${totalHours}h`;
+    const remM = totalMins % 60;
+    display = remM > 0 ? `${totalHours}h ${remM}m` : `${totalHours}h`;
   } else if (totalMins > 0) {
-    const remSecs = totalSecs % 60;
-    display = `${totalMins}m ${remSecs.toString().padStart(2, "0")}s`;
+    display = `${totalMins}m ${(totalSecs % 60).toString().padStart(2, "0")}s`;
   } else {
     display = `${totalSecs}s`;
   }
 
-  const isDelayed = totalMins >= 15;
-  const isWarning = totalMins >= 8 && totalMins < 15;
-
-  return { display, totalMins, isDelayed, isWarning };
+  return {
+    display,
+    isDelayed: totalMins >= 15,
+    isWarning: totalMins >= 8 && totalMins < 15,
+  };
 }
+
+/** Strips internal system routing tags like [DINE-IN] so chefs only see real notes & parcel tags. */
+function parseLineNote(raw?: string | null): { isParcel: boolean; cleanNote: string } {
+  if (!raw) return { isParcel: false, cleanNote: "" };
+  const isParcel = /\b(TAKEAWAY|PARCEL)\b/i.test(raw);
+  const cleanNote = raw
+    .replace(/\[(DINE-IN|TAKEAWAY|DELIVERY|PARCEL)\]/gi, "")
+    .trim();
+  return { isParcel, cleanNote };
+}
+
+const LINE_STATUS_META = {
+  QUEUED: { label: "New", badge: "bg-[#EEE7DD] text-[#71675E] border-[#D8CEC1]" },
+  PREPARING: { label: "Cooking", badge: "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]" },
+  READY: { label: "Ready", badge: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" },
+  SERVED: { label: "Served", badge: "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]" },
+  CANCELLED: { label: "Cancelled", badge: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" },
+} as const;
 
 export const KdsTicketGrid: React.FC = () => {
   const [now, setNow] = React.useState(() => Date.now());
 
-  // 1-second live ticker so kitchen timers count up in real time (seconds, minutes, hours, days)
   React.useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -70,7 +82,7 @@ export const KdsTicketGrid: React.FC = () => {
   const updateTicketStatus = useRestaurantKdsStore((s) => s.updateTicketStatus);
   const updateLineStatus = useRestaurantKdsStore((s) => s.updateLineStatus);
   const updatingLineIds = useRestaurantKdsStore((s) => s.updatingLineIds);
-  const setCancellingOrder = useRestaurantKdsStore((s) => s.setCancellingOrder);
+  const setCancellingTarget = useRestaurantKdsStore((s) => s.setCancellingTarget);
 
   const currentList = activeTab === "ACTIVE" ? tickets : servedTickets;
 
@@ -83,11 +95,8 @@ export const KdsTicketGrid: React.FC = () => {
     });
   }, [currentList, selectedStationId, selectedFloorId, selectedOrderType]);
 
-  // Consolidate tickets by order round when viewing "ALL" stations so a single order round
-  // is never split into disconnected double widgets.
   const groupedRounds = useMemo(() => {
     if (selectedStationId !== "ALL") {
-      // Individual station selected: show only that station's tickets
       return filteredTickets.map((t) => ({
         key: t.id,
         isConsolidated: false,
@@ -148,19 +157,13 @@ export const KdsTicketGrid: React.FC = () => {
       }
     }
 
-    // Determine group overall status
     for (const group of groupsMap.values()) {
       if (group.tickets.length > 1) {
         const statuses = group.tickets.map((t) => t.status);
-        if (statuses.every((s) => s === "SERVED")) {
-          group.status = "SERVED";
-        } else if (statuses.every((s) => s === "READY" || s === "SERVED")) {
-          group.status = "READY";
-        } else if (statuses.some((s) => s === "PREPARING" || s === "READY")) {
-          group.status = "PREPARING";
-        } else {
-          group.status = "QUEUED";
-        }
+        if (statuses.every((s) => s === "SERVED")) group.status = "SERVED";
+        else if (statuses.every((s) => s === "READY" || s === "SERVED")) group.status = "READY";
+        else if (statuses.some((s) => s === "PREPARING" || s === "READY")) group.status = "PREPARING";
+        else group.status = "QUEUED";
       }
     }
 
@@ -169,24 +172,22 @@ export const KdsTicketGrid: React.FC = () => {
 
   if (groupedRounds.length === 0) {
     return (
-      <div className="py-20 text-center rounded-xl border border-dashed border-[#D8CEC1] bg-[#FFFCF7] space-y-3">
-        <UtensilsCrossed className="h-10 w-10 text-[#71675E]/40 mx-auto" />
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-[#292320]">
-            {activeTab === "ACTIVE" ? "All Kitchen Queues Clear" : "No Served Tickets"}
-          </h3>
-          <p className="text-xs text-[#71675E]">
-            {activeTab === "ACTIVE"
-              ? "New dining orders routed to this station will appear here instantly."
-              : "Completed order rounds will appear in the served history."}
-          </p>
-        </div>
+      <div className="py-20 text-center rounded-lg border border-dashed border-[#D8CEC1] bg-[#FFFCF7] space-y-2.5">
+        <UtensilsCrossed className="h-9 w-9 text-[#71675E]/40 mx-auto" />
+        <h3 className="text-sm font-bold text-[#292320]">
+          {activeTab === "ACTIVE" ? "No Active Kitchen Orders" : "No Served Orders"}
+        </h3>
+        <p className="text-xs text-[#71675E]">
+          {activeTab === "ACTIVE"
+            ? "New dining, takeaway, and delivery orders will appear here automatically."
+            : "Completed order rounds will appear here."}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 pb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 pb-8">
       {groupedRounds.map((group) => {
         const ticket = group.primaryTicket;
         const timeInfo = formatElapsedTime(group.createdAt, now);
@@ -195,22 +196,26 @@ export const KdsTicketGrid: React.FC = () => {
         const isReady = group.status === "READY";
         const isServed = group.status === "SERVED";
 
-        // Delay warnings only apply to active non-served orders
         const isDelayed = activeTab === "ACTIVE" && !isServed && timeInfo.isDelayed;
         const isWarning = activeTab === "ACTIVE" && !isServed && timeInfo.isWarning;
 
         const orderType = ticket.order?.orderType;
         const tableName = ticket.order?.table?.tableNumber;
+        const destinationLabel =
+          orderType === "DINE_IN"
+            ? tableName
+              ? `Table ${tableName}`
+              : "Counter Dine-In"
+            : orderType === "BAR_WALK_IN"
+            ? "Counter Dine-In"
+            : orderType === "TAKEAWAY"
+            ? "Takeaway"
+            : "Delivery";
 
-        // Clean single order/ticket number (never concatenate station ticket IDs like #1982 + #8280)
         const shortTicketDisplay = (() => {
-          if (ticket.order?.orderNumber) {
-            const orderParts = ticket.order.orderNumber.split("-");
-            return `#${orderParts[orderParts.length - 1]}`;
-          }
-          if (!ticket.ticketNumber) return `#${ticket.id.slice(0, 4)}`;
-          const parts = ticket.ticketNumber.split("-");
-          return `#${parts[parts.length - 1]}`;
+          const ref = ticket.order?.orderNumber || ticket.ticketNumber || ticket.id;
+          const parts = ref.split("-");
+          return `#${parts[parts.length - 1] || ref.slice(0, 6)}`;
         })();
 
         const advanceGroupStatus = (newStatus: "PREPARING" | "READY" | "SERVED") => {
@@ -219,196 +224,158 @@ export const KdsTicketGrid: React.FC = () => {
           }
         };
 
+        const headerBg = isServed || isReady
+          ? "bg-[#EAF3EE] border-[#C3DED0]"
+          : isDelayed
+          ? "bg-[#FAEAEC] border-[#E9B6B7]"
+          : isWarning
+          ? "bg-[#FDF5E7] border-[#EDD7AD]"
+          : "bg-[#EEE7DD] border-[#D8CEC1]";
+
         return (
           <div
             key={group.key}
-            className={`rounded-xl border bg-[#FFFCF7] shadow-2xs flex flex-col justify-between overflow-hidden transition-all ${
-              isServed
-                ? "border-[#D8CEC1]/80 opacity-90"
+            className={`rounded-lg border bg-[#FFFCF7] flex flex-col justify-between overflow-hidden ${
+              isDelayed
+                ? "border-[#E9B6B7]"
                 : isReady
-                ? "border-[#16A34A]"
-                : isDelayed
-                ? "border-[#DC2626] ring-1 ring-[#DC2626]/30"
-                : isWarning
-                ? "border-[#D97706]"
+                ? "border-[#C3DED0]"
                 : "border-[#D8CEC1]"
             }`}
           >
             {/* Ticket Header */}
-            <div
-              className={`p-3 border-b flex items-center justify-between text-xs ${
-                isServed
-                  ? "bg-[#EDF5ED] border-[#C8DFCD]"
-                  : isReady
-                  ? "bg-[#EDF5ED] border-[#C8DFCD]"
-                  : isDelayed
-                  ? "bg-red-50 border-red-200"
-                  : isWarning
-                  ? "bg-amber-50 border-amber-200"
-                  : "bg-[#F7F3EC] border-[#D8CEC1]"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className="font-mono font-black text-[#6B2837] text-sm tracking-tight truncate"
-                  title={ticket.ticketNumber || ticket.id}
-                >
+            <div className={`px-3.5 py-2.5 border-b flex items-center justify-between gap-2 ${headerBg}`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-mono font-bold text-[#292320] text-sm tabular-nums truncate">
                   {shortTicketDisplay}
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#6B2837] text-white shrink-0">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#6B2837] text-[#FFFCF7] shrink-0">
                   R{ticket.round?.roundNumber || 1}
                 </span>
-                {group.isConsolidated && group.tickets.length > 1 && (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#292320]/10 text-[#292320] shrink-0">
-                    {group.tickets.length} Stations
-                  </span>
-                )}
+                <span className="text-xs font-semibold text-[#292320] truncate flex items-center gap-1">
+                  {orderType === "TAKEAWAY" ? (
+                    <ShoppingBag className="h-3.5 w-3.5 text-[#946000] shrink-0" />
+                  ) : orderType === "DELIVERY" ? (
+                    <Truck className="h-3.5 w-3.5 text-[#315F85] shrink-0" />
+                  ) : (
+                    <Store className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
+                  )}
+                  <span className="truncate">{destinationLabel}</span>
+                </span>
               </div>
 
-              {/* Timer / Served Badge */}
               {isServed ? (
-                <div className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#2D6A4F]/10 text-[#2D6A4F] border border-[#C8DFCD]">
-                  <CheckCircle2 className="h-3 w-3 text-[#16A34A]" />
-                  <span>Served</span>
-                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#FFFCF7] text-[#28634B] border border-[#C3DED0] shrink-0">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Served
+                </span>
               ) : (
-                <div
-                  className={`flex items-center gap-1 font-mono text-[11px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+                <span
+                  className={`inline-flex items-center gap-1 font-mono text-[11px] font-semibold px-2 py-0.5 rounded-md tabular-nums shrink-0 border ${
                     isDelayed
-                      ? "bg-[#DC2626] text-white animate-pulse"
+                      ? "bg-[#B33432] text-[#FFFCF7] border-[#B33432]"
                       : isWarning
-                      ? "bg-[#D97706] text-white"
-                      : "bg-[#292320]/10 text-[#292320]"
+                      ? "bg-[#946000] text-[#FFFCF7] border-[#946000]"
+                      : "bg-[#FFFCF7] text-[#292320] border-[#D8CEC1]"
                   }`}
                   title={`Ordered at ${new Date(group.createdAt).toLocaleTimeString()}`}
                 >
                   <Clock className="h-3 w-3" />
-                  <span>{timeInfo.display}</span>
-                </div>
+                  {timeInfo.display}
+                </span>
               )}
             </div>
 
-            {/* Destination Info & Station */}
-            <div className="p-3 bg-[#FFFCF7] border-b border-[#D8CEC1]/50 flex items-center justify-between text-xs gap-2">
-              <div className="flex items-center gap-1.5 font-bold text-[#292320] min-w-0">
-                {orderType === "DINE_IN" ? (
-                  <>
-                    <Store className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
-                    <span className="truncate">
-                      {tableName ? `Table ${tableName}` : "Dine-In (Counter)"}
-                    </span>
-                  </>
-                ) : orderType === "BAR_WALK_IN" ? (
-                  <>
-                    <Store className="h-3.5 w-3.5 text-[#6B2837] shrink-0" />
-                    <span className="truncate">Counter Dine-In</span>
-                  </>
-                ) : orderType === "TAKEAWAY" ? (
-                  <>
-                    <ShoppingBag className="h-3.5 w-3.5 text-[#B45309] shrink-0" />
-                    <span className="truncate">Takeaway</span>
-                  </>
-                ) : (
-                  <>
-                    <Truck className="h-3.5 w-3.5 text-[#2D6A4F] shrink-0" />
-                    <span className="truncate">Delivery</span>
-                  </>
-                )}
-              </div>
-
-              <span
-                className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E] shrink-0 max-w-[140px] truncate"
-                title={
-                  group.isConsolidated && group.tickets.length > 1
-                    ? group.tickets.map((t) => t.station?.name).filter(Boolean).join(", ")
-                    : ticket.station?.name || "Kitchen"
-                }
-              >
+            {/* Station Sub-Bar */}
+            <div className="px-3.5 py-1.5 bg-[#F7F3EC]/60 border-b border-[#D8CEC1]/60 flex items-center justify-between text-[11px] text-[#71675E]">
+              <span className="font-medium truncate">
                 {group.isConsolidated && group.tickets.length > 1
                   ? `${group.tickets.length} Stations`
-                  : ticket.station?.name || "Kitchen"}
+                  : ticket.station?.name || "Main Kitchen"}
+              </span>
+              <span className="tabular-nums shrink-0">
+                {group.allLines.filter((l) => l.status !== "CANCELLED").length}{" "}
+                {group.allLines.filter((l) => l.status !== "CANCELLED").length === 1 ? "item" : "items"}
               </span>
             </div>
 
-            {/* Dish Lines List — Per-Item Status & 1-Tap Progression */}
-            <div className="p-3 flex-1 overflow-y-auto space-y-2.5 text-xs divide-y divide-[#D8CEC1]/50">
+            {/* Dish Lines — Clean Single-Row Per-Item Controls */}
+            <div className="divide-y divide-[#D8CEC1]/50 flex-1 overflow-y-auto">
               {group.allLines.map((line) => {
-                const lineStatus = line.status || "QUEUED";
-                const isLineQueued = lineStatus === "QUEUED";
-                const isLinePreparing = lineStatus === "PREPARING";
-                const isLineReady = lineStatus === "READY";
-                const isLineServed = lineStatus === "SERVED";
-                const isLineCancelled = lineStatus === "CANCELLED";
+                const status = (line.status || "QUEUED") as keyof typeof LINE_STATUS_META;
+                const statusMeta = LINE_STATUS_META[status] || LINE_STATUS_META.QUEUED;
+                const isLineQueued = status === "QUEUED";
+                const isLinePreparing = status === "PREPARING";
+                const isLineReady = status === "READY";
+                const isLineServed = status === "SERVED";
+                const isLineCancelled = status === "CANCELLED";
                 const isLineBusy = Boolean(updatingLineIds[line.id]);
-
-                const statusBadge = isLineCancelled
-                  ? { label: "Cancelled", cls: "bg-[#FAEAEC] text-[#B33432] border-[#E9B6B7]" }
-                  : isLineServed
-                  ? { label: "Served", cls: "bg-[#EDF4F9] text-[#315F85] border-[#B8D2E6]" }
-                  : isLineReady
-                  ? { label: "Ready", cls: "bg-[#EAF3EE] text-[#28634B] border-[#C3DED0]" }
-                  : isLinePreparing
-                  ? { label: "Preparing", cls: "bg-[#FDF5E7] text-[#946000] border-[#EDD7AD]" }
-                  : { label: "Queued", cls: "bg-[#EEE7DD] text-[#71675E] border-[#D8CEC1]" };
+                const { isParcel, cleanNote } = parseLineNote(line.notes);
 
                 return (
                   <div
                     key={`${line.ticketId}_${line.id}`}
-                    className={`pt-2.5 first:pt-0 space-y-1.5 ${
-                      isLineCancelled ? "opacity-50 line-through" : ""
+                    className={`px-3.5 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${
+                      isLineCancelled ? "opacity-50 bg-[#F7F3EC]/40" : "hover:bg-[#F7F3EC]/40"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <span className="font-bold text-[#292320] text-sm tabular-nums shrink-0">
+                    {/* Left: Qty + Item Info + Status */}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-[#292320] text-xs tabular-nums shrink-0 px-1.5 py-0.5 rounded bg-[#EEE7DD]">
                           {line.quantity}x
                         </span>
-                        <div className="min-w-0">
-                          <div
-                            className={`font-semibold leading-tight flex items-center flex-wrap gap-1 ${
-                              isLineServed ? "line-through text-[#71675E]" : "text-[#292320]"
-                            }`}
-                          >
-                            <span>{line.itemName}</span>
-                            {group.isConsolidated && group.tickets.length > 1 && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#F7F3EC] border border-[#D8CEC1] text-[#71675E]">
-                                {line.stationName}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Modifiers tags */}
-                          {line.modifiersSnapshot && line.modifiersSnapshot.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {line.modifiersSnapshot.map((mod: any, mIdx: number) => (
-                                <span
-                                  key={mIdx}
-                                  className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]"
-                                >
-                                  {mod.optionName || mod.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {line.notes && (
-                            <div className="text-[10px] text-[#946000] font-medium mt-0.5">
-                              Note: {line.notes}
-                            </div>
-                          )}
-                        </div>
+                        <span
+                          className={`text-xs font-semibold truncate ${
+                            isLineCancelled || isLineServed
+                              ? "line-through text-[#71675E]"
+                              : "text-[#292320]"
+                          }`}
+                          title={line.itemName}
+                        >
+                          {line.itemName}
+                        </span>
                       </div>
 
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${statusBadge.cls}`}
-                      >
-                        {statusBadge.label}
-                      </span>
+                      <div className="flex items-center flex-wrap gap-1.5">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${statusMeta.badge}`}
+                        >
+                          {statusMeta.label}
+                        </span>
+
+                        {isParcel && orderType === "DINE_IN" && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]">
+                            Parcel
+                          </span>
+                        )}
+
+                        {group.isConsolidated && group.tickets.length > 1 && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F7F3EC] text-[#71675E] border border-[#D8CEC1]">
+                            {line.stationName}
+                          </span>
+                        )}
+
+                        {line.modifiersSnapshot?.map((mod: any, mIdx: number) => (
+                          <span
+                            key={mIdx}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#FDF5E7] text-[#946000] border border-[#EDD7AD]"
+                          >
+                            {mod.optionName || mod.name}
+                          </span>
+                        ))}
+                      </div>
+
+                      {cleanNote && (
+                        <p className="text-[11px] text-[#946000] font-medium leading-snug">
+                          Note: {cleanNote}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Per-Item Workflow Action Controls */}
+                    {/* Right: 1-Tap Item Progress + Item Cancel */}
                     {!isLineCancelled && !isServed && (
-                      <div className="flex items-center justify-end gap-1.5 pl-6">
+                      <div className="flex items-center gap-1 shrink-0">
                         {isLineQueued && (
                           <button
                             type="button"
@@ -416,7 +383,7 @@ export const KdsTicketGrid: React.FC = () => {
                             onClick={() => updateLineStatus(line.ticketId, line.id, "PREPARING")}
                             className="h-7 px-2.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold cursor-pointer transition-colors"
                           >
-                            {isLineBusy ? "..." : "Start Prep"}
+                            {isLineBusy ? "..." : "Start"}
                           </button>
                         )}
                         {isLinePreparing && (
@@ -424,10 +391,9 @@ export const KdsTicketGrid: React.FC = () => {
                             type="button"
                             disabled={isLineBusy}
                             onClick={() => updateLineStatus(line.ticketId, line.id, "READY")}
-                            className="h-7 px-2.5 rounded-md bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            className="h-7 px-2.5 rounded-md bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold cursor-pointer transition-colors"
                           >
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>{isLineBusy ? "..." : "Mark Ready"}</span>
+                            {isLineBusy ? "..." : "Ready"}
                           </button>
                         )}
                         {isLineReady && (
@@ -435,10 +401,9 @@ export const KdsTicketGrid: React.FC = () => {
                             type="button"
                             disabled={isLineBusy}
                             onClick={() => updateLineStatus(line.ticketId, line.id, "SERVED")}
-                            className="h-7 px-2.5 rounded-md bg-[#315F85] hover:bg-[#264B6A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            className="h-7 px-2.5 rounded-md bg-[#315F85] hover:bg-[#264B6A] disabled:opacity-50 text-[#FFFCF7] text-[11px] font-semibold cursor-pointer transition-colors"
                           >
-                            <Check className="h-3 w-3" />
-                            <span>{isLineBusy ? "..." : "Serve Item"}</span>
+                            {isLineBusy ? "..." : "Serve"}
                           </button>
                         )}
                         {isLineServed && (
@@ -446,11 +411,33 @@ export const KdsTicketGrid: React.FC = () => {
                             type="button"
                             disabled={isLineBusy}
                             onClick={() => updateLineStatus(line.ticketId, line.id, "READY")}
-                            className="h-6 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] disabled:opacity-50 text-[#71675E] text-[10px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                            title="Recall item back to Ready"
+                            className="h-7 px-2 rounded-md border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] disabled:opacity-50 text-[#71675E] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            title="Move item back to Ready"
                           >
-                            <RotateCcw className="h-2.5 w-2.5" />
+                            <RotateCcw className="h-3 w-3" />
                             <span>Undo</span>
+                          </button>
+                        )}
+
+                        {!isLineServed && (
+                          <button
+                            type="button"
+                            disabled={isLineBusy}
+                            onClick={() =>
+                              setCancellingTarget({
+                                kind: "LINE",
+                                ticketId: line.ticketId,
+                                lineId: line.id,
+                                itemName: line.itemName,
+                                quantity: line.quantity,
+                                tableNumber: destinationLabel,
+                              })
+                            }
+                            aria-label={`Cancel ${line.itemName}`}
+                            title={`Cancel ${line.itemName}`}
+                            className="h-7 w-7 rounded-md border border-[#E9B6B7] bg-[#FAEAEC] hover:bg-[#F4D5D9] disabled:opacity-50 text-[#B33432] flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
@@ -460,34 +447,34 @@ export const KdsTicketGrid: React.FC = () => {
               })}
             </div>
 
-            {/* Bottom Actions */}
-            <div className="p-2.5 border-t border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between gap-2 shrink-0">
-              {/* Void Prompt */}
+            {/* Bottom Bulk Footer */}
+            <div className="px-3.5 py-2.5 border-t border-[#D8CEC1] bg-[#F7F3EC] flex items-center justify-between gap-2 shrink-0">
               {activeTab === "ACTIVE" && ticket.order?.id && (
                 <button
                   type="button"
                   onClick={() =>
-                    setCancellingOrder({
+                    setCancellingTarget({
+                      kind: "ORDER",
                       ticketId: ticket.id,
                       orderId: ticket.order.id!,
-                      tableNumber: tableName || "Order",
+                      tableNumber: destinationLabel,
                     })
                   }
-                  className="p-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-[#DC2626] transition-colors cursor-pointer"
-                  title="Void order from kitchen"
+                  className="h-8 px-2.5 rounded-lg border border-[#E9B6B7] bg-[#FAEAEC] hover:bg-[#F4D5D9] text-[#B33432] text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                  title="Cancel entire order from kitchen"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <X className="h-3.5 w-3.5" />
+                  <span>Cancel Order</span>
                 </button>
               )}
 
-              {/* Workflow Status Advance Buttons */}
               {isQueued && (
                 <button
                   type="button"
                   onClick={() => advanceGroupStatus("PREPARING")}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs text-center"
+                  className="flex-1 h-8 px-3 rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  Start Prep
+                  Start All
                 </button>
               )}
 
@@ -495,10 +482,10 @@ export const KdsTicketGrid: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => advanceGroupStatus("READY")}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs text-center flex items-center justify-center gap-1"
+                  className="flex-1 h-8 px-3 rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] text-[#FFFCF7] text-xs font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Mark All Ready</span>
+                  <span>Ready All</span>
                 </button>
               )}
 
@@ -506,10 +493,10 @@ export const KdsTicketGrid: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => advanceGroupStatus("SERVED")}
-                  className="flex-1 py-1.5 px-3 rounded-lg bg-[#1E40AF] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs text-center flex items-center justify-center gap-1"
+                  className="flex-1 h-8 px-3 rounded-lg bg-[#315F85] hover:bg-[#264B6A] text-[#FFFCF7] text-xs font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  <span>Serve / Clear</span>
+                  <span>Serve All</span>
                 </button>
               )}
 
@@ -517,7 +504,7 @@ export const KdsTicketGrid: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => advanceGroupStatus("READY")}
-                  className="flex-1 py-1.5 px-3 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#71675E] text-xs font-semibold transition-colors cursor-pointer text-center flex items-center justify-center gap-1"
+                  className="flex-1 h-8 px-3 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] text-[#292320] text-xs font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Recall to Ready</span>
@@ -530,4 +517,3 @@ export const KdsTicketGrid: React.FC = () => {
     </div>
   );
 };
-
