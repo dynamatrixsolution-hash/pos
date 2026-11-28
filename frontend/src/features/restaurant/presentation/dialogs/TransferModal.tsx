@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowRightLeft, X } from "lucide-react";
 import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
@@ -11,17 +11,35 @@ import { toast } from "@/components/toast";
 export const TransferModal = React.memo(function TransferModal() {
   const show = usePosUiStore((s) => s.showTransferModal);
   const setShow = usePosUiStore((s) => s.setShowTransferModal);
+  const dineInView = usePosUiStore((s) => s.dineInView);
   const selectedTableId = usePosUiStore((s) => s.selectedTableId);
   const setSelectedTable = usePosUiStore((s) => s.setSelectedTable);
   const syncUrlView = usePosUiStore((s) => s.syncUrlView);
 
   const tables = usePosCatalogStore((s) => s.tables);
-  const loadInitialCatalog = usePosCatalogStore((s) => s.loadInitialCatalog);
+  const refreshTables = usePosCatalogStore((s) => s.refreshTables);
   const fetchTableOrders = usePosTicketsStore((s) => s.fetchTableOrders);
+  const fetchActiveOrders = usePosTicketsStore((s) => s.fetchActiveOrders);
 
   const [targetTableId, setTargetTableId] = useState("");
   const [reason, setReason] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setTargetTableId("");
+      setReason("");
+    }
+  }, [show, selectedTableId]);
+
+  useEffect(() => {
+    if (!show) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isTransferring) setShow(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [show, isTransferring, setShow]);
 
   if (!show || !selectedTableId) return null;
 
@@ -39,10 +57,14 @@ export const TransferModal = React.memo(function TransferModal() {
       setShow(false);
       setTargetTableId("");
       setReason("");
-      setSelectedTable(newId);
-      syncUrlView("MENU_POS", newId);
-      await loadInitialCatalog();
-      await fetchTableOrders(newId);
+      if (dineInView === "MENU_POS") {
+        setSelectedTable(newId);
+        syncUrlView("MENU_POS", newId);
+        await fetchTableOrders(newId);
+      } else {
+        setSelectedTable("");
+      }
+      await Promise.all([refreshTables(), fetchActiveOrders()]);
       toast.success("Table transferred successfully");
     } catch (err: any) {
       toast.error(err?.message || "Failed to transfer table");
@@ -52,15 +74,23 @@ export const TransferModal = React.memo(function TransferModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="transfer-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isTransferring) setShow(false);
+      }}
+    >
       <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-2.5">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-100 text-[#B45309]">
+            <div className="p-1.5 rounded-lg bg-[#FDF5E7] border border-[#EDD7AD] text-[#946000]">
               <ArrowRightLeft className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#292320]">
+              <h3 id="transfer-modal-title" className="text-sm font-bold text-[#292320]">
                 Transfer Table {currentTable?.tableNumber}
               </h3>
               <p className="text-[11px] text-[#71675E]">Move active guest session to another table</p>
@@ -69,6 +99,7 @@ export const TransferModal = React.memo(function TransferModal() {
           <button
             type="button"
             onClick={() => setShow(false)}
+            aria-label="Close modal"
             className="text-[#71675E] hover:text-[#292320] cursor-pointer"
           >
             <X className="h-4 w-4" />

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   X,
   UtensilsCrossed,
@@ -31,9 +31,28 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
 
   const setShowSettlementModal = usePosUiStore((s) => s.setShowSettlementModal);
 
+  useEffect(() => {
+    if (!inspectingTable) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeTableInspection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [inspectingTable, closeTableInspection]);
+
   if (!inspectingTable) return null;
 
   const activeOrder = inspectingOrderData?.activeOrder;
+  const activeItemCount =
+    activeOrder?.rounds?.reduce(
+      (acc: number, r: any) =>
+        acc +
+        (r.lines || []).filter(
+          (l: any) => l.acceptanceStatus !== "REJECTED" && l.fulfillmentStatus !== "CANCELLED"
+        ).length,
+      0
+    ) || 0;
+  const canPay = !isInspectingLoading && Boolean(activeOrder) && activeItemCount > 0;
 
   const handleTakeOrder = () => {
     selectOccupiedSpace(inspectingTable, activeOrder ? { activeOrder } : undefined);
@@ -64,20 +83,28 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
   };
 
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="table-inspection-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) closeTableInspection();
+        }}
+      >
         <div className="w-full max-w-lg rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4 max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-3 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-[#6B2837] text-white">
+              <div className="p-2 rounded-lg bg-[#6B2837] text-[#FFFCF7]">
                 <Receipt className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#292320]">
-                  Table {inspectingTable.tableNumber} — Order Details
+                <h3 id="table-inspection-title" className="text-sm font-bold text-[#292320]">
+                  Table {inspectingTable.tableNumber} Order Details
                 </h3>
-                <p className="text-[11px] text-[#71675E]">
-                  {inspectingTable.floor?.name || "Floor"} • {inspectingTable.capacity} covers
+                <p className="text-[11px] text-[#71675E] tabular-nums">
+                  {inspectingTable.floor?.name || "Floor"} &bull; {inspectingTable.capacity} covers
                   {activeOrder?.orderNumber && (
                     <span className="font-mono font-bold text-[#6B2837] ml-2">
                       #{activeOrder.orderNumber}
@@ -90,6 +117,7 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
             <button
               type="button"
               onClick={closeTableInspection}
+              aria-label="Close modal"
               className="h-8 w-8 rounded-lg border border-[#D8CEC1] bg-[#FFFCF7] hover:bg-[#EEE7DD] flex items-center justify-center text-[#71675E] hover:text-[#292320] cursor-pointer"
             >
               <X className="h-4 w-4" />
@@ -99,9 +127,17 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
           {/* Body: Rounds & Lines */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {isInspectingLoading ? (
-              <div className="py-12 text-center text-xs text-[#71675E] space-y-2">
-                <div className="inline-block animate-spin h-6 w-6 border-2 border-[#6B2837] border-t-transparent rounded-full" />
-                <p>Loading table order details...</p>
+              <div className="space-y-2.5 py-2">
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <div key={idx} className="p-3 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] space-y-2">
+                    <div className="flex justify-between">
+                      <div className="h-3.5 w-24 rounded bg-[#EEE7DD] animate-pulse" />
+                      <div className="h-4 w-16 rounded bg-[#EEE7DD] animate-pulse" />
+                    </div>
+                    <div className="h-3 w-3/4 rounded bg-[#EEE7DD] animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-[#EEE7DD] animate-pulse" />
+                  </div>
+                ))}
               </div>
             ) : activeOrder && activeOrder.rounds?.length > 0 ? (
               <div className="space-y-3">
@@ -175,10 +211,12 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
                                       itemName: line.itemName,
                                       currentQty: line.quantity,
                                       notes: line.notes,
+                                      fulfillmentStatus: line.fulfillmentStatus,
                                     })
                                   }
+                                  aria-label={`Cancel or adjust ${line.itemName}`}
                                   title="Cancel or adjust dish"
-                                  className="p-1 rounded text-[#71675E] hover:text-[#DC2626] hover:bg-red-50 cursor-pointer"
+                                  className="p-1 rounded text-[#71675E] hover:text-[#B33432] hover:bg-[#FAEAEC] cursor-pointer"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
@@ -214,8 +252,9 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
           <div className="pt-3 border-t border-[#D8CEC1] flex items-center justify-between gap-2 shrink-0">
             <button
               type="button"
+              disabled={isInspectingLoading}
               onClick={handleOpenCancelConfirmation}
-              className="px-3 py-2 text-xs font-bold rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-[#DC2626] flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              className="px-3 py-2 text-xs font-semibold rounded-lg border border-[#E9B6B7] bg-[#FAEAEC] hover:bg-[#F5D8DC] disabled:opacity-40 disabled:cursor-not-allowed text-[#B33432] flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Cancel table and void all orders"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -226,7 +265,7 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
               <button
                 type="button"
                 onClick={handleTakeOrder}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <UtensilsCrossed className="h-3.5 w-3.5" />
                 <span>Take Order</span>
@@ -234,8 +273,9 @@ export const TableInspectionModal = React.memo(function TableInspectionModal() {
 
               <button
                 type="button"
+                disabled={!canPay}
                 onClick={handlePay}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#16A34A] hover:bg-[#15803D] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#28634B] hover:bg-[#1E4D3A] disabled:opacity-40 disabled:cursor-not-allowed text-[#FFFCF7] flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <CreditCard className="h-3.5 w-3.5" />
                 <span>Pay</span>

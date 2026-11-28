@@ -43,7 +43,10 @@ interface PosUiState {
   setShowSettlementModal: (open: boolean) => void;
 
   syncUrlView: (view: DineInView, tableId?: string) => void;
+  setNavigator: (nav: ((url: string) => void) | null) => void;
 }
+
+let activeNavigator: ((url: string) => void) | null = null;
 
 export const usePosUiStore = create<PosUiState>((set, get) => ({
   dineInView: "SELECT_SPACE",
@@ -79,24 +82,26 @@ export const usePosUiStore = create<PosUiState>((set, get) => ({
   setShowModifierModal: (showModifierModal) => set({ showModifierModal }),
   setShowSettlementModal: (showSettlementModal) => set({ showSettlementModal }),
 
+  setNavigator: (nav) => {
+    activeNavigator = nav;
+  },
+
   syncUrlView: (view, tableId) => {
     set({
       dineInView: view,
       isTicketDrawerOpen: view === "MENU_POS",
-      ...(view === "SELECT_SPACE" ? { selectedTableId: "" } : {}),
+      ...(view === "SELECT_SPACE" ? { selectedTableId: "", selectedSessionId: "" } : {}),
     });
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.pathname = "/dashboard/restaurant/pos";
-      url.searchParams.set("view", view === "MENU_POS" ? "menu" : "tables");
-      if (tableId) {
-        url.searchParams.set("tableId", tableId);
-      } else {
-        url.searchParams.delete("tableId");
-      }
-      window.history.pushState(null, "", url.toString());
-      window.dispatchEvent(new Event("urlchange"));
-      window.dispatchEvent(new Event("popstate"));
+    const params = new URLSearchParams();
+    params.set("view", view === "MENU_POS" ? "menu" : "tables");
+    if (tableId && view === "MENU_POS") {
+      params.set("tableId", tableId);
+    }
+    const nextUrl = `/dashboard/restaurant/pos?${params.toString()}`;
+    if (activeNavigator) {
+      activeNavigator(nextUrl);
+    } else if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", nextUrl);
     }
   },
 }));

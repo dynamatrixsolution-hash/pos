@@ -116,6 +116,8 @@ function buildOrderSnapshot(order: any): {
   };
 }
 
+const inFlightTableOrders = new Map<string, Promise<any>>();
+
 export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
   activeAllOrders: [],
   activeOrderId: "",
@@ -145,14 +147,23 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
 
   fetchTableOrders: async (tableId: string) => {
     if (!tableId) return null;
-    try {
-      const data = await restaurantPosRepository.fetchTableOrders(tableId);
-      const order = data?.activeOrder || null;
-      set(buildOrderSnapshot(order));
-      return order;
-    } catch {
-      return null;
-    }
+    const existingReq = inFlightTableOrders.get(tableId);
+    if (existingReq) return existingReq;
+
+    const req = restaurantPosRepository
+      .fetchTableOrders(tableId)
+      .then((data) => {
+        const order = data?.activeOrder || null;
+        set(buildOrderSnapshot(order));
+        return order;
+      })
+      .catch(() => null)
+      .finally(() => {
+        inFlightTableOrders.delete(tableId);
+      });
+
+    inFlightTableOrders.set(tableId, req);
+    return req;
   },
 
   setActiveOrder: (order) => {
@@ -208,7 +219,7 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
       }
 
       set({ cancellingTable: null, isCancellingTable: false, inspectingTable: null, inspectingOrderData: null });
-      usePosCatalogStore.getState().loadInitialCatalog();
+      usePosCatalogStore.getState().refreshTables();
       get().fetchActiveOrders();
       toast.success(target.tableNumber ? `Table ${target.tableNumber} order cancelled.` : "Order cancelled.");
       return true;
@@ -227,7 +238,7 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
 
     set({ isUpdatingLine: true });
     try {
-      await restaurantPosRepository.updateOrderLine(
+      const res = await restaurantPosRepository.updateOrderLine(
         target.orderId,
         target.lineId,
         action,
@@ -254,9 +265,11 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
       set({ adjustingLine: null, isUpdatingLine: false });
       toast.success(
         action === "CANCEL"
-          ? `${target.itemName} cancelled.`
+          ? res?.wasPreparing
+            ? `${target.itemName} cancelled. Kitchen alerted immediately to stop preparation.`
+            : `${target.itemName} cancelled and kitchen notified.`
           : action === "ADJUST_QTY"
-          ? `${target.itemName} quantity updated.`
+          ? `${target.itemName} quantity updated and kitchen notified.`
           : `${target.itemName} serving note updated.`
       );
       return true;
@@ -297,7 +310,7 @@ export const usePosTicketsStore = create<PosTicketsState>((set, get) => ({
         ui.setOrderType(targetType);
         ui.syncUrlView("MENU_POS");
         get().setActiveOrder(res.order);
-        usePosCatalogStore.getState().loadInitialCatalog();
+        usePosCatalogStore.getState().refreshTables();
         get().fetchActiveOrders();
       } else {
         usePosCartStore

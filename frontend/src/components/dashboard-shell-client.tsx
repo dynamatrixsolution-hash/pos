@@ -1014,7 +1014,7 @@ export default function DashboardShellClient({
             {/* 1. Sidebar desktop */}
       {userRole === "SUPER_ADMIN" ? (
         <aside 
-          className="hidden md:flex md:flex-col flex-shrink-0 w-64 bg-[#F7F3EC] border-r border-[#D8CEC1] no-print font-sans"
+          className="hidden lg:flex lg:flex-col flex-shrink-0 w-64 bg-[#F7F3EC] border-r border-[#D8CEC1] no-print font-sans"
         >
           {/* Brand Header */}
           <div className="h-16 flex items-center px-5 border-b border-[#D8CEC1] bg-[#F7F3EC]">
@@ -1079,7 +1079,7 @@ export default function DashboardShellClient({
           </div>
         </aside>
       ) : (
-        <aside className="hidden md:flex md:flex-col flex-shrink-0 transition-all duration-300 bg-[#1F1719] border-r border-[#33262A] no-print w-60">
+        <aside className="hidden lg:flex lg:flex-col flex-shrink-0 transition-all duration-300 bg-[#1F1719] border-r border-[#33262A] no-print w-60">
           <div className="h-14 flex items-center justify-between px-4 border-b border-[#33262A] bg-[#1F1719]">
             <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
               <img src="/logo-icon.jpg" alt="RestroInn Logo" className="h-7 w-7 rounded-lg object-contain shrink-0 border border-[#3B2D31]" />
@@ -1243,12 +1243,12 @@ export default function DashboardShellClient({
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-lg text-[#71675E] hover:bg-[#EEE7DD] shrink-0"
+              className="lg:hidden p-1.5 rounded-lg text-[#71675E] hover:bg-[#EEE7DD] shrink-0"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="md:hidden font-bold text-sm text-[#6B2837] shrink-0">RestroInn</div>
+            <div className="lg:hidden font-bold text-sm text-[#6B2837] shrink-0">RestroInn</div>
 
             {activeBranch && user.role !== "SUPER_ADMIN" && (
               <div className="relative shrink-0">
@@ -1311,7 +1311,7 @@ export default function DashboardShellClient({
 
             {/* Minimalist Global Search & Quick Navigate */}
             {user.role !== "SUPER_ADMIN" && (
-              <div className="hidden md:flex items-center gap-2 min-w-0 flex-1 max-w-md">
+              <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1 max-w-md">
                 <div className="relative flex-1 min-w-[150px] max-w-[300px]">
                   <div className="flex items-center h-8 px-2.5 gap-2 rounded-lg border border-[#D8CEC1] bg-[#F7F3EC] focus-within:bg-[#FFFCF7] focus-within:border-[#6B2837] transition-colors">
                     <Search className="h-3.5 w-3.5 text-[#71675E] shrink-0" />

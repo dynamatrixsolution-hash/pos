@@ -28,6 +28,8 @@ interface PosCatalogState {
 
   // Actions
   loadInitialCatalog: () => Promise<void>;
+  refreshTables: () => Promise<void>;
+  resetSpaceFilters: () => void;
   setSelectedFloorId: (id: string) => void;
   setSelectedSpaceType: (cat: SpaceCategory) => void;
   setSelectedStatusFilter: (status: string) => void;
@@ -70,6 +72,23 @@ export const usePosCatalogStore = create<PosCatalogState>((set, get) => ({
       set({ isLoading: false, error: err.message || "Failed to load catalog" });
     }
   },
+
+  refreshTables: async () => {
+    try {
+      const tables = await restaurantPosRepository.fetchTables();
+      set({ tables });
+    } catch {
+      // transient poll dropouts handled silently
+    }
+  },
+
+  resetSpaceFilters: () =>
+    set({
+      selectedFloorId: "ALL",
+      selectedSpaceType: "ALL",
+      selectedStatusFilter: "ALL",
+      spaceSearchQuery: "",
+    }),
 
   setSelectedFloorId: (selectedFloorId) => set({ selectedFloorId }),
   setSelectedSpaceType: (selectedSpaceType) => set({ selectedSpaceType }),

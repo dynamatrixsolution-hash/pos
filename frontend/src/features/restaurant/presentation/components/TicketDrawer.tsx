@@ -689,8 +689,10 @@ export const TicketDrawer = React.memo(function TicketDrawer() {
                                 itemName: line.itemName,
                                 currentQty: line.quantity,
                                 notes: line.notes,
+                                fulfillmentStatus: line.fulfillmentStatus,
                               })
                             }
+                            aria-label={`Cancel or adjust ${line.itemName}`}
                             className="p-0.5 text-[#71675E] hover:text-[#B33432] cursor-pointer"
                             title="Cancel or adjust dish"
                           >

@@ -13,7 +13,26 @@ import {
   DeliveryDetails,
 } from "../models/pos.types";
 
+function mapSpaceTable(t: any): SpaceTable {
+  return {
+    id: t.id,
+    tableNumber: t.tableNumber,
+    capacity: t.capacity,
+    status: t.status,
+    floorId: t.floorId,
+    floor: t.floor,
+    currentSessionId: t.currentSessionId,
+    tableSessions: t.tableSessions,
+    metadata: t.metadata,
+  };
+}
+
 export class RestaurantPosRepository {
+  async fetchTables(): Promise<SpaceTable[]> {
+    const tableRes = await apiClient.restaurant.getTables();
+    return (tableRes.tables || []).map(mapSpaceTable);
+  }
+
   async fetchInitialData(): Promise<{
     floors: Floor[];
     tables: SpaceTable[];
@@ -32,17 +51,7 @@ export class RestaurantPosRepository {
       level: f.level || 0,
     }));
 
-    const tables: SpaceTable[] = (tableRes.tables || []).map((t: any) => ({
-      id: t.id,
-      tableNumber: t.tableNumber,
-      capacity: t.capacity,
-      status: t.status,
-      floorId: t.floorId,
-      floor: t.floor,
-      currentSessionId: t.currentSessionId,
-      tableSessions: t.tableSessions,
-      metadata: t.metadata,
-    }));
+    const tables: SpaceTable[] = (tableRes.tables || []).map(mapSpaceTable);
 
     // Process catalog items from restaurant menus (catRes.catalog) and fallback categories
     const rawItems: any[] = [];
@@ -147,7 +156,7 @@ export class RestaurantPosRepository {
     return apiClient.restaurant.getTableOrders(tableId);
   }
 
-  async seatGuests(tableId: string, guestCount: number, notes?: string): Promise<any> {
+  async seatGuests(tableId: string, guestCount = 0, notes?: string): Promise<any> {
     return apiClient.restaurant.seatGuests(tableId, { guestCount, notes });
   }
 

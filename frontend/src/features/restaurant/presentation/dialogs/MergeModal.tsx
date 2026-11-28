@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { GitMerge, X } from "lucide-react";
 import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
@@ -14,12 +14,29 @@ export const MergeModal = React.memo(function MergeModal() {
   const selectedTableId = usePosUiStore((s) => s.selectedTableId);
 
   const tables = usePosCatalogStore((s) => s.tables);
-  const loadInitialCatalog = usePosCatalogStore((s) => s.loadInitialCatalog);
+  const refreshTables = usePosCatalogStore((s) => s.refreshTables);
   const fetchTableOrders = usePosTicketsStore((s) => s.fetchTableOrders);
+  const fetchActiveOrders = usePosTicketsStore((s) => s.fetchActiveOrders);
 
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [isMerging, setIsMerging] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setSelectedSourceIds([]);
+      setReason("");
+    }
+  }, [show, selectedTableId]);
+
+  useEffect(() => {
+    if (!show) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isMerging) setShow(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [show, isMerging, setShow]);
 
   if (!show || !selectedTableId) return null;
 
@@ -44,8 +61,7 @@ export const MergeModal = React.memo(function MergeModal() {
       setShow(false);
       setSelectedSourceIds([]);
       setReason("");
-      await loadInitialCatalog();
-      await fetchTableOrders(selectedTableId);
+      await Promise.all([refreshTables(), fetchActiveOrders(), fetchTableOrders(selectedTableId)]);
       toast.success("Tables merged successfully");
     } catch (err: any) {
       toast.error(err?.message || "Failed to merge tables");
@@ -55,15 +71,23 @@ export const MergeModal = React.memo(function MergeModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="merge-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isMerging) setShow(false);
+      }}
+    >
       <div className="w-full max-w-md rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-[#D8CEC1] pb-2.5">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#EDF5ED] text-[#2D6A4F]">
+            <div className="p-1.5 rounded-lg bg-[#EAF3EE] border border-[#C3DED0] text-[#28634B]">
               <GitMerge className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#292320]">
+              <h3 id="merge-modal-title" className="text-sm font-bold text-[#292320]">
                 Merge Tables into Table {currentTable?.tableNumber}
               </h3>
               <p className="text-[11px] text-[#71675E]">
@@ -74,6 +98,7 @@ export const MergeModal = React.memo(function MergeModal() {
           <button
             type="button"
             onClick={() => setShow(false)}
+            aria-label="Close modal"
             className="text-[#71675E] hover:text-[#292320] cursor-pointer"
           >
             <X className="h-4 w-4" />

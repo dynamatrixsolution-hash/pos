@@ -24,10 +24,21 @@ export const LineAdjustmentModal: React.FC = () => {
     }
   }, [adjustingLine?.lineId, adjustingLine?.currentQty]);
 
+  useEffect(() => {
+    if (!adjustingLine) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isUpdatingLine) setAdjustingLine(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [adjustingLine, isUpdatingLine, setAdjustingLine]);
+
   if (!adjustingLine) return null;
 
   const maxQty = adjustingLine.currentQty || 1;
   const isAlreadyTakeaway = /\b(TAKEAWAY|PARCEL)\b/i.test(adjustingLine.notes || "");
+  const isPreparingInKitchen = adjustingLine.fulfillmentStatus === "PREPARING";
+  const isReadyInKitchen = adjustingLine.fulfillmentStatus === "READY";
 
   const handleToggleServingNote = async () => {
     const cleaned = (adjustingLine.notes || "")
@@ -48,7 +59,15 @@ export const LineAdjustmentModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="line-adjustment-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isUpdatingLine) setAdjustingLine(null);
+      }}
+    >
       <div className="w-full max-w-sm rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-5 space-y-4">
         <div className="flex items-start justify-between border-b border-[#D8CEC1] pb-3">
           <div className="flex items-center gap-2.5">
@@ -56,7 +75,7 @@ export const LineAdjustmentModal: React.FC = () => {
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#292320]">Adjust or Cancel Item</h4>
+              <h4 id="line-adjustment-title" className="text-sm font-bold text-[#292320]">Adjust or Cancel Item</h4>
               <p className="text-[11px] text-[#71675E] font-medium truncate max-w-[200px] tabular-nums">
                 {adjustingLine.itemName} ({adjustingLine.currentQty}x)
               </p>
@@ -65,11 +84,28 @@ export const LineAdjustmentModal: React.FC = () => {
           <button
             type="button"
             onClick={() => setAdjustingLine(null)}
+            aria-label="Close modal"
             className="text-[#71675E] hover:text-[#292320] cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {(isPreparingInKitchen || isReadyInKitchen) && (
+          <div className="p-2.5 rounded-lg border border-[#EDD7AD] bg-[#FDF5E7] text-[#946000] text-[11px] leading-snug flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block">
+                {isPreparingInKitchen ? "Currently Preparing in Kitchen" : "Already Marked Ready at Kitchen Pass"}
+              </span>
+              <span>
+                {isPreparingInKitchen
+                  ? "Confirming cancellation will immediately send an URGENT Stop Prep alert to kitchen staff."
+                  : "Verify with kitchen before voiding so food waste is tracked accurately."}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* One-Click Pack / Plate Serving Switch for Dine-In Dishes */}
         {orderType === "DINE_IN" && (

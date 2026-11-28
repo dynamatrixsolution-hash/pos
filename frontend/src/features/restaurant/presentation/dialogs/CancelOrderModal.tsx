@@ -26,6 +26,15 @@ export const CancelOrderModal: React.FC = () => {
     }
   }, [cancellingTable]);
 
+  useEffect(() => {
+    if (!cancellingTable) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isCancellingTable) setCancellingTable(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [cancellingTable, isCancellingTable, setCancellingTable]);
+
   if (!cancellingTable) return null;
 
   const isTable = Boolean(cancellingTable.tableId && cancellingTable.tableNumber);
@@ -39,7 +48,15 @@ export const CancelOrderModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/40 p-4 select-none">
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center bg-[#292320]/40 p-4 select-none"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancel-order-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isCancellingTable) setCancellingTable(null);
+      }}
+    >
       <div className="w-full max-w-md rounded-xl border border-[#E9B6B7] bg-[#FFFCF7] p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
@@ -47,7 +64,7 @@ export const CancelOrderModal: React.FC = () => {
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-sm font-bold text-[#292320]">{heading}</h4>
+              <h4 id="cancel-order-title" className="text-sm font-bold text-[#292320]">{heading}</h4>
               <p className="text-xs text-[#B33432] font-semibold mt-0.5">
                 All active items and kitchen tickets will be voided.
               </p>
@@ -63,6 +80,7 @@ export const CancelOrderModal: React.FC = () => {
             type="button"
             onClick={() => setCancellingTable(null)}
             disabled={isCancellingTable}
+            aria-label="Close modal"
             className="text-[#71675E] hover:text-[#292320] cursor-pointer shrink-0"
           >
             <X className="h-4 w-4" />

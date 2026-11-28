@@ -150,6 +150,7 @@ export interface LineAdjustmentTarget {
   itemName: string;
   currentQty: number;
   notes?: string;
+  fulfillmentStatus?: string;
 }
 
 export interface MenuSection {

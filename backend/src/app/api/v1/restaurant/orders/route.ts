@@ -201,7 +201,7 @@ export async function POST(req: Request) {
             businessId: session.businessId,
             branchId,
             tableId: effectiveTableId,
-            guestCount: 1,
+            guestCount: 0,
             openedById: session.userId,
             notes: "Direct POS Order",
           });
@@ -268,6 +268,7 @@ export async function POST(req: Request) {
             tableSessionId: effectiveTableSessionId,
             tableId: effectiveTableId,
             orderType: effectiveOrderType,
+            acceptanceStatus: "ACCEPTED",
             items: normalizedItems,
             notes: finalNotes || undefined,
             actorId: session.userId,

@@ -388,7 +388,7 @@ export const usePosCartStore = create<PosCartState>((set, get) => ({
         tickets.setActiveOrder(createdOrder);
       }
       tickets.fetchActiveOrders();
-      usePosCatalogStore.getState().loadInitialCatalog();
+      usePosCatalogStore.getState().refreshTables();
       toast.success("Order sent to kitchen");
       return true;
     } catch (err: any) {

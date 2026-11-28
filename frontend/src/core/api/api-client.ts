@@ -213,7 +213,7 @@ export class RestaurantEndpoints extends BaseApiClient {
     });
   }
 
-  async seatGuests(tableId: string, payload: { guestCount: number; notes?: string }) {
+  async seatGuests(tableId: string, payload: { guestCount?: number; notes?: string }) {
     return this.request<{ success: boolean; session: any; table: any }>(
       `/api/v1/restaurant/tables/${tableId}/seat`,
       {

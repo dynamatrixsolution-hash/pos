@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const seatSchema = z.object({
-  guestCount: z.coerce.number().int().min(1).default(1),
+  guestCount: z.coerce.number().int().min(0).optional().default(0),
   notes: z.string().optional().nullable(),
   serverStaffId: z.string().optional().nullable(),
 });
@@ -78,7 +78,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       session,
-      message: `Table ${table.tableNumber} seated with ${parsed.guestCount} guests.`,
+      message:
+        parsed.guestCount > 0
+          ? `Table ${table.tableNumber} seated with ${parsed.guestCount} guests.`
+          : `Table ${table.tableNumber} opened.`,
     }, { status: 201 });
   } catch (error: any) {
     if (error instanceof TableSessionError) {

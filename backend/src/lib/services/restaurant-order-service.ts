@@ -36,6 +36,7 @@ export interface CreateOrAppendOrderInput {
   tableSessionId?: string | null;
   tableId?: string | null;
   orderType?: string; // DINE_IN, TAKEAWAY, BAR_WALK_IN, DELIVERY
+  acceptanceStatus?: "PENDING" | "ACCEPTED";
   items: OrderItemInput[];
   notes?: string;
   actorId?: string;
@@ -269,6 +270,7 @@ export async function createOrAppendOrder(
     }
 
     // 2. If no existing order, create a new RestaurantOrder
+    const initialAcceptanceStatus = input.acceptanceStatus || "PENDING";
     if (!order) {
       const orderNumber = generateOrderNumber();
       order = await tx.restaurantOrder.create({
@@ -279,7 +281,7 @@ export async function createOrAppendOrder(
           tableId: input.tableId || null,
           orderNumber,
           orderType: input.orderType || "DINE_IN",
-          acceptanceStatus: "PENDING",
+          acceptanceStatus: initialAcceptanceStatus,
           fulfillmentStatus: "QUEUED",
           settlementStatus: "UNPAID",
           subtotal: new Prisma.Decimal(0),
@@ -412,7 +414,7 @@ export async function createOrAppendOrder(
             subtotal: lineSubtotal,
             total: lineTotal,
             notes: item.notes || null,
-            acceptanceStatus: "PENDING",
+            acceptanceStatus: initialAcceptanceStatus,
             fulfillmentStatus: "QUEUED",
             settlementStatus: "UNPAID",
             version: 1,

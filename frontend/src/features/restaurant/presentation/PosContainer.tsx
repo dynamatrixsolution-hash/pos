@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { usePosUiStore } from "../state/pos-ui.store";
 import { usePosCatalogStore } from "../state/pos-catalog.store";
@@ -27,16 +27,18 @@ import { LineAdjustmentModal } from "./dialogs/LineAdjustmentModal";
 import { CancelOrderModal } from "./dialogs/CancelOrderModal";
 
 export const PosContainer: React.FC = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Stores
   const dineInView = usePosUiStore((s) => s.dineInView);
   const setDineInView = usePosUiStore((s) => s.setDineInView);
   const setSelectedTable = usePosUiStore((s) => s.setSelectedTable);
-  const isTicketDrawerOpen = usePosUiStore((s) => s.isTicketDrawerOpen);
   const setIsTicketDrawerOpen = usePosUiStore((s) => s.setIsTicketDrawerOpen);
+  const setNavigator = usePosUiStore((s) => s.setNavigator);
 
   const loadInitialCatalog = usePosCatalogStore((s) => s.loadInitialCatalog);
+  const refreshTables = usePosCatalogStore((s) => s.refreshTables);
   const tables = usePosCatalogStore((s) => s.tables);
 
   const fetchActiveOrders = usePosTicketsStore((s) => s.fetchActiveOrders);
@@ -45,6 +47,12 @@ export const PosContainer: React.FC = () => {
 
   const viewParam = searchParams.get("view");
   const tableIdParam = searchParams.get("tableId");
+
+  // Bind Next.js router.replace so syncUrlView keeps searchParams & sidebar in sync
+  useEffect(() => {
+    setNavigator((url) => router.replace(url, { scroll: false }));
+    return () => setNavigator(null);
+  }, [router, setNavigator]);
 
   // React directly to Next.js route / searchParam changes
   useEffect(() => {
@@ -69,8 +77,12 @@ export const PosContainer: React.FC = () => {
     fetchActiveOrders();
   }, [loadInitialCatalog, fetchActiveOrders]);
 
-  // 5-second visibility-aware, overlap-safe poll for live active tickets
-  useVisibilityPolling(fetchActiveOrders, 5000);
+  // 5-second visibility-aware, overlap-safe poll for live active tickets AND table statuses
+  const pollLiveFloor = useCallback(async () => {
+    await Promise.all([fetchActiveOrders(), refreshTables()]);
+  }, [fetchActiveOrders, refreshTables]);
+
+  useVisibilityPolling(pollLiveFloor, 5000);
 
   const hasHydratedRef = React.useRef(false);
 
@@ -96,7 +108,7 @@ export const PosContainer: React.FC = () => {
       <PosHeader />
 
       {/* 2. Main Body (Floor Layout or Menu Catalog) */}
-      <main className="relative flex-1 overflow-hidden flex">
+      <div className="relative flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
           {dineInView === "SELECT_SPACE" ? (
             <FloorLayoutView />
@@ -107,7 +119,7 @@ export const PosContainer: React.FC = () => {
 
         {/* 3. Ticket Drawer (Right sliding panel - displayed strictly in Menu Ordering mode) */}
         {dineInView === "MENU_POS" && <TicketDrawer />}
-      </main>
+      </div>
 
       {/* 4. Feature Dialogs */}
       <ActiveTicketsModal />

@@ -103,6 +103,7 @@ export async function POST(
             branchId: existingOrder.branchId,
             orderId,
             orderType: existingOrder.orderType,
+            acceptanceStatus: "ACCEPTED",
             items: normalizedItems,
             notes: parsed.notes,
             actorId: session.userId,

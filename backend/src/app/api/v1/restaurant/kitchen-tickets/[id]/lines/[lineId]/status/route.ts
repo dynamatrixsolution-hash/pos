@@ -40,7 +40,8 @@ export async function PATCH(
       actorId: session.userId,
     });
 
-    if (["PREPARING", "READY", "SERVED", "CANCELLED"].includes(statusUpper)) {
+    if (["PREPARING", "READY", "SERVED", "CANCELLED", "REJECTED"].includes(statusUpper)) {
+      const normalizedStatus = statusUpper === "REJECTED" ? "CANCELLED" : statusUpper;
       void (async () => {
         try {
           const order = await db.restaurantOrder.findUnique({
@@ -52,7 +53,9 @@ export async function PATCH(
             },
           });
           if (!order) return;
-          const locLabel = order.table?.tableNumber ? `Table ${order.table.tableNumber}` : "your table";
+          const locLabel = order.table?.tableNumber
+            ? `Table ${order.table.tableNumber}`
+            : `Order #${order.orderNumber}`;
           const guestSession = order.tableSessionId
             ? await db.guestSession.findFirst({
                 where: { tableSessionId: order.tableSessionId, status: "ACTIVE" },
@@ -62,6 +65,7 @@ export async function PATCH(
             : null;
 
           const itemLabel = `${updatedLine.quantity}x ${updatedLine.itemName}`;
+          const reasonSuffix = parsed.reason ? `: ${parsed.reason}` : "";
           const tasks: Promise<unknown>[] = [];
 
           if (guestSession) {
@@ -69,38 +73,51 @@ export async function PATCH(
               PREPARING: `Preparing: ${updatedLine.itemName}`,
               READY: `Ready to Serve: ${updatedLine.itemName}`,
               SERVED: `Served: ${updatedLine.itemName}`,
-              CANCELLED: `Item Cancelled: ${updatedLine.itemName}`,
+              CANCELLED: `Item Cancelled by Kitchen: ${updatedLine.itemName}`,
             };
             const msgMap: Record<string, string> = {
               PREPARING: `Kitchen is now cooking ${itemLabel} for ${locLabel}.`,
               READY: `${itemLabel} is freshly ready and on its way to ${locLabel}.`,
               SERVED: `${itemLabel} has been served to ${locLabel}. Enjoy!`,
-              CANCELLED: `${itemLabel} was cancelled${parsed.reason ? `: ${parsed.reason}` : ""}.`,
+              CANCELLED: `${itemLabel} was cancelled by the kitchen${reasonSuffix}. Our staff will assist you shortly.`,
             };
             tasks.push(
               dispatchNotification({
                 businessId: session.businessId,
                 guestSessionId: guestSession.id,
                 category: "KITCHEN",
-                priority: statusUpper === "READY" ? "HIGH" : "NORMAL",
-                title: titleMap[statusUpper],
-                message: msgMap[statusUpper],
-                dedupeKey: `kds-line-guest:${updatedLine.id}:${statusUpper}`,
+                priority: normalizedStatus === "READY" || normalizedStatus === "CANCELLED" ? "HIGH" : "NORMAL",
+                title: titleMap[normalizedStatus],
+                message: msgMap[normalizedStatus],
+                dedupeKey: `kds-line-guest:${updatedLine.id}:${normalizedStatus}`,
               })
             );
           }
 
-          if (statusUpper === "READY") {
+          if (normalizedStatus === "READY") {
             tasks.push(
               dispatchNotification({
                 businessId: session.businessId,
                 targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
                 category: "KITCHEN",
                 priority: "HIGH",
-                title: `Dish Ready — ${locLabel}`,
+                title: `Dish Ready: ${locLabel}`,
                 message: `${itemLabel} is ready for pickup at kitchen pass (${locLabel}).`,
-                actionUrl: "/dashboard/restaurant/tables",
+                actionUrl: "/dashboard/restaurant/pos?view=tables",
                 dedupeKey: `kds-line-staff:${updatedLine.id}:READY`,
+              })
+            );
+          } else if (normalizedStatus === "CANCELLED") {
+            tasks.push(
+              dispatchNotification({
+                businessId: session.businessId,
+                targetRoles: ["WAITER", "CASHIER", "MANAGER", "OWNER"],
+                category: "KITCHEN",
+                priority: "URGENT",
+                title: `Kitchen Cancelled: ${itemLabel} (${locLabel})`,
+                message: `Kitchen cancelled ${itemLabel} for ${locLabel}${reasonSuffix}. Please inform the guest.`,
+                actionUrl: "/dashboard/restaurant/pos?view=tables",
+                dedupeKey: `kds-line-staff:${updatedLine.id}:CANCELLED`,
               })
             );
           }

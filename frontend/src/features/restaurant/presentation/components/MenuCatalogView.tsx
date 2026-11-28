@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Search, UtensilsCrossed, Plus } from "lucide-react";
+import { UtensilsCrossed, Plus } from "lucide-react";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
 import { usePosCartStore } from "../../state/pos-cart.store";
 import { usePosUiStore } from "../../state/pos-ui.store";
@@ -26,9 +26,18 @@ export const MenuCatalogView = React.memo(function MenuCatalogView() {
   const setSelectedSubcategoryId = usePosCatalogStore((s) => s.setSelectedSubcategoryId);
   const setMenuSearchQuery = usePosCatalogStore((s) => s.setMenuSearchQuery);
 
+  const draftLines = usePosCartStore((s) => s.draftLines);
   const addToDraft = usePosCartStore((s) => s.addToDraft);
   const setActiveCustomizingItem = usePosCartStore((s) => s.setActiveCustomizingItem);
   const setShowModifierModal = usePosUiStore((s) => s.setShowModifierModal);
+
+  const draftQtyByItemId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const line of draftLines) {
+      map.set(line.item.id, (map.get(line.item.id) || 0) + line.quantity);
+    }
+    return map;
+  }, [draftLines]);
 
   // Available subcategories for selected category
   const activeSubcategories = useMemo(() => {
@@ -141,50 +150,74 @@ export const MenuCatalogView = React.memo(function MenuCatalogView() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3.5 pb-8">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-xl border border-[#D8CEC1] bg-[#FFFCF7] p-3 flex flex-col justify-between space-y-2 hover:border-[#6B2837]/50 transition-all shadow-2xs"
-              >
-                {/* Dish Image */}
-                <div className="h-28 rounded-lg bg-[#EEE7DD] overflow-hidden flex items-center justify-center relative">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <UtensilsCrossed className="h-8 w-8 text-[#71675E]/30" />
-                  )}
-                </div>
+            {filteredItems.map((item) => {
+              const inDraftQty = draftQtyByItemId.get(item.id) || 0;
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleAddItem(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleAddItem(item);
+                    }
+                  }}
+                  className={`rounded-lg border p-3 flex flex-col justify-between space-y-2 transition-colors cursor-pointer select-none ${
+                    inDraftQty > 0
+                      ? "border-[#6B2837] bg-[#FFFCF7]"
+                      : "border-[#D8CEC1] bg-[#FFFCF7] hover:border-[#6B2837]/60 hover:bg-[#F7F3EC]/40"
+                  }`}
+                >
+                  {/* Dish Image */}
+                  <div className="h-28 rounded-md bg-[#EEE7DD] overflow-hidden flex items-center justify-center relative">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <UtensilsCrossed className="h-8 w-8 text-[#71675E]/30" />
+                    )}
+                    {inDraftQty > 0 && (
+                      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-[#6B2837] text-[#FFFCF7] text-[10px] font-bold tabular-nums">
+                        {inDraftQty} in draft
+                      </span>
+                    )}
+                  </div>
 
-                {/* Dish Info */}
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#292320] truncate" title={item.name}>
-                    {item.name}
-                  </h4>
-                  {item.categoryName && (
-                    <p className="text-[10px] text-[#71675E] truncate">{item.categoryName}</p>
-                  )}
-                </div>
+                  {/* Dish Info */}
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[#292320] truncate" title={item.name}>
+                      {item.name}
+                    </h4>
+                    {item.categoryName && (
+                      <p className="text-[10px] text-[#71675E] truncate">{item.categoryName}</p>
+                    )}
+                  </div>
 
-                {/* Price & Add Button */}
-                <div className="flex items-center justify-between pt-1 border-t border-[#D8CEC1]/50">
-                  <span className="text-xs font-black font-mono text-[#292320] tabular-nums">
-                    {formatNPR(item.basePrice)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleAddItem(item)}
-                    className="h-7 px-2.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                  >
-                    <Plus className="h-3 w-3 stroke-[2.5]" />
-                    <span>Add</span>
-                  </button>
+                  {/* Price & Add Button */}
+                  <div className="flex items-center justify-between pt-1.5 border-t border-[#D8CEC1]/50">
+                    <span className="text-xs font-bold font-mono text-[#292320] tabular-nums">
+                      {formatNPR(item.basePrice)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddItem(item);
+                      }}
+                      className="h-7 px-2.5 rounded-md bg-[#6B2837] hover:bg-[#541E2A] text-[#FFFCF7] text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Plus className="h-3 w-3 stroke-[2.5]" />
+                      <span>{item.hasModifiers ? "Options" : "Add"}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

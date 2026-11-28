@@ -265,7 +265,7 @@ export async function openTableSession(
             branchId: input.branchId,
             tableId: input.tableId,
             sessionNumber: candidateSessionNumber,
-            guestCount: input.guestCount && input.guestCount > 0 ? input.guestCount : 1,
+            guestCount: typeof input.guestCount === "number" && input.guestCount >= 0 ? input.guestCount : 0,
             status: "ACTIVE",
             openedAt: new Date(),
             openedById,
