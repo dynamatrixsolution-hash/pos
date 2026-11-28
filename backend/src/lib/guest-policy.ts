@@ -26,7 +26,7 @@ export const DEFAULT_GUEST_QR_POLICY: GuestQrPolicy = {
   branchLng: null,
   geofenceRadiusMeters: 150,
   maxGuestOrderItems: 15,
-  maxAutoAcceptAmount: 1500,
+  maxAutoAcceptAmount: 5000,
   selfCancelGraceMinutes: 2,
   takeawayEnabled: true,
   deliveryEnabled: true,

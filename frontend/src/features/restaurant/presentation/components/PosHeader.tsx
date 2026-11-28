@@ -10,7 +10,6 @@ import {
   Truck,
   ChevronDown,
   Search,
-  LayoutGrid,
 } from "lucide-react";
 import { usePosUiStore } from "../../state/pos-ui.store";
 import { usePosCatalogStore } from "../../state/pos-catalog.store";
@@ -200,45 +199,6 @@ export const PosHeader = React.memo(function PosHeader() {
               </div>
             </>
           )}
-        </div>
-
-        {/* In-POS View Switcher: Tables | Menu */}
-        <div
-          className="inline-flex items-center rounded-lg border border-[#D8CEC1] bg-[#EEE7DD] p-0.5 shrink-0"
-          role="tablist"
-          aria-label="POS view"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={dineInView === "SELECT_SPACE"}
-            onClick={() => {
-              setOrderType("DINE_IN");
-              syncUrlView("SELECT_SPACE");
-            }}
-            className={`h-7 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
-              dineInView === "SELECT_SPACE"
-                ? "bg-[#FFFCF7] text-[#6B2837] border border-[#D8CEC1]"
-                : "text-[#71675E] hover:text-[#292320]"
-            }`}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            <span>Tables</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={dineInView === "MENU_POS"}
-            onClick={() => syncUrlView("MENU_POS", selectedTableId || undefined)}
-            className={`h-7 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
-              dineInView === "MENU_POS"
-                ? "bg-[#FFFCF7] text-[#6B2837] border border-[#D8CEC1]"
-                : "text-[#71675E] hover:text-[#292320]"
-            }`}
-          >
-            <UtensilsCrossed className="h-3.5 w-3.5" />
-            <span>Menu</span>
-          </button>
         </div>
 
         {/* Menu Search Input (MENU_POS only) */}

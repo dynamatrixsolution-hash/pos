@@ -457,6 +457,51 @@ export default function GuestQrPortalPage() {
   const [guestTheme, setGuestTheme] = useState<"light" | "dark">("light");
   const [sessionEndedThankYou, setSessionEndedThankYou] = useState<boolean>(false);
 
+  const settledStorageKey = publicCode ? `restroinn_guest_settled_v1_${publicCode}` : "";
+  const SETTLED_LOCK_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+  const markSessionSettled = useCallback(() => {
+    setSessionEndedThankYou(true);
+    if (typeof window === "undefined" || !settledStorageKey) return;
+    try {
+      localStorage.setItem(settledStorageKey, JSON.stringify({ settledAt: Date.now() }));
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch {}
+  }, [settledStorageKey]);
+
+  const clearSettledMarker = useCallback(() => {
+    setSessionEndedThankYou(false);
+    if (typeof window === "undefined" || !settledStorageKey) return;
+    try {
+      localStorage.removeItem(settledStorageKey);
+    } catch {}
+  }, [settledStorageKey]);
+
+  // Restore settled thank-you screen on reload OR mobile swipe-back (bfcache pageshow)
+  useEffect(() => {
+    if (typeof window === "undefined" || !settledStorageKey) return;
+    const modeParam = (searchParams?.get("mode") || "").toUpperCase();
+    if (modeParam === "DELIVERY" || modeParam === "TAKEAWAY") return;
+
+    const checkSettledLock = () => {
+      try {
+        const raw = localStorage.getItem(settledStorageKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { settledAt?: number };
+        if (parsed?.settledAt && Date.now() - parsed.settledAt < SETTLED_LOCK_TTL_MS) {
+          setSessionEndedThankYou(true);
+        } else {
+          localStorage.removeItem(settledStorageKey);
+        }
+      } catch {}
+    };
+
+    checkSettledLock();
+    const onPageShow = () => checkSettledLock();
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [settledStorageKey, searchParams]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -608,14 +653,14 @@ export default function GuestQrPortalPage() {
           code === "GUEST_GRANT_REVOKED"
         ) {
           clearPrivateSessionState();
-          setSessionEndedThankYou(true);
+          markSessionSettled();
         }
         return false;
       } finally {
         if (!silent) setRefreshingData(false);
       }
     },
-    [clearPrivateSessionState]
+    [clearPrivateSessionState, markSessionSettled]
   );
 
   // Initial load: Resolve public QR location with instant Browser Caching & SWR Revalidation
@@ -756,7 +801,7 @@ export default function GuestQrPortalPage() {
           if (data.qrLocation.table?.isSettled) {
             if (isVerified) {
               clearPrivateSessionState();
-              setSessionEndedThankYou(true);
+              markSessionSettled();
             } else {
               showBanner("Previous bill settled! Table is now ready for your order.", "success");
             }
@@ -1966,15 +2011,16 @@ export default function GuestQrPortalPage() {
           }}
           onStartTakeaway={() => {
             setOrderChannel("TAKEAWAY");
-            setSessionEndedThankYou(false);
+            clearSettledMarker();
             setActiveTab("MENU");
           }}
           onStartDelivery={() => {
             setOrderChannel("DELIVERY");
-            setSessionEndedThankYou(false);
+            clearSettledMarker();
             setActiveTab("MENU");
           }}
           onScanNewTable={() => {
+            clearSettledMarker();
             window.location.href = "/guest";
           }}
         />

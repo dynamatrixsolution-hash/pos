@@ -391,8 +391,10 @@ export const FloorLayoutView = React.memo(function FloorLayoutView() {
                           <h4 className="text-sm font-bold text-[#292320] truncate tabular-nums">
                             {t.tableNumber}
                           </h4>
-                          <p className="text-[11px] text-[#71675E] truncate tabular-nums">
-                            {t.floor?.name || "Floor"} &bull;{" "}
+                          <p className="text-[11px] text-[#71675E] truncate">
+                            {t.floor?.name || "Floor"}
+                          </p>
+                          <p className="text-[11px] font-medium text-[#292320]/80 tabular-nums">
                             {guestCount > 0 ? `${guestCount}/${t.capacity} guests` : `${t.capacity} covers`}
                           </p>
                         </div>
